@@ -1,0 +1,79 @@
+import { useState } from "react";
+import { Link } from "wouter";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { trpc } from "@/lib/trpc";
+import { GraduationCap, CheckCircle } from "lucide-react";
+
+export default function PortalResetPassword() {
+  const [email, setEmail] = useState("");
+  const [submitted, setSubmitted] = useState(false);
+
+  const resetMutation = trpc.portal.requestReset.useMutation({
+    onSuccess: () => setSubmitted(true),
+  });
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    resetMutation.mutate({ email });
+  };
+
+  if (submitted) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 flex items-center justify-center p-4">
+        <div className="bg-white rounded-xl shadow-lg p-8 max-w-md text-center">
+          <CheckCircle className="w-16 h-16 text-green-500 mx-auto mb-4" />
+          <h1 className="text-xl font-bold text-wsa-navy mb-2">Check Your Email</h1>
+          <p className="text-gray-600 mb-6">
+            If an account exists with <strong>{email}</strong>, we've sent a password reset link.
+          </p>
+          <Link href="/portal/login">
+            <Button className="bg-wsa-navy hover:bg-wsa-navy/90 text-white">Back to Login</Button>
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 flex items-center justify-center p-4">
+      <div className="w-full max-w-md">
+        <div className="text-center mb-8">
+          <div className="inline-flex items-center justify-center w-16 h-16 bg-wsa-navy rounded-full mb-4">
+            <GraduationCap className="w-8 h-8 text-white" />
+          </div>
+          <h1 className="text-2xl font-bold text-wsa-navy">Reset Password</h1>
+          <p className="text-gray-600 mt-2">Enter your email to receive a reset link</p>
+        </div>
+
+        <form onSubmit={handleSubmit} className="bg-white rounded-xl shadow-lg p-8 space-y-5">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1.5">Email Address</label>
+            <Input
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="your.email@example.com"
+              required
+              className="h-11"
+            />
+          </div>
+
+          <Button
+            type="submit"
+            className="w-full h-11 bg-wsa-red hover:bg-wsa-red/90 text-white"
+            disabled={resetMutation.isPending}
+          >
+            {resetMutation.isPending ? "Sending..." : "Send Reset Link"}
+          </Button>
+
+          <div className="text-center pt-2">
+            <Link href="/portal/login" className="text-sm text-wsa-red hover:underline">
+              Back to Login
+            </Link>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
