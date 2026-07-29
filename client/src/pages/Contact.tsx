@@ -25,6 +25,7 @@ const offices = [
     country: "Nigeria",
     role: "West Africa Office",
     address: "DSTV Complex, Along Akala Express Way, New Garage, Ibadan, Oyo State",
+    phone: "+234 812 929 2769",
     whatsapp: "+234 812 929 2769",
     email: "NigeriaOffice@worldstudentadvisors.com",
   },
@@ -345,7 +346,6 @@ function StudentForm() {
               <option value="usa">United States</option>
               <option value="canada">Canada</option>
               <option value="europe">Europe</option>
-              <option value="australia">Australia</option>
               <option value="multiple">Multiple / Not sure</option>
             </select>
             {errors.preferredDestination && <p className="text-xs text-red-600 mt-1">{errors.preferredDestination}</p>}

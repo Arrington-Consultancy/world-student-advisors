@@ -142,13 +142,11 @@ const DESTINATION_MAP: Record<string, number> = {
   usa: 85, "United States": 85, USA: 85,
   canada: 86, Canada: 86,
   europe: 84, Europe: 84, "Other European Counties": 84,
-  // No live "Australia" option exists yet — mapped to New Zealand as the
-  // closest available option. This is a known, disclosed approximation, not
-  // a fix: a student choosing Australia is currently recorded as wanting New
-  // Zealand. Needs a business decision (add a real Australia option in
-  // Pipedrive, or relabel this front-end choice) before it can be resolved.
-  australia: 87,
   multiple: 88, "Not Sure": 88, "Not Sure - Need Advice": 88,
+  // No live "Australia" option exists in Pipedrive's Preferred Study
+  // Destination field. "Australia" was removed from the public dropdown
+  // (client/src/pages/Contact.tsx) rather than silently recording it as New
+  // Zealand — do not re-add either without a real Pipedrive option first.
   "new-zealand": 87,
 };
 
@@ -185,7 +183,7 @@ const levelLabels: Record<string, string> = {
 
 const destinationLabels: Record<string, string> = {
   uk: "United Kingdom", usa: "United States", canada: "Canada",
-  europe: "Europe", australia: "Australia", multiple: "Multiple / Not sure",
+  europe: "Europe", multiple: "Multiple / Not sure",
 };
 
 interface PipedrivePersonSearchItem {
