@@ -27,16 +27,8 @@ interface StudentFormData {
   gdprConsent: boolean;
 }
 
-interface GeneralFormData {
-  name: string;
-  organisation?: string;
-  email: string;
-  role: string;
-  message: string;
-}
-
 async function pipedriveRequest(endpoint: string, method: string, body?: Record<string, unknown>) {
-  const url = `${PIPEDRIVE_BASE}${endpoint}?api_token=${ENV.pipedriveApiToken}`;
+  const url = `${PIPEDRIVE_BASE}${endpoint}${endpoint.includes("?") ? "&" : "?"}api_token=${ENV.pipedriveApiToken}`;
   const response = await fetch(url, {
     method,
     headers: { "Content-Type": "application/json" },
@@ -45,15 +37,17 @@ async function pipedriveRequest(endpoint: string, method: string, body?: Record<
 
   if (!response.ok) {
     const errorText = await response.text();
-    console.error(`[Pipedrive] API error (${response.status}): ${errorText}`);
-    throw new Error(`Pipedrive API error (${response.status}): ${errorText}`);
+    // Never include the request URL/token in thrown error text that might be logged upstream.
+    console.error(`[Pipedrive] API error (${response.status}) on ${method} ${endpoint}: ${errorText}`);
+    throw new Error(`Pipedrive API error (${response.status}) on ${endpoint}`);
   }
 
   return response.json();
 }
 
 // ===== PIPEDRIVE FIELD KEYS =====
-// Person custom fields
+// Person custom fields — verified 2026-07-29 against the live WSA Pipedrive
+// account's /personFields. Every key below matches the live schema exactly.
 const PF = {
   middleName: "698bb0af1557c96b6af870cb523ba231a27e302c",
   gender: "6769fddb9f06852f7c76a5096e8e5343e7780937",
@@ -74,6 +68,10 @@ const PF = {
 };
 
 // ===== ENUM OPTION ID MAPS =====
+// Every numeric ID below was verified 2026-07-29 against the live WSA
+// Pipedrive account's /personFields option lists. Where the front-end offers
+// a choice with no live Pipedrive equivalent, it's mapped to the closest
+// existing option (commented) rather than left to silently drop the field.
 const GENDER_MAP: Record<string, number> = {
   male: 27, Male: 27,
   female: 28, Female: 28,
@@ -82,29 +80,29 @@ const GENDER_MAP: Record<string, number> = {
 };
 
 const QUALIFICATION_MAP: Record<string, number> = {
-  "High School Diploma": 31, "high school": 31, "High School": 31,
-  "HND": 32, "hnd": 32,
-  "Undergraduate Degree": 33, "undergraduate": 33, "Undergraduate": 33,
-  "Master's Degree": 34, "masters": 34, "Masters": 34,
-  "PhD": 35, "phd": 35,
-  "Other": 36, "other": 36,
-  "A-Level or equivalent": 31, // Map to High School as closest
+  secondary: 31, // High School (closest — no dedicated Secondary/GCSE option)
+  "a-level": 31, // High School (closest — no dedicated A-Level option here)
+  hnd: 32,
+  diploma: 36, // Other (no dedicated Diploma/Foundation option)
+  bachelors: 33, // Undergraduate
+  masters: 34,
+  doctorate: 35, // PhD
+  other: 36,
 };
 
 const LEVEL_MAP: Record<string, number> = {
-  "foundation": 39, "Foundation / Pathway": 39,
-  "undergraduate": 41, "Undergraduate (Bachelor's)": 41,
-  "postgraduate": 43, "Postgraduate (Master's)": 43, "masters": 262,
-  "doctorate": 45, "PhD Doctorate": 45,
-  "boarding": 38, // Map to GCSE as closest for boarding school
-  "language": 46, // Other
-  "summer": 46, // Other
-  "online": 46, // Other
-  "other": 46,
-  "a-level": 40,
-  "hnd": 46, // Other (no dedicated HND option in desired-level field)
-  "top-up": 41, // Map to Undergraduate as closest
-  "pre-masters": 43, // Map to Postgraduate as closest
+  foundation: 39, // International Foundation Program
+  hnd: 46, // Other (no dedicated HND option in this field — HND lives on Highest Qualification instead)
+  undergraduate: 41, // Undergraduate (Bachelor's)
+  "top-up": 42, // Top-Up Degree
+  "pre-masters": 261, // Pre Masters
+  postgraduate: 43, // Taught Master's
+  doctorate: 45, // PhD Doctorate
+  boarding: 38, // GCSE (closest — no dedicated boarding-school option)
+  language: 46, // Other
+  summer: 46, // Other
+  online: 46, // Other
+  other: 46,
 };
 
 const AREA_MAP: Record<string, number> = {
@@ -125,50 +123,104 @@ const AREA_MAP: Record<string, number> = {
 };
 
 const MODE_MAP: Record<string, number> = {
-  "Full-time on campus": 59, "full-time": 59,
-  "Sports Camp": 60, "sports-camp": 60,
-  "Summer School": 61, "summer-school": 61,
-  "Short Course": 62, "short-course": 62,
-  "Hybrid (online & abroad)": 63, "hybrid": 63,
-  "Online / Distance": 64, "online": 64,
-  "Other": 65, "other": 65,
+  "full-time": 59, // Study Abroad Full Time
+  "part-time": 65, // Other (no dedicated part-time option)
+  online: 64,
+  blended: 63, // Hybrid (online & abroad) — closest match
 };
 
 const MONTH_MAP: Record<string, number> = {
-  "January": 66, "February": 67, "March": 68, "April": 69,
-  "May": 70, "June": 71, "July": 72, "August": 73,
-  "September": 74, "October": 75, "November": 76, "December": 77,
+  January: 66, February: 67, March: 68, April: 69,
+  May: 70, June: 71, July: 72, August: 73,
+  September: 74, October: 75, November: 76, December: 77,
 };
 
 const DESTINATION_MAP: Record<string, number> = {
-  "uk": 78, "United Kingdom": 78, "United Kingdom (UK)": 78,
-  "cyprus": 79, "Cyprus": 79,
-  "hungary": 80, "Hungary": 80,
-  "usa": 85, "United States": 85, "USA": 85,
-  "canada": 86, "Canada": 86,
-  "europe": 84, "Europe": 84, "Other European Counties": 84,
-  "australia": 87, // Map to New Zealand as closest
-  "multiple": 88, "Not Sure": 88, "Not Sure - Need Advice": 88,
+  uk: 78, "United Kingdom": 78, "United Kingdom (UK)": 78,
+  cyprus: 79, Cyprus: 79,
+  hungary: 80, Hungary: 80,
+  usa: 85, "United States": 85, USA: 85,
+  canada: 86, Canada: 86,
+  europe: 84, Europe: 84, "Other European Counties": 84,
+  // No live "Australia" option exists yet — mapped to New Zealand as the
+  // closest available option. This is a known, disclosed approximation, not
+  // a fix: a student choosing Australia is currently recorded as wanting New
+  // Zealand. Needs a business decision (add a real Australia option in
+  // Pipedrive, or relabel this front-end choice) before it can be resolved.
+  australia: 87,
+  multiple: 88, "Not Sure": 88, "Not Sure - Need Advice": 88,
   "new-zealand": 87,
 };
 
 const FUNDING_MAP: Record<string, number> = {
-  "Self-funded": 89, "self-funded": 89,
-  "Family-funded": 90, "family-funded": 90, "Parents or relatives": 90,
-  "Government scholarship": 91, "government-scholarship": 91,
-  "Looking for scholarship": 92, "looking-scholarship": 92,
-  "Applied for scholarship": 93, "applied-scholarship": 93,
-  "No funding source": 94, "no-funding": 94,
-  "Loan": 89, "loan": 89, // Map to self-funding as closest
+  "self-funded": 89,
+  loan: 89, // Self-funded (closest — no dedicated loan option)
+  scholarship: 92, // Looking for a partial scholarship (closest generic "scholarship" bucket)
+  sponsor: 90, // Funded by parents or relatives (closest — no dedicated third-party sponsor option)
+  mixed: 92, // Looking for a partial scholarship (closest — implies partial self + other funding)
 };
 
 const COUNSELLOR_MAP: Record<string, number> = {
-  "eldah": 95, "Eldah Therone": 95, "Eldah": 95,
-  "glenice": 96, "Glenice Owino": 96, "Glenice": 96,
-  "manet": 97, "Manet Khamayo": 97, "Manet": 97,
-  "sarafina": 98, "Sarafina Kihumbu": 98, "Sarafina": 98,
+  eldah: 95, "Eldah Therone": 95, Eldah: 95,
+  glenice: 96, "Glenice Owino": 96, Glenice: 96,
+  manet: 97, "Manet Khamayo": 97, Manet: 97,
+  sarafina: 98, "Sarafina Kihumbu": 98, Sarafina: 98,
   "help-me-choose": 99, "Help me choose": 99, "": 99,
 };
+
+const levelLabels: Record<string, string> = {
+  foundation: "Foundation / Pathway",
+  hnd: "HND",
+  undergraduate: "Undergraduate (Bachelor's)",
+  "top-up": "Top-up Degree",
+  "pre-masters": "Pre-Master's",
+  postgraduate: "Postgraduate (Master's)",
+  doctorate: "Doctorate (PhD)",
+  boarding: "Boarding School",
+  language: "Language Programme",
+  summer: "Summer Programme",
+  online: "Online / Distance Learning",
+  other: "Other / Not Sure",
+};
+
+const destinationLabels: Record<string, string> = {
+  uk: "United Kingdom", usa: "United States", canada: "Canada",
+  europe: "Europe", australia: "Australia", multiple: "Multiple / Not sure",
+};
+
+interface PipedrivePersonSearchItem {
+  item?: { id?: number };
+}
+
+/**
+ * Look up an existing Person by exact email match, then (if not found) by
+ * phone. Returns the Pipedrive person id, or null if no match — callers
+ * create a new Person in that case rather than risk merging unrelated
+ * records automatically.
+ */
+async function findExistingPersonId(email: string, phone: string): Promise<number | null> {
+  if (email) {
+    const result = await pipedriveRequest(
+      `/persons/search?term=${encodeURIComponent(email)}&fields=email&exact_match=true`,
+      "GET"
+    );
+    const items: PipedrivePersonSearchItem[] = result?.data?.items ?? [];
+    const found = items.find(i => typeof i.item?.id === "number");
+    if (found?.item?.id) return found.item.id;
+  }
+
+  if (phone) {
+    const result = await pipedriveRequest(
+      `/persons/search?term=${encodeURIComponent(phone)}&fields=phone&exact_match=true`,
+      "GET"
+    );
+    const items: PipedrivePersonSearchItem[] = result?.data?.items ?? [];
+    const found = items.find(i => typeof i.item?.id === "number");
+    if (found?.item?.id) return found.item.id;
+  }
+
+  return null;
+}
 
 /**
  * Extract the month name from a preferredStartMonth value like "January 2027"
@@ -181,18 +233,11 @@ function extractMonth(value: string): string {
   return value;
 }
 
-/**
- * Create a Person and Lead in Pipedrive from student application form.
- * Maps all form fields to the correct Pipedrive custom fields.
- * Leads appear in the Leads Inbox.
- */
-export async function createStudentLead(data: StudentFormData) {
-  // 1. Create the person with ALL custom fields mapped
-  const personPayload: Record<string, unknown> = {
+function buildPersonPayload(data: StudentFormData): Record<string, unknown> {
+  const payload: Record<string, unknown> = {
     name: `${data.firstName}${data.middleName ? " " + data.middleName : ""} ${data.lastName}`,
     email: [{ value: data.email, primary: true, label: "work" }],
     phone: data.phone ? [{ value: data.phone, primary: true, label: "mobile" }] : undefined,
-    // Custom fields
     [PF.middleName]: data.middleName || undefined,
     [PF.gender]: GENDER_MAP[data.gender] || undefined,
     [PF.passportNumber]: data.passportNumber || undefined,
@@ -207,33 +252,66 @@ export async function createStudentLead(data: StudentFormData) {
     [PF.educationFunding]: FUNDING_MAP[data.educationFunding] || undefined,
     [PF.promoCode]: data.promoCode || undefined,
     [PF.referredBy]: data.referredToWSA === "yes" && data.referredByWhom ? `yes — ${data.referredByWhom}` : (data.referredToWSA || undefined),
-    [PF.recommendedCounsellor]: COUNSELLOR_MAP[data.recommendedCounsellor] || COUNSELLOR_MAP["help-me-choose"],
+    [PF.recommendedCounsellor]: COUNSELLOR_MAP[data.recommendedCounsellor] ?? COUNSELLOR_MAP["help-me-choose"],
     [PF.gdprConsent]: data.gdprConsent ? 105 : 106,
   };
 
-  // Remove undefined values
-  Object.keys(personPayload).forEach(key => {
-    if (personPayload[key] === undefined) delete personPayload[key];
+  Object.keys(payload).forEach(key => {
+    if (payload[key] === undefined) delete payload[key];
   });
 
-  const personResult = await pipedriveRequest("/persons", "POST", personPayload);
-  const personId = personResult.data.id;
+  return payload;
+}
 
-  // 2. Create a lead linked to the person (appears in Leads Inbox)
-  const levelLabels: Record<string, string> = {
-    foundation: "Foundation / Pathway",
-    hnd: "HND",
-    undergraduate: "Undergraduate (Bachelor's)",
-    "top-up": "Top-up Degree",
-    "pre-masters": "Pre-Master's",
-    postgraduate: "Postgraduate (Master's)",
-    doctorate: "Doctorate (PhD)",
-    boarding: "Boarding School",
-    language: "Language Programme",
-    summer: "Summer Programme",
-    online: "Online / Distance Learning",
-    other: "Other / Not Sure",
-  };
+function buildNote(data: StudentFormData): string {
+  const lines = [
+    `## Student Sign-up Summary`,
+    `**Full Name:** ${data.firstName}${data.middleName ? " " + data.middleName : ""} ${data.lastName}`,
+    `**Date of Birth:** ${data.dateOfBirth || "—"}`,
+    `**Email:** ${data.email}`,
+    `**Phone:** ${data.phone || "—"}`,
+    `**Gender:** ${data.gender || "—"}`,
+    `**Passport Number:** ${data.passportNumber || "—"}`,
+    `**Nationality:** ${data.nationality || "—"}`,
+    `**Country of Residence:** ${data.country || "—"}`,
+    `**Highest Qualification:** ${data.highestQualification || "—"}`,
+    `**Desired Level of Study:** ${levelLabels[data.desiredLevel] || data.desiredLevel || "—"}`,
+    `**Area of Interest:** ${data.areaOfStudy || "—"}`,
+    `**Preferred Mode:** ${data.preferredMode || "—"}`,
+    `**Preferred Start Month:** ${data.preferredStartMonth || "—"}`,
+    `**Preferred Destination:** ${destinationLabels[data.preferredDestination] || data.preferredDestination || "—"}`,
+    `**Education Funding:** ${data.educationFunding || "—"}`,
+    `**Promotional Code:** ${data.promoCode || "—"}`,
+    `**Referred to WSA:** ${data.referredToWSA === "yes" ? "Yes" : data.referredToWSA === "no" ? "No" : "—"}`,
+    `**Referrer Name:** ${data.referredToWSA === "yes" && data.referredByWhom ? data.referredByWhom : "—"}`,
+    `**Recommended Student Counsellor:** ${data.recommendedCounsellor || "Help me choose"}`,
+    `**GDPR Consent:** ${data.gdprConsent ? "Yes" : "No"}`,
+    ``,
+    `**Source:** WSA Website - Sign-up Form`,
+  ];
+  return lines.join("\n");
+}
+
+/**
+ * Create or reuse a Person and Lead in Pipedrive from the Sign-up Form.
+ * Searches for an existing Person by email, then phone, before creating a
+ * new one — avoids duplicate Person records for repeat submissions.
+ * Leads appear in the Leads Inbox (evidenced current workflow — see
+ * server/pipedrive.ts history notes; not switched to a Deal workflow without
+ * direct evidence WSA staff require one).
+ */
+export async function createStudentLead(data: StudentFormData) {
+  const existingPersonId = await findExistingPersonId(data.email, data.phone);
+  const personPayload = buildPersonPayload(data);
+
+  let personId: number;
+  if (existingPersonId) {
+    await pipedriveRequest(`/persons/${existingPersonId}`, "PUT", personPayload);
+    personId = existingPersonId;
+  } else {
+    const created = await pipedriveRequest("/persons", "POST", personPayload);
+    personId = created.data.id;
+  }
 
   const leadTitle = `${data.firstName} ${data.lastName} - ${levelLabels[data.desiredLevel] || data.desiredLevel}`;
 
@@ -244,85 +322,11 @@ export async function createStudentLead(data: StudentFormData) {
 
   const leadId = leadResult.data.id;
 
-  // 3. Add a summary note (for quick reference in the lead view)
-  const destinationLabels: Record<string, string> = {
-    uk: "United Kingdom", usa: "United States", canada: "Canada",
-    europe: "Europe", australia: "Australia", multiple: "Multiple / Not sure",
-  };
-
-  const noteLines = [
-    `## Student Application Summary`,
-    `**Name:** ${data.firstName}${data.middleName ? " " + data.middleName : ""} ${data.lastName}`,
-    `**Date of Birth:** ${data.dateOfBirth}`,
-    `**Mobile:** ${data.phone}`,
-    `**Email:** ${data.email}`,
-    `**Nationality:** ${data.nationality}`,
-    `**Country of Residence:** ${data.country}`,
-    `**Desired Level:** ${levelLabels[data.desiredLevel] || data.desiredLevel}`,
-    `**Area of Study:** ${data.areaOfStudy}`,
-    `**Destination:** ${destinationLabels[data.preferredDestination] || data.preferredDestination}`,
-    `**Start:** ${data.preferredStartMonth}`,
-    `**Funding:** ${data.educationFunding}`,
-    data.recommendedCounsellor ? `**Preferred Counsellor:** ${data.recommendedCounsellor}` : "",
-    data.referredToWSA === "yes" && data.referredByWhom ? `**Referred by:** ${data.referredByWhom}` : "",
-    ``,
-    `*All fields also mapped to Person custom fields.*`,
-    `**Source:** WSA Website - Student Registration Form`,
-  ].filter(Boolean);
-
   await pipedriveRequest("/notes", "POST", {
     lead_id: leadId,
-    content: noteLines.join("\n"),
+    content: buildNote(data),
     pinned_to_lead_flag: 1,
   });
 
-  return { personId, leadId };
-}
-
-/**
- * Create a Person and Lead in Pipedrive from general enquiry form.
- * Leads appear in the Leads Inbox.
- */
-export async function createGeneralEnquiry(data: GeneralFormData) {
-  // 1. Create the person
-  const personResult = await pipedriveRequest("/persons", "POST", {
-    name: data.name,
-    email: [{ value: data.email, primary: true, label: "work" }],
-  });
-
-  const personId = personResult.data.id;
-
-  // 2. Create a lead (appears in Leads Inbox)
-  const roleLabels: Record<string, string> = {
-    institution: "Education Institution / University",
-    agent: "Education Agent",
-    media: "Media / Press",
-    "parent-not-ready": "Parent (not ready to apply)",
-    other: "Other",
-  };
-
-  const leadTitle = `${data.name} - General Enquiry (${roleLabels[data.role] || data.role})`;
-
-  const noteLines = [
-    `**Enquiry type:** ${roleLabels[data.role] || data.role}`,
-    data.organisation ? `**Organisation:** ${data.organisation}` : "",
-    `**Message:** ${data.message}`,
-    `**Source:** WSA Website - General Enquiry Form`,
-  ].filter(Boolean);
-
-  const leadResult = await pipedriveRequest("/leads", "POST", {
-    title: leadTitle,
-    person_id: personId,
-  });
-
-  const leadId = leadResult.data.id;
-
-  // 3. Add a note linked to the lead
-  await pipedriveRequest("/notes", "POST", {
-    lead_id: leadId,
-    content: noteLines.join("\n"),
-    pinned_to_lead_flag: 1,
-  });
-
-  return { personId, leadId };
+  return { personId, leadId, reusedExistingPerson: Boolean(existingPersonId) };
 }

@@ -1,46 +1,93 @@
 import { z } from "zod";
-import { notifyOwner } from "./_core/notification";
+import { notifyStaff, sendApplicantConfirmation } from "./_core/notification";
 import { systemRouter } from "./_core/systemRouter";
 import { publicProcedure, router } from "./_core/trpc";
-import { createStudentLead, createGeneralEnquiry } from "./pipedrive";
+import { ENV } from "./_core/env";
+import { createStudentLead } from "./pipedrive";
+import { recordFailedSubmission } from "./db";
 import { createPortalUser, authenticatePortalUser, setPasswordWithToken, requestPasswordReset, verifyPortalToken } from "./portal-auth";
 import { generateQuestions, evaluateAnswers } from "./interviewCoach";
+
+const studentSignupSchema = z.object({
+  firstName: z.string().min(1),
+  middleName: z.string().optional().default(""),
+  lastName: z.string().min(1),
+  gender: z.string().min(1),
+  dateOfBirth: z.string().min(1),
+  passportNumber: z.string().optional().default(""),
+  phone: z.string().min(1),
+  email: z.string().email(),
+  nationality: z.string().min(1),
+  country: z.string().min(1),
+  highestQualification: z.string().min(1),
+  desiredLevel: z.string().min(1),
+  areaOfStudy: z.string().min(1),
+  preferredMode: z.string().min(1),
+  preferredStartMonth: z.string().min(1),
+  preferredDestination: z.string().min(1),
+  educationFunding: z.string().min(1),
+  promoCode: z.string().optional().default(""),
+  referredToWSA: z.string().optional().default(""),
+  referredByWhom: z.string().optional().default(""),
+  recommendedCounsellor: z.string().optional().default(""),
+  gdprConsent: z.boolean(),
+});
+type StudentSignupInput = z.infer<typeof studentSignupSchema>;
+
+/** Safe-for-logs summary — never includes passport number or any secret. */
+function safeSubmissionSummary(input: StudentSignupInput): string {
+  return `${input.firstName} ${input.lastName} <${input.email}> (${input.desiredLevel})`;
+}
 export const appRouter = router({
     // if you need to use socket.io, read and register route in server/_core/index.ts, all api should start with '/api/' so that the gateway can route correctly
   system: systemRouter,
 
   contact: router({
     submitStudent: publicProcedure
-      .input(
-        z.object({
-          firstName: z.string().min(1),
-          middleName: z.string().optional().default(""),
-          lastName: z.string().min(1),
-          gender: z.string().min(1),
-          dateOfBirth: z.string().min(1),
-          passportNumber: z.string().optional().default(""),
-          phone: z.string().min(1),
-          email: z.string().email(),
-          nationality: z.string().min(1),
-          country: z.string().min(1),
-          highestQualification: z.string().min(1),
-          desiredLevel: z.string().min(1),
-          areaOfStudy: z.string().min(1),
-          preferredMode: z.string().min(1),
-          preferredStartMonth: z.string().min(1),
-          preferredDestination: z.string().min(1),
-          educationFunding: z.string().min(1),
-          promoCode: z.string().optional().default(""),
-          referredToWSA: z.string().optional().default(""),
-          referredByWhom: z.string().optional().default(""),
-          recommendedCounsellor: z.string().optional().default(""),
-          gdprConsent: z.boolean(),
-        })
-      )
+      .input(studentSignupSchema)
       .mutation(async ({ input }) => {
-        const result = await createStudentLead(input);
+        let result: Awaited<ReturnType<typeof createStudentLead>>;
+        try {
+          result = await createStudentLead(input);
+        } catch (error) {
+          // Safe log only — no token, no passport number, no full payload.
+          console.error(
+            `[Pipedrive] Sign-up failed to save for ${safeSubmissionSummary(input)}:`,
+            error instanceof Error ? error.message : String(error)
+          );
 
-        // Create portal user and generate password-creation token
+          // Preserve the full submission durably so it isn't silently lost.
+          await recordFailedSubmission({
+            formType: "student-signup",
+            email: input.email,
+            payload: input,
+            errorMessage: error instanceof Error ? error.message : String(error),
+          });
+
+          // Alert staff that a submission failed to save — separate from the
+          // normal success notification, and never awaited-and-swallowed.
+          notifyStaff({
+            title: `Sign-up FAILED to save: ${input.firstName} ${input.lastName}`,
+            content: [
+              `A student sign-up could not be saved to Pipedrive and needs manual follow-up.`,
+              ``,
+              `Name: ${input.firstName} ${input.lastName}`,
+              `Email: ${input.email}`,
+              `Phone: ${input.phone}`,
+              `Desired Level: ${input.desiredLevel}`,
+              ``,
+              `The full submission has been preserved for retry (see failed_submissions table if the database is connected; otherwise check server logs for the timestamp above).`,
+            ].join("\n"),
+          }).catch(err => console.error("[Notification] Failed to send failure alert:", err));
+
+          return {
+            success: false as const,
+            error: "We couldn't save your sign-up just now. Please try again in a few minutes, or contact us directly — your details have not been lost.",
+          };
+        }
+
+        // Create portal user and generate password-creation token. This is
+        // best-effort: the sign-up itself already succeeded in Pipedrive.
         let portalToken: string | null = null;
         try {
           const portalResult = await createPortalUser({
@@ -55,9 +102,14 @@ export const appRouter = router({
           console.error("[Portal] Failed to create portal user:", e);
         }
 
-        // Notify Tim of new student application
-        await notifyOwner({
-          title: `New Student Application: ${input.firstName} ${input.lastName}`,
+        const portalSetupLink = portalToken
+          ? `${ENV.publicSiteUrl}/portal/set-password?token=${portalToken}&email=${encodeURIComponent(input.email)}`
+          : null;
+
+        // Notify staff of the new sign-up. Never swallowed silently — a
+        // failure here is logged even though it doesn't block the response.
+        notifyStaff({
+          title: `New Student Enquiry: ${input.firstName} ${input.lastName} - ${input.desiredLevel}`,
           content: [
             `Name: ${input.firstName} ${input.lastName}`,
             `Email: ${input.email}`,
@@ -68,43 +120,19 @@ export const appRouter = router({
             `Area of Study: ${input.areaOfStudy}`,
             `Destination: ${input.preferredDestination}`,
             `Start: ${input.preferredStartMonth}`,
+            result.reusedExistingPerson ? `\n(Matched an existing Pipedrive Person by email/phone — updated rather than duplicated.)` : "",
             ``,
             `Pipedrive Lead ID: ${result.leadId}`,
-            portalToken ? `\nPortal Setup Link: ${process.env.NODE_ENV === 'production' ? 'https://worldadvisors-3pfnplvb.manus.space' : 'http://localhost:3000'}/portal/set-password?token=${portalToken}&email=${encodeURIComponent(input.email)}` : "",
+            portalSetupLink ? `\nPortal Setup Link: ${portalSetupLink}` : "",
           ].filter(Boolean).join("\n"),
-        }).catch(() => {}); // Don't fail the submission if notification fails
+        }).catch(err => console.error("[Notification] Failed to send staff notification:", err));
 
-        return { success: true, leadId: result.leadId, portalToken };
-      }),
+        // Confirm to the applicant — best-effort, logged rather than swallowed.
+        sendApplicantConfirmation(input.email, input.firstName).catch(err =>
+          console.error("[Notification] Failed to send applicant confirmation:", err)
+        );
 
-    submitGeneral: publicProcedure
-      .input(
-        z.object({
-          name: z.string().min(1),
-          organisation: z.string().optional(),
-          email: z.string().email(),
-          role: z.string().min(1),
-          message: z.string().min(1),
-        })
-      )
-      .mutation(async ({ input }) => {
-        const result = await createGeneralEnquiry(input);
-
-        // Notify Tim of new general enquiry
-        await notifyOwner({
-          title: `New General Enquiry: ${input.name}`,
-          content: [
-            `Name: ${input.name}`,
-            input.organisation ? `Organisation: ${input.organisation}` : "",
-            `Email: ${input.email}`,
-            `Role: ${input.role}`,
-            `Message: ${input.message}`,
-            ``,
-            `Pipedrive Lead ID: ${result.leadId}`,
-          ].filter(Boolean).join("\n"),
-        }).catch(() => {}); // Don't fail the submission if notification fails
-
-        return { success: true, leadId: result.leadId };
+        return { success: true as const, leadId: result.leadId, portalToken };
       }),
   }),
 

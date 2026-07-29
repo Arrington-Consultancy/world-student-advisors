@@ -1,9 +1,8 @@
-import { Link } from "wouter";
 import { ArrowRight, MapPin, Phone, Mail, CheckCircle, Loader2 } from "lucide-react";
 import CountrySelect from "@/components/CountrySelect";
 import InternationalPhoneInput from "@/components/InternationalPhoneInput";
 import ScrollReveal from "@/components/ScrollReveal";
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { trpc } from "@/lib/trpc";
 
 const offices = [
@@ -64,14 +63,25 @@ function StudentForm() {
     gdprConsent: false,
   });
   const [submitted, setSubmitted] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   const mutation = trpc.contact.submitStudent.useMutation({
-    onSuccess: () => setSubmitted(true),
+    onSuccess: result => {
+      if (result.success) {
+        setSubmitted(true);
+      } else {
+        setSubmitError(result.error);
+      }
+    },
+    onError: () => {
+      setSubmitError("Something went wrong. Please try again or contact us directly.");
+    },
   });
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    setSubmitError(null);
     const newErrors: Record<string, string> = {};
     if (!formData.firstName.trim()) newErrors.firstName = "First name is required";
     if (!formData.lastName.trim()) newErrors.lastName = "Last name is required";
@@ -116,38 +126,36 @@ function StudentForm() {
         Students or parents can apply. A Student Counsellor will follow up within 48 hours to understand your goals in more detail.
       </p>
       <form className="space-y-5" onSubmit={handleSubmit}>
-        <div className="grid sm:grid-cols-2 gap-4">
-          <div>
-            <label className="block text-sm font-medium text-wsa-navy mb-1.5">First Name *</label>
-            <input
-              type="text"
-              required
-              value={formData.firstName}
-              onChange={(e) => { setFormData({ ...formData, firstName: e.target.value }); setErrors((prev) => ({ ...prev, firstName: "" })); }}
-              className={`w-full px-4 py-3 border bg-white focus:outline-none focus:ring-2 focus:ring-wsa-red/20 focus:border-wsa-red transition-colors ${errors.firstName ? "border-red-400" : "border-border"}`}
-            />
-            {errors.firstName && <p className="text-xs text-red-600 mt-1">{errors.firstName}</p>}
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-wsa-navy mb-1.5">Last Name *</label>
-            <input
-              type="text"
-              required
-              value={formData.lastName}
-              onChange={(e) => { setFormData({ ...formData, lastName: e.target.value }); setErrors((prev) => ({ ...prev, lastName: "" })); }}
-              className={`w-full px-4 py-3 border bg-white focus:outline-none focus:ring-2 focus:ring-wsa-red/20 focus:border-wsa-red transition-colors ${errors.lastName ? "border-red-400" : "border-border"}`}
-            />
-            {errors.lastName && <p className="text-xs text-red-600 mt-1">{errors.lastName}</p>}
-          </div>
+        <div>
+          <label className="block text-sm font-medium text-wsa-navy mb-1.5">First Name *</label>
+          <input
+            type="text"
+            required
+            value={formData.firstName}
+            onChange={(e) => { setFormData({ ...formData, firstName: e.target.value }); setErrors((prev) => ({ ...prev, firstName: "" })); }}
+            className={`w-full px-4 py-3 border bg-white focus:outline-none focus:ring-2 focus:ring-wsa-red/20 focus:border-wsa-red transition-colors ${errors.firstName ? "border-red-400" : "border-border"}`}
+          />
+          {errors.firstName && <p className="text-xs text-red-600 mt-1">{errors.firstName}</p>}
         </div>
         <div>
-          <label className="block text-sm font-medium text-wsa-navy mb-1.5">Middle Name</label>
+          <label className="block text-sm font-medium text-wsa-navy mb-1.5">Middle Name (Optional)</label>
           <input
             type="text"
             value={formData.middleName}
             onChange={(e) => setFormData({ ...formData, middleName: e.target.value })}
             className="w-full px-4 py-3 border border-border bg-white focus:outline-none focus:ring-2 focus:ring-wsa-red/20 focus:border-wsa-red transition-colors"
           />
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-wsa-navy mb-1.5">Last Name *</label>
+          <input
+            type="text"
+            required
+            value={formData.lastName}
+            onChange={(e) => { setFormData({ ...formData, lastName: e.target.value }); setErrors((prev) => ({ ...prev, lastName: "" })); }}
+            className={`w-full px-4 py-3 border bg-white focus:outline-none focus:ring-2 focus:ring-wsa-red/20 focus:border-wsa-red transition-colors ${errors.lastName ? "border-red-400" : "border-border"}`}
+          />
+          {errors.lastName && <p className="text-xs text-red-600 mt-1">{errors.lastName}</p>}
         </div>
         <div className="grid sm:grid-cols-2 gap-4">
           <div>
@@ -246,6 +254,7 @@ function StudentForm() {
             <option value="secondary">Secondary School (GCSE / O-Level equivalent)</option>
             <option value="a-level">A-Levels / IB / High School Diploma</option>
             <option value="diploma">Diploma / Foundation</option>
+            <option value="hnd">HND</option>
             <option value="bachelors">Bachelor's Degree</option>
             <option value="masters">Master's Degree</option>
             <option value="doctorate">Doctorate / PhD</option>
@@ -318,9 +327,8 @@ function StudentForm() {
             >
               <option value="">Select...</option>
               {["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"].map((m) => (
-                <option key={m} value={m.toLowerCase()}>{m}</option>
+                <option key={m} value={m}>{m}</option>
               ))}
-              <option value="not-sure">Not sure yet</option>
             </select>
             {errors.preferredStartMonth && <p className="text-xs text-red-600 mt-1">{errors.preferredStartMonth}</p>}
           </div>
@@ -357,7 +365,6 @@ function StudentForm() {
             <option value="loan">Student Loan</option>
             <option value="sponsor">Sponsor / Employer</option>
             <option value="mixed">Mixed funding</option>
-            <option value="not-sure">Not sure yet</option>
           </select>
           {errors.educationFunding && <p className="text-xs text-red-600 mt-1">{errors.educationFunding}</p>}
         </div>
@@ -396,11 +403,12 @@ function StudentForm() {
               onChange={(e) => setFormData({ ...formData, recommendedCounsellor: e.target.value })}
               className="w-full px-4 py-3 border border-border bg-white focus:outline-none focus:ring-2 focus:ring-wsa-red/20 focus:border-wsa-red transition-colors"
             >
-              <option value="">No preference</option>
+              <option value="">Select...</option>
               <option value="eldah">Eldah Therone</option>
-              <option value="sarafina">Sarafina Kihumbu</option>
               <option value="glenice">Glenice Owino</option>
               <option value="manet">Manet Khamayo</option>
+              <option value="sarafina">Sarafina Kihumbu</option>
+              <option value="help-me-choose">Help me choose</option>
             </select>
           </div>
         </div>
@@ -432,8 +440,8 @@ function StudentForm() {
           </label>
           {errors.gdprConsent && <p className="text-xs text-red-600 mt-1">{errors.gdprConsent}</p>}
         </div>
-        {mutation.error && (
-          <p className="text-sm text-red-600">Something went wrong. Please try again or contact us directly.</p>
+        {submitError && (
+          <p className="text-sm text-red-600">{submitError}</p>
         )}
         <button
           type="submit"
@@ -460,148 +468,7 @@ function StudentForm() {
   );
 }
 
-function GeneralForm({ initialMessage }: { initialMessage?: string }) {
-  const [formData, setFormData] = useState({
-    name: "",
-    organisation: "",
-    email: "",
-    role: "institution",
-    message: initialMessage || "",
-  });
-  const [submitted, setSubmitted] = useState(false);
-  const [errors, setErrors] = useState<Record<string, string>>({});
-
-  const mutation = trpc.contact.submitGeneral.useMutation({
-    onSuccess: () => setSubmitted(true),
-  });
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    const newErrors: Record<string, string> = {};
-    if (!formData.name.trim()) newErrors.name = "Name is required";
-    if (!formData.email.trim()) newErrors.email = "Email address is required";
-    if (!formData.message.trim()) newErrors.message = "Please enter a message";
-    setErrors(newErrors);
-    if (Object.keys(newErrors).length > 0) return;
-    if (mutation.isPending) return; // Prevent duplicate submissions
-    mutation.mutate(formData);
-  };
-
-  if (submitted) {
-    return (
-      <div className="text-center py-12">
-        <CheckCircle className="mx-auto mb-4 text-green-600" size={48} />
-        <h3 className="text-2xl font-semibold text-wsa-navy mb-3">Enquiry sent</h3>
-        <p className="text-muted-foreground text-[15px] max-w-md mx-auto">
-          We've received your message and will respond within 1-2 working days.
-        </p>
-      </div>
-    );
-  }
-
-  return (
-    <div>
-      <p className="text-muted-foreground mb-8 text-[15px]">
-        For partner institutions, education agents, media enquiries, or anyone not yet ready to apply, use this form and we'll direct your message to the right person.
-      </p>
-      <form className="space-y-5" onSubmit={handleSubmit}>
-        <div className="grid sm:grid-cols-2 gap-4">
-          <div>
-            <label className="block text-sm font-medium text-wsa-navy mb-1.5">Your Name *</label>
-            <input
-              type="text"
-              required
-              value={formData.name}
-              onChange={(e) => { setFormData({ ...formData, name: e.target.value }); setErrors((prev) => ({ ...prev, name: "" })); }}
-              className={`w-full px-4 py-3 border bg-white focus:outline-none focus:ring-2 focus:ring-wsa-red/20 focus:border-wsa-red transition-colors ${errors.name ? "border-red-400" : "border-border"}`}
-            />
-            {errors.name && <p className="text-xs text-red-600 mt-1">{errors.name}</p>}
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-wsa-navy mb-1.5">Organisation (if applicable)</label>
-            <input
-              type="text"
-              value={formData.organisation}
-              onChange={(e) => setFormData({ ...formData, organisation: e.target.value })}
-              className="w-full px-4 py-3 border border-border bg-white focus:outline-none focus:ring-2 focus:ring-wsa-red/20 focus:border-wsa-red transition-colors"
-            />
-          </div>
-        </div>
-        <div>
-          <label className="block text-sm font-medium text-wsa-navy mb-1.5">Email Address *</label>
-          <input
-            type="email"
-            required
-            value={formData.email}
-            onChange={(e) => { setFormData({ ...formData, email: e.target.value }); setErrors((prev) => ({ ...prev, email: "" })); }}
-            className={`w-full px-4 py-3 border bg-white focus:outline-none focus:ring-2 focus:ring-wsa-red/20 focus:border-wsa-red transition-colors ${errors.email ? "border-red-400" : "border-border"}`}
-          />
-          {errors.email && <p className="text-xs text-red-600 mt-1">{errors.email}</p>}
-        </div>
-        <div>
-          <label className="block text-sm font-medium text-wsa-navy mb-1.5">I am a...</label>
-          <select
-            value={formData.role}
-            onChange={(e) => setFormData({ ...formData, role: e.target.value })}
-            className="w-full px-4 py-3 border border-border bg-white focus:outline-none focus:ring-2 focus:ring-wsa-red/20 focus:border-wsa-red transition-colors"
-          >
-            <option value="institution">Education Institution / University</option>
-            <option value="agent">Education Agent</option>
-            <option value="media">Media / Press</option>
-            <option value="parent-not-ready">Parent, not ready to apply yet</option>
-            <option value="other">Other</option>
-          </select>
-        </div>
-        <div>
-          <label className="block text-sm font-medium text-wsa-navy mb-1.5">Your message *</label>
-          <textarea
-            rows={5}
-            required
-            value={formData.message}
-            onChange={(e) => { setFormData({ ...formData, message: e.target.value }); setErrors((prev) => ({ ...prev, message: "" })); }}
-            className={`w-full px-4 py-3 border bg-white focus:outline-none focus:ring-2 focus:ring-wsa-red/20 focus:border-wsa-red transition-colors resize-none ${errors.message ? "border-red-400" : "border-border"}`}
-            placeholder="How can we help?"
-          />
-          {errors.message && <p className="text-xs text-red-600 mt-1">{errors.message}</p>}
-        </div>
-        {mutation.error && (
-          <p className="text-sm text-red-600">Something went wrong. Please try again or contact us directly.</p>
-        )}
-        <button
-          type="submit"
-          disabled={mutation.isPending}
-          className="inline-flex items-center px-8 py-4 bg-wsa-navy text-white font-semibold tracking-wide transition-all duration-200 hover:bg-wsa-navy/90 active:scale-[0.98] disabled:opacity-60 disabled:cursor-not-allowed"
-        >
-          {mutation.isPending ? (
-            <>
-              <Loader2 className="mr-2 animate-spin" size={18} />
-              Sending...
-            </>
-          ) : (
-            <>
-              Send Enquiry
-              <ArrowRight className="ml-2.5" size={18} />
-            </>
-          )}
-        </button>
-        <p className="text-xs text-muted-foreground mt-3">
-          We typically respond within 1-2 working days.
-        </p>
-      </form>
-    </div>
-  );
-}
-
 export default function Contact() {
-  const [activeTab, setActiveTab] = useState<"student" | "general">(() => {
-    const params = new URLSearchParams(window.location.search);
-    return params.get("tab") === "general" ? "general" : "student";
-  });
-  const [initialSubject] = useState<string>(() => {
-    const params = new URLSearchParams(window.location.search);
-    return params.get("subject") || "";
-  });
-
   return (
     <div className="min-h-screen">
       <section className="pt-32 lg:pt-40 pb-20 lg:pb-28">
@@ -627,38 +494,10 @@ export default function Contact() {
             {/* Form */}
             <ScrollReveal className="lg:col-span-3">
               <div>
-                {/* Tab switcher */}
-                <div className="flex border-b border-border/40 mb-8">
-                  <button
-                    onClick={() => setActiveTab("student")}
-                    className={`px-5 py-3 text-sm font-semibold transition-colors relative ${
-                      activeTab === "student"
-                        ? "text-wsa-navy"
-                        : "text-muted-foreground hover:text-wsa-navy"
-                    }`}
-                  >
-                    Sign-up Form
-                    {activeTab === "student" && (
-                      <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-wsa-red" />
-                    )}
-                  </button>
-                  <button
-                    onClick={() => setActiveTab("general")}
-                    className={`px-5 py-3 text-sm font-semibold transition-colors relative ${
-                      activeTab === "general"
-                        ? "text-wsa-navy"
-                        : "text-muted-foreground hover:text-wsa-navy"
-                    }`}
-                  >
-                    General Enquiry
-                    {activeTab === "general" && (
-                      <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-wsa-red" />
-                    )}
-                  </button>
-                </div>
-
-                {activeTab === "student" && <StudentForm />}
-                {activeTab === "general" && <GeneralForm initialMessage={initialSubject} />}
+                <h2 className="text-xl font-semibold text-wsa-navy mb-8 pb-3 border-b border-border/40">
+                  Sign-up Form
+                </h2>
+                <StudentForm />
               </div>
             </ScrollReveal>
 

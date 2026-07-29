@@ -78,3 +78,22 @@ export const resources = mysqlTable("resources", {
 
 export type Resource = typeof resources.$inferSelect;
 export type InsertResource = typeof resources.$inferInsert;
+
+/**
+ * A Sign-up Form submission that failed to reach Pipedrive. Holds the full
+ * submitted payload (JSON) so staff can retry it manually rather than the
+ * enquiry being silently lost. Not written to application logs.
+ */
+export const failedSubmissions = mysqlTable("failed_submissions", {
+  id: int("id").autoincrement().primaryKey(),
+  formType: varchar("formType", { length: 30 }).notNull(),
+  email: varchar("email", { length: 320 }),
+  /** Full submitted form data, JSON-encoded, for manual retry. */
+  payload: text("payload").notNull(),
+  errorMessage: text("errorMessage"),
+  resolvedAt: timestamp("resolvedAt"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type FailedSubmission = typeof failedSubmissions.$inferSelect;
+export type InsertFailedSubmission = typeof failedSubmissions.$inferInsert;

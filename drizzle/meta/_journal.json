@@ -8,6 +8,13 @@
       "when": 1785082821522,
       "tag": "0000_special_boom_boom",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "5",
+      "when": 1785335990750,
+      "tag": "0001_glorious_legion",
+      "breakpoints": true
     }
   ]
 }

@@ -1,17 +1,6 @@
 import nodemailer from "nodemailer";
 import { ENV } from "./env";
 
-// ------------------------------------------------------------
-// Rewritten 29/07/2026 to send owner (Tim) lead notifications via plain
-// Gmail SMTP instead of Manus's hosted Notification Service (which this
-// deployment has no access to once run outside Manus). Same pattern as
-// Arrington Consultancy's own lead-notification emails. Requires
-// GMAIL_APP_PASSWORD (an app password on the OWNER_NOTIFY_EMAIL account)
-// and OWNER_NOTIFY_EMAIL. If either is unset, notifyOwner no-ops with a
-// console warning rather than breaking the caller — the actual lead is
-// still recorded in Pipedrive/the portal DB either way.
-// ------------------------------------------------------------
-
 export type NotificationPayload = {
   title: string;
   content: string;
@@ -32,12 +21,12 @@ const transporter =
     : null;
 
 /**
- * Emails a lead/enquiry notification to the site owner. Returns `true` if
- * the email was sent (or accepted by Gmail), `false` if notifications
- * aren't configured or the send failed — callers already treat a `false`
- * return as non-fatal (the lead itself is recorded elsewhere regardless).
+ * Emails the WSA staff list (server/_core/env.ts staffNotifyEmails) about a
+ * lead/enquiry event. Returns `true` if sent, `false` if notifications aren't
+ * configured or the send failed. Callers must not treat `false` as silent —
+ * a failed staff notification should itself be logged/alerted by the caller.
  */
-export async function notifyOwner(payload: NotificationPayload): Promise<boolean> {
+export async function notifyStaff(payload: NotificationPayload): Promise<boolean> {
   if (!isNonEmptyString(payload.title) || !isNonEmptyString(payload.content)) {
     console.warn("[Notification] Missing title or content — skipping.");
     return false;
@@ -46,9 +35,9 @@ export async function notifyOwner(payload: NotificationPayload): Promise<boolean
   const title = payload.title.trim().slice(0, TITLE_MAX_LENGTH);
   const content = payload.content.trim().slice(0, CONTENT_MAX_LENGTH);
 
-  if (!transporter) {
+  if (!transporter || ENV.staffNotifyEmails.length === 0) {
     console.warn(
-      "[Notification] GMAIL_APP_PASSWORD/OWNER_NOTIFY_EMAIL not set — skipping owner notification:",
+      "[Notification] GMAIL_APP_PASSWORD/OWNER_NOTIFY_EMAIL/STAFF_NOTIFY_EMAILS not set — skipping staff notification:",
       title
     );
     return false;
@@ -57,13 +46,47 @@ export async function notifyOwner(payload: NotificationPayload): Promise<boolean
   try {
     await transporter.sendMail({
       from: ENV.ownerNotifyEmail,
-      to: ENV.ownerNotifyEmail,
+      to: ENV.staffNotifyEmails.join(", "),
       subject: title,
       text: content,
     });
     return true;
   } catch (error) {
-    console.warn("[Notification] Failed to send owner notification email:", error);
+    console.warn("[Notification] Failed to send staff notification email:", error);
+    return false;
+  }
+}
+
+/**
+ * Emails the applicant a plain confirmation that their sign-up was received.
+ * Same delivery constraints as notifyStaff: returns false (never throws) if
+ * mail isn't configured or the send fails, so it never blocks the response
+ * to the applicant's own form submission.
+ */
+export async function sendApplicantConfirmation(to: string, firstName: string): Promise<boolean> {
+  if (!isNonEmptyString(to) || !transporter) {
+    console.warn("[Notification] Cannot send applicant confirmation — mail not configured or missing address.");
+    return false;
+  }
+
+  try {
+    await transporter.sendMail({
+      from: ENV.ownerNotifyEmail,
+      to,
+      subject: "We've received your WorldStudentAdvisors sign-up",
+      text: [
+        `Hi ${firstName || "there"},`,
+        ``,
+        `Thanks for signing up with WorldStudentAdvisors. A Student Counsellor will be in touch within 48 hours to understand your goals in more detail.`,
+        ``,
+        `If you have any questions in the meantime, just reply to this email.`,
+        ``,
+        `WorldStudentAdvisors`,
+      ].join("\n"),
+    });
+    return true;
+  } catch (error) {
+    console.warn("[Notification] Failed to send applicant confirmation email:", error);
     return false;
   }
 }

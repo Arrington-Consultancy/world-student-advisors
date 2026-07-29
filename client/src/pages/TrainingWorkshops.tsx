@@ -1,13 +1,12 @@
-import { Link } from "wouter";
 import { ArrowRight, Users, GraduationCap, Presentation } from "lucide-react";
 import ScrollReveal from "@/components/ScrollReveal";
 
 /**
  * Training & Workshops - Holding Page
- * 
+ *
  * A placeholder page for future training and storyboard-led learning content.
  * No courses, dates, prices, qualifications, or delivery formats are invented.
- * CTA links to the general enquiry form with pre-selected subject.
+ * CTA is a mailto link with pre-filled subject (the general enquiry form was removed).
  */
 
 export default function TrainingWorkshops() {
@@ -113,13 +112,13 @@ export default function TrainingWorkshops() {
               <p className="text-lg text-muted-foreground leading-relaxed mb-10">
                 Tell us what type of training or learning support would be useful to you, and we will keep you informed as the content develops.
               </p>
-              <Link
-                href="/contact?tab=general&subject=Training+%26+Workshops+interest"
+              <a
+                href="mailto:UKHeadOffice@worldstudentadvisors.com?subject=Training%20%26%20Workshops%20interest"
                 className="inline-flex items-center px-10 py-4 bg-wsa-red text-white text-lg font-semibold tracking-wide transition-all duration-200 hover:bg-wsa-red/90 active:scale-[0.98]"
               >
                 Register your interest
                 <ArrowRight className="ml-3" size={20} />
-              </Link>
+              </a>
             </div>
           </ScrollReveal>
         </div>
