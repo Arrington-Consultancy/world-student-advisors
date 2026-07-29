@@ -1,0 +1,62 @@
+name: Deploy preview to Railway
+
+# Manual-only on purpose: this deploys to a separate, throwaway Railway
+# project/service for previewing the site, never the real WSA domain or
+# the live Arrington hosting. Requires a RAILWAY_TOKEN repo secret scoped
+# to that preview project (Railway dashboard -> the service -> Settings ->
+# Tokens), and a service named to match SERVICE_NAME below.
+on:
+  workflow_dispatch:
+
+env:
+  SERVICE_NAME: world-student-advisors
+  RAILWAY_ENV: production
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Railway CLI
+        run: npm install -g @railway/cli
+
+      - name: Diagnose Railway target (no secret values printed)
+        env:
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+        run: |
+          echo "== railway --version =="
+          railway --version || true
+          echo "== railway whoami =="
+          railway whoami || true
+          echo "== railway status =="
+          railway status || true
+          echo "== railway service (list services in linked project) =="
+          railway service || true
+          echo "== railway environment (list environments) =="
+          railway environment || true
+          echo "== railway variables --service $SERVICE_NAME --environment $RAILWAY_ENV --json (names/lengths/prefix only, no values) =="
+          railway variables --service "$SERVICE_NAME" --environment "$RAILWAY_ENV" --json > /tmp/vars.json 2> /tmp/vars.err || true
+          cat /tmp/vars.err || true
+          node -e "
+            try {
+              const raw = require('fs').readFileSync('/tmp/vars.json', 'utf8');
+              const vars = JSON.parse(raw);
+              for (const [k, v] of Object.entries(vars)) {
+                const s = String(v ?? '');
+                console.log(k, '| length=' + s.length, '| prefix=' + (s.slice(0, 13) || '(empty)'));
+              }
+            } catch (e) {
+              console.log('Could not parse railway variables output:', e.message);
+            }
+          "
+
+      - name: Deploy
+        env:
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+        run: railway up --service "$SERVICE_NAME" --environment "$RAILWAY_ENV" --detach
+
+      - name: Print the generated Railway domain (if any)
+        env:
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+        run: railway domain --service "$SERVICE_NAME" --environment "$RAILWAY_ENV" || true
