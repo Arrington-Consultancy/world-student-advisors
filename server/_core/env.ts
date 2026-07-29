@@ -21,9 +21,11 @@ export const ENV = {
   databaseUrl: process.env.DATABASE_URL ?? "",
   isProduction: process.env.NODE_ENV === "production",
   anthropicApiKey: process.env.ANTHROPIC_API_KEY ?? "",
-  gmailAppPassword: process.env.GMAIL_APP_PASSWORD ?? "",
-  ownerNotifyEmail: process.env.OWNER_NOTIFY_EMAIL ?? "",
   pipedriveApiToken: process.env.PIPEDRIVE_API_TOKEN ?? "",
   staffNotifyEmails,
   publicSiteUrl,
+  microsoftTenantId: process.env.MICROSOFT_TENANT_ID ?? "",
+  microsoftClientId: process.env.MICROSOFT_CLIENT_ID ?? "",
+  microsoftClientSecret: process.env.MICROSOFT_CLIENT_SECRET ?? "",
+  microsoftSendAsMailbox: process.env.MICROSOFT_SEND_AS_MAILBOX ?? "tim.hunt@worldstudentadvisors.com",
 };
