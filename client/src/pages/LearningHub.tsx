@@ -3,6 +3,14 @@ import { ArrowRight, Headphones, BookOpen, Video, Presentation, Lock } from "luc
 import ScrollReveal from "@/components/ScrollReveal";
 import { isPublicContent, usePortalSession, LockedVideoOverlay } from "@/components/GatedVideoCard";
 
+// A written guide (not a YouTube embed) surfaced alongside the video cards.
+interface GuideItem {
+  title: string;
+  href: string;
+  summary: string;
+  category: string;
+}
+
 /**
  * Learning Hub. Connected Knowledge Centre
  * Design system: Editorial Calm (Source Sans 3 headings, generous spacing, trust-led)
@@ -64,7 +72,7 @@ const freeVideos: VideoItem[] = [
 ];
 
 // Portal-only content, shown in categorised sections below the free videos.
-const videosByCategory: { category: string; description: string; videos: VideoItem[] }[] = [
+const videosByCategory: { category: string; description: string; videos: VideoItem[]; guides?: GuideItem[] }[] = [
   {
     category: "Visa & Immigration",
     description: "Clear, practical guidance on UK student visas, CAS letters, and immigration requirements. Your counsellor handles this with you, these videos help you understand what's ahead.",
@@ -124,6 +132,14 @@ const videosByCategory: { category: string; description: string; videos: VideoIt
         summary: "A concise overview of the ten key steps from initial research to successful enrolment at a UK university.",
         category: "Applications",
         relatedLink: { label: "Start your application", href: "/contact" },
+      },
+    ],
+    guides: [
+      {
+        title: "How to Write a University CV That Gets You Noticed",
+        href: "/learning-hub/cv-university-application",
+        summary: "The seven sections every strong university CV needs, plus a free downloadable checklist. Presented by Tim Hunt.",
+        category: "Applications",
       },
     ],
   },
@@ -233,6 +249,35 @@ function VideoCard({
           {video.relatedLink.label} <ArrowRight className="ml-1.5" size={14} />
         </Link>
       )}
+    </div>
+  );
+}
+
+/** Same footprint as VideoCard, for written guides that don't have a video embed. */
+function GuideCard({ guide }: { guide: GuideItem }) {
+  return (
+    <div className="border-t border-border pt-6">
+      <Link href={guide.href} className="block relative aspect-video bg-wsa-navy mb-5 overflow-hidden group">
+        <div className="absolute inset-0 bg-gradient-to-br from-wsa-navy to-wsa-navy/80" />
+        <div className="relative z-10 h-full flex flex-col items-center justify-center text-center px-6">
+          <BookOpen className="text-white mb-3" size={28} aria-hidden="true" />
+          <p className="text-white text-sm font-medium group-hover:underline">Read the guide</p>
+        </div>
+      </Link>
+
+      <div className="flex items-center gap-3 mb-3">
+        <span className="text-xs font-medium tracking-wider uppercase text-wsa-red/70">{guide.category}</span>
+        <span className="inline-flex items-center gap-1 text-xs font-medium text-wsa-navy/60 bg-wsa-navy/5 px-2 py-0.5">
+          <BookOpen size={10} /> Guide
+        </span>
+      </div>
+
+      <h3 className="font-semibold text-wsa-navy leading-snug mb-3 text-lg">{guide.title}</h3>
+      <p className="text-muted-foreground leading-relaxed text-[15px] mb-4">{guide.summary}</p>
+
+      <Link href={guide.href} className="inline-flex items-center text-sm font-medium text-wsa-red hover:text-wsa-red/80 transition-colors">
+        Read the guide <ArrowRight className="ml-1.5" size={14} />
+      </Link>
     </div>
   );
 }
@@ -347,10 +392,15 @@ export default function LearningHub() {
               </div>
             </ScrollReveal>
 
-            <div className={`grid gap-x-8 gap-y-10 ${cat.videos.length === 1 ? "max-w-xl" : "md:grid-cols-2 lg:grid-cols-3"}`}>
+            <div className={`grid gap-x-8 gap-y-10 ${cat.videos.length + (cat.guides?.length ?? 0) === 1 ? "max-w-xl" : "md:grid-cols-2 lg:grid-cols-3"}`}>
               {cat.videos.map((video, i) => (
                 <ScrollReveal key={video.youtubeId} delay={i * 60}>
                   <VideoCard video={video} unlocked={unlocked} />
+                </ScrollReveal>
+              ))}
+              {cat.guides?.map((guide, i) => (
+                <ScrollReveal key={guide.href} delay={(cat.videos.length + i) * 60}>
+                  <GuideCard guide={guide} />
                 </ScrollReveal>
               ))}
             </div>

@@ -41,6 +41,7 @@ import Portal from "./pages/Portal";
 import PortalResources from "./pages/PortalResources";
 import PortalLibrary from "./pages/PortalLibrary";
 import InterviewCoach from "./pages/InterviewCoach";
+import CVUniversityApplication from "./pages/CVUniversityApplication";
 
 
 function Router() {
@@ -69,6 +70,7 @@ function Router() {
       <Route path={"/counsellors"} component={Counsellors} />
       <Route path={"/learning-hub"} component={LearningHub} />
       <Route path={"/learning-hub/podcasts"} component={Podcasts} />
+      <Route path={"/learning-hub/cv-university-application"} component={CVUniversityApplication} />
       <Route path={"/training-workshops"} component={TrainingWorkshops} />
       <Route path={"/events"} component={Events} />
       <Route path={"/partners"} component={Partners} />
