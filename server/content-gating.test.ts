@@ -34,6 +34,7 @@ describe("content gating (brief S14)", () => {
       "I Would Like to Introduce Aberystwyth University",
       "Introducing Juliet Nnajiofor-Uyi. Lagos, Nigeria",
       "Credibility Interviews: How to Prepare",
+      "University CV: What Are They Looking For?",
     ];
     for (const title of gatedTitles) {
       expect(isPublicContent(title), `should be gated: ${title}`).toBe(false);

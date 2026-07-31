@@ -125,6 +125,15 @@ const videosByCategory: { category: string; description: string; videos: VideoIt
         category: "Applications",
         relatedLink: { label: "Start your application", href: "/contact" },
       },
+      {
+        title: "University CV: What Are They Looking For?",
+        youtubeId: "3VjRzjVf-g8",
+        duration: "1:38",
+        summary: "Tim Hunt explains what UK universities actually look for in a student CV, and the common mistakes international applicants make when putting one together.",
+        category: "Applications",
+        presenter: "Tim Hunt",
+        relatedLink: { label: "Study Options", href: "/study-options" },
+      },
     ],
   },
   {
