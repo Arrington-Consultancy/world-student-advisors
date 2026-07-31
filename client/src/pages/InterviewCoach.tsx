@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link, useLocation } from "wouter";
+import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { trpc } from "@/lib/trpc";
@@ -14,103 +14,191 @@ import {
   BookOpen,
   RefreshCw,
   ShieldCheck,
+  MessageCircleQuestion,
 } from "lucide-react";
 
 type InterviewType = "cas" | "ukvi" | "university" | "course";
 
 const INTERVIEW_TYPES: { id: InterviewType; label: string; description: string }[] = [
-  { id: "cas", label: "CAS Interview", description: "Pre-CAS interview with your chosen university" },
-  { id: "ukvi", label: "UKVI Credibility Interview", description: "UK student visa credibility interview" },
-  { id: "university", label: "University Interview", description: "General admissions interview" },
-  { id: "course", label: "Course-Specific Interview", description: "Subject-focused academic interview" },
+  { id: "cas", label: "CAS Interview Preparation", description: "Pre-CAS interview with your chosen university" },
+  { id: "ukvi", label: "UKVI Credibility Interview Preparation", description: "UK student visa credibility interview" },
+  { id: "university", label: "University Interview Preparation", description: "General admissions interview" },
+  { id: "course", label: "Course-Specific Interview Preparation", description: "Subject-focused academic interview" },
 ];
 
-type Stage = "setup" | "answering" | "evaluating" | "results";
+type Stage = "setup" | "answering" | "followup" | "assessing" | "question-result" | "summary";
 
-interface Evaluation {
+interface QuestionResult {
+  question: string;
   score: number;
-  passed: boolean;
-  weaknesses: string[];
   strengths: string[];
-  researchRecommendations: string[];
-  summary: string;
+  weaknesses: string[];
+  missingInformation: string[];
+  researchHomework: string[];
 }
 
 export default function InterviewCoach() {
-  const [, navigate] = useLocation();
-  const token = typeof window !== "undefined" ? localStorage.getItem("portal_token") || "" : "";
-
   const [stage, setStage] = useState<Stage>("setup");
   const [interviewType, setInterviewType] = useState<InterviewType>("cas");
   const [courseOrSubject, setCourseOrSubject] = useState("");
   const [questions, setQuestions] = useState<string[]>([]);
-  const [answers, setAnswers] = useState<string[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
-  const [evaluation, setEvaluation] = useState<Evaluation | null>(null);
+  const [answer, setAnswer] = useState("");
+  const [followUpQuestion, setFollowUpQuestion] = useState("");
+  const [followUpAnswer, setFollowUpAnswer] = useState("");
+  const [results, setResults] = useState<QuestionResult[]>([]);
+  const [currentResult, setCurrentResult] = useState<QuestionResult | null>(null);
+  const [summary, setSummary] = useState<{ averageScore: number; passed: boolean; readyForMockInterview: boolean } | null>(null);
   const [errorMsg, setErrorMsg] = useState("");
 
-  const generateMutation = trpc.interviewCoach.generateQuestions.useMutation({
-    onSuccess: (data) => {
-      if (data.success && data.questions) {
-        setQuestions(data.questions);
-        setAnswers(new Array(data.questions.length).fill(""));
-        setCurrentIndex(0);
-        setStage("answering");
-        setErrorMsg("");
-      } else {
-        setErrorMsg("Could not start the practice session. Please try again.");
-      }
-    },
-    onError: () => setErrorMsg("Could not start the practice session. Please try again."),
-  });
-
-  const evaluateMutation = trpc.interviewCoach.evaluate.useMutation({
-    onSuccess: (data) => {
-      if (data.success && data.result) {
-        setEvaluation(data.result);
-        setStage("results");
-        setErrorMsg("");
-      } else {
-        setErrorMsg("Could not mark your interview. Please try again.");
-        setStage("answering");
-      }
-    },
-    onError: () => {
-      setErrorMsg("Could not mark your interview. Please try again.");
-      setStage("answering");
-    },
-  });
-
-  // Open access (28 Jul 2026): no login wall — the coach is available to every visitor.
+  const startMutation = trpc.interviewCoach.startSession.useMutation();
+  const submitMutation = trpc.interviewCoach.submitAnswer.useMutation();
+  const finishMutation = trpc.interviewCoach.finishSession.useMutation();
 
   const startSession = () => {
     setErrorMsg("");
-    generateMutation.mutate({
-      token: token || undefined,
-      interviewType,
-      courseOrSubject: courseOrSubject.trim() || undefined,
-      count: 5,
-    });
+    startMutation.mutate(
+      { interviewType, courseOrSubject: courseOrSubject.trim() || undefined, count: 5 },
+      {
+        onSuccess: (data) => {
+          if (data.success && data.questions.length > 0) {
+            setQuestions(data.questions);
+            setCurrentIndex(0);
+            setResults([]);
+            setCurrentResult(null);
+            setAnswer("");
+            setStage("answering");
+          } else {
+            setErrorMsg("Could not start the practice session. Please try again.");
+          }
+        },
+        onError: () => setErrorMsg("Could not start the practice session. Please try again."),
+      }
+    );
   };
 
-  const submitForMarking = () => {
-    setStage("evaluating");
-    evaluateMutation.mutate({
-      token: token || undefined,
-      interviewType,
-      courseOrSubject: courseOrSubject.trim() || undefined,
-      qa: questions.map((q, i) => ({ question: q, answer: answers[i] || "" })),
-    });
+  const finalizeQuestion = (a: { score: number; strengths: string[]; weaknesses: string[]; missingInformation: string[]; researchHomework: string[] }) => {
+    const result: QuestionResult = {
+      question: questions[currentIndex],
+      score: a.score,
+      strengths: a.strengths,
+      weaknesses: a.weaknesses,
+      missingInformation: a.missingInformation,
+      researchHomework: a.researchHomework,
+    };
+    setCurrentResult(result);
+    setResults((prev) => [...prev, result]);
+    setStage("question-result");
+  };
+
+  const submitFirstAnswer = () => {
+    setErrorMsg("");
+    setStage("assessing");
+    submitMutation.mutate(
+      {
+        interviewType,
+        courseOrSubject: courseOrSubject.trim() || undefined,
+        question: questions[currentIndex],
+        answer,
+      },
+      {
+        onSuccess: (data) => {
+          if (!data.success) {
+            setErrorMsg("Could not assess your answer. Please try again.");
+            setStage("answering");
+            return;
+          }
+          if (data.assessment.needsFollowUp) {
+            setFollowUpQuestion(data.assessment.followUpQuestion);
+            setFollowUpAnswer("");
+            setStage("followup");
+          } else {
+            finalizeQuestion(data.assessment);
+          }
+        },
+        onError: () => {
+          setErrorMsg("Could not assess your answer. Please try again.");
+          setStage("answering");
+        },
+      }
+    );
+  };
+
+  const submitFollowUpAnswer = () => {
+    setErrorMsg("");
+    setStage("assessing");
+    submitMutation.mutate(
+      {
+        interviewType,
+        courseOrSubject: courseOrSubject.trim() || undefined,
+        question: questions[currentIndex],
+        answer,
+        followUp: { question: followUpQuestion, answer: followUpAnswer },
+      },
+      {
+        onSuccess: (data) => {
+          if (!data.success) {
+            setErrorMsg("Could not assess your answer. Please try again.");
+            setStage("followup");
+            return;
+          }
+          finalizeQuestion(data.assessment);
+        },
+        onError: () => {
+          setErrorMsg("Could not assess your answer. Please try again.");
+          setStage("followup");
+        },
+      }
+    );
+  };
+
+  const continueToNext = () => {
+    setErrorMsg("");
+    if (currentIndex + 1 < questions.length) {
+      setCurrentIndex((i) => i + 1);
+      setAnswer("");
+      setFollowUpQuestion("");
+      setFollowUpAnswer("");
+      setCurrentResult(null);
+      setStage("answering");
+      return;
+    }
+
+    setStage("assessing");
+    finishMutation.mutate(
+      { scores: results.map((r) => r.score) },
+      {
+        onSuccess: (data) => {
+          if (data.success) {
+            setSummary(data.summary);
+            setStage("summary");
+          } else {
+            setErrorMsg("Could not finalise your results. Please try again.");
+            setStage("question-result");
+          }
+        },
+        onError: () => {
+          setErrorMsg("Could not finalise your results. Please try again.");
+          setStage("question-result");
+        },
+      }
+    );
   };
 
   const reset = () => {
     setStage("setup");
     setQuestions([]);
-    setAnswers([]);
     setCurrentIndex(0);
-    setEvaluation(null);
+    setAnswer("");
+    setFollowUpQuestion("");
+    setFollowUpAnswer("");
+    setResults([]);
+    setCurrentResult(null);
+    setSummary(null);
     setErrorMsg("");
   };
+
+  const isBusy = startMutation.isPending || submitMutation.isPending || finishMutation.isPending;
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -126,7 +214,7 @@ export default function InterviewCoach() {
             </div>
             <div>
               <h1 className="text-2xl font-bold text-white">AI Interview Coach</h1>
-              <p className="text-white/70 text-sm">Practise. Get marked. Pass mark: 85%.</p>
+              <p className="text-white/70 text-sm">One question at a time. Marked honestly. Pass mark: 85%.</p>
             </div>
           </div>
 
@@ -143,7 +231,7 @@ export default function InterviewCoach() {
                 <div className="mb-6 flex items-start gap-2 bg-blue-50 border border-blue-100 rounded-lg p-4 text-sm text-blue-800">
                   <ShieldCheck className="w-4 h-4 mt-0.5 shrink-0" />
                   <span>
-                    The coach marks your answers honestly against a <strong>pass mark of 85%</strong>. It explains where you are weak and what to research — it will <strong>never give you model answers</strong>, because interviewers can spot rehearsed scripts.
+                    The coach asks one question at a time and marks honestly against a <strong>pass mark of 85%</strong>. If an answer is vague or too short, it will ask a follow-up before scoring — it will <strong>never give you model answers</strong>, because interviewers can spot rehearsed scripts. This prepares you for a live mock interview with your Student Counsellor — it doesn't replace one.
                   </span>
                 </div>
                 <h2 className="text-lg font-semibold text-wsa-navy mb-4">Choose your interview type</h2>
@@ -164,7 +252,7 @@ export default function InterviewCoach() {
                   ))}
                 </div>
                 <label className="block text-sm font-medium text-wsa-navy mb-1.5">
-                  Your course or subject <span className="text-gray-400 font-normal">(optional, improves question relevance)</span>
+                  Your course or university <span className="text-gray-400 font-normal">(optional, improves question relevance)</span>
                 </label>
                 <input
                   type="text"
@@ -175,12 +263,12 @@ export default function InterviewCoach() {
                 />
                 <Button
                   onClick={startSession}
-                  disabled={generateMutation.isPending}
+                  disabled={startMutation.isPending}
                   className="bg-wsa-red hover:bg-wsa-red/90 text-white px-8 py-3 h-auto"
                 >
-                  {generateMutation.isPending ? (
+                  {startMutation.isPending ? (
                     <>
-                      <Loader2 className="w-4 h-4 mr-2 animate-spin" /> Preparing your questions…
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" /> Preparing your first question…
                     </>
                   ) : (
                     <>
@@ -191,7 +279,7 @@ export default function InterviewCoach() {
               </div>
             )}
 
-            {stage === "answering" && questions.length > 0 && (
+            {(stage === "answering" || stage === "followup") && questions.length > 0 && (
               <div>
                 <div className="flex items-center justify-between mb-6">
                   <p className="text-sm font-medium text-gray-500">
@@ -202,131 +290,199 @@ export default function InterviewCoach() {
                       <span
                         key={i}
                         className={`w-2.5 h-2.5 rounded-full ${
-                          i === currentIndex ? "bg-wsa-red" : answers[i]?.trim() ? "bg-wsa-navy" : "bg-gray-200"
+                          i === currentIndex ? "bg-wsa-red" : i < results.length ? "bg-wsa-navy" : "bg-gray-200"
                         }`}
                       />
                     ))}
                   </div>
                 </div>
+
                 <h2 className="text-xl font-semibold text-wsa-navy mb-4 leading-snug">{questions[currentIndex]}</h2>
                 <Textarea
-                  value={answers[currentIndex] || ""}
-                  onChange={(e) => {
-                    const next = [...answers];
-                    next[currentIndex] = e.target.value;
-                    setAnswers(next);
-                  }}
+                  value={answer}
+                  onChange={(e) => setAnswer(e.target.value)}
+                  disabled={stage === "followup"}
                   placeholder="Answer aloud first if you can, then type your answer here as you would say it…"
-                  className="min-h-[160px] mb-6"
+                  className="min-h-[140px] mb-4"
                 />
+
+                {stage === "followup" && (
+                  <div className="mb-6 rounded-xl border border-amber-200 bg-amber-50 p-5">
+                    <div className="flex items-start gap-2 mb-3">
+                      <MessageCircleQuestion className="w-4 h-4 mt-0.5 shrink-0 text-amber-600" />
+                      <p className="text-sm text-amber-900 font-medium">
+                        That needs more detail before it can be marked. Follow-up:
+                      </p>
+                    </div>
+                    <p className="text-wsa-navy font-semibold mb-3">{followUpQuestion}</p>
+                    <Textarea
+                      value={followUpAnswer}
+                      onChange={(e) => setFollowUpAnswer(e.target.value)}
+                      placeholder="Answer the follow-up question…"
+                      className="min-h-[120px] bg-white"
+                    />
+                  </div>
+                )}
+
                 <div className="flex flex-wrap items-center gap-3">
-                  <Button
-                    variant="outline"
-                    disabled={currentIndex === 0}
-                    onClick={() => setCurrentIndex((i) => Math.max(0, i - 1))}
-                  >
-                    <ArrowLeft className="w-4 h-4 mr-1.5" /> Previous
-                  </Button>
-                  {currentIndex < questions.length - 1 ? (
+                  {stage === "answering" ? (
                     <Button
-                      className="bg-wsa-navy hover:bg-wsa-navy/90 text-white"
-                      onClick={() => setCurrentIndex((i) => Math.min(questions.length - 1, i + 1))}
+                      className="bg-wsa-red hover:bg-wsa-red/90 text-white"
+                      onClick={submitFirstAnswer}
+                      disabled={!answer.trim() || isBusy}
                     >
-                      Next question <ArrowRight className="w-4 h-4 ml-1.5" />
+                      Submit answer <ArrowRight className="w-4 h-4 ml-1.5" />
                     </Button>
                   ) : (
                     <Button
                       className="bg-wsa-red hover:bg-wsa-red/90 text-white"
-                      onClick={submitForMarking}
-                      disabled={answers.every((a) => !a.trim())}
+                      onClick={submitFollowUpAnswer}
+                      disabled={!followUpAnswer.trim() || isBusy}
                     >
-                      Submit for marking <CheckCircle className="w-4 h-4 ml-1.5" />
+                      Submit follow-up answer <ArrowRight className="w-4 h-4 ml-1.5" />
                     </Button>
                   )}
                 </div>
               </div>
             )}
 
-            {stage === "evaluating" && (
+            {stage === "assessing" && (
               <div className="py-16 text-center">
                 <Loader2 className="w-10 h-10 text-wsa-red animate-spin mx-auto mb-4" />
-                <p className="text-wsa-navy font-medium">Marking your interview…</p>
-                <p className="text-sm text-gray-500 mt-1">Assessing content, credibility, and communication.</p>
+                <p className="text-wsa-navy font-medium">Assessing your answer…</p>
+                <p className="text-sm text-gray-500 mt-1">Checking content, credibility, and communication.</p>
               </div>
             )}
 
-            {stage === "results" && evaluation && (
+            {stage === "question-result" && currentResult && (
               <div>
                 <div
-                  className={`rounded-xl p-6 mb-8 border ${
-                    evaluation.passed ? "bg-green-50 border-green-200" : "bg-amber-50 border-amber-200"
+                  className={`rounded-xl p-6 mb-6 border ${
+                    currentResult.score >= 85 ? "bg-green-50 border-green-200" : "bg-amber-50 border-amber-200"
                   }`}
                 >
                   <div className="flex items-center gap-4">
-                    {evaluation.passed ? (
+                    {currentResult.score >= 85 ? (
+                      <CheckCircle className="w-8 h-8 text-green-600 shrink-0" />
+                    ) : (
+                      <XCircle className="w-8 h-8 text-amber-600 shrink-0" />
+                    )}
+                    <div>
+                      <p className="text-2xl font-bold text-wsa-navy">
+                        {currentResult.score}% <span className="text-sm font-medium text-gray-500">for this question (pass mark 85%)</span>
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                {currentResult.strengths.length > 0 && (
+                  <div className="mb-6">
+                    <h3 className="text-sm font-semibold text-wsa-navy mb-2 flex items-center gap-2">
+                      <CheckCircle className="w-4 h-4 text-green-600" /> What worked well
+                    </h3>
+                    <div className="space-y-2">
+                      {currentResult.strengths.map((s, i) => (
+                        <div key={i} className="bg-green-50/60 border border-green-100 rounded-lg p-3 text-sm text-gray-700">{s}</div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {currentResult.weaknesses.length > 0 && (
+                  <div className="mb-6">
+                    <h3 className="text-sm font-semibold text-wsa-navy mb-2 flex items-center gap-2">
+                      <AlertTriangle className="w-4 h-4 text-amber-500" /> Where this was weak, and why
+                    </h3>
+                    <div className="space-y-2">
+                      {currentResult.weaknesses.map((w, i) => (
+                        <div key={i} className="bg-gray-50 border border-gray-200 rounded-lg p-3 text-sm text-gray-700">{w}</div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {currentResult.missingInformation.length > 0 && (
+                  <div className="mb-6">
+                    <h3 className="text-sm font-semibold text-wsa-navy mb-2 flex items-center gap-2">
+                      <MessageCircleQuestion className="w-4 h-4 text-wsa-red" /> What was missing
+                    </h3>
+                    <div className="space-y-2">
+                      {currentResult.missingInformation.map((m, i) => (
+                        <div key={i} className="bg-red-50/60 border border-red-100 rounded-lg p-3 text-sm text-gray-700">{m}</div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {currentResult.researchHomework.length > 0 && (
+                  <div className="mb-8">
+                    <h3 className="text-sm font-semibold text-wsa-navy mb-2 flex items-center gap-2">
+                      <BookOpen className="w-4 h-4 text-wsa-navy" /> Research or homework before your next attempt
+                    </h3>
+                    <div className="space-y-2">
+                      {currentResult.researchHomework.map((r, i) => (
+                        <div key={i} className="bg-blue-50/60 border border-blue-100 rounded-lg p-3 text-sm text-gray-700">{r}</div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                <Button onClick={continueToNext} disabled={isBusy} className="bg-wsa-navy hover:bg-wsa-navy/90 text-white">
+                  {currentIndex + 1 < questions.length ? (
+                    <>Next question <ArrowRight className="w-4 h-4 ml-1.5" /></>
+                  ) : (
+                    <>See your final results <ArrowRight className="w-4 h-4 ml-1.5" /></>
+                  )}
+                </Button>
+              </div>
+            )}
+
+            {stage === "summary" && summary && (
+              <div>
+                <div
+                  className={`rounded-xl p-6 mb-8 border ${
+                    summary.passed ? "bg-green-50 border-green-200" : "bg-amber-50 border-amber-200"
+                  }`}
+                >
+                  <div className="flex items-center gap-4">
+                    {summary.passed ? (
                       <CheckCircle className="w-10 h-10 text-green-600 shrink-0" />
                     ) : (
                       <XCircle className="w-10 h-10 text-amber-600 shrink-0" />
                     )}
                     <div>
                       <p className="text-3xl font-bold text-wsa-navy">
-                        {evaluation.score}% <span className="text-base font-medium text-gray-500">(pass mark 85%)</span>
+                        {summary.averageScore}% <span className="text-base font-medium text-gray-500">average (pass mark 85%)</span>
                       </p>
-                      <p className={`font-medium ${evaluation.passed ? "text-green-700" : "text-amber-700"}`}>
-                        {evaluation.passed ? "Pass — well done. Keep practising to stay sharp." : "Not yet at pass standard — see why below."}
+                      <p className={`font-medium ${summary.passed ? "text-green-700" : "text-amber-700"}`}>
+                        {summary.readyForMockInterview
+                          ? "Pass — you're ready for a live mock interview with your Student Counsellor."
+                          : "Not yet at pass standard — review the research tasks below, then try again."}
                       </p>
                     </div>
                   </div>
-                  {evaluation.summary && <p className="text-sm text-gray-700 mt-4">{evaluation.summary}</p>}
                 </div>
 
-                {evaluation.weaknesses.length > 0 && (
-                  <div className="mb-8">
-                    <h3 className="text-lg font-semibold text-wsa-navy mb-3 flex items-center gap-2">
-                      <AlertTriangle className="w-5 h-5 text-amber-500" /> Where you were weak, and why
-                    </h3>
-                    <div className="space-y-3">
-                      {evaluation.weaknesses.map((w, i) => (
-                        <div key={i} className="bg-gray-50 border border-gray-200 rounded-lg p-4 text-sm text-gray-700">
-                          {w}
-                        </div>
-                      ))}
+                <div className="mb-8 space-y-4">
+                  {results.map((r, i) => (
+                    <div key={i} className="border border-gray-200 rounded-lg p-4">
+                      <div className="flex items-start justify-between gap-4 mb-1">
+                        <p className="text-sm font-medium text-wsa-navy">{r.question}</p>
+                        <span className={`shrink-0 text-sm font-semibold ${r.score >= 85 ? "text-green-600" : "text-amber-600"}`}>{r.score}%</span>
+                      </div>
+                      {r.researchHomework.length > 0 && (
+                        <ul className="mt-2 text-xs text-gray-600 list-disc list-inside space-y-0.5">
+                          {r.researchHomework.map((h, j) => (
+                            <li key={j}>{h}</li>
+                          ))}
+                        </ul>
+                      )}
                     </div>
-                  </div>
-                )}
-
-                {evaluation.strengths.length > 0 && (
-                  <div className="mb-8">
-                    <h3 className="text-lg font-semibold text-wsa-navy mb-3 flex items-center gap-2">
-                      <CheckCircle className="w-5 h-5 text-green-600" /> What worked well
-                    </h3>
-                    <div className="space-y-3">
-                      {evaluation.strengths.map((s, i) => (
-                        <div key={i} className="bg-green-50/60 border border-green-100 rounded-lg p-4 text-sm text-gray-700">
-                          {s}
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {evaluation.researchRecommendations.length > 0 && (
-                  <div className="mb-8">
-                    <h3 className="text-lg font-semibold text-wsa-navy mb-3 flex items-center gap-2">
-                      <BookOpen className="w-5 h-5 text-wsa-navy" /> Recommended further research
-                    </h3>
-                    <div className="space-y-3">
-                      {evaluation.researchRecommendations.map((r, i) => (
-                        <div key={i} className="bg-blue-50/60 border border-blue-100 rounded-lg p-4 text-sm text-gray-700">
-                          {r}
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
+                  ))}
+                </div>
 
                 <p className="text-xs text-gray-500 mb-6">
-                  The coach never provides model answers. Genuine, personal answers are what interviewers — and visa officers — are listening for.
+                  The coach never provides model answers. Genuine, personal answers are what interviewers — and visa officers — are listening for. This tool prepares you; it doesn't replace a live mock interview with your Student Counsellor.
                 </p>
 
                 <Button onClick={reset} variant="outline" className="mr-3">
