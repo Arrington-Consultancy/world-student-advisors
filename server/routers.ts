@@ -6,7 +6,7 @@ import { ENV } from "./_core/env";
 import { createStudentLead } from "./pipedrive";
 import { recordFailedSubmission } from "./db";
 import { createPortalUser, authenticatePortalUser, setPasswordWithToken, requestPasswordReset, verifyPortalToken } from "./portal-auth";
-import { generateQuestions, evaluateAnswers } from "./interviewCoach";
+import { getSessionQuestions, assessAnswer, summariseSession } from "./interviewCoach";
 
 const studentSignupSchema = z.object({
   firstName: z.string().min(1),
@@ -187,37 +187,52 @@ export const appRouter = router({
   }),
 
   interviewCoach: router({
-    generateQuestions: publicProcedure
+    // Open access (since 28 Jul 2026, preserved deliberately): the Interview
+    // Coach does not require a portal session and has no rate limiting.
+    startSession: publicProcedure
       .input(
         z.object({
-          token: z.string().optional(),
           interviewType: z.enum(["cas", "ukvi", "university", "course"]),
           courseOrSubject: z.string().max(200).optional(),
           count: z.number().int().min(3).max(8).default(5),
         }),
       )
       .mutation(async ({ input }) => {
-        // Open access (28 Jul 2026): the Interview Coach no longer requires a portal session.
-        const questions = await generateQuestions(input.interviewType, input.courseOrSubject, input.count);
+        const questions = await getSessionQuestions(input.interviewType, input.courseOrSubject, input.count);
         return { success: true as const, questions };
       }),
 
-    evaluate: publicProcedure
+    // Assesses one answer at a time. On a student's first attempt at a
+    // question, a weak answer gets one intelligent follow-up question
+    // instead of a score (needsFollowUp: true). Pass the same call again
+    // with `followUp` set to the question just asked and the student's
+    // second answer to get the final score — a second follow-up is never
+    // triggered, capped in server/interviewCoach.ts regardless of model output.
+    submitAnswer: publicProcedure
       .input(
         z.object({
-          token: z.string().optional(),
           interviewType: z.enum(["cas", "ukvi", "university", "course"]),
           courseOrSubject: z.string().max(200).optional(),
-          qa: z
-            .array(z.object({ question: z.string().max(1000), answer: z.string().max(5000) }))
-            .min(1)
-            .max(10),
+          question: z.string().max(1000),
+          answer: z.string().max(5000),
+          followUp: z
+            .object({ question: z.string().max(1000), answer: z.string().max(5000) })
+            .optional(),
         }),
       )
       .mutation(async ({ input }) => {
-        // Open access (28 Jul 2026): the Interview Coach no longer requires a portal session.
-        const result = await evaluateAnswers(input.interviewType, input.courseOrSubject, input.qa);
-        return { success: true as const, result };
+        const assessment = await assessAnswer(input);
+        return { success: true as const, assessment };
+      }),
+
+    // Pure aggregation, no LLM call — averages the final score from every
+    // substantive answer in the session and applies the 85% threshold that
+    // gates progression to a live mock interview with a WSA Student Counsellor.
+    finishSession: publicProcedure
+      .input(z.object({ scores: z.array(z.number().min(0).max(100)).min(1) }))
+      .mutation(({ input }) => {
+        const summary = summariseSession(input.scores);
+        return { success: true as const, summary };
       }),
   }),
 });
