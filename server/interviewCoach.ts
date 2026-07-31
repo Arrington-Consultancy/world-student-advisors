@@ -1,6 +1,7 @@
 import { invokeLLM } from "./_core/llm";
+import { QUESTION_BANK, type InterviewType } from "./interviewQuestionBank";
 
-export type InterviewType = "cas" | "ukvi" | "university" | "course";
+export type { InterviewType };
 
 /**
  * Exact labels required for the four interview types the student chooses
@@ -28,27 +29,112 @@ const CORE_RULES = [
   "Recommend concrete research or homework the student must do themselves, not generic advice (e.g. 'research your university's specific module list for [course]', not 'do more research').",
 ].join("\n");
 
-export async function generateQuestions(
+const STOPWORDS = new Set([
+  "the", "a", "an", "to", "of", "in", "on", "for", "and", "or", "your", "this", "you", "is", "are",
+  "will", "how", "what", "why", "do", "does", "did", "have", "has", "had", "would", "could", "should",
+  "that", "with", "from", "at", "as", "be", "been", "was", "were", "it", "its", "their", "they",
+  "them", "who", "which", "can", "not", "during", "after", "before", "while",
+]);
+
+function significantWords(text: string): Set<string> {
+  return new Set(
+    text
+      .toLowerCase()
+      .replace(/[^a-z0-9\s]/g, " ")
+      .split(/\s+/)
+      .filter((w) => w.length > 3 && !STOPWORDS.has(w))
+  );
+}
+
+/**
+ * Guards personaliseQuestions against the model silently replacing a bank
+ * question with invented content instead of lightly rewording it: requires
+ * meaningful word overlap with the original, and forbids a wildly
+ * different length. This is what makes "must not silently replace the
+ * supplied questions" and "must not introduce unrelated questions"
+ * enforceable in code rather than just requested in a prompt.
+ */
+export function isQuestionVariant(original: string, candidate: string): boolean {
+  if (!candidate || !candidate.trim()) return false;
+  if (candidate.length > original.length * 3 + 40) return false;
+  const originalWords = significantWords(original);
+  if (originalWords.size === 0) return true;
+  const candidateWords = significantWords(candidate);
+  let overlap = 0;
+  originalWords.forEach((w) => {
+    if (candidateWords.has(w)) overlap++;
+  });
+  return overlap / originalWords.size >= 0.4;
+}
+
+/**
+ * Deterministically picks `count` questions from the supplied bank for one
+ * interview type, in a fixed, sensible order — never the LLM's call. When
+ * `count` is fewer than the full bank, the selection is spread evenly
+ * across the bank (not just the first N) so even a short session still
+ * touches motivation, course/institution knowledge, finances, and ties to
+ * home country rather than clustering on whatever happens to come first.
+ * Always returns questions that are members of QUESTION_BANK[interviewType]
+ * — by construction, a category can never receive another category's
+ * questions.
+ */
+export function selectSessionQuestions(interviewType: InterviewType, count: number): string[] {
+  const bank = QUESTION_BANK[interviewType];
+  const n = Math.max(1, Math.min(count, bank.length));
+  if (n >= bank.length) return [...bank];
+
+  const step = bank.length / n;
+  const indices = Array.from({ length: n }, (_, i) => Math.floor(i * step));
+  return indices.map((idx) => bank[idx]);
+}
+
+/**
+ * Lightly rewords a fixed set of already-selected bank questions to
+ * naturally reference course/university details the student has already
+ * supplied (e.g. "this course" -> the actual course name). Never called
+ * with an empty courseOrSubject — nothing to personalise, so the bank
+ * questions are returned completely unchanged with no LLM call at all.
+ *
+ * The model may not add, remove, reorder, or replace questions, and may
+ * not invent facts beyond what's supplied. If it doesn't return exactly
+ * the same number of questions, the result is untrusted and the original
+ * verbatim bank questions are returned instead — this is a hard fallback
+ * enforced in code, not a request the model can decline into.
+ */
+export async function personaliseQuestions(
   interviewType: InterviewType,
+  baseQuestions: string[],
   courseOrSubject: string | undefined,
-  count: number,
 ): Promise<string[]> {
+  if (!courseOrSubject || !courseOrSubject.trim()) {
+    return baseQuestions;
+  }
+
   const response = await invokeLLM({
     messages: [
       {
         role: "system",
-        content:
-          `You are an experienced UK international-student admissions interviewer running a ${TYPE_LABELS[interviewType]} practice session. Generate realistic interview questions. Output JSON only.\n\n${CORE_RULES}`,
+        content: [
+          `You are lightly personalising a fixed, already-approved set of ${TYPE_CONTEXT[interviewType]} questions for one student. You are wordsmithing them, never replacing, removing, adding, or reordering them, and never inventing new questions.`,
+          "",
+          "STRICT RULES — never break these:",
+          CORE_RULES,
+          "5. Return exactly the same number of questions, in the same order, one personalised rewrite per input question.",
+          "6. Do not change a question's meaning, topic, or category. Only reference the supplied course/university detail where it fits naturally (e.g. replace 'this course' with the actual course name). If a question has nothing natural to personalise, return it unchanged.",
+          "7. Do not invent facts about the course, university, or student beyond exactly what is supplied below.",
+          "8. Never answer any of the questions yourself — only reword the question text.",
+          "Output JSON only.",
+        ].join("\n"),
       },
       {
         role: "user",
-        content: `Generate exactly ${count} realistic questions for a ${TYPE_CONTEXT[interviewType]}${courseOrSubject ? ` for a student applying to study ${courseOrSubject}` : ""}. Questions should cover motivation, course/institution knowledge, finances (where appropriate for visa interviews), post-study plans, and ties to home country. Vary difficulty. Do not number them.`,
+        content: `Course/university detail supplied by the student: ${courseOrSubject}\n\nQuestions to personalise:\n${baseQuestions.map((q, i) => `${i + 1}. ${q}`).join("\n")}`,
       },
     ],
     response_format: {
       type: "json_schema",
       json_schema: {
-        name: "interview_questions",
+        name: "personalised_questions",
         strict: true,
         schema: {
           type: "object",
@@ -56,7 +142,7 @@ export async function generateQuestions(
             questions: {
               type: "array",
               items: { type: "string" },
-              description: "The interview questions",
+              description: `Exactly ${baseQuestions.length} personalised questions, in the same order as supplied`,
             },
           },
           required: ["questions"],
@@ -66,13 +152,46 @@ export async function generateQuestions(
     },
   });
 
-  const content = response.choices[0]?.message?.content;
-  const parsed = JSON.parse(typeof content === "string" ? content : "{}");
-  const questions: string[] = Array.isArray(parsed.questions) ? parsed.questions : [];
-  if (questions.length === 0) {
-    throw new Error("Failed to generate interview questions");
+  try {
+    const content = response.choices[0]?.message?.content;
+    const parsed = JSON.parse(typeof content === "string" ? content : "{}");
+    const personalised: unknown = parsed.questions;
+
+    if (
+      !Array.isArray(personalised) ||
+      personalised.length !== baseQuestions.length ||
+      personalised.some((q) => typeof q !== "string" || !q.trim())
+    ) {
+      // Model didn't honour the count/shape constraints at all — fall back
+      // to the untouched bank questions rather than risk a mismatched set.
+      return baseQuestions;
+    }
+
+    // Per-question guard: even with the right count, revert any individual
+    // question that isn't actually a variant of its bank original back to
+    // the original verbatim text. Catches a model that quietly substitutes
+    // invented or unrelated content while still returning the right number
+    // of strings.
+    return personalised.map((q, i) => (isQuestionVariant(baseQuestions[i], q) ? q : baseQuestions[i]));
+  } catch {
+    return baseQuestions;
   }
-  return questions.slice(0, count);
+}
+
+/**
+ * Full question set for a new session: a deterministic, bank-only
+ * selection, optionally personalised in wording. This is the only function
+ * server/routers.ts calls to start a session — the supplied Standard AI
+ * Interview Coach Question Bank is always the source, never an
+ * LLM-invented replacement.
+ */
+export async function getSessionQuestions(
+  interviewType: InterviewType,
+  courseOrSubject: string | undefined,
+  count: number,
+): Promise<string[]> {
+  const base = selectSessionQuestions(interviewType, count);
+  return personaliseQuestions(interviewType, base, courseOrSubject);
 }
 
 export interface FollowUpExchange {

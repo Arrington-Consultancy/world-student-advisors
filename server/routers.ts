@@ -6,7 +6,7 @@ import { ENV } from "./_core/env";
 import { createStudentLead } from "./pipedrive";
 import { recordFailedSubmission } from "./db";
 import { createPortalUser, authenticatePortalUser, setPasswordWithToken, requestPasswordReset, verifyPortalToken } from "./portal-auth";
-import { generateQuestions, assessAnswer, summariseSession } from "./interviewCoach";
+import { getSessionQuestions, assessAnswer, summariseSession } from "./interviewCoach";
 
 const studentSignupSchema = z.object({
   firstName: z.string().min(1),
@@ -198,7 +198,7 @@ export const appRouter = router({
         }),
       )
       .mutation(async ({ input }) => {
-        const questions = await generateQuestions(input.interviewType, input.courseOrSubject, input.count);
+        const questions = await getSessionQuestions(input.interviewType, input.courseOrSubject, input.count);
         return { success: true as const, questions };
       }),
 
