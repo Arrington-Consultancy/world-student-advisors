@@ -2,9 +2,30 @@ name: Deploy preview to Railway
 
 # Manual-only on purpose: this deploys to a separate, throwaway Railway
 # project/service for previewing the site, never the real WSA domain or
-# the live Arrington hosting. Requires a RAILWAY_TOKEN repo secret scoped
-# to that preview project (Railway dashboard -> the service -> Settings ->
-# Tokens), and a service named to match SERVICE_NAME below.
+# the live Arrington hosting.
+#
+# Auth: RAILWAY_TOKEN is a Railway *Project Token* (not an account/workspace
+# API token, which uses a different variable, RAILWAY_API_TOKEN, and is
+# broader-scoped than this workflow needs). A Project Token is scoped to
+# one project (and, if offered at creation time, one environment within
+# it) and can only perform deployment-related actions there — it cannot
+# reach any other Railway project, so this stays isolated to the preview
+# project regardless of what else exists in the account.
+#
+# To generate one (current Railway dashboard, mid-2026): open the
+# THROWAWAY PREVIEW project in Railway (not the live/production project,
+# and not a service inside it) -> Project Settings -> Tokens tab ->
+# Create Token. If the creation dialog offers an environment scope, pick
+# the preview project's own environment, not "production" in any project
+# that matters. This is a *project-level* setting, not a *service-level*
+# one — service Settings does not have a Tokens tab, which is why it
+# won't appear if you're looking there.
+#
+# Once generated, add it as a repo secret: GitHub repo -> Settings ->
+# Secrets and variables -> Actions -> New repository secret -> name it
+# RAILWAY_TOKEN exactly -> paste the project token as the value. Also
+# requires a service inside that preview project named to match
+# SERVICE_NAME below.
 on:
   workflow_dispatch:
 
