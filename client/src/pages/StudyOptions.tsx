@@ -146,7 +146,7 @@ export default function StudyOptions() {
                   { title: "Sports Camps", desc: "Short-term sport, academic and cultural experiences" },
                 ].map((item) => (
                   <div key={item.title} className="p-5 bg-wsa-cream/50 border border-border/20">
-                    <h4 className="text-sm font-semibold text-wsa-navy/70 mb-1">{item.title}</h4>
+                    <h4 className="text-sm font-semibold text-wsa-navy mb-1">{item.title}</h4>
                     <p className="text-xs text-muted-foreground leading-relaxed">{item.desc}</p>
                   </div>
                 ))}

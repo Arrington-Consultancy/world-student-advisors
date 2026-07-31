@@ -63,7 +63,7 @@ export default function Header() {
               className={`text-sm font-semibold tracking-wide uppercase transition-colors duration-200 ${
                 isTransparent
                   ? "text-white/95 hover:text-white font-bold [text-shadow:0_1px_4px_rgba(0,0,0,0.6),0_0px_2px_rgba(0,0,0,0.3)]"
-                  : "text-wsa-navy/70 hover:text-wsa-navy"
+                  : "text-wsa-navy hover:text-wsa-red"
               } ${location === item.href ? "!text-wsa-red" : ""}`}
             >
               {item.label}
@@ -97,7 +97,7 @@ export default function Header() {
               <Link
                 key={item.href}
                 href={item.href}
-                className={`text-base font-medium text-wsa-navy/80 hover:text-wsa-navy transition-colors ${
+                className={`text-base font-medium text-wsa-navy hover:text-wsa-red transition-colors ${
                   location === item.href ? "!text-wsa-red" : ""
                 }`}
               >

@@ -262,13 +262,13 @@ export default function LearningHub() {
               <span className="inline-flex items-center gap-2 px-4 py-2 bg-wsa-navy text-white text-sm font-medium">
                 <Video size={16} /> Videos
               </span>
-              <Link href="/learning-hub/podcasts" className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-wsa-navy/70 hover:text-wsa-red transition-colors border border-border">
+              <Link href="/learning-hub/podcasts" className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-wsa-navy hover:text-wsa-red transition-colors border border-border">
                 <Headphones size={16} /> 90-Second Advisor Podcast
               </Link>
               <span className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-wsa-navy/40 border border-border/50 cursor-default">
                 <BookOpen size={16} /> Written Guides (coming soon)
               </span>
-              <Link href="/training-workshops" className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-wsa-navy/70 hover:text-wsa-red transition-colors border border-border">
+              <Link href="/training-workshops" className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-wsa-navy hover:text-wsa-red transition-colors border border-border">
                 <Presentation size={16} /> Training & Workshops
               </Link>
             </div>

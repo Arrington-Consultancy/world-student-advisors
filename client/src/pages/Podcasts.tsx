@@ -104,13 +104,13 @@ export default function Podcasts() {
         <div className="container">
           <ScrollReveal>
             <div className="max-w-3xl border-l-4 border-wsa-red/30 pl-8">
-              <p className="text-lg text-wsa-navy/80 leading-relaxed mb-5">
+              <p className="text-lg text-wsa-navy leading-relaxed mb-5">
                 These episodes are made for students and parents who want straight answers. Each one covers a specific stage of the process, from picking a subject to landing in the UK. Every episode is free to watch, here and in the Student Portal.
               </p>
-              <p className="text-lg text-wsa-navy/80 leading-relaxed mb-5">
+              <p className="text-lg text-wsa-navy leading-relaxed mb-5">
                 You'll hear from real students, education professionals, and university staff. Topics include choosing the right course, writing a strong application, securing your offer, paying your deposit, and preparing for your visa.
               </p>
-              <p className="text-lg text-wsa-navy/80 leading-relaxed">
+              <p className="text-lg text-wsa-navy leading-relaxed">
                 When you work with us, you get a named counsellor who handles everything personally: accommodation, flights, pre-departure preparation, and check-ins after you arrive. We stay in touch long after enrolment.
               </p>
             </div>
