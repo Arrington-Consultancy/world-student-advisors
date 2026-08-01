@@ -33,31 +33,42 @@ Final first-person draft in the content pack. Single commercial lesson only — 
 CGR mapping: **unverified**, same caveat as above. Plain-language tags: owner boundaries, customer access, owner dependency.
 Outstanding: none on evidence. Awaiting your approval to proceed to a website-worker handover.
 
-### 3. You Don't Get to Decide When You've Made Things Right — NEW
-Source: "APPROVED POST — £120,000 Account Lost Over One Airport Transfer," approved and scheduled, found this session in the Social Posting Schedule folder (not in the Story Bank, missed in the original audit). Final first-person draft in the content pack.
+### 3. You Don't Get to Decide When You've Made Things Right
+Source: "APPROVED POST — £120,000 Account Lost Over One Airport Transfer," approved and scheduled. Final first-person draft in content pack 01.
 Single commercial lesson only, per the source document's own designated "Core lesson" — you do not get to decide when you have made things right.
-The story also contains a strong second thread ("the real failure was allowing that much risk to sit in one place") that is close to real evidence for item 7 below. Not built as a second article without your approval — flagged in the content pack, same restriction as the CCTV story.
-CGR mapping: **unverified**. Plain-language tags: accountability and consequences, risk concentration/process.
+
+### 4. The Most Expensive Date I Ever Had (£6,000 Dating Website)
+Source: "APPROVED POST — £6,000 Dating Website Investment," approved, not yet scheduled. New discovery, content pack 02. Not in the Story Bank.
+Single commercial lesson — you invest in more than the idea, you invest in the person and their belief; know which one you're backing.
+CGR mapping (unverified): risk appetite, investment decisions, backing people vs. ideas.
+
+### 5. The Real Failure Was Letting That Much Risk Sit in One Place
+Source: second article from the £120,000 account story, approved per your decision 2 — explanation of distinctness from item 3 given in content pack 02 before drafting, as required.
+Single commercial lesson — a business shouldn't let one ordinary person's ordinary mistake be able to cause catastrophic damage; that's a process/structure failure, not a people failure.
+CGR mapping (unverified): risk concentration, process and control.
+
+### 6. I Handed My Own Judgement to Somebody Else
+Source: garage-at-24 entry, previously held at Needs Tom's Input. Upgraded to Ready this round — the outstanding items (title preference, unknown outcome) don't meet the bar of materially changing the story, so the piece proceeded rather than staying blocked on a non-essential fact. Full draft in content pack 02.
+Single commercial lesson — Tom handed his own judgement to people who appeared older and more experienced, and didn't need to.
+CGR mapping (unverified): judgement and authority, decision-making early in a business's life.
 
 ---
 
 ## Needs Tom's Input (real incident exists, specific facts missing — not to be drafted yet)
 
-### 3. The Leo birth story
-Source: Story Bank Entry 002. Developed as far as the evidence allows — full partial draft in the content pack, gap marked rather than invented.
+### The Leo birth story
+Source: Story Bank Entry 002. Developed as far as the evidence allows — full partial draft in content pack 02, gap marked rather than invented. Re-searched again this round (full-text "Leo" search, Brain-wide and Story Bank folder) — no new material found.
 **Lesson locked, per your instruction:** the business still depended on Tom for an ordinary operational decision at the moment he should have been completely unavailable. This is an owner-dependency and operational-preparation lesson, not a story about the caller being wrong, and not a work-life-balance piece.
-Held at Needs Tom's Input until: the specific operational change made afterwards is extracted. "Clearer operating boundaries had to exist" is a stated outcome, not a stated mechanism.
+Held at Needs Tom's Input — genuine blocker (type 1: a missing fact that materially changes the story). "Clearer operating boundaries had to exist" is a stated outcome, not a stated mechanism.
 Minimum question: what specifically changed operationally after this, in practical terms?
 
-### 4. I Handed My Own Judgement to Somebody Else (retitled from "I Ignored the One Person I Should Have Listened To")
-Source: garage-at-24 entry. Developed under the corrected, evidenced lesson — full partial draft in the content pack, applying the Story Bank's own listed editing fixes.
-**Lesson corrected:** Tom ignored his own judgement and handed it to people who appeared older and more experienced — not that a specific person's warning was ignored.
-Held at Needs Tom's Input until: title confirmed, and the garage's actual outcome supplied or confirmed unnecessary.
-Minimum questions: (1) title preference, (2) what actually happened to the garage, (3) confirm no separate "ignored warning" incident exists.
+(The garage-at-24 story was previously held here. It has been upgraded to Ready — see item 6 above — because its open questions did not meet the bar of materially changing the story.)
 
 ---
 
 ## Hypothesis / Hold (no personal incident evidence — third person only, not Tom's voice)
+
+Numbering below preserves the original ten-concept audit IDs for traceability (items 1-4 of that original list are now resolved above as Ready or Needs Tom's Input pieces).
 
 ### 5. Busy Doesn't Mean Better — **Rejected**
 Contradicts the Commercial Judgement Lens, which explicitly states busy-and-paid is a positive signal. Would need a different title ("busy isn't the same as in control") to avoid contradicting existing evidenced judgement — that would be a different concept, not a fix to this one.
@@ -65,8 +76,8 @@ Contradicts the Commercial Judgement Lens, which explicitly states busy-and-paid
 ### 6. If It Only Works When You're There, It Doesn't Really Work — Hold, high duplicate risk
 No incident evidence, brand-positioning language only. Same ground as CL-008 ("You don't own a business. You own a job you can't leave"), already published and already self-flagged in the Social Content Library as generic and accusatory. Do not develop without a genuinely new incident.
 
-### 7. The Problem Usually Isn't the Person — Hold, upgraded, approval needed
-Re-searched this session. Real evidence now exists — the £120,000 account story (item 3 above) contains a strong, distinct second thread on exactly this theme ("the real failure was allowing that much risk to sit in one place"). But that story's own designated lesson is different (accountability), and reusing it for a second lesson needs your explicit approval, the same restriction applied to CCTV. Not drafted as a second article. No other incident found.
+### 7. The Problem Usually Isn't the Person — **Resolved into item 5 above**
+Real evidence found (the £120,000 account story's second thread). Approved by you as a second, distinct article — see "The Real Failure Was Letting That Much Risk Sit in One Place" in the Ready list. This hypothesis is now superseded by that drafted piece rather than remaining open.
 
 ### 8. The Business Already Knows the Answer — Hold, high genericness risk
 Re-searched this session (front-line/listening terms) — nothing new found. Matches live "What We Do" page copy almost verbatim ("the information is usually already inside the business"). As a bare claim this is restated positioning, not a story — same failure mode already flagged in CL-001. Needs a specific, real example before it can be developed at all.
@@ -81,6 +92,13 @@ Extraction attempted this session on the £2,500 cash buffer — see Part C of A
 
 ---
 
+## Evidence sources swept clean this round (nothing further to extract)
+
+- **Decision Log** — read in full. Operational/marketing decisions only (landing pages, nav labels, lead shortlists, worker naming, the authority clean-up, a rugby club advertising board). No personal stories.
+- **Meeting notes** — still only the blank template.
+- **Oxford work** — still nothing beyond the single About Us sentence.
+- Two social-media image assets could not be read as text (attempted, returned empty) — not usable as evidence in their current form.
+
 ## Already-published reference points (not to be redeveloped, kept for context)
 
 - **CL-001** ("Most consultants try to fix your business before they understand it") — self-flagged in the Social Content Library as generic consultant tone. Do not use as a model.
@@ -92,4 +110,4 @@ Extraction attempted this session on the £2,500 cash buffer — see Part C of A
 
 No group of pieces has been approved yet. Per your instruction, the website-worker handover is a separate document produced only once you approve a group — nothing has been prepared for the website worker, and nothing will be, until that approval is given.
 
-Three pieces are now Ready (1, 2, 3) with final first-person drafts in `Arrington-Useful-Thinking-Drafts-01.md`. Awaiting your approval before any website-worker handover is prepared.
+Six pieces are now Ready, with final first-person drafts split across `Arrington-Useful-Thinking-Drafts-01.md` (items 1-3) and `Arrington-Useful-Thinking-Drafts-02.md` (items 4-6). One genuine blocker remains open (the Leo birth story). Continuing to build per your standing instruction — not stopping for general approval.
