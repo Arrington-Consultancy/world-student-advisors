@@ -22,6 +22,10 @@ Status key: **Ready** (drafted in first person, full evidence) · **Confirmed, n
 | 8 | **NEW.** You haven't earned the right to challenge years of decisions just because you're new and think you're right — understanding has to come before advice | The closest I've come to being kicked out of a business was in the first hour | This pack |
 | 9 | **NEW.** Growth only reduces pressure on the owner if the structure underneath grows with it — otherwise the business gets bigger while the owner stays trapped in the middle | The reverse economy of scale | This pack |
 | 10 | **NEW.** Loyalty from staff is real and valuable, but it was never permanence — good employers still lose good people, and that's usually just life, not betrayal | Staff retention is transactional underneath it all | This pack |
+| 11 | **NEW, Tom-supplied direct.** A profitable job isn't good business if you have to finance the customer for nearly a year — and different debtors need different responses depending on why they haven't paid | A profitable job is not necessarily good business (the Falmouth Docks shipping account) | Pack 04 |
+| 12 | **NEW, Tom-supplied direct.** Every rule changes behaviour, and the behaviour it creates can become the next problem — there's no permanent rule, only a balance to keep re-watching | Every Rule Changes Behaviour (the taxi rota story) | Pack 04 |
+
+Items 11 and 12 differ from everything above: supplied directly by Tom this session rather than found in Drive. Two editorial questions on item 12's longer website version were resolved by Tom's explicit delegation — a hypothetical (non-lived) analogy was cut, and section subheadings were flattened to match the continuous-prose format every other Ready piece uses. Detail in Pack 04.
 
 ---
 
