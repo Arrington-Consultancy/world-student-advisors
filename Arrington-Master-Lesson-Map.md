@@ -71,6 +71,22 @@ None of these are drafted. They're listed here so nothing gets lost, and so any 
 
 ---
 
+## Integrity flags found this round — not resolved, need Tom's confirmation
+
+**1. "Arrington Facebook Content Ideas - June 2026" — likely unverified/fabricated, do not use.**
+
+Found in the Social Posting Schedule folder. Contains five vivid, specific "Tom stories" (a hiring mistake costing "£3,000," a pricing story with "£12 a trip" rising to "£18," an owner-dependency holiday story, a customer-service story, a systems/spreadsheet story) — one example for almost every category in this round's search brief. None of the five appear anywhere in the Story Bank, the SB-001 to SB-012 cross-reference, or the CL-001 to CL-028 post log. The document is titled "Content Ideas," each entry is labelled "Draft," and all five follow an identical template (Draft / Question for owners / Suggested image) — the same shape as the ChatGPT-generated hypotheses the Story Bank's own 1 August correction note warned about, just without that warning label attached. The specific numbers make it feel like evidence, which is exactly the risk. Not drafted, not treated as evidence. Needs Tom to confirm whether any of these five actually happened before they're usable at all.
+
+**2. A CV in the "12 Assets" folder describes Arrington Consultancy differently from everywhere else in the Brain.**
+
+"MASTER CV - Tom Arrington - 2026 FINAL," last edited 25 July 2026 (recent, not stale). Confirms real, useful facts — Oxford distinction, the taxi business sold April 2025 for "over £1 million," and a previously undocumented **third business, TNFP Taxis Ltd** (2011-2025, a premium taxi and airport transfer business serving corporate clients and universities, sold alongside Abacus and Falmouth Taxis). That third company is not mentioned anywhere else in the Brain and may be relevant background to the £120,000 airport account story, given the airport-transfer connection — flagging as a possible link, not asserting it.
+
+But the CV's own profile and "current role" framing describes Tom as "now looking for an employed Commercial Manager, Operations Manager, Business Development Manager or General Manager role," and describes Arrington Consultancy's 2025-present entry as something done while his "main focus now is finding the right employed role." Everywhere else in the Brain — the Brand Operating System, Current Operating Position, live website copy — treats Arrington Consultancy as the primary, ongoing venture, not a bridge activity. I have not guessed which framing is current. Flagging it because it changes what "genuine commercial lesson from Tom's experience" is being built in service of, and that seems like something worth surfacing rather than quietly building past.
+
+Minor, lower-stakes discrepancy also noted: the CV's timeline (graduated Falmouth University 2006, took ownership of the taxi business 2006) doesn't obviously square with the garage story's "I was 24... I graduated six months ago" framing. Not material enough to block anything, just noted for accuracy.
+
+---
+
 ## What this leaves genuinely open
 
 - Leo birth story — still blocked on the missing operational-change fact (unchanged).

@@ -125,8 +125,29 @@ The garage-at-24 story and a separately tracked "Falmouth Rugby Club Night Shift
 
 ---
 
-## Handover status
+## Note on count: six vs ten Ready
 
-No group of pieces has been approved yet. Per your instruction, the website-worker handover is a separate document produced only once you approve a group — nothing has been prepared for the website worker, and nothing will be, until that approval is given.
+Your last message listed six Ready pieces and one blocker (the Leo story). By the end of the previous round there were ten — items 7-10 (tightrope/damage control, kicked out in the first hour, reverse economy of scale, staff retention) were found and drafted in content pack 03, sent in the message just before this one. Not assuming you've rejected or overlooked them — flagging the mismatch so nothing is silently dropped either way. Treating all ten as Ready below unless told otherwise.
 
-Ten pieces are now Ready, with final first-person drafts split across `Arrington-Useful-Thinking-Drafts-01.md` (items 1-3), `02.md` (items 4-6) and `03.md` (items 7-10). One genuine blocker remains open (the Leo birth story), plus one evidence conflict (garage/rugby club) and two confirmed-but-not-draftable stories. Continuing to build per your standing instruction — not stopping for general approval.
+## Evidence trail and plain-language Commercial Gaps Review mapping (all Ready pieces)
+
+No formal CGR taxonomy exists anywhere in Drive or in this session's accessible repos (the live categories, if any, would be defined in the `arrington-website` repo, which this session cannot reach). The mappings below are plain-language subject tags only, explicitly not a formal taxonomy, per your instruction.
+
+| # | Piece | Source document | Evidence status | Plain-language CGR subjects |
+|---|---|---|---|---|
+| 1 | Being Certain Isn't the Same as Being Right | MASTER - Arrington Story Bank, Entry 001 | Pressure tested and approved 27 Jul 2026; final LinkedIn copy in content stock | Decision-making under pressure; staff discipline and trust |
+| 2 | The Customer Who Messaged Me at 4am | MASTER - Arrington Story Bank, Entry 003 (4am entry) | Pressure tested and approved; platform copy prepared for LinkedIn/Facebook/Instagram | Owner boundaries; customer access; owner dependency |
+| 3 | You Don't Get to Decide When You've Made Things Right | "APPROVED POST — £120,000 Account Lost Over One Airport Transfer," Social Posting Schedule folder | Approved and scheduled (LinkedIn 23 Jun 07:15, Facebook 23 Jun 19:30); independently confirmed published via CL-018/CL-019 and SB-006 in the Social Content Library | Accountability and consequences |
+| 4 | The Most Expensive Date I Ever Had | "APPROVED POST — £6,000 Dating Website Investment," Social Media root folder | Approved, not yet scheduled; independently confirmed via CL-024 and SB-008 | Risk appetite; investment decisions; backing people vs. ideas |
+| 5 | The Real Failure Was Letting That Much Risk Sit in One Place | Second lesson from the same £120,000 account document | Approved by you as a distinct second article, decision 2, with distinctness explained before drafting | Risk concentration; process and control |
+| 6 | I Handed My Own Judgement to Somebody Else | MASTER - Arrington Story Bank, Entry 003 (garage-at-24 entry) | Core incident and both verbatim lines evidenced; upgraded to Ready when the outstanding questions were judged not to materially change the story | Judgement and authority; decision-making early in a business's life |
+| 7 | The Tightrope Between Staff Loyalty and Damage Control | Full copy in "Arrington Consultancy Published Social Posts" (filed as "Draft Post 008"); status corrected against CL-016/SB-003, which confirm actual publication 18 Jun 2026 via Facebook screenshot (31 likes, 2 comments) | Two tracking documents disagreed on draft/published status; screenshot-backed record used | Staff management; standards; avoidance and blame culture |
+| 8 | The Closest I've Come to Being Kicked Out of a Business Was in the First Hour | Fullest surviving text in "ARCHIVE - Kicked Out LinkedIn Draft Copy 1/2"; publication independently confirmed via CL-017/SB-005, Facebook screenshot, 21 Jun 2026 | No document labelled "final" was found — wording reconstructed from the fullest archived draft, flagged in the draft itself | Advisory conduct; understanding before advice |
+| 9 | The Reverse Economy of Scale | Full copy as Facebook Post F004 in "Arrington Consultancy Published Social Posts"; confirmed via CL-011/SB-010, published 2 Jun 2026 | Confirmed published; internally flagged by Tom's own working notes as the strongest recurring concept | Growth and structure; owner visibility; operational control |
+| 10 | Staff Retention Is Transactional Underneath It All | Full copy as Post 003 in "Arrington Consultancy Published Social Posts"; confirmed via CL-003/SB-011 | Published; written as an observed pattern across conversations, not a single incident — kept in that voice per Story Bank rule 7 | Staff retention; culture; owner expectations |
+
+Not handed to the website worker. No handover document exists yet.
+
+## Sweep results this round
+
+Searched, per your list: approved post titles (exhausted — only the two "APPROVED POST"-titled documents exist, both already used), real incidents/mistakes/complaints/losses/staff problems/customer disputes/buying decisions/delegation failures/cash-flow moments/turnaround moments, and anything Tom described as changing how he ran the business. No new *confirmed* real incidents surfaced this round beyond the two integrity flags above (the likely-fabricated Content Ideas document, and the CV's new factual detail). No genuinely new Ready piece and no clean three-piece batch this round — reporting the two flags now rather than sitting on them while continuing to search, since they affect how the rest of the sweep should be read. Continuing unless told otherwise.
