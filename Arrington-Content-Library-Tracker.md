@@ -106,8 +106,27 @@ Extraction attempted this session on the £2,500 cash buffer — see Part C of A
 
 ---
 
+## Master lesson map
+
+`Arrington-Master-Lesson-Map.md` now holds the consolidated view: every genuine commercial lesson found so far, paired with its best story, its status, and what's still open — built from mining the full Social Content Library spreadsheet (three internal tables previously only seen as truncated snippets: the post log to CL-028, a raw-idea tracker with its own "needs real incident?" column, and a Story Bank cross-reference SB-001 to SB-012). Treat that file as the current source of truth for "what has Tom actually lived and proved"; this tracker stays focused on drafting/approval workflow status.
+
+### 7-10. Four new Ready pieces this round
+Found by reading the Social Content Library spreadsheet in full rather than the summary snippet seen previously. All four are confirmed published, with full first-person copy located (one, item 8, reconstructed from the fullest archived draft rather than a document labelled "final" — flagged in the draft itself). Full drafts in `Arrington-Useful-Thinking-Drafts-03.md`:
+- **7. The Tightrope Between Staff Loyalty and Damage Control** — loyalty held too long past the point it's earned weakens the business for everyone else.
+- **8. The Closest I've Come to Being Kicked Out of a Business Was in the First Hour** — understanding has to come before advice; a rarer, self-critical lesson about Tom's own conduct as an outsider.
+- **9. The Reverse Economy of Scale** — growth only reduces owner pressure if structure grows with it. Independently and legitimately resolves what the rejected "Busy Doesn't Mean Better" hypothesis was reaching for, without the contradiction that got it rejected.
+- **10. Staff Retention Is Transactional Underneath It All** — observed pattern (not a single incident, correctly kept in that voice per Story Bank rule 7) — loyalty was never permanence.
+
+### Confirmed real, not yet draftable
+Two more stories (employee leaving for a competitor / listening; empty shelves aren't always a stock problem) are confirmed published with real lessons, but only paraphrases exist, not full copy — logged in the master lesson map rather than drafted, so nothing gets invented to fill the gap.
+
+### New evidence conflict flagged
+The garage-at-24 story and a separately tracked "Falmouth Rugby Club Night Shift" story may be the same incident or two different ones — evidence points both ways. Not resolved by guessing. See the master lesson map for detail and the question for Tom.
+
+---
+
 ## Handover status
 
 No group of pieces has been approved yet. Per your instruction, the website-worker handover is a separate document produced only once you approve a group — nothing has been prepared for the website worker, and nothing will be, until that approval is given.
 
-Six pieces are now Ready, with final first-person drafts split across `Arrington-Useful-Thinking-Drafts-01.md` (items 1-3) and `Arrington-Useful-Thinking-Drafts-02.md` (items 4-6). One genuine blocker remains open (the Leo birth story). Continuing to build per your standing instruction — not stopping for general approval.
+Ten pieces are now Ready, with final first-person drafts split across `Arrington-Useful-Thinking-Drafts-01.md` (items 1-3), `02.md` (items 4-6) and `03.md` (items 7-10). One genuine blocker remains open (the Leo birth story), plus one evidence conflict (garage/rugby club) and two confirmed-but-not-draftable stories. Continuing to build per your standing instruction — not stopping for general approval.
