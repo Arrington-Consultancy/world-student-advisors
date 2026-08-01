@@ -19,34 +19,41 @@ Role: content and Business Brain worker only — build and organise the Brain, e
 
 ---
 
-## Ready (drafted, awaiting your approval — no handover produced yet)
+## Ready (final first-person drafts complete — see Arrington-Useful-Thinking-Drafts-01.md — awaiting your approval, no handover produced yet)
 
 ### 1. Being Certain Isn't the Same as Being Right
 Source: Story Bank Entry 001 (CCTV / call logs), pressure tested and approved.
-Full draft produced in this conversation. Single commercial lesson only — being certain doesn't make you right, gather evidence before acting on suspicion. No second lesson attached to this story without your explicit approval.
+Final first-person draft in the content pack. Single commercial lesson only — being certain doesn't make you right, gather evidence before acting on suspicion. No second lesson attached to this story without your explicit approval.
 CGR mapping: **unverified** — no Commercial Gaps Review category taxonomy exists anywhere in Drive, and this session has no access to the `arrington-website` repo where the live categories would be defined. Plain-language tags only: decision-making under pressure, staff discipline and trust.
 Outstanding: none on evidence. Awaiting your approval to proceed to a website-worker handover.
 
 ### 2. The Customer Who Messaged Me at 4am
 Source: Story Bank Entry 003 (4am entry), pressure tested and approved, platform copy already drafted.
-Full draft produced in this conversation. Single commercial lesson only — responsiveness and personal availability are not the same thing, and direct access is very hard to withdraw once granted.
+Final first-person draft in the content pack. Single commercial lesson only — responsiveness and personal availability are not the same thing, and direct access is very hard to withdraw once granted.
 CGR mapping: **unverified**, same caveat as above. Plain-language tags: owner boundaries, customer access, owner dependency.
 Outstanding: none on evidence. Awaiting your approval to proceed to a website-worker handover.
+
+### 3. You Don't Get to Decide When You've Made Things Right — NEW
+Source: "APPROVED POST — £120,000 Account Lost Over One Airport Transfer," approved and scheduled, found this session in the Social Posting Schedule folder (not in the Story Bank, missed in the original audit). Final first-person draft in the content pack.
+Single commercial lesson only, per the source document's own designated "Core lesson" — you do not get to decide when you have made things right.
+The story also contains a strong second thread ("the real failure was allowing that much risk to sit in one place") that is close to real evidence for item 7 below. Not built as a second article without your approval — flagged in the content pack, same restriction as the CCTV story.
+CGR mapping: **unverified**. Plain-language tags: accountability and consequences, risk concentration/process.
 
 ---
 
 ## Needs Tom's Input (real incident exists, specific facts missing — not to be drafted yet)
 
 ### 3. The Leo birth story
-Source: Story Bank Entry 002.
-**Lesson locked, per your instruction:** the business still depended on Tom for an ordinary operational decision at the moment he should have been completely unavailable. This is an owner-dependency and operational-preparation lesson, not a story about the caller being wrong, and not a work-life-balance piece. This framing is evidenced by the entry's own text ("too many ordinary operational decisions still depended on him," "some of those decisions could have been prevented with better briefing beforehand").
-Held at Needs Tom's Input until: the specific operational change made afterwards is extracted. "Clearer operating boundaries had to exist" is a stated outcome, not a stated mechanism — what was actually put in place (a briefing change, an escalation rule, someone else given authority to decide) is not yet in the Story Bank.
+Source: Story Bank Entry 002. Developed as far as the evidence allows — full partial draft in the content pack, gap marked rather than invented.
+**Lesson locked, per your instruction:** the business still depended on Tom for an ordinary operational decision at the moment he should have been completely unavailable. This is an owner-dependency and operational-preparation lesson, not a story about the caller being wrong, and not a work-life-balance piece.
+Held at Needs Tom's Input until: the specific operational change made afterwards is extracted. "Clearer operating boundaries had to exist" is a stated outcome, not a stated mechanism.
 Minimum question: what specifically changed operationally after this, in practical terms?
 
-### 4. I Ignored the One Person I Should Have Listened To
-Source: linked by the Story Bank's correction note to the garage-at-24 entry, but that entry's own evidenced lesson ("I handed my judgement to somebody else") is the reverse of this title — it's about Tom overriding his own instinct to defer to others, not about ignoring one specific person's warning.
-Held at Needs Tom's Input until this is resolved.
-Minimum questions (unchanged from previous round): is there a specific person whose direct warning was ignored, and if so who and what did they say — or should this concept be retitled to match the garage story's actual evidenced lesson?
+### 4. I Handed My Own Judgement to Somebody Else (retitled from "I Ignored the One Person I Should Have Listened To")
+Source: garage-at-24 entry. Developed under the corrected, evidenced lesson — full partial draft in the content pack, applying the Story Bank's own listed editing fixes.
+**Lesson corrected:** Tom ignored his own judgement and handed it to people who appeared older and more experienced — not that a specific person's warning was ignored.
+Held at Needs Tom's Input until: title confirmed, and the garage's actual outcome supplied or confirmed unnecessary.
+Minimum questions: (1) title preference, (2) what actually happened to the garage, (3) confirm no separate "ignored warning" incident exists.
 
 ---
 
@@ -58,25 +65,19 @@ Contradicts the Commercial Judgement Lens, which explicitly states busy-and-paid
 ### 6. If It Only Works When You're There, It Doesn't Really Work — Hold, high duplicate risk
 No incident evidence, brand-positioning language only. Same ground as CL-008 ("You don't own a business. You own a job you can't leave"), already published and already self-flagged in the Social Content Library as generic and accusatory. Do not develop without a genuinely new incident.
 
-### 7. The Problem Usually Isn't the Person — Hold, weakened
-Previously partly supported by the CCTV story; that support is withdrawn per your instruction not to reuse that story for a second lesson without approval. What remains (Technology Partnership Methodology, scoped internal IP; Commercial Judgement Lens's "product skill is not business structure," an adjacent but different idea) does not amount to personal incident evidence. No incident currently exists.
+### 7. The Problem Usually Isn't the Person — Hold, upgraded, approval needed
+Re-searched this session. Real evidence now exists — the £120,000 account story (item 3 above) contains a strong, distinct second thread on exactly this theme ("the real failure was allowing that much risk to sit in one place"). But that story's own designated lesson is different (accountability), and reusing it for a second lesson needs your explicit approval, the same restriction applied to CCTV. Not drafted as a second article. No other incident found.
 
 ### 8. The Business Already Knows the Answer — Hold, high genericness risk
-Matches live "What We Do" page copy almost verbatim ("the information is usually already inside the business"). As a bare claim this is restated positioning, not a story — same failure mode already flagged in CL-001. Needs a specific, real example before it can be developed at all.
+Re-searched this session (front-line/listening terms) — nothing new found. Matches live "What We Do" page copy almost verbatim ("the information is usually already inside the business"). As a bare claim this is restated positioning, not a story — same failure mode already flagged in CL-001. Needs a specific, real example before it can be developed at all.
 
 ### 9. Someone Has to Be Able to Imagine Owning It — Hold, thinnest evidence
-No incident evidence. Ties to the still-open gap that nothing in the Brain documents what Tom's own exit was actually like. The only live, real material anywhere near this subject is the Ivybridge Taxis opportunity — an active, unresolved client matter, so using it raises a confidentiality question as well as an evidence one.
+Re-searched this session for Tom's own exit and sale-related material. Found "WORKING BACKBURNER Sale Readiness Quiz Draft v1" — product-development copy for a parked, unapproved quiz, not personal story evidence, and outside content-library scope anyway. Found "CURRENT - Ivybridge Taxi Company Valuation Worker Handoff" — correctly excluded as confidential live-client material, per your instruction. No fuller account of Tom's own exit exists anywhere beyond the About Us summary already logged in the original audit. Still thinnest of the six.
 
 ### 10. The First Problem Usually Isn't the Real Problem — Hold, priority for extraction
 The strongest of the six hypotheses. Independent of the CCTV story, the Useful Thinking Bank's "Space creates better decisions" entry names four specific, real, but unextracted incidents: the £2,500 cash buffer, the delivery-room call, staff complaints needing a cooling-off period, and a serious allegation needing evidence before action. None has been through Story Bank extraction. Does not contradict the Commercial Judgement Lens; does not duplicate a stronger existing piece.
 
-**Minimum extraction questions, most promising option first (the £2,500 cash buffer, since it isn't claimed by any other item on this list):**
-1. What business, and roughly when?
-2. What was the situation the buffer was being used against — what rushed fix was it avoiding, specifically?
-3. What did having that time actually change about the decision that got made?
-4. Is there a clean, tellable before/after here, or is the detail thinner than the one-line summary in the Useful Thinking Bank suggests?
-
-Do not extract further without these answers. This is a request for raw material, not a draft.
+Extraction attempted this session on the £2,500 cash buffer — see Part C of Arrington-Useful-Thinking-Drafts-01.md. No further raw material found; the only other "£2,500" figure in Drive belongs to an unrelated client case study document and has not been conflated with this one. Minimum extraction questions logged there; not drafted, waiting on raw material from Tom.
 
 ---
 
@@ -91,4 +92,4 @@ Do not extract further without these answers. This is a request for raw material
 
 No group of pieces has been approved yet. Per your instruction, the website-worker handover is a separate document produced only once you approve a group — nothing has been prepared for the website worker, and nothing will be, until that approval is given.
 
-Open question for you: are the two Ready pieces (1 and 2) approved as a first group, or still pending your review?
+Three pieces are now Ready (1, 2, 3) with final first-person drafts in `Arrington-Useful-Thinking-Drafts-01.md`. Awaiting your approval before any website-worker handover is prepared.
