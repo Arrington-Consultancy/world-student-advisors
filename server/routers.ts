@@ -31,6 +31,8 @@ const studentSignupSchema = z.object({
   referredByWhom: z.string().optional().default(""),
   recommendedCounsellor: z.string().optional().default(""),
   gdprConsent: z.boolean(),
+  /** Honeypot — real users never see or fill this field; bots often do. */
+  website: z.string().optional().default(""),
 });
 type StudentSignupInput = z.infer<typeof studentSignupSchema>;
 
@@ -46,6 +48,12 @@ export const appRouter = router({
     submitStudent: publicProcedure
       .input(studentSignupSchema)
       .mutation(async ({ input }) => {
+        // Honeypot tripped — pretend success without doing any real work,
+        // so bots get no signal that they were caught.
+        if (input.website) {
+          return { success: true as const, dealId: 0, portalToken: null };
+        }
+
         let result: Awaited<ReturnType<typeof createStudentLead>>;
         try {
           result = await createStudentLead(input);
