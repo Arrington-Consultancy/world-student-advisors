@@ -62,6 +62,7 @@ function StudentForm() {
     referredByWhom: "",
     recommendedCounsellor: "",
     gdprConsent: false,
+    website: "", // honeypot — real users never see or fill this field
   });
   const [submitted, setSubmitted] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
@@ -127,6 +128,16 @@ function StudentForm() {
         Students or parents can apply. A Student Counsellor will follow up within 48 hours to understand your goals in more detail.
       </p>
       <form className="space-y-5" onSubmit={handleSubmit}>
+        <input
+          type="text"
+          name="website"
+          value={formData.website}
+          onChange={e => setFormData({ ...formData, website: e.target.value })}
+          tabIndex={-1}
+          autoComplete="off"
+          aria-hidden="true"
+          className="absolute left-[-9999px] w-px h-px overflow-hidden"
+        />
         <div>
           <label className="block text-sm font-medium text-wsa-navy mb-1.5">First Name *</label>
           <input

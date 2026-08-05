@@ -1,5 +1,5 @@
 User-agent: *
 Allow: /
 
-Sitemap: https://world-student-advisors-production.up.railway.app/sitemap.xml
+Sitemap: https://www.worldstudentadvisors.com/sitemap.xml
 
