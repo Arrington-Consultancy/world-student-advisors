@@ -114,12 +114,25 @@ export const appRouter = router({
             `Name: ${input.firstName} ${input.lastName}`,
             `Email: ${input.email}`,
             input.phone ? `Phone: ${input.phone}` : "",
-            `Country: ${input.country}`,
+            `Gender: ${input.gender}`,
+            `Date of Birth: ${input.dateOfBirth}`,
+            input.passportNumber ? `Passport Number: ${input.passportNumber}` : "",
             `Nationality: ${input.nationality}`,
+            `Country: ${input.country}`,
+            `Highest Qualification: ${input.highestQualification}`,
             `Desired Level: ${input.desiredLevel}`,
             `Area of Study: ${input.areaOfStudy}`,
+            `Preferred Mode: ${input.preferredMode}`,
             `Destination: ${input.preferredDestination}`,
             `Start: ${input.preferredStartMonth}`,
+            `Education Funding: ${input.educationFunding}`,
+            input.promoCode ? `Promotional Code: ${input.promoCode}` : "",
+            input.referredToWSA === "yes"
+              ? `Referred to WSA: Yes — ${input.referredByWhom || "—"}`
+              : input.referredToWSA
+                ? `Referred to WSA: ${input.referredToWSA}`
+                : "",
+            `Recommended Counsellor: ${input.recommendedCounsellor || "Help me choose"}`,
             result.reusedExistingPerson ? `\n(Matched an existing Pipedrive Person by email/phone — updated rather than duplicated.)` : "",
             ``,
             `Pipedrive Lead ID: ${result.leadId}`,
