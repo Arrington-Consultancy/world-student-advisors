@@ -291,12 +291,14 @@ function buildNote(data: StudentFormData): string {
 }
 
 /**
- * Create or reuse a Person and Lead in Pipedrive from the Sign-up Form.
+ * Create or reuse a Person and Deal in Pipedrive from the Sign-up Form.
  * Searches for an existing Person by email, then phone, before creating a
  * new one — avoids duplicate Person records for repeat submissions.
- * Leads appear in the Leads Inbox (evidenced current workflow — see
- * server/pipedrive.ts history notes; not switched to a Deal workflow without
- * direct evidence WSA staff require one).
+ * Creates a Deal (visible on the main pipeline board, where staff actually
+ * work) rather than a Lead (Leads Inbox) — switched 2026-08-05 after direct
+ * evidence that staff weren't seeing Leads-Inbox entries and were re-entering
+ * enquiries manually. No pipeline_id/stage_id is set, so new deals land in
+ * the account's default pipeline and first stage.
  */
 export async function createStudentLead(data: StudentFormData) {
   const existingPersonId = await findExistingPersonId(data.email, data.phone);
@@ -311,20 +313,20 @@ export async function createStudentLead(data: StudentFormData) {
     personId = created.data.id;
   }
 
-  const leadTitle = `${data.firstName} ${data.lastName} - ${levelLabels[data.desiredLevel] || data.desiredLevel}`;
+  const dealTitle = `${data.firstName} ${data.lastName} - ${levelLabels[data.desiredLevel] || data.desiredLevel}`;
 
-  const leadResult = await pipedriveRequest("/leads", "POST", {
-    title: leadTitle,
+  const dealResult = await pipedriveRequest("/deals", "POST", {
+    title: dealTitle,
     person_id: personId,
   });
 
-  const leadId = leadResult.data.id;
+  const dealId = dealResult.data.id;
 
   await pipedriveRequest("/notes", "POST", {
-    lead_id: leadId,
+    deal_id: dealId,
     content: buildNote(data),
-    pinned_to_lead_flag: 1,
+    pinned_to_deal_flag: 1,
   });
 
-  return { personId, leadId, reusedExistingPerson: Boolean(existingPersonId) };
+  return { personId, dealId, reusedExistingPerson: Boolean(existingPersonId) };
 }
