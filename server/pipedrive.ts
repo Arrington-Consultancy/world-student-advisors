@@ -27,6 +27,28 @@ interface StudentFormData {
   gdprConsent: boolean;
 }
 
+/**
+ * Thrown on any non-OK Pipedrive response. Carries a safe, credential-free
+ * summary (status, endpoint, truncated response body) so callers can surface
+ * genuinely diagnostic detail in a failure notification without ever risking
+ * the API token leaking — the token lives only in the request URL, which is
+ * never included here or in .message.
+ */
+export class PipedriveApiError extends Error {
+  readonly status: number;
+  readonly endpoint: string;
+  readonly safeDetail: string;
+
+  constructor(status: number, endpoint: string, responseBody: string) {
+    const safeDetail = responseBody.slice(0, 500);
+    super(`Pipedrive API error (${status}) on ${endpoint}: ${safeDetail}`);
+    this.name = "PipedriveApiError";
+    this.status = status;
+    this.endpoint = endpoint;
+    this.safeDetail = safeDetail;
+  }
+}
+
 async function pipedriveRequest(endpoint: string, method: string, body?: Record<string, unknown>) {
   const url = `${PIPEDRIVE_BASE}${endpoint}${endpoint.includes("?") ? "&" : "?"}api_token=${ENV.pipedriveApiToken}`;
   const response = await fetch(url, {
@@ -39,7 +61,7 @@ async function pipedriveRequest(endpoint: string, method: string, body?: Record<
     const errorText = await response.text();
     // Never include the request URL/token in thrown error text that might be logged upstream.
     console.error(`[Pipedrive] API error (${response.status}) on ${method} ${endpoint}: ${errorText}`);
-    throw new Error(`Pipedrive API error (${response.status}) on ${endpoint}`);
+    throw new PipedriveApiError(response.status, endpoint, errorText);
   }
 
   return response.json();
@@ -166,6 +188,56 @@ const COUNSELLOR_MAP: Record<string, number> = {
   "help-me-choose": 99, "Help me choose": 99, "": 99,
 };
 
+// ===== PIPEDRIVE USER (OWNER) IDS =====
+// Real Pipedrive user IDs — a completely different ID space from
+// COUNSELLOR_MAP above, which maps to option IDs on a display-only custom
+// field. These IDs are used for actual Lead/Person ownership and were
+// looked up live against the WSA Pipedrive account on 2026-08-06 (all five
+// confirmed active).
+const PIPEDRIVE_USER_IDS = {
+  tim: 25629968,
+  eldah: 25633444,
+  glenice: 25633433,
+  manet: 25633422,
+  sarafina: 25633455,
+} as const;
+
+const COUNSELLOR_OWNER_MAP: Record<string, { id: number; name: string }> = {
+  eldah: { id: PIPEDRIVE_USER_IDS.eldah, name: "Eldah Therone" },
+  "Eldah Therone": { id: PIPEDRIVE_USER_IDS.eldah, name: "Eldah Therone" },
+  Eldah: { id: PIPEDRIVE_USER_IDS.eldah, name: "Eldah Therone" },
+  glenice: { id: PIPEDRIVE_USER_IDS.glenice, name: "Glenice Owino" },
+  "Glenice Owino": { id: PIPEDRIVE_USER_IDS.glenice, name: "Glenice Owino" },
+  Glenice: { id: PIPEDRIVE_USER_IDS.glenice, name: "Glenice Owino" },
+  manet: { id: PIPEDRIVE_USER_IDS.manet, name: "Manet Khamayo" },
+  "Manet Khamayo": { id: PIPEDRIVE_USER_IDS.manet, name: "Manet Khamayo" },
+  Manet: { id: PIPEDRIVE_USER_IDS.manet, name: "Manet Khamayo" },
+  sarafina: { id: PIPEDRIVE_USER_IDS.sarafina, name: "Sarafina Kihumbu" },
+  "Sarafina Kihumbu": { id: PIPEDRIVE_USER_IDS.sarafina, name: "Sarafina Kihumbu" },
+  Sarafina: { id: PIPEDRIVE_USER_IDS.sarafina, name: "Sarafina Kihumbu" },
+};
+
+/** Owner assigned when no counsellor was selected — an explicit allocation
+ * queue, not a silent default. Both this user and Tim get added as
+ * followers on the Person record (see addPersonFollower) so allocation
+ * doesn't depend on one person's inbox. */
+const UNALLOCATED_OWNER = { id: PIPEDRIVE_USER_IDS.eldah, name: "Eldah Therone" };
+
+interface OwnerResolution {
+  ownerId: number;
+  ownerName: string;
+  needsAllocation: boolean;
+}
+
+/** Resolves a form's recommendedCounsellor value to a real Pipedrive owner. */
+function resolveOwner(recommendedCounsellor: string): OwnerResolution {
+  const selected = COUNSELLOR_OWNER_MAP[recommendedCounsellor];
+  if (selected) {
+    return { ownerId: selected.id, ownerName: selected.name, needsAllocation: false };
+  }
+  return { ownerId: UNALLOCATED_OWNER.id, ownerName: UNALLOCATED_OWNER.name, needsAllocation: true };
+}
+
 const levelLabels: Record<string, string> = {
   foundation: "Foundation / Pathway",
   hnd: "HND",
@@ -291,14 +363,43 @@ function buildNote(data: StudentFormData): string {
 }
 
 /**
- * Create or reuse a Person and Deal in Pipedrive from the Sign-up Form.
+ * Best-effort: adds a user as a follower on a Person record. Pipedrive's
+ * Leads API has no followers endpoint (confirmed against the official API
+ * docs 2026-08-06 — Persons/Deals/Organizations support followers, Leads do
+ * not), so this is the closest native mechanism for giving a second person
+ * Pipedrive-side visibility on an enquiry without making them the Lead
+ * owner. Never blocks or fails the submission — a follower-add failure
+ * (e.g. already following) is logged and swallowed.
+ */
+async function addPersonFollower(personId: number, userId: number): Promise<void> {
+  try {
+    await pipedriveRequest(`/persons/${personId}/followers`, "POST", { user_id: userId });
+  } catch (error) {
+    console.warn(
+      `[Pipedrive] Could not add follower ${userId} to person ${personId}:`,
+      error instanceof Error ? error.message : String(error)
+    );
+  }
+}
+
+/**
+ * Create or reuse a Person and Lead in Pipedrive from the Sign-up Form.
  * Searches for an existing Person by email, then phone, before creating a
  * new one — avoids duplicate Person records for repeat submissions.
- * Creates a Deal (visible on the main pipeline board, where staff actually
- * work) rather than a Lead (Leads Inbox) — switched 2026-08-05 after direct
- * evidence that staff weren't seeing Leads-Inbox entries and were re-entering
- * enquiries manually. No pipeline_id/stage_id is set, so new deals land in
- * the account's default pipeline and first stage.
+ *
+ * Creates a Lead (Leads Inbox), not a Deal — this is the correct, evidenced
+ * workflow; new enquiries become Deals only once the HUB team qualifies
+ * them. A brief period (2026-08-05/06) incorrectly switched this to Deals
+ * after "missing enquiries" turned out to be a Leads Inbox owner-filter
+ * issue, not a broken integration — see the explicit owner_id below, which
+ * is the actual fix.
+ *
+ * The Lead's owner_id is always set explicitly (never left to Pipedrive's
+ * default assignment, which is what caused enquiries to appear "missing" to
+ * staff filtering the Leads Inbox by their own name): the selected
+ * counsellor if one was chosen, otherwise Eldah Therone as the unallocated
+ * queue owner, with both Eldah and Tim Hunt added as Person-level followers
+ * so allocation doesn't depend on one person's inbox.
  */
 export async function createStudentLead(data: StudentFormData) {
   const existingPersonId = await findExistingPersonId(data.email, data.phone);
@@ -313,20 +414,35 @@ export async function createStudentLead(data: StudentFormData) {
     personId = created.data.id;
   }
 
-  const dealTitle = `${data.firstName} ${data.lastName} - ${levelLabels[data.desiredLevel] || data.desiredLevel}`;
+  const { ownerId, ownerName, needsAllocation } = resolveOwner(data.recommendedCounsellor);
 
-  const dealResult = await pipedriveRequest("/deals", "POST", {
-    title: dealTitle,
+  const leadTitle = `${data.firstName} ${data.lastName} - ${levelLabels[data.desiredLevel] || data.desiredLevel}`;
+
+  const leadResult = await pipedriveRequest("/leads", "POST", {
+    title: leadTitle,
     person_id: personId,
+    owner_id: ownerId,
   });
 
-  const dealId = dealResult.data.id;
+  const leadId: string = leadResult.data.id;
 
   await pipedriveRequest("/notes", "POST", {
-    deal_id: dealId,
+    lead_id: leadId,
     content: buildNote(data),
-    pinned_to_deal_flag: 1,
+    pinned_to_lead_flag: 1,
   });
 
-  return { personId, dealId, reusedExistingPerson: Boolean(existingPersonId) };
+  if (needsAllocation) {
+    await addPersonFollower(personId, PIPEDRIVE_USER_IDS.eldah);
+    await addPersonFollower(personId, PIPEDRIVE_USER_IDS.tim);
+  }
+
+  // Safe logging only — Person ID, Lead ID, owner, and a short API-result
+  // summary. Never the API token, never the full note/payload content.
+  console.log(
+    `[Pipedrive] Created Lead ${leadId} (person ${personId}) — owner: ${ownerName} (${ownerId})` +
+      (needsAllocation ? " [unallocated — Eldah + Tim notified as followers]" : "")
+  );
+
+  return { personId, leadId, ownerId, ownerName, needsAllocation, reusedExistingPerson: Boolean(existingPersonId) };
 }

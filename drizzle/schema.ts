@@ -38,8 +38,17 @@ export const portalUsers = mysqlTable("portal_users", {
   passwordHash: varchar("passwordHash", { length: 255 }),
   /** Pipedrive person ID linked at registration */
   pipedrivePersonId: int("pipedrivePersonId"),
-  /** Pipedrive deal ID linked at registration */
-  pipedriveDealId: int("pipedriveDealId"),
+  /**
+   * Which kind of Pipedrive object pipedriveObjectId refers to. "lead" for
+   * everything created going forward (Lead IDs are UUID strings); "deal"
+   * only appears on records created during the brief 2026-08-05/06 period
+   * when the workflow incorrectly created Deals (integer IDs) instead —
+   * preserved as-is by the migration that introduced this column, not
+   * discarded or reinterpreted.
+   */
+  pipedriveObjectType: varchar("pipedriveObjectType", { length: 10 }),
+  /** The Pipedrive Lead UUID or (for historical Deal-period rows) Deal ID, stored as text either way. */
+  pipedriveObjectId: varchar("pipedriveObjectId", { length: 64 }),
   /** Token for password creation/reset (hashed) */
   resetToken: varchar("resetToken", { length: 255 }),
   resetTokenExpiry: timestamp("resetTokenExpiry"),

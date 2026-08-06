@@ -3,7 +3,7 @@ import { notifyStaff, notifyInterviewCoachResult, sendApplicantConfirmation } fr
 import { systemRouter } from "./_core/systemRouter";
 import { publicProcedure, router } from "./_core/trpc";
 import { ENV } from "./_core/env";
-import { createStudentLead } from "./pipedrive";
+import { createStudentLead, PipedriveApiError } from "./pipedrive";
 import { recordFailedSubmission } from "./db";
 import { createPortalUser, authenticatePortalUser, setPasswordWithToken, requestPasswordReset, verifyPortalToken } from "./portal-auth";
 import { getSessionQuestions, assessAnswer, summariseSession, TYPE_LABELS } from "./interviewCoach";
@@ -59,7 +59,7 @@ export const appRouter = router({
         // Pipedrive/email either way, so skipping Turnstile here doesn't
         // weaken anything Turnstile is protecting.
         if (input.website) {
-          return { success: true as const, dealId: 0, portalToken: null };
+          return { success: true as const, leadId: "", portalToken: null };
         }
 
         await requireTurnstile(input.turnstileToken, ctx.req.ip);
@@ -84,6 +84,9 @@ export const appRouter = router({
 
           // Alert staff that a submission failed to save — separate from the
           // normal success notification, and never awaited-and-swallowed.
+          // Includes the safe (credential-free) Pipedrive API error detail
+          // when available, so staff can diagnose the actual cause
+          // immediately instead of just knowing "it failed".
           notifyStaff({
             title: `Sign-up FAILED to save: ${input.firstName} ${input.lastName}`,
             content: [
@@ -93,9 +96,12 @@ export const appRouter = router({
               `Email: ${input.email}`,
               `Phone: ${input.phone}`,
               `Desired Level: ${input.desiredLevel}`,
+              error instanceof PipedriveApiError
+                ? `\nPipedrive API error: ${error.status} on ${error.endpoint}\n${error.safeDetail}`
+                : "",
               ``,
               `The full submission has been preserved for retry (see failed_submissions table if the database is connected; otherwise check server logs for the timestamp above).`,
-            ].join("\n"),
+            ].filter(Boolean).join("\n"),
           }).catch(err => console.error("[Notification] Failed to send failure alert:", err));
 
           return {
@@ -113,7 +119,8 @@ export const appRouter = router({
             firstName: input.firstName,
             lastName: input.lastName,
             pipedrivePersonId: result.personId,
-            pipedriveDealId: result.dealId,
+            pipedriveObjectType: "lead" as const,
+            pipedriveObjectId: result.leadId,
           });
           portalToken = portalResult.token;
         } catch (e) {
@@ -126,9 +133,18 @@ export const appRouter = router({
 
         // Notify staff of the new sign-up. Never swallowed silently — a
         // failure here is logged even though it doesn't block the response.
+        // When no counsellor was selected, the title/content explicitly
+        // flags that allocation is required — the Lead's owner is Eldah as
+        // the allocation queue, but this makes the "needs a decision" state
+        // visible in the email itself too, not just implicit in who owns it.
         notifyStaff({
-          title: `New Student Enquiry: ${input.firstName} ${input.lastName} - ${input.desiredLevel}`,
+          title: result.needsAllocation
+            ? `New Student Enquiry (Needs Allocation): ${input.firstName} ${input.lastName} - ${input.desiredLevel}`
+            : `New Student Enquiry: ${input.firstName} ${input.lastName} - ${input.desiredLevel}`,
           content: [
+            result.needsAllocation
+              ? `No counsellor was selected — this enquiry needs allocating. Assigned to Eldah in Pipedrive for now; Tim and Eldah have both been added as followers on the Person record.\n`
+              : "",
             `Name: ${input.firstName} ${input.lastName}`,
             `Email: ${input.email}`,
             input.phone ? `Phone: ${input.phone}` : "",
@@ -153,7 +169,8 @@ export const appRouter = router({
             `Recommended Counsellor: ${input.recommendedCounsellor || "Help me choose"}`,
             result.reusedExistingPerson ? `\n(Matched an existing Pipedrive Person by email/phone — updated rather than duplicated.)` : "",
             ``,
-            `Pipedrive Deal ID: ${result.dealId}`,
+            `Pipedrive Lead ID: ${result.leadId}`,
+            `Assigned to: ${result.ownerName}`,
             portalSetupLink ? `\nPortal Setup Link: ${portalSetupLink}` : "",
           ].filter(Boolean).join("\n"),
         }).catch(err => console.error("[Notification] Failed to send staff notification:", err));
@@ -163,7 +180,7 @@ export const appRouter = router({
           console.error("[Notification] Failed to send applicant confirmation:", err)
         );
 
-        return { success: true as const, dealId: result.dealId, portalToken };
+        return { success: true as const, leadId: result.leadId, portalToken };
       }),
   }),
 

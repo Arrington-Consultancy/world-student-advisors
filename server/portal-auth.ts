@@ -18,7 +18,11 @@ export async function createPortalUser(data: {
   firstName: string;
   lastName: string;
   pipedrivePersonId: number;
-  pipedriveDealId: number;
+  /** "lead" for everything created going forward; the type/ID pair is
+   * intentionally decoupled from the DB column names so either a Lead UUID
+   * or a historical Deal integer ID can be stored safely. */
+  pipedriveObjectType: "lead" | "deal";
+  pipedriveObjectId: string;
 }) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
@@ -37,7 +41,8 @@ export async function createPortalUser(data: {
     firstName: data.firstName,
     lastName: data.lastName,
     pipedrivePersonId: data.pipedrivePersonId,
-    pipedriveDealId: data.pipedriveDealId,
+    pipedriveObjectType: data.pipedriveObjectType,
+    pipedriveObjectId: data.pipedriveObjectId,
   });
 
   const userId = result[0].insertId;

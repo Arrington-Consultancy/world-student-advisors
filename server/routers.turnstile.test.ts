@@ -1,9 +1,13 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
 import { TRPCError } from "@trpc/server";
 
-vi.mock("./pipedrive", () => ({
-  createStudentLead: vi.fn(),
-}));
+vi.mock("./pipedrive", async () => {
+  const actual = await vi.importActual<typeof import("./pipedrive")>("./pipedrive");
+  return {
+    ...actual,
+    createStudentLead: vi.fn(),
+  };
+});
 vi.mock("./_core/notification", () => ({
   notifyStaff: vi.fn().mockResolvedValue(true),
   notifyInterviewCoachResult: vi.fn().mockResolvedValue(true),
@@ -83,7 +87,14 @@ const validSignup = {
 
 beforeEach(() => {
   vi.clearAllMocks();
-  mockedCreateStudentLead.mockResolvedValue({ personId: 1, dealId: 42, reusedExistingPerson: false });
+  mockedCreateStudentLead.mockResolvedValue({
+    personId: 1,
+    leadId: "58be91f0-90c4-11f1-b0fa-7d61200439c7",
+    ownerId: 25633444,
+    ownerName: "Eldah Therone",
+    needsAllocation: false,
+    reusedExistingPerson: false,
+  });
 });
 
 describe("Turnstile gates contact.submitStudent", () => {
