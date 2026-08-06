@@ -47,12 +47,14 @@ const { createStudentLead } = await import("./pipedrive");
 const { notifyStaff } = await import("./_core/notification");
 const { getSessionQuestions, assessAnswer } = await import("./interviewCoach");
 const { requireTurnstile } = await import("./_core/turnstile");
+const { requestPasswordReset } = await import("./portal-auth");
 
 const mockedCreateStudentLead = vi.mocked(createStudentLead);
 const mockedNotifyStaff = vi.mocked(notifyStaff);
 const mockedGetSessionQuestions = vi.mocked(getSessionQuestions);
 const mockedAssessAnswer = vi.mocked(assessAnswer);
 const mockedRequireTurnstile = vi.mocked(requireTurnstile);
+const mockedRequestPasswordReset = vi.mocked(requestPasswordReset);
 
 function makeCaller() {
   const ctx = { req: { ip: "203.0.113.7" } as any, res: {} as any };
@@ -157,5 +159,31 @@ describe("Turnstile gates interviewCoach endpoints", () => {
     ).rejects.toThrow();
 
     expect(mockedAssessAnswer).not.toHaveBeenCalled();
+  });
+});
+
+describe("Turnstile gates portal.requestReset", () => {
+  it("never calls requestPasswordReset (no email sent) when Turnstile fails", async () => {
+    mockedRequireTurnstile.mockRejectedValue(
+      new TRPCError({ code: "BAD_REQUEST", message: "We couldn't verify you're human. Please try again." })
+    );
+
+    const caller = makeCaller();
+    await expect(
+      caller.portal.requestReset({ email: "student@example.com", turnstileToken: "bad" })
+    ).rejects.toThrow(/verify you're human/i);
+
+    expect(mockedRequestPasswordReset).not.toHaveBeenCalled();
+  });
+
+  it("calls requestPasswordReset once Turnstile verification succeeds", async () => {
+    mockedRequireTurnstile.mockResolvedValue(undefined);
+
+    const caller = makeCaller();
+    const result = await caller.portal.requestReset({ email: "student@example.com", turnstileToken: "ok" });
+
+    expect(result.success).toBe(true);
+    expect(mockedRequestPasswordReset).toHaveBeenCalledWith("student@example.com");
+    expect(mockedRequireTurnstile).toHaveBeenCalledWith("ok", "203.0.113.7");
   });
 });
