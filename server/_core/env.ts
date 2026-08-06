@@ -5,6 +5,7 @@ const DEFAULT_STAFF_NOTIFY_EMAILS = [
   "glenice@worldstudentadvisors.com",
   "manet@worldstudentadvisors.com",
   "tom@arringtonconsultancy.com",
+  "pipedrive@worldstudentadvisors.com",
 ];
 
 const staffNotifyEmails = (process.env.STAFF_NOTIFY_EMAILS ?? DEFAULT_STAFF_NOTIFY_EMAILS.join(","))
