@@ -2,7 +2,9 @@ import { ArrowRight, MapPin, Phone, Mail, CheckCircle, Loader2 } from "lucide-re
 import CountrySelect from "@/components/CountrySelect";
 import InternationalPhoneInput from "@/components/InternationalPhoneInput";
 import ScrollReveal from "@/components/ScrollReveal";
-import { useState } from "react";
+import TurnstileWidget, { type TurnstileWidgetHandle } from "@/components/TurnstileWidget";
+import { useTurnstileSiteKey } from "@/hooks/useTurnstileSiteKey";
+import { useRef, useState } from "react";
 import { trpc } from "@/lib/trpc";
 
 const offices = [
@@ -67,6 +69,9 @@ function StudentForm() {
   const [submitted, setSubmitted] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [turnstileToken, setTurnstileToken] = useState("");
+  const turnstileRef = useRef<TurnstileWidgetHandle>(null);
+  const turnstileSiteKey = useTurnstileSiteKey();
 
   const mutation = trpc.contact.submitStudent.useMutation({
     onSuccess: result => {
@@ -74,10 +79,14 @@ function StudentForm() {
         setSubmitted(true);
       } else {
         setSubmitError(result.error);
+        setTurnstileToken("");
+        turnstileRef.current?.reset();
       }
     },
-    onError: () => {
-      setSubmitError("Something went wrong. Please try again or contact us directly.");
+    onError: error => {
+      setSubmitError(error.message || "Something went wrong. Please try again or contact us directly.");
+      setTurnstileToken("");
+      turnstileRef.current?.reset();
     },
   });
 
@@ -107,7 +116,11 @@ function StudentForm() {
     setErrors(newErrors);
     if (Object.keys(newErrors).length > 0) return;
     if (mutation.isPending) return; // Prevent duplicate submissions
-    mutation.mutate(formData);
+    if (!turnstileToken) {
+      setSubmitError("Please complete the verification check below, then try again.");
+      return;
+    }
+    mutation.mutate({ ...formData, turnstileToken });
   };
 
   if (submitted) {
@@ -451,12 +464,19 @@ function StudentForm() {
           </label>
           {errors.gdprConsent && <p className="text-xs text-red-600 mt-1">{errors.gdprConsent}</p>}
         </div>
+        <TurnstileWidget
+          ref={turnstileRef}
+          siteKey={turnstileSiteKey}
+          onVerify={setTurnstileToken}
+          onExpire={() => setTurnstileToken("")}
+          onError={() => setTurnstileToken("")}
+        />
         {submitError && (
           <p className="text-sm text-red-600">{submitError}</p>
         )}
         <button
           type="submit"
-          disabled={mutation.isPending}
+          disabled={mutation.isPending || !turnstileToken}
           className="inline-flex items-center px-8 py-4 bg-wsa-red text-white font-semibold tracking-wide transition-all duration-200 hover:bg-wsa-red/90 active:scale-[0.98] disabled:opacity-60 disabled:cursor-not-allowed"
         >
           {mutation.isPending ? (

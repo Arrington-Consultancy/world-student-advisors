@@ -7,6 +7,10 @@ import { createStudentLead } from "./pipedrive";
 import { recordFailedSubmission } from "./db";
 import { createPortalUser, authenticatePortalUser, setPasswordWithToken, requestPasswordReset, verifyPortalToken } from "./portal-auth";
 import { getSessionQuestions, assessAnswer, summariseSession, TYPE_LABELS } from "./interviewCoach";
+import { requireTurnstile } from "./_core/turnstile";
+
+/** Shared by every Turnstile-protected mutation's input schema. */
+const turnstileField = { turnstileToken: z.string().min(1, "Verification required") };
 
 const studentSignupSchema = z.object({
   firstName: z.string().min(1),
@@ -33,6 +37,7 @@ const studentSignupSchema = z.object({
   gdprConsent: z.boolean(),
   /** Honeypot — real users never see or fill this field; bots often do. */
   website: z.string().optional().default(""),
+  ...turnstileField,
 });
 type StudentSignupInput = z.infer<typeof studentSignupSchema>;
 
@@ -47,12 +52,17 @@ export const appRouter = router({
   contact: router({
     submitStudent: publicProcedure
       .input(studentSignupSchema)
-      .mutation(async ({ input }) => {
+      .mutation(async ({ input, ctx }) => {
         // Honeypot tripped — pretend success without doing any real work,
-        // so bots get no signal that they were caught.
+        // so bots get no signal that they were caught. Cheaper than a
+        // network round-trip to Cloudflare, and this path never touches
+        // Pipedrive/email either way, so skipping Turnstile here doesn't
+        // weaken anything Turnstile is protecting.
         if (input.website) {
           return { success: true as const, dealId: 0, portalToken: null };
         }
+
+        await requireTurnstile(input.turnstileToken, ctx.req.ip);
 
         let result: Awaited<ReturnType<typeof createStudentLead>>;
         try {
@@ -181,8 +191,9 @@ export const appRouter = router({
       }),
 
     requestReset: publicProcedure
-      .input(z.object({ email: z.string().email() }))
-      .mutation(async ({ input }) => {
+      .input(z.object({ email: z.string().email(), ...turnstileField }))
+      .mutation(async ({ input, ctx }) => {
+        await requireTurnstile(input.turnstileToken, ctx.req.ip);
         const token = await requestPasswordReset(input.email);
         // Always return success to prevent email enumeration
         // In production, send the reset email here
@@ -216,9 +227,11 @@ export const appRouter = router({
           interviewType: z.enum(["cas", "ukvi", "university", "course"]),
           courseOrSubject: z.string().max(200).optional(),
           count: z.number().int().min(3).max(8).default(5),
+          ...turnstileField,
         }),
       )
-      .mutation(async ({ input }) => {
+      .mutation(async ({ input, ctx }) => {
+        await requireTurnstile(input.turnstileToken, ctx.req.ip);
         const questions = await getSessionQuestions(input.interviewType, input.courseOrSubject, input.count);
         return { success: true as const, questions };
       }),
@@ -239,9 +252,11 @@ export const appRouter = router({
           followUp: z
             .object({ question: z.string().max(1000), answer: z.string().max(5000) })
             .optional(),
+          ...turnstileField,
         }),
       )
-      .mutation(async ({ input }) => {
+      .mutation(async ({ input, ctx }) => {
+        await requireTurnstile(input.turnstileToken, ctx.req.ip);
         const assessment = await assessAnswer(input);
         return { success: true as const, assessment };
       }),
@@ -266,9 +281,11 @@ export const appRouter = router({
               }),
             )
             .min(1),
+          ...turnstileField,
         }),
       )
-      .mutation(({ input }) => {
+      .mutation(async ({ input, ctx }) => {
+        await requireTurnstile(input.turnstileToken, ctx.req.ip);
         const scores = input.results.map(r => r.score);
         const summary = summariseSession(scores);
 
