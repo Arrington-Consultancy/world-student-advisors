@@ -41,4 +41,8 @@ export const ENV = {
   microsoftClientId: process.env.MICROSOFT_CLIENT_ID ?? "",
   microsoftClientSecret: process.env.MICROSOFT_CLIENT_SECRET ?? "",
   microsoftSendAsMailbox: process.env.MICROSOFT_SEND_AS_MAILBOX ?? "tim.hunt@worldstudentadvisors.com",
+  /** Safe to expose to the client — served via system.turnstileSiteKey. */
+  turnstileSiteKey: process.env.TURNSTILE_SITE_KEY ?? "",
+  /** Server-only. Never send this to the client, log it, or include it in any response. */
+  turnstileSecretKey: process.env.TURNSTILE_SECRET_KEY ?? "",
 };

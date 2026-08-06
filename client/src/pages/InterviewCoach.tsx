@@ -1,8 +1,10 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { trpc } from "@/lib/trpc";
+import TurnstileWidget, { type TurnstileWidgetHandle } from "@/components/TurnstileWidget";
+import { useTurnstileSiteKey } from "@/hooks/useTurnstileSiteKey";
 import {
   Mic,
   ArrowLeft,
@@ -51,6 +53,9 @@ export default function InterviewCoach() {
   const [currentResult, setCurrentResult] = useState<QuestionResult | null>(null);
   const [summary, setSummary] = useState<{ averageScore: number; passed: boolean; readyForMockInterview: boolean } | null>(null);
   const [errorMsg, setErrorMsg] = useState("");
+  const [turnstileToken, setTurnstileToken] = useState("");
+  const turnstileRef = useRef<TurnstileWidgetHandle>(null);
+  const turnstileSiteKey = useTurnstileSiteKey();
 
   const startMutation = trpc.interviewCoach.startSession.useMutation();
   const submitMutation = trpc.interviewCoach.submitAnswer.useMutation();
@@ -58,14 +63,28 @@ export default function InterviewCoach() {
 
   const isValidEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
 
+  // Every protected call consumes the current token and immediately forces
+  // a fresh one for whatever comes next — a token is never reused across
+  // two submissions, whether the previous call succeeded or failed.
+  const consumeTurnstileToken = () => {
+    setTurnstileToken("");
+    turnstileRef.current?.reset();
+  };
+
   const startSession = () => {
     if (!isValidEmail) {
       setErrorMsg("Please enter a valid email address to begin.");
       return;
     }
+    if (!turnstileToken) {
+      setErrorMsg("Please complete the verification check below, then try again.");
+      return;
+    }
     setErrorMsg("");
+    const token = turnstileToken;
+    consumeTurnstileToken();
     startMutation.mutate(
-      { interviewType, courseOrSubject: courseOrSubject.trim() || undefined, count: 5 },
+      { interviewType, courseOrSubject: courseOrSubject.trim() || undefined, count: 5, turnstileToken: token },
       {
         onSuccess: (data) => {
           if (data.success && data.questions.length > 0) {
@@ -79,7 +98,7 @@ export default function InterviewCoach() {
             setErrorMsg("Could not start the practice session. Please try again.");
           }
         },
-        onError: () => setErrorMsg("Could not start the practice session. Please try again."),
+        onError: (error) => setErrorMsg(error.message || "Could not start the practice session. Please try again."),
       }
     );
   };
@@ -99,14 +118,21 @@ export default function InterviewCoach() {
   };
 
   const submitFirstAnswer = () => {
+    if (!turnstileToken) {
+      setErrorMsg("Verification check is still preparing — please wait a moment and try again.");
+      return;
+    }
     setErrorMsg("");
     setStage("assessing");
+    const token = turnstileToken;
+    consumeTurnstileToken();
     submitMutation.mutate(
       {
         interviewType,
         courseOrSubject: courseOrSubject.trim() || undefined,
         question: questions[currentIndex],
         answer,
+        turnstileToken: token,
       },
       {
         onSuccess: (data) => {
@@ -123,8 +149,8 @@ export default function InterviewCoach() {
             finalizeQuestion(data.assessment);
           }
         },
-        onError: () => {
-          setErrorMsg("Could not assess your answer. Please try again.");
+        onError: (error) => {
+          setErrorMsg(error.message || "Could not assess your answer. Please try again.");
           setStage("answering");
         },
       }
@@ -132,8 +158,14 @@ export default function InterviewCoach() {
   };
 
   const submitFollowUpAnswer = () => {
+    if (!turnstileToken) {
+      setErrorMsg("Verification check is still preparing — please wait a moment and try again.");
+      return;
+    }
     setErrorMsg("");
     setStage("assessing");
+    const token = turnstileToken;
+    consumeTurnstileToken();
     submitMutation.mutate(
       {
         interviewType,
@@ -141,6 +173,7 @@ export default function InterviewCoach() {
         question: questions[currentIndex],
         answer,
         followUp: { question: followUpQuestion, answer: followUpAnswer },
+        turnstileToken: token,
       },
       {
         onSuccess: (data) => {
@@ -151,8 +184,8 @@ export default function InterviewCoach() {
           }
           finalizeQuestion(data.assessment);
         },
-        onError: () => {
-          setErrorMsg("Could not assess your answer. Please try again.");
+        onError: (error) => {
+          setErrorMsg(error.message || "Could not assess your answer. Please try again.");
           setStage("followup");
         },
       }
@@ -171,13 +204,20 @@ export default function InterviewCoach() {
       return;
     }
 
+    if (!turnstileToken) {
+      setErrorMsg("Verification check is still preparing — please wait a moment and try again.");
+      return;
+    }
     setStage("assessing");
+    const token = turnstileToken;
+    consumeTurnstileToken();
     finishMutation.mutate(
       {
         email,
         interviewType,
         courseOrSubject: courseOrSubject.trim() || undefined,
         results: results.map((r) => ({ question: r.question, score: r.score })),
+        turnstileToken: token,
       },
       {
         onSuccess: (data) => {
@@ -189,8 +229,8 @@ export default function InterviewCoach() {
             setStage("question-result");
           }
         },
-        onError: () => {
-          setErrorMsg("Could not finalise your results. Please try again.");
+        onError: (error) => {
+          setErrorMsg(error.message || "Could not finalise your results. Please try again.");
           setStage("question-result");
         },
       }
@@ -208,6 +248,7 @@ export default function InterviewCoach() {
     setResults([]);
     setCurrentResult(null);
     setSummary(null);
+    consumeTurnstileToken();
     setErrorMsg("");
   };
 
@@ -286,7 +327,7 @@ export default function InterviewCoach() {
                 />
                 <Button
                   onClick={startSession}
-                  disabled={startMutation.isPending || !isValidEmail}
+                  disabled={startMutation.isPending || !isValidEmail || !turnstileToken}
                   className="bg-wsa-red hover:bg-wsa-red/90 text-white px-8 py-3 h-auto"
                 >
                   {startMutation.isPending ? (
@@ -352,7 +393,7 @@ export default function InterviewCoach() {
                     <Button
                       className="bg-wsa-red hover:bg-wsa-red/90 text-white"
                       onClick={submitFirstAnswer}
-                      disabled={!answer.trim() || isBusy}
+                      disabled={!answer.trim() || isBusy || !turnstileToken}
                     >
                       Submit answer <ArrowRight className="w-4 h-4 ml-1.5" />
                     </Button>
@@ -360,7 +401,7 @@ export default function InterviewCoach() {
                     <Button
                       className="bg-wsa-red hover:bg-wsa-red/90 text-white"
                       onClick={submitFollowUpAnswer}
-                      disabled={!followUpAnswer.trim() || isBusy}
+                      disabled={!followUpAnswer.trim() || isBusy || !turnstileToken}
                     >
                       Submit follow-up answer <ArrowRight className="w-4 h-4 ml-1.5" />
                     </Button>
@@ -450,7 +491,11 @@ export default function InterviewCoach() {
                   </div>
                 )}
 
-                <Button onClick={continueToNext} disabled={isBusy} className="bg-wsa-navy hover:bg-wsa-navy/90 text-white">
+                <Button
+                  onClick={continueToNext}
+                  disabled={isBusy || (currentIndex + 1 >= questions.length && !turnstileToken)}
+                  className="bg-wsa-navy hover:bg-wsa-navy/90 text-white"
+                >
                   {currentIndex + 1 < questions.length ? (
                     <>Next question <ArrowRight className="w-4 h-4 ml-1.5" /></>
                   ) : (
@@ -515,6 +560,17 @@ export default function InterviewCoach() {
                   <Button className="bg-wsa-navy hover:bg-wsa-navy/90 text-white">Back to Portal</Button>
                 </Link>
               </div>
+            )}
+
+            {stage !== "summary" && (
+              <TurnstileWidget
+                ref={turnstileRef}
+                siteKey={turnstileSiteKey}
+                onVerify={setTurnstileToken}
+                onExpire={() => setTurnstileToken("")}
+                onError={() => setTurnstileToken("")}
+                className="mt-6"
+              />
             )}
           </div>
         </div>
