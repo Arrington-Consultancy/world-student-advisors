@@ -1,12 +1,12 @@
 import { z } from "zod";
-import { notifyStaff, sendApplicantConfirmation } from "./_core/notification";
+import { notifyStaff, notifyInterviewCoachResult, sendApplicantConfirmation } from "./_core/notification";
 import { systemRouter } from "./_core/systemRouter";
 import { publicProcedure, router } from "./_core/trpc";
 import { ENV } from "./_core/env";
 import { createStudentLead } from "./pipedrive";
 import { recordFailedSubmission } from "./db";
 import { createPortalUser, authenticatePortalUser, setPasswordWithToken, requestPasswordReset, verifyPortalToken } from "./portal-auth";
-import { getSessionQuestions, assessAnswer, summariseSession } from "./interviewCoach";
+import { getSessionQuestions, assessAnswer, summariseSession, TYPE_LABELS } from "./interviewCoach";
 
 const studentSignupSchema = z.object({
   firstName: z.string().min(1),
@@ -249,10 +249,43 @@ export const appRouter = router({
     // Pure aggregation, no LLM call — averages the final score from every
     // substantive answer in the session and applies the 85% threshold that
     // gates progression to a live mock interview with a WSA Student Counsellor.
+    // Also emails the results to a fixed, smaller list (Tim, Eldah, Tom —
+    // see interviewCoachNotifyEmails in env.ts) on every completed session,
+    // not just passes.
     finishSession: publicProcedure
-      .input(z.object({ scores: z.array(z.number().min(0).max(100)).min(1) }))
+      .input(
+        z.object({
+          email: z.string().email(),
+          interviewType: z.enum(["cas", "ukvi", "university", "course"]),
+          courseOrSubject: z.string().max(200).optional(),
+          results: z
+            .array(
+              z.object({
+                question: z.string().max(1000),
+                score: z.number().min(0).max(100),
+              }),
+            )
+            .min(1),
+        }),
+      )
       .mutation(({ input }) => {
-        const summary = summariseSession(input.scores);
+        const scores = input.results.map(r => r.score);
+        const summary = summariseSession(scores);
+
+        notifyInterviewCoachResult({
+          title: `Interview Coach completed: ${input.email} - ${TYPE_LABELS[input.interviewType]}`,
+          content: [
+            `Email: ${input.email}`,
+            `Interview Type: ${TYPE_LABELS[input.interviewType]}`,
+            input.courseOrSubject ? `Course/Subject: ${input.courseOrSubject}` : "",
+            `Average Score: ${summary.averageScore}%`,
+            `Result: ${summary.passed ? "PASSED — ready for live mock interview" : "Below pass mark (85%)"}`,
+            ``,
+            `Per-question scores:`,
+            ...input.results.map((r, i) => `${i + 1}. [${r.score}%] ${r.question}`),
+          ].filter(Boolean).join("\n"),
+        }).catch(err => console.error("[Notification] Failed to send Interview Coach result email:", err));
+
         return { success: true as const, summary };
       }),
   }),

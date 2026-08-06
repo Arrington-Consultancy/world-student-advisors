@@ -39,6 +39,7 @@ interface QuestionResult {
 
 export default function InterviewCoach() {
   const [stage, setStage] = useState<Stage>("setup");
+  const [email, setEmail] = useState("");
   const [interviewType, setInterviewType] = useState<InterviewType>("cas");
   const [courseOrSubject, setCourseOrSubject] = useState("");
   const [questions, setQuestions] = useState<string[]>([]);
@@ -55,7 +56,13 @@ export default function InterviewCoach() {
   const submitMutation = trpc.interviewCoach.submitAnswer.useMutation();
   const finishMutation = trpc.interviewCoach.finishSession.useMutation();
 
+  const isValidEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
+
   const startSession = () => {
+    if (!isValidEmail) {
+      setErrorMsg("Please enter a valid email address to begin.");
+      return;
+    }
     setErrorMsg("");
     startMutation.mutate(
       { interviewType, courseOrSubject: courseOrSubject.trim() || undefined, count: 5 },
@@ -166,7 +173,12 @@ export default function InterviewCoach() {
 
     setStage("assessing");
     finishMutation.mutate(
-      { scores: results.map((r) => r.score) },
+      {
+        email,
+        interviewType,
+        courseOrSubject: courseOrSubject.trim() || undefined,
+        results: results.map((r) => ({ question: r.question, score: r.score })),
+      },
       {
         onSuccess: (data) => {
           if (data.success) {
@@ -187,6 +199,7 @@ export default function InterviewCoach() {
 
   const reset = () => {
     setStage("setup");
+    setEmail("");
     setQuestions([]);
     setCurrentIndex(0);
     setAnswer("");
@@ -234,6 +247,16 @@ export default function InterviewCoach() {
                     The coach asks one question at a time and marks honestly against a <strong>pass mark of 85%</strong>. If an answer is vague or too short, it will ask a follow-up before scoring — it will <strong>never give you model answers</strong>, because interviewers can spot rehearsed scripts. This prepares you for a live mock interview with your Student Counsellor — it doesn't replace one.
                   </span>
                 </div>
+                <label className="block text-sm font-medium text-wsa-navy mb-1.5">
+                  Your email address *
+                </label>
+                <input
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="you@example.com"
+                  className="w-full px-4 py-3 border border-gray-200 rounded-lg text-sm mb-6 focus:outline-none focus:ring-2 focus:ring-wsa-red/20 focus:border-wsa-red"
+                />
                 <h2 className="text-lg font-semibold text-wsa-navy mb-4">Choose your interview type</h2>
                 <div className="grid sm:grid-cols-2 gap-3 mb-6">
                   {INTERVIEW_TYPES.map((t) => (
@@ -263,7 +286,7 @@ export default function InterviewCoach() {
                 />
                 <Button
                   onClick={startSession}
-                  disabled={startMutation.isPending}
+                  disabled={startMutation.isPending || !isValidEmail}
                   className="bg-wsa-red hover:bg-wsa-red/90 text-white px-8 py-3 h-auto"
                 >
                   {startMutation.isPending ? (
