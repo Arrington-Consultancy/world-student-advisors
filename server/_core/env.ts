@@ -13,6 +13,17 @@ const staffNotifyEmails = (process.env.STAFF_NOTIFY_EMAILS ?? DEFAULT_STAFF_NOTI
   .map(s => s.trim())
   .filter(Boolean);
 
+const DEFAULT_INTERVIEW_COACH_NOTIFY_EMAILS = [
+  "tim.hunt@worldstudentadvisors.com",
+  "eldah@worldstudentadvisors.com",
+  "tom@arringtonconsultancy.com",
+];
+
+const interviewCoachNotifyEmails = (process.env.INTERVIEW_COACH_NOTIFY_EMAILS ?? DEFAULT_INTERVIEW_COACH_NOTIFY_EMAILS.join(","))
+  .split(",")
+  .map(s => s.trim())
+  .filter(Boolean);
+
 const publicSiteUrl =
   process.env.PUBLIC_SITE_URL ??
   (process.env.RAILWAY_PUBLIC_DOMAIN ? `https://${process.env.RAILWAY_PUBLIC_DOMAIN}` : "http://localhost:3000");
@@ -24,6 +35,7 @@ export const ENV = {
   anthropicApiKey: process.env.ANTHROPIC_API_KEY ?? "",
   pipedriveApiToken: process.env.PIPEDRIVE_API_TOKEN ?? "",
   staffNotifyEmails,
+  interviewCoachNotifyEmails,
   publicSiteUrl,
   microsoftTenantId: process.env.MICROSOFT_TENANT_ID ?? "",
   microsoftClientId: process.env.MICROSOFT_CLIENT_ID ?? "",

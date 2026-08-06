@@ -37,6 +37,29 @@ export async function notifyStaff(payload: NotificationPayload): Promise<boolean
 }
 
 /**
+ * Emails a fixed, smaller recipient list (server/_core/env.ts
+ * interviewCoachNotifyEmails — separate from the general staff list) the
+ * results of a completed AI Interview Coach session. Same delivery
+ * constraints as notifyStaff.
+ */
+export async function notifyInterviewCoachResult(payload: NotificationPayload): Promise<boolean> {
+  if (!isNonEmptyString(payload.title) || !isNonEmptyString(payload.content)) {
+    console.warn("[Notification] Missing title or content — skipping.");
+    return false;
+  }
+
+  if (ENV.interviewCoachNotifyEmails.length === 0) {
+    console.warn("[Notification] INTERVIEW_COACH_NOTIFY_EMAILS is empty — skipping:", payload.title);
+    return false;
+  }
+
+  const title = payload.title.trim().slice(0, TITLE_MAX_LENGTH);
+  const content = payload.content.trim().slice(0, CONTENT_MAX_LENGTH);
+
+  return sendGraphMail({ to: ENV.interviewCoachNotifyEmails, subject: title, text: content });
+}
+
+/**
  * Emails the applicant a plain confirmation that their sign-up was received,
  * via Microsoft Graph as ENV.microsoftSendAsMailbox. Same delivery
  * constraints as notifyStaff: returns false (never throws) if mail isn't
