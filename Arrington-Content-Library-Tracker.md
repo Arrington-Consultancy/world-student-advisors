@@ -150,7 +150,7 @@ No formal CGR taxonomy exists anywhere in Drive or in this session's accessible 
 | 13 | Serendipity Is Not a System | Tom, direct, this session — not sourced from Drive | Supplied essentially finished; no wording fixes needed. Sensitive material (a death, a coma) — nothing softened or dramatised beyond Tom's own text | Owner dependency; succession and key-person risk; business continuity |
 | 14 | Some People Are Worth the Risk | Tom, direct, this session — not sourced from Drive, direct continuation of piece 13 | Confidentiality question raised and resolved: the manager involved anonymised as "my manager" in both 13 and 14 (not named), equity detail kept in full per Tom's instruction, since it's central to the piece | Staff retention; delegation; equity and reward for key people |
 
-Handed to the website worker: pieces 1-5 in handover 01, pieces 11-12 in handover 02 — both delivered as Google Docs in the 09 Website folder and confirmed via content-snippet search (full read-back tool remains blocked by a permission gate, but snippet search independently confirmed both docs' content matches what was written). Pieces 13-14 not yet copied to Drive or added to a handover — logged in the repo only so far.
+Handed to the website worker: pieces 1-5 in handover 01, pieces 11-12 in handover 02, pieces 13-14 in handover 03 — all delivered as Google Docs in the 09 Website folder and confirmed via content-snippet search (full read-back tool remains blocked by a permission gate, but snippet search independently confirmed each doc's content matches what was written). Handover 03 carries a top-of-document confidentiality note covering both pieces' anonymisation requirement.
 
 ## Sweep results, most recent search round
 
