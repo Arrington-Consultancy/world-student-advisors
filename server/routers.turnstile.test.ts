@@ -83,7 +83,7 @@ const validSignup = {
 
 beforeEach(() => {
   vi.clearAllMocks();
-  mockedCreateStudentLead.mockResolvedValue({ personId: 1, dealId: 42, reusedExistingPerson: false });
+  mockedCreateStudentLead.mockResolvedValue({ personId: 1, leadId: "58be91f0-90c4-11f1-b0fa-7d61200439c7", reusedExistingPerson: false });
 });
 
 describe("Turnstile gates contact.submitStudent", () => {

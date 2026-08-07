@@ -59,7 +59,7 @@ export const appRouter = router({
         // Pipedrive/email either way, so skipping Turnstile here doesn't
         // weaken anything Turnstile is protecting.
         if (input.website) {
-          return { success: true as const, dealId: 0, portalToken: null };
+          return { success: true as const, leadId: "", portalToken: null };
         }
 
         await requireTurnstile(input.turnstileToken, ctx.req.ip);
@@ -108,12 +108,18 @@ export const appRouter = router({
         // best-effort: the sign-up itself already succeeded in Pipedrive.
         let portalToken: string | null = null;
         try {
+          // portal-auth.ts's schema/signature is intentionally untouched in
+          // this cut (no portal/database changes) — pipedriveDealId is still
+          // the field name it expects, so the Lead's (UUID) id is passed
+          // through it as before. This whole call throws immediately in
+          // production today (no DATABASE_URL, caught below), so nothing
+          // here is reachable either way.
           const portalResult = await createPortalUser({
             email: input.email,
             firstName: input.firstName,
             lastName: input.lastName,
             pipedrivePersonId: result.personId,
-            pipedriveDealId: result.dealId,
+            pipedriveDealId: result.leadId,
           });
           portalToken = portalResult.token;
         } catch (e) {
@@ -153,7 +159,7 @@ export const appRouter = router({
             `Recommended Counsellor: ${input.recommendedCounsellor || "Help me choose"}`,
             result.reusedExistingPerson ? `\n(Matched an existing Pipedrive Person by email/phone — updated rather than duplicated.)` : "",
             ``,
-            `Pipedrive Deal ID: ${result.dealId}`,
+            `Pipedrive Lead ID: ${result.leadId}`,
             portalSetupLink ? `\nPortal Setup Link: ${portalSetupLink}` : "",
           ].filter(Boolean).join("\n"),
         }).catch(err => console.error("[Notification] Failed to send staff notification:", err));
@@ -163,7 +169,7 @@ export const appRouter = router({
           console.error("[Notification] Failed to send applicant confirmation:", err)
         );
 
-        return { success: true as const, dealId: result.dealId, portalToken };
+        return { success: true as const, leadId: result.leadId, portalToken };
       }),
   }),
 
