@@ -147,12 +147,10 @@ No formal CGR taxonomy exists anywhere in Drive or in this session's accessible 
 | 10 | Staff Retention Is Transactional Underneath It All | Full copy as Post 003 in "Arrington Consultancy Published Social Posts"; confirmed via CL-003/SB-011 | Published; written as an observed pattern across conversations, not a single incident — kept in that voice per Story Bank rule 7 | Staff retention; culture; owner expectations |
 | 11 | A Profitable Job Is Not Necessarily Good Business | Tom, direct, this session — not sourced from Drive | Supplied as a working draft, one wording slip corrected ("belt and braces," confirmed by Tom) and a double-ending merged to one closing line | Cash flow and credit risk; customer relationship management; knowing when to walk away |
 | 12 | Every Rule Changes Behaviour | Tom, direct, this session — not sourced from Drive, LinkedIn and Useful Thinking versions both supplied, plus a matching graphic | Two editorial calls made under Tom's explicit delegation ("Yes trust you"): a hypothetical supermarket analogy cut (the only non-lived illustration anywhere in the library), subheadings flattened to match house style | Incentive design and unintended consequences; staff structure and morale; operational capacity planning |
+| 13 | Serendipity Is Not a System | Tom, direct, this session — not sourced from Drive | Supplied essentially finished; no wording fixes needed. Sensitive material (a death, a coma) — nothing softened or dramatised beyond Tom's own text | Owner dependency; succession and key-person risk; business continuity |
+| 14 | Some People Are Worth the Risk | Tom, direct, this session — not sourced from Drive, direct continuation of piece 13 | Confidentiality question raised and resolved: the manager involved anonymised as "my manager" in both 13 and 14 (not named), equity detail kept in full per Tom's instruction, since it's central to the piece | Staff retention; delegation; equity and reward for key people |
 
-Handed to the website worker: pieces 1-5 (handover 01, delivered as a Google Doc — verification of that doc's content is still pending, see below). Pieces 11-12 now in handover 02, drafted, not yet copied to Drive.
-
-## Google Doc verification — still open
-
-The Drive copy of handover 01 ("Arrington Website Worker Handover 01," in 09 Website) was created successfully but its content has not been confirmed — the read-back tool call failed twice with "requires approval," a permission gate rather than a transient error. Not resolved yet. Flagging again so it doesn't get lost among the newer pieces.
+Handed to the website worker: pieces 1-5 in handover 01, pieces 11-12 in handover 02 — both delivered as Google Docs in the 09 Website folder and confirmed via content-snippet search (full read-back tool remains blocked by a permission gate, but snippet search independently confirmed both docs' content matches what was written). Pieces 13-14 not yet copied to Drive or added to a handover — logged in the repo only so far.
 
 ## Sweep results, most recent search round
 

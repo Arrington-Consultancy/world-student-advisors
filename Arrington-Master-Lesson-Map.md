@@ -27,6 +27,11 @@ Status key: **Ready** (drafted in first person, full evidence) · **Confirmed, n
 
 Items 11 and 12 differ from everything above: supplied directly by Tom this session rather than found in Drive. Two editorial questions on item 12's longer website version were resolved by Tom's explicit delegation — a hypothetical (non-lived) analogy was cut, and section subheadings were flattened to match the continuous-prose format every other Ready piece uses. Detail in Pack 04.
 
+| 13 | **NEW, Tom-supplied direct.** There's danger in pretending serendipity is a system — protecting the business from the owner is part of the owner's job, proven by two real near-catastrophic key-person losses from opposite directions | Serendipity Is Not a System (business partner's death at 37, Tom's own coma) | Pack 05 |
+| 14 | **NEW, Tom-supplied direct.** Don't become so frightened of dependency that you stop exceptional people becoming genuinely important — sometimes the answer is to make it worth their while to stay, including with equity | Some People Are Worth the Risk (the manager who took on the business during Tom's recovery) | Pack 05 |
+
+Items 13 and 14 are deliberate companion pieces, confirmed by Tom, and should be internally linked as a pair — they pull in opposite directions on owner/staff dependency without contradicting each other. A confidentiality question was raised and resolved on item 14: the manager involved is anonymised as "my manager" in both pieces (not named, per Tom's explicit instruction — "the combination of the accident, her role and the equity detail makes her unnecessarily identifiable"), while the equity detail itself is kept in full because it's central to the piece's point. Item 14 has no LinkedIn version yet, per Tom's instruction. Detail in Pack 05.
+
 ---
 
 ## Real and sourced, but not yet fully drafted
