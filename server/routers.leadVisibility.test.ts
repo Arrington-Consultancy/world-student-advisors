@@ -79,11 +79,11 @@ describe("Recommended Counsellor visibility in the staff email", () => {
     expect(payload.content).toContain("Recommended Counsellor: Eldah Therone");
   });
 
-  it("labels an unselected counsellor as 'Help me choose' in both subject and body", async () => {
+  it("labels an unselected counsellor as 'Unallocated' (never 'None') in both subject and body", async () => {
     mockedCreateStudentLead.mockResolvedValue({
       personId: 1,
       leadId: "lead-uuid-2",
-      recommendedCounsellorLabel: "Help me choose",
+      recommendedCounsellorLabel: "Unallocated",
       reusedExistingPerson: false,
     });
 
@@ -91,8 +91,10 @@ describe("Recommended Counsellor visibility in the staff email", () => {
     await caller.contact.submitStudent({ ...validSignup, recommendedCounsellor: "" });
 
     const payload = mockedNotifyStaff.mock.calls[0][0];
-    expect(payload.title).toContain("Rec: Help me choose");
-    expect(payload.content).toContain("Recommended Counsellor: Help me choose");
+    expect(payload.title).toContain("Rec: Unallocated");
+    expect(payload.content).toContain("Recommended Counsellor: Unallocated");
+    expect(payload.title).not.toContain("None");
+    expect(payload.content).not.toContain("Recommended Counsellor: None");
   });
 
   it("never claims the recommended counsellor is the Lead's owner anywhere in the email", async () => {

@@ -176,8 +176,11 @@ const COUNSELLOR_LABELS: Record<string, string> = {
   sarafina: "Sarafina Kihumbu",
 };
 
+/** "Unallocated", not "None" — no counsellor was selected, which is a
+ * distinct, meaningful state (not an absence of information) and reads
+ * that way in the Lead title and staff email. */
 function resolveCounsellorLabel(recommendedCounsellor: string): string {
-  return COUNSELLOR_LABELS[recommendedCounsellor] ?? "Help me choose";
+  return COUNSELLOR_LABELS[recommendedCounsellor] ?? "Unallocated";
 }
 
 // ===== FOLLOWER USER IDS — visibility only, NOT ownership =====

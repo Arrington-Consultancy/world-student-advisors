@@ -147,14 +147,16 @@ describe("createStudentLead — Leads only, no owner/allocation logic", () => {
     expect(leadCreates[0].body.title).toContain("[Rec: Sarafina Kihumbu]");
   });
 
-  it("labels an empty recommendedCounsellor as 'Help me choose', in both the title and the return value", async () => {
+  it("labels an empty recommendedCounsellor as 'Unallocated' (never 'None'), in both the title and the return value", async () => {
     const calls = installMockFetch();
 
     const result = await createStudentLead({ ...baseData, recommendedCounsellor: "" });
 
-    expect(result.recommendedCounsellorLabel).toBe("Help me choose");
+    expect(result.recommendedCounsellorLabel).toBe("Unallocated");
+    expect(result.recommendedCounsellorLabel).not.toBe("None");
     const leadCreates = callsTo(calls, "/leads", "POST");
-    expect(leadCreates[0].body.title).toContain("[Rec: Help me choose]");
+    expect(leadCreates[0].body.title).toContain("[Rec: Unallocated]");
+    expect(leadCreates[0].body.title).not.toContain("None");
   });
 
   it("still sets the recommendedCounsellor Person custom field exactly as before, unrelated to ownership", async () => {
