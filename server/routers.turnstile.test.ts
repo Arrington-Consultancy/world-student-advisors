@@ -12,6 +12,8 @@ vi.mock("./_core/notification", () => ({
   notifyStaff: vi.fn().mockResolvedValue(true),
   notifyInterviewCoachResult: vi.fn().mockResolvedValue(true),
   sendApplicantConfirmation: vi.fn().mockResolvedValue(true),
+  sendPortalSetupEmail: vi.fn().mockResolvedValue(true),
+  sendPasswordResetEmail: vi.fn().mockResolvedValue(true),
 }));
 vi.mock("./db", () => ({
   recordFailedSubmission: vi.fn().mockResolvedValue(undefined),

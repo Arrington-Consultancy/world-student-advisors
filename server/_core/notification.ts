@@ -86,3 +86,72 @@ export async function sendApplicantConfirmation(to: string, firstName: string): 
     ].join("\n"),
   });
 }
+
+/**
+ * Emails the applicant their one-time Student Portal setup link, via
+ * Microsoft Graph as ENV.microsoftSendAsMailbox. `setupLink` must already
+ * contain the raw token as a query param — this function only formats and
+ * sends, it never logs the link or token itself. Same delivery constraints
+ * as notifyStaff: returns false (never throws) if mail isn't configured or
+ * the send fails, so a failure here can never block the sign-up response.
+ */
+export async function sendPortalSetupEmail(to: string, firstName: string, setupLink: string): Promise<boolean> {
+  if (!isNonEmptyString(to)) {
+    console.warn("[Notification] Cannot send portal setup email — missing address.");
+    return false;
+  }
+
+  return sendGraphMail({
+    to: [to],
+    subject: "Set up your WorldStudentAdvisors Student Portal account",
+    text: [
+      `Hi ${firstName || "there"},`,
+      ``,
+      `Your WorldStudentAdvisors Student Portal account is ready. Set your password to get started:`,
+      ``,
+      setupLink,
+      ``,
+      `This link expires in 24 hours.`,
+      ``,
+      `If you didn't request this, you can safely ignore this email.`,
+      ``,
+      `WorldStudentAdvisors`,
+    ].join("\n"),
+  });
+}
+
+/**
+ * Emails the applicant a password reset link, via Microsoft Graph as
+ * ENV.microsoftSendAsMailbox. `resetLink` must already contain the raw
+ * token as a query param — this function only formats and sends, it never
+ * logs the link or token itself. Same delivery constraints as notifyStaff:
+ * returns false (never throws) if mail isn't configured or the send fails.
+ * Callers must not let a false return change the response given to the
+ * requester — this is only ever called after account existence has already
+ * been checked internally, and the requester-facing response must stay
+ * identical whether or not an account exists or this send succeeds.
+ */
+export async function sendPasswordResetEmail(to: string, firstName: string, resetLink: string): Promise<boolean> {
+  if (!isNonEmptyString(to)) {
+    console.warn("[Notification] Cannot send password reset email — missing address.");
+    return false;
+  }
+
+  return sendGraphMail({
+    to: [to],
+    subject: "Reset your WorldStudentAdvisors Student Portal password",
+    text: [
+      `Hi ${firstName || "there"},`,
+      ``,
+      `We received a request to reset your Student Portal password. Choose a new password here:`,
+      ``,
+      resetLink,
+      ``,
+      `This link expires in 24 hours.`,
+      ``,
+      `If you didn't request this, you can safely ignore this email — your password won't change.`,
+      ``,
+      `WorldStudentAdvisors`,
+    ].join("\n"),
+  });
+}

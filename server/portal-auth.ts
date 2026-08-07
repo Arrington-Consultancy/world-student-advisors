@@ -159,9 +159,11 @@ export async function verifyPortalToken(
 }
 
 /**
- * Request password reset - generates token for existing user
+ * Request password reset - generates token for existing user. Returns null
+ * for both "no database" and "no such account" so the caller can give an
+ * identical anti-enumeration response either way.
  */
-export async function requestPasswordReset(email: string): Promise<string | null> {
+export async function requestPasswordReset(email: string): Promise<{ token: string; firstName: string } | null> {
   const db = await getDb();
   if (!db) return null;
 
@@ -169,5 +171,5 @@ export async function requestPasswordReset(email: string): Promise<string | null
   if (!user.length) return null;
 
   const token = await generateResetToken(email.toLowerCase());
-  return token;
+  return { token, firstName: user[0].firstName };
 }
