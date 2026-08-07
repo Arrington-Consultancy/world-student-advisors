@@ -166,6 +166,54 @@ const COUNSELLOR_MAP: Record<string, number> = {
   "help-me-choose": 99, "Help me choose": 99, "": 99,
 };
 
+/** Display-only label for the recommendedCounsellor form value (a slug like
+ * "eldah") — used to make the selection immediately readable in the Lead
+ * title and staff email, nowhere else. Not a Pipedrive ID of any kind. */
+const COUNSELLOR_LABELS: Record<string, string> = {
+  eldah: "Eldah Therone",
+  glenice: "Glenice Owino",
+  manet: "Manet Khamayo",
+  sarafina: "Sarafina Kihumbu",
+};
+
+function resolveCounsellorLabel(recommendedCounsellor: string): string {
+  return COUNSELLOR_LABELS[recommendedCounsellor] ?? "Help me choose";
+}
+
+// ===== FOLLOWER USER IDS — visibility only, NOT ownership =====
+// Real Pipedrive user IDs, used exclusively to add Tim and Eldah as
+// followers on the Person record for every enquiry, so both have
+// standing visibility on every new Lead regardless of who or what
+// Pipedrive assigns as its owner. This is deliberately not owner_id and
+// not an allocation mechanism: no Lead created by this codebase has ever
+// had an explicit owner set. The mechanism that currently assigns Lead
+// ownership is not yet understood (see createStudentLead's doc comment),
+// and this must not become a second, competing one — a follower has
+// visibility on the record, nothing more.
+const FOLLOWER_USER_IDS = {
+  tim: 25629968,
+  eldah: 25633444,
+} as const;
+
+/**
+ * Best-effort: adds a user as a follower on a Person record. Pipedrive's
+ * Leads API has no followers endpoint (confirmed against the official API
+ * docs), so this is the closest native mechanism for giving someone
+ * Pipedrive-side visibility on an enquiry without making them the Lead
+ * owner. Never blocks or fails the submission — a follower-add failure
+ * (e.g. already following) is logged and swallowed.
+ */
+async function addPersonFollower(personId: number, userId: number): Promise<void> {
+  try {
+    await pipedriveRequest(`/persons/${personId}/followers`, "POST", { user_id: userId });
+  } catch (error) {
+    console.warn(
+      `[Pipedrive] Could not add follower ${userId} to person ${personId}:`,
+      error instanceof Error ? error.message : String(error)
+    );
+  }
+}
+
 const levelLabels: Record<string, string> = {
   foundation: "Foundation / Pathway",
   hnd: "HND",
@@ -301,12 +349,21 @@ function buildNote(data: StudentFormData): string {
  * Pipedrive successfully the whole time. Reverted here without introducing
  * any explicit owner/assignment logic: it is not yet established what
  * currently allocates genuine website Leads across counsellors (Pipedrive
- * automation and/or staff workflow, per real Pipedrive-export evidence —
- * this code has never set an owner on any Lead, at any point in its
- * history), and a second, competing allocation mechanism must not be
- * introduced until that's understood. person_id and the existing
- * recommendedCounsellor custom field (COUNSELLOR_MAP, unchanged) are set
- * exactly as before; no owner_id is set on the Lead.
+ * automation and/or staff workflow — a live labelled test on 2026-08-07
+ * showed a Lead land owned by Tim Hunt despite Eldah being the selection,
+ * proving this codebase's silence on owner_id isn't the cause), and a
+ * second, competing allocation mechanism must not be introduced until
+ * that's understood. person_id and the existing recommendedCounsellor
+ * custom field (COUNSELLOR_MAP, unchanged) are set exactly as before; no
+ * owner_id is set on the Lead.
+ *
+ * Two visibility-only additions on top of that, neither touching
+ * ownership: the Lead title now includes the recommended counsellor's
+ * name so it's readable straight from the Leads Inbox list view, and Tim
+ * and Eldah are both added as Person followers on every enquiry (not just
+ * an unallocated case — Pipedrive's Leads API has no followers endpoint,
+ * confirmed against the official docs, so this is the closest native
+ * mechanism for standing visibility regardless of who ends up owning it).
  */
 export async function createStudentLead(data: StudentFormData) {
   const existingPersonId = await findExistingPersonId(data.email, data.phone);
@@ -321,7 +378,8 @@ export async function createStudentLead(data: StudentFormData) {
     personId = created.data.id;
   }
 
-  const leadTitle = `${data.firstName} ${data.lastName} - ${levelLabels[data.desiredLevel] || data.desiredLevel}`;
+  const recommendedCounsellorLabel = resolveCounsellorLabel(data.recommendedCounsellor);
+  const leadTitle = `${data.firstName} ${data.lastName} - ${levelLabels[data.desiredLevel] || data.desiredLevel} [Rec: ${recommendedCounsellorLabel}]`;
 
   const leadResult = await pipedriveRequest("/leads", "POST", {
     title: leadTitle,
@@ -336,5 +394,8 @@ export async function createStudentLead(data: StudentFormData) {
     pinned_to_lead_flag: 1,
   });
 
-  return { personId, leadId, reusedExistingPerson: Boolean(existingPersonId) };
+  await addPersonFollower(personId, FOLLOWER_USER_IDS.tim);
+  await addPersonFollower(personId, FOLLOWER_USER_IDS.eldah);
+
+  return { personId, leadId, recommendedCounsellorLabel, reusedExistingPerson: Boolean(existingPersonId) };
 }
