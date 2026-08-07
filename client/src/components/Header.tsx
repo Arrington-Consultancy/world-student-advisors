@@ -2,14 +2,18 @@ import { useState, useEffect } from "react";
 import { Link, useLocation } from "wouter";
 import { Menu, X } from "lucide-react";
 
+// Study Options leads first (the main student action route). About is
+// deprioritised, not removed. Contact is intentionally not listed here — it
+// pointed to the exact same /contact destination as the "Get Started" button
+// below, so it was a duplicate entry rather than a distinct page; /contact
+// itself is untouched and still reachable via Get Started.
 const navItems = [
-  { label: "About", href: "/about" },
   { label: "Study Options", href: "/study-options" },
   { label: "Educational Partners", href: "/partners" },
   { label: "Counsellors", href: "/counsellors" },
   { label: "Learning Hub", href: "/learning-hub" },
   { label: "Events", href: "/events" },
-  { label: "Contact", href: "/contact" },
+  { label: "About", href: "/about" },
   { label: "Student Portal", href: "/portal" },
 ];
 

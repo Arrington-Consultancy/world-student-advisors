@@ -20,6 +20,57 @@ import { useState, useEffect, useCallback } from "react";
  * 8. No invented content, all verified or clearly labelled as placeholder
  */
 
+/**
+ * All 16 Student Journey stages, grouped into 5 phases for presentation only —
+ * every original stage is preserved verbatim and numbered 1-16 in sequence.
+ * See CAS/UKVI/Uni Interview in particular: kept separate deliberately, since
+ * the AI Interview Coach treats these as three genuinely different interview
+ * types requiring different preparation, not redundant labels.
+ */
+const journeyPhases = [
+  {
+    phase: "Getting started",
+    steps: [
+      { n: 1, label: "Relationship Building" },
+      { n: 2, label: "Career Discussion" },
+    ],
+  },
+  {
+    phase: "Choosing your path",
+    steps: [
+      { n: 3, label: "Country Choice" },
+      { n: 4, label: "Course Choice" },
+      { n: 5, label: "University Choice" },
+      { n: 6, label: "Budget Discussion" },
+    ],
+  },
+  {
+    phase: "Securing your place",
+    steps: [
+      { n: 7, label: "Conditional Offer" },
+      { n: 8, label: "Meeting Conditions" },
+      { n: 9, label: "Unconditional Offer" },
+    ],
+  },
+  {
+    phase: "Visa & interviews",
+    steps: [
+      { n: 10, label: "CAS" },
+      { n: 11, label: "CAS Interview" },
+      { n: 12, label: "UKVI Interview" },
+      { n: 13, label: "Uni Interview" },
+    ],
+  },
+  {
+    phase: "Ready to go",
+    steps: [
+      { n: 14, label: "Visa Application" },
+      { n: 15, label: "Travel Prep" },
+      { n: 16, label: "Enrolment" },
+    ],
+  },
+];
+
 export default function Home() {
   const [videoPlaying, setVideoPlaying] = useState(false);
   const [activeSlide, setActiveSlide] = useState(0);
@@ -168,7 +219,7 @@ export default function Home() {
               "Local staff available",
               "5.0 Google rating",
             ].map((item) => (
-              <span key={item} className="flex items-center gap-2.5 text-sm text-wsa-navy/80 font-medium">
+              <span key={item} className="flex items-center gap-2.5 text-sm lg:text-base text-wsa-navy/80 font-medium">
                 <svg className="w-5 h-5 text-wsa-red flex-shrink-0" viewBox="0 0 20 20" fill="currentColor">
                   <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
                 </svg>
@@ -518,12 +569,12 @@ export default function Home() {
               {[
                 { src: "/manus-storage/into_global_dd630efe.png", alt: "INTO Global" },
                 { src: "/manus-storage/oncampus_6bd095a4.png", alt: "ONCAMPUS" },
-                { src: "/manus-storage/oxford_international_2d3e6536.jpg", alt: "Oxford International" },
+                { src: "/manus-storage/oxford_international_2d3e6536.jpg", alt: "Oxford International Education" },
                 { src: "/manus-storage/study_group_8ee9a299.jpg", alt: "Study Group" },
-                { src: "/manus-storage/fcv_academy_ef4cfccd.png", alt: "FCV Academy" },
-                { src: "/manus-storage/hartpury_78473937.jpg", alt: "Hartpury" },
-                { src: "/manus-storage/ncg_3a880115.png", alt: "NCG" },
-                { src: "/manus-storage/royal_holloway_df8182a0.png", alt: "Royal Holloway" },
+                { src: "/manus-storage/fcv_academy_ef4cfccd.png", alt: "FCV International Football Academy" },
+                { src: "/manus-storage/hartpury_78473937.jpg", alt: "Hartpury University" },
+                { src: "/manus-storage/ncg_3a880115.png", alt: "New College Group (NCG)" },
+                { src: "/manus-storage/royal_holloway_df8182a0.png", alt: "Royal Holloway, University of London" },
                 { src: "/manus-storage/university_of_greenwich_b554e4c5.png", alt: "University of Greenwich" },
                 { src: "/manus-storage/uni_portsmouth_8111efe4.png", alt: "University of Portsmouth" },
                 { src: "/manus-storage/birmingham_city_university_final_a71309ee.png", alt: "Birmingham City University" },
@@ -600,16 +651,16 @@ export default function Home() {
               </div>
             </ScrollReveal>
             <ScrollReveal delay={80}>
-              <div className="relative">
+              <Link href="/learning-hub/podcasts" className="relative block group">
                 <img
                   src="/manus-storage/youtube_thumb_student_journey_a742c8be.jpg"
                   alt="WSA Learning Hub resources"
-                  className="w-full aspect-[4/3] object-cover"
+                  className="w-full aspect-video object-cover transition-opacity duration-200 group-hover:opacity-90"
                 />
                 <div className="absolute bottom-0 left-0 right-0 p-6 bg-gradient-to-t from-black/70 to-transparent">
                   <p className="text-white text-sm font-medium">Latest: The Student Journey podcast with Tim Hunt</p>
                 </div>
-              </div>
+              </Link>
             </ScrollReveal>
           </div>
         </div>
@@ -625,7 +676,7 @@ export default function Home() {
           <ScrollReveal>
             <div className="max-w-3xl mx-auto text-center mb-16 lg:mb-20">
               <h2 className="text-3xl md:text-4xl lg:text-[2.75rem] font-semibold text-white leading-[1.15]">
-                Why families trust WSA
+                Why families trust us
               </h2>
             </div>
           </ScrollReveal>
@@ -687,36 +738,31 @@ export default function Home() {
               </p>
             </div>
           </ScrollReveal>
-          <ScrollReveal delay={100}>
-            <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-3">
-              {[
-                "Relationship Building",
-                "Career Discussion",
-                "Country Choice",
-                "Course Choice",
-                "University Choice",
-                "Budget Discussion",
-                "Conditional Offer",
-                "Meeting Conditions",
-                "Unconditional Offer",
-                "CAS",
-                "CAS Interview",
-                "UKVI Interview",
-                "Uni Interview",
-                "Visa Application",
-                "Travel Prep",
-                "Enrolment",
-              ].map((stage, i) => (
-                <div
-                  key={i}
-                  className="text-center p-3 rounded-xl bg-white border border-gray-200 shadow-sm hover:shadow-md hover:border-wsa-red/30 transition-all duration-200"
-                >
-                  <div className="text-sm font-bold text-wsa-red mb-1">{i + 1}</div>
-                  <div className="text-xs text-gray-700 leading-tight font-medium">{stage}</div>
+          <div className="space-y-8">
+            {journeyPhases.map((group, gi) => (
+              <ScrollReveal key={group.phase} delay={100 + gi * 60}>
+                <div>
+                  <div className="flex items-center gap-3 mb-4">
+                    <span className="text-xs font-bold tracking-[0.15em] uppercase text-wsa-red whitespace-nowrap">
+                      {group.phase}
+                    </span>
+                    <span className="flex-1 h-px bg-gray-200" aria-hidden="true" />
+                  </div>
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                    {group.steps.map((step) => (
+                      <div
+                        key={step.n}
+                        className="text-center p-4 rounded-xl bg-white border border-gray-200 shadow-sm hover:shadow-md hover:border-wsa-red/30 transition-all duration-200"
+                      >
+                        <div className="text-sm font-bold text-wsa-red mb-1">{step.n}</div>
+                        <div className="text-xs text-gray-700 leading-tight font-medium">{step.label}</div>
+                      </div>
+                    ))}
+                  </div>
                 </div>
-              ))}
-            </div>
-          </ScrollReveal>
+              </ScrollReveal>
+            ))}
+          </div>
           <ScrollReveal delay={200}>
             <div className="text-center mt-10">
               <Link href="/contact" className="inline-flex items-center gap-2 text-wsa-red font-semibold hover:underline">
