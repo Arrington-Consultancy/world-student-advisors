@@ -6,11 +6,11 @@ name: Production DB read-only diagnostic
 # connection method server/db.ts uses. Prints column metadata only —
 # never row data, never DATABASE_URL or any secret value.
 #
-# Auth: RAILWAY_PROD_TOKEN is a Railway Project Token scoped to the
+# Auth: githubactionsprod is a Railway Project Token scoped to the
 # real production project/environment (distinct from RAILWAY_TOKEN,
 # which deploy-preview.yml uses for the throwaway preview project).
-# Add it at: repo Settings -> Secrets and variables -> Actions ->
-# New repository secret -> name it RAILWAY_PROD_TOKEN.
+# Added at: repo Settings -> Secrets and variables -> Actions ->
+# Repository secrets -> githubactionsprod.
 on:
   workflow_dispatch:
     inputs:
@@ -44,7 +44,7 @@ jobs:
 
       - name: Identify target (no secret values printed)
         env:
-          RAILWAY_TOKEN: ${{ secrets.RAILWAY_PROD_TOKEN }}
+          RAILWAY_TOKEN: ${{ secrets.githubactionsprod }}
         run: |
           railway --version || true
           railway whoami || true
@@ -54,6 +54,6 @@ jobs:
 
       - name: Run read-only schema check against production
         env:
-          RAILWAY_TOKEN: ${{ secrets.RAILWAY_PROD_TOKEN }}
+          RAILWAY_TOKEN: ${{ secrets.githubactionsprod }}
         run: |
           railway run --service "${{ github.event.inputs.service_name }}" --environment "${{ github.event.inputs.environment_name }}" -- node scripts/prod-db-diagnostic.mjs
