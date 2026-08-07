@@ -132,8 +132,12 @@ export const appRouter = router({
 
         // Notify staff of the new sign-up. Never swallowed silently — a
         // failure here is logged even though it doesn't block the response.
+        // Recommended Counsellor is in the subject line too, so it's
+        // readable from an inbox list view without opening the email —
+        // this is the student's stated preference at signup, not a claim
+        // about who Pipedrive has actually assigned as the Lead's owner.
         notifyStaff({
-          title: `New Student Enquiry: ${input.firstName} ${input.lastName} - ${input.desiredLevel}`,
+          title: `New Student Enquiry (Rec: ${result.recommendedCounsellorLabel}): ${input.firstName} ${input.lastName} - ${input.desiredLevel}`,
           content: [
             `Name: ${input.firstName} ${input.lastName}`,
             `Email: ${input.email}`,
@@ -156,7 +160,7 @@ export const appRouter = router({
               : input.referredToWSA
                 ? `Referred to WSA: ${input.referredToWSA}`
                 : "",
-            `Recommended Counsellor: ${input.recommendedCounsellor || "Help me choose"}`,
+            `Recommended Counsellor: ${result.recommendedCounsellorLabel}`,
             result.reusedExistingPerson ? `\n(Matched an existing Pipedrive Person by email/phone — updated rather than duplicated.)` : "",
             ``,
             `Pipedrive Lead ID: ${result.leadId}`,
