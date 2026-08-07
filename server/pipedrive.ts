@@ -291,14 +291,22 @@ function buildNote(data: StudentFormData): string {
 }
 
 /**
- * Create or reuse a Person and Deal in Pipedrive from the Sign-up Form.
+ * Create or reuse a Person and Lead in Pipedrive from the Sign-up Form.
  * Searches for an existing Person by email, then phone, before creating a
  * new one — avoids duplicate Person records for repeat submissions.
- * Creates a Deal (visible on the main pipeline board, where staff actually
- * work) rather than a Lead (Leads Inbox) — switched 2026-08-05 after direct
- * evidence that staff weren't seeing Leads-Inbox entries and were re-entering
- * enquiries manually. No pipeline_id/stage_id is set, so new deals land in
- * the account's default pipeline and first stage.
+ *
+ * Creates a Lead (Leads Inbox), not a Deal. The brief 2026-08-05/06 switch
+ * to Deals was premature — real evidence (a staff member's Leads-Inbox
+ * owner filter, not a broken integration) showed enquiries were reaching
+ * Pipedrive successfully the whole time. Reverted here without introducing
+ * any explicit owner/assignment logic: it is not yet established what
+ * currently allocates genuine website Leads across counsellors (Pipedrive
+ * automation and/or staff workflow, per real Pipedrive-export evidence —
+ * this code has never set an owner on any Lead, at any point in its
+ * history), and a second, competing allocation mechanism must not be
+ * introduced until that's understood. person_id and the existing
+ * recommendedCounsellor custom field (COUNSELLOR_MAP, unchanged) are set
+ * exactly as before; no owner_id is set on the Lead.
  */
 export async function createStudentLead(data: StudentFormData) {
   const existingPersonId = await findExistingPersonId(data.email, data.phone);
@@ -313,20 +321,20 @@ export async function createStudentLead(data: StudentFormData) {
     personId = created.data.id;
   }
 
-  const dealTitle = `${data.firstName} ${data.lastName} - ${levelLabels[data.desiredLevel] || data.desiredLevel}`;
+  const leadTitle = `${data.firstName} ${data.lastName} - ${levelLabels[data.desiredLevel] || data.desiredLevel}`;
 
-  const dealResult = await pipedriveRequest("/deals", "POST", {
-    title: dealTitle,
+  const leadResult = await pipedriveRequest("/leads", "POST", {
+    title: leadTitle,
     person_id: personId,
   });
 
-  const dealId = dealResult.data.id;
+  const leadId = leadResult.data.id;
 
   await pipedriveRequest("/notes", "POST", {
-    deal_id: dealId,
+    lead_id: leadId,
     content: buildNote(data),
-    pinned_to_deal_flag: 1,
+    pinned_to_lead_flag: 1,
   });
 
-  return { personId, dealId, reusedExistingPerson: Boolean(existingPersonId) };
+  return { personId, leadId, reusedExistingPerson: Boolean(existingPersonId) };
 }
