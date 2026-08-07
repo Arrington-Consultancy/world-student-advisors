@@ -1,0 +1,49 @@
+name: Pipedrive Lead lookup (read-only)
+
+# Manual-only. Looks up a Person by email and their most recent Lead(s) in
+# the real production Pipedrive account, printing id/title/owner_id only.
+# Read-only GET requests via scripts/pipedrive-lead-lookup.mjs — no writes,
+# no reassignment, ever. Reuses the existing githubactionsprod Railway
+# token (same one production-db-diagnostic.yml uses) purely to obtain
+# PIPEDRIVE_API_TOKEN from the real production environment via `railway
+# run` — no new secret is added by this workflow.
+on:
+  workflow_dispatch:
+    inputs:
+      email:
+        description: "Email address to look up in Pipedrive"
+        required: true
+      service_name:
+        description: "Railway service name"
+        required: true
+        default: "world-student-advisors"
+      environment_name:
+        description: "Railway environment name"
+        required: true
+        default: "production"
+
+jobs:
+  lookup:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Install Railway CLI
+        run: npm install -g @railway/cli
+
+      - name: Look up Person + Lead(s) by email
+        env:
+          RAILWAY_TOKEN: ${{ secrets.githubactionsprod }}
+          LOOKUP_EMAIL: ${{ github.event.inputs.email }}
+        run: |
+          railway run --service "${{ github.event.inputs.service_name }}" --environment "${{ github.event.inputs.environment_name }}" -- node scripts/pipedrive-lead-lookup.mjs
