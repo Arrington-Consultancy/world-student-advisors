@@ -1,0 +1,56 @@
+name: Production DB read-only diagnostic
+
+# Manual-only. Runs a single hardcoded read-only query
+# (scripts/prod-db-diagnostic.mjs: SHOW COLUMNS FROM portal_users)
+# against the REAL production Railway service, using the same
+# connection method server/db.ts uses. Prints column metadata only —
+# never row data, never DATABASE_URL or any secret value.
+#
+# Auth: RAILWAY_PROD_TOKEN is a Railway Project Token scoped to the
+# real production project/environment (distinct from RAILWAY_TOKEN,
+# which deploy-preview.yml uses for the throwaway preview project).
+# Add it at: repo Settings -> Secrets and variables -> Actions ->
+# New repository secret -> name it RAILWAY_PROD_TOKEN.
+on:
+  workflow_dispatch:
+    inputs:
+      service_name:
+        description: "Railway service name"
+        required: true
+        default: "world-student-advisors"
+      environment_name:
+        description: "Railway environment name"
+        required: true
+        default: "production"
+
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Railway CLI
+        run: npm install -g @railway/cli
+
+      - name: Identify target (no secret values printed)
+        env:
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_PROD_TOKEN }}
+        run: |
+          railway --version || true
+          railway whoami || true
+          railway status || true
+          railway service || true
+          railway environment || true
+
+      - name: Run read-only schema check against production
+        env:
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_PROD_TOKEN }}
+        run: |
+          railway run --service "${{ github.event.inputs.service_name }}" --environment "${{ github.event.inputs.environment_name }}" -- node scripts/prod-db-diagnostic.mjs
