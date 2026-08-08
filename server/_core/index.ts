@@ -5,6 +5,7 @@ import net from "net";
 import { createExpressMiddleware } from "@trpc/server/adapters/express";
 import { appRouter } from "../routers";
 import { createContext } from "./context";
+import { legacyRedirects } from "./legacyRedirects";
 import { serveStatic, setupVite } from "./vite";
 
 function isPortAvailable(port: number): Promise<boolean> {
@@ -40,6 +41,10 @@ async function startServer() {
       createContext,
     })
   );
+  // Legacy Squarespace-slug 301s must run before the SPA/static handling
+  // below, so a redirect always wins outright instead of ever falling
+  // through to a 404 or chaining through another handler first.
+  legacyRedirects(app);
   // development mode uses Vite, production mode uses static files
   if (process.env.NODE_ENV === "development") {
     await setupVite(app, server);
