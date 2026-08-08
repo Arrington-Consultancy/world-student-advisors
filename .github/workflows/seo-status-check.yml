@@ -1,0 +1,39 @@
+name: SEO status check (read-only)
+
+# Manual-only. Pure public HTTP checks — no secrets, no app code touched,
+# no mutation of any kind. Curls every URL in the live sitemap plus a
+# deliberately nonexistent path, printing HTTP status codes only, to
+# check for exactly the pattern Google Search Console flags as "Soft
+# 404": a URL that renders not-found content but returns HTTP 200
+# instead of a real 404 status.
+on:
+  workflow_dispatch:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check sitemap.xml and robots.txt themselves
+        run: |
+          for path in /sitemap.xml /robots.txt; do
+            code=$(curl -sS -o /dev/null -w "%{http_code}" --max-time 15 "https://www.worldstudentadvisors.com$path")
+            echo "$code  https://www.worldstudentadvisors.com$path"
+          done
+
+      - name: Check every URL listed in the live sitemap.xml
+        run: |
+          curl -sS --max-time 15 "https://www.worldstudentadvisors.com/sitemap.xml" -o /tmp/sitemap.xml
+          grep -oP '(?<=<loc>)[^<]+' /tmp/sitemap.xml | while read -r url; do
+            code=$(curl -sS -o /dev/null -w "%{http_code}" --max-time 15 "$url")
+            echo "$code  $url"
+          done
+
+      - name: Check a deliberately nonexistent path (expect: does it 200 or 404?)
+        run: |
+          code=$(curl -sS -o /dev/null -w "%{http_code}" --max-time 15 "https://www.worldstudentadvisors.com/this-path-does-not-exist-seo-check-xyz")
+          echo "$code  https://www.worldstudentadvisors.com/this-path-does-not-exist-seo-check-xyz (should be 404 if real; 200 here would confirm the soft-404 mechanism)"
+
+      - name: Check the old Squarespace domain's current status
+        run: |
+          code=$(curl -sS -o /dev/null -w "%{http_code}" --max-time 15 -L "https://worldstudentadvisors.squarespace.com/")
+          echo "$code  https://worldstudentadvisors.squarespace.com/ (final status after following redirects, if any)"
