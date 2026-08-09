@@ -1,0 +1,46 @@
+name: Pipedrive ownership/field audit (read-only)
+
+# Manual-only. Investigates real production Pipedrive data via
+# scripts/pipedrive-ownership-audit.mjs: Lead/Deal owner_id after real
+# allocation, personFields/dealFields definitions, live stage IDs, and the
+# resolved STAFF_NOTIFY_EMAILS list. Every call is a GET — no writes, no
+# reassignment, ever. Reuses the existing githubactionsprod Railway token
+# (same one production-db-diagnostic.yml and pipedrive-lead-lookup.yml use)
+# purely to obtain PIPEDRIVE_API_TOKEN / STAFF_NOTIFY_EMAILS from the real
+# production environment via `railway run` — no new secret is added.
+on:
+  workflow_dispatch:
+    inputs:
+      service_name:
+        description: "Railway service name"
+        required: true
+        default: "world-student-advisors"
+      environment_name:
+        description: "Railway environment name"
+        required: true
+        default: "production"
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Install Railway CLI
+        run: npm install -g @railway/cli
+
+      - name: Run read-only ownership/field audit
+        env:
+          RAILWAY_TOKEN: ${{ secrets.githubactionsprod }}
+        run: |
+          railway run --service "${{ github.event.inputs.service_name }}" --environment "${{ github.event.inputs.environment_name }}" -- node scripts/pipedrive-ownership-audit.mjs
