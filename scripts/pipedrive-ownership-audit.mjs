@@ -145,11 +145,15 @@ try {
   console.log(`Fetched ${deals.length} recent Deal(s).`);
   const dealPersonIds = new Set();
   for (const deal of deals) {
-    const ownerId = typeof deal.owner_id === "object" ? deal.owner_id.id : deal.owner_id;
+    // Deals use `user_id` as the owner field key (confirmed live against
+    // /dealFields: id=3 key=user_id name="Owner") — NOT `owner_id`, unlike
+    // Leads and Persons. Reading deal.owner_id here would silently look up
+    // a field that doesn't exist on a Deal object.
+    const ownerId = typeof deal.user_id === "object" ? deal.user_id.id : deal.user_id;
     const personId = typeof deal.person_id === "object" ? deal.person_id.value : deal.person_id;
     dealPersonIds.add(personId);
     console.log(`\n  Deal ${deal.id} | title="${deal.title}"`);
-    console.log(`    owner_id=${ownerId} (${ownerName(ownerId)}) | stage_id=${deal.stage_id} | status=${deal.status}`);
+    console.log(`    owner (user_id)=${ownerId} (${ownerName(ownerId)}) | stage_id=${deal.stage_id} | status=${deal.status}`);
     console.log(`    person_id=${personId} | add_time=${deal.add_time} | update_time=${deal.update_time}`);
     const dealCustom = customFieldEntries(deal, dealFieldsByKey);
     if (dealCustom.length) {
@@ -167,7 +171,7 @@ try {
     for (const { personId, leadOwnerId, leadId } of overlap) {
       const matchingDeals = deals.filter(d => (typeof d.person_id === "object" ? d.person_id.value : d.person_id) === personId);
       for (const deal of matchingDeals) {
-        const dealOwnerId = typeof deal.owner_id === "object" ? deal.owner_id.id : deal.owner_id;
+        const dealOwnerId = typeof deal.user_id === "object" ? deal.user_id.id : deal.user_id;
         console.log(
           `  Person ${personId}: Lead ${leadId} owner=${ownerName(leadOwnerId)} -> Deal ${deal.id} owner=${ownerName(dealOwnerId)} (${leadOwnerId === dealOwnerId ? "SAME" : "DIFFERENT"})`
         );
