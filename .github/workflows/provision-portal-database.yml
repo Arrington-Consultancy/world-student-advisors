@@ -1,24 +1,22 @@
-name: Provision portal database (one-time)
+name: Apply portal schema migration (one-time)
 
-# Manual-only, one-time infrastructure step. Adds a MySQL database to the
-# production Railway project, points the app service's DATABASE_URL at it
-# via Railway's own variable-reference syntax (built at runtime with printf,
-# never written literally in this file — see below), so this workflow never
-# reads or prints the actual connection string/credentials. Then runs the
-# drizzle migration (pnpm run db:push) against it using a temporary
-# reference variable for public reachability from this runner.
-#
-# Safety: every step below prints service/variable NAMES only, never
-# values. If a step fails, this workflow does not attempt alternative
-# approaches — it stops so the actual error can be reviewed.
-#
-# Note: GitHub Actions' own expression parser intercepts the literal
-# 3-character sequence dollar-brace-brace anywhere in a run: block's raw
-# text, even inside quotes — including Railway's own unrelated
-# variable-reference syntax, which uses the identical delimiters. Every
-# input below is passed through env: and referenced as a shell variable;
-# Railway's reference strings are assembled at runtime via printf's octal
-# escape specifically so that sequence never appears literally in this file.
+# Manual-only, one-time step. Content replaced 2026-08-10 — this file
+# previously attempted full database provisioning (railway add) and failed
+# ("Project not found. Run `railway link`", a Project Token limitation, not
+# a code bug); the database was provisioned manually via the Railway
+# dashboard instead, and DATABASE_URL is already set on the
+# world-student-advisors production service as a reference to the MySQL
+# service. This workflow no longer provisions anything and never touches
+# DATABASE_URL — it only:
+#   1. runs the drizzle migration (pnpm run db:push) against the corrected
+#      schema on this branch (pipedriveObjectType / pipedriveObjectId,
+#      replacing the old incompatible integer pipedriveDealId column) using
+#      the existing production Railway/project credentials, against the
+#      already-connected production MySQL database, then
+#   2. verifies the live schema by listing every table and, for
+#      portal_users specifically (the table the fix applies to), every
+#      column with type/nullability — metadata only, never row data, never
+#      the connection string.
 on:
   workflow_dispatch:
     inputs:
@@ -30,18 +28,13 @@ on:
         description: "Railway environment name"
         required: true
         default: "production"
-      database_service_name:
-        description: "Name to expect/assign for the new MySQL database service"
-        required: true
-        default: "MySQL"
 
 jobs:
-  provision:
+  migrate:
     runs-on: ubuntu-latest
     env:
       APP_SERVICE_NAME: ${{ github.event.inputs.service_name }}
       APP_ENV_NAME: ${{ github.event.inputs.environment_name }}
-      DB_SERVICE_NAME: ${{ github.event.inputs.database_service_name }}
     steps:
       - uses: actions/checkout@v4
 
@@ -58,63 +51,14 @@ jobs:
       - name: Install Railway CLI
         run: npm install -g @railway/cli
 
-      - name: Confirm project/environment context (no secrets)
+      - name: Apply the corrected portal schema (pnpm run db:push)
         env:
           RAILWAY_TOKEN: ${{ secrets.githubactionsprod }}
         run: |
-          railway --version
-          railway whoami || true
-          railway status || true
+          railway run --service "$APP_SERVICE_NAME" --environment "$APP_ENV_NAME" -- pnpm run db:push
 
-      - name: Add MySQL database to the project
+      - name: Verify live schema — every table, then portal_users columns (metadata only, no row data)
         env:
           RAILWAY_TOKEN: ${{ secrets.githubactionsprod }}
         run: |
-          railway add --database mysql
-
-      - name: List services after provisioning (names only, no secrets)
-        env:
-          RAILWAY_TOKEN: ${{ secrets.githubactionsprod }}
-        run: |
-          railway status
-
-      - name: Point app service's DATABASE_URL at the new database (reference syntax — no secret ever read or printed here)
-        env:
-          RAILWAY_TOKEN: ${{ secrets.githubactionsprod }}
-        run: |
-          # Built via printf's octal escape (\044 = "$") so the literal
-          # 3-char sequence "$" "{" "{" never appears in this file's raw
-          # text — GitHub Actions' own expression parser intercepts that
-          # sequence anywhere in a run: block, even inside quotes/escapes,
-          # which is what broke the first two attempts at this step.
-          REF=$(printf '\044{{%s.DATABASE_URL}}' "$DB_SERVICE_NAME")
-          railway variables \
-            --service "$APP_SERVICE_NAME" \
-            --environment "$APP_ENV_NAME" \
-            --set "DATABASE_URL=${REF}"
-
-      - name: Set a temporary public-reachable migration URL on the app service (removed after migration)
-        env:
-          RAILWAY_TOKEN: ${{ secrets.githubactionsprod }}
-        run: |
-          REF=$(printf '\044{{%s.DATABASE_PUBLIC_URL}}' "$DB_SERVICE_NAME")
-          railway variables \
-            --service "$APP_SERVICE_NAME" \
-            --environment "$APP_ENV_NAME" \
-            --set "MIGRATION_DATABASE_URL=${REF}"
-
-      - name: Run the drizzle migration (creates portal_users, resources, failed_submissions from the corrected schema)
-        env:
-          RAILWAY_TOKEN: ${{ secrets.githubactionsprod }}
-        run: |
-          railway run --service "$APP_SERVICE_NAME" --environment "$APP_ENV_NAME" -- \
-            sh -c 'DATABASE_URL="$MIGRATION_DATABASE_URL" pnpm run db:push'
-
-      - name: Remove the temporary migration URL variable
-        env:
-          RAILWAY_TOKEN: ${{ secrets.githubactionsprod }}
-        run: |
-          railway variables \
-            --service "$APP_SERVICE_NAME" \
-            --environment "$APP_ENV_NAME" \
-            --set "MIGRATION_DATABASE_URL="
+          railway run --service "$APP_SERVICE_NAME" --environment "$APP_ENV_NAME" -- node scripts/prod-db-diagnostic.mjs

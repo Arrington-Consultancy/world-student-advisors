@@ -15,8 +15,14 @@ if (!process.env.DATABASE_URL) {
 const db = drizzle(process.env.DATABASE_URL);
 
 try {
+  const [tables] = await db.execute(sql`SHOW TABLES`);
+  console.log("Tables:");
+  for (const row of tables) {
+    console.log(`  ${Object.values(row)[0]}`);
+  }
+
   const [rows] = await db.execute(sql`SHOW COLUMNS FROM portal_users`);
-  console.log("portal_users columns:");
+  console.log("\nportal_users columns:");
   for (const row of rows) {
     console.log(`  ${row.Field} | type=${row.Type} | null=${row.Null} | key=${row.Key} | default=${row.Default}`);
   }
