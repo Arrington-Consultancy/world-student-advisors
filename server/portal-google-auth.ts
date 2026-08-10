@@ -17,7 +17,7 @@ import type { Express } from "express";
 import crypto from "crypto";
 import * as jose from "jose";
 import { ENV } from "./_core/env";
-import { findOrCreateGoogleUser } from "./portal-auth";
+import { findOrCreateGoogleUser, mintSignupPrefillToken } from "./portal-auth";
 
 const GOOGLE_AUTH_URL = "https://accounts.google.com/o/oauth2/v2/auth";
 const GOOGLE_TOKEN_URL = "https://oauth2.googleapis.com/token";
@@ -41,7 +41,7 @@ function isRateLimited(ip: string, windowMs = 60_000, max = 20): boolean {
 }
 
 /** Safely parse base64-encoded JSON state without throwing. */
-function decodeOAuthState(raw: unknown): { redirectUri?: string; nonce?: string } {
+function decodeOAuthState(raw: unknown): { redirectUri?: string; nonce?: string; flow?: string } {
   if (typeof raw !== "string") return {};
   try {
     return JSON.parse(Buffer.from(raw, "base64url").toString("utf8"));
@@ -90,7 +90,8 @@ export function registerGoogleAuthRoutes(app: Express) {
 
     // Mint a one-time nonce
     const nonce = crypto.randomUUID();
-    const state = Buffer.from(JSON.stringify({ redirectUri, nonce })).toString("base64url");
+    const flow = typeof req.query.flow === "string" && req.query.flow === "signup" ? "signup" : "login";
+    const state = Buffer.from(JSON.stringify({ redirectUri, nonce, flow })).toString("base64url");
 
     // Bind the nonce to the browser via a host-only, Secure, SameSite=None cookie
     // (SameSite=None is required because Google redirects back cross-site)
@@ -217,6 +218,23 @@ export function registerGoogleAuthRoutes(app: Express) {
     const firstName = givenName || name.split(" ")[0] || email.split("@")[0];
     const lastName = familyName || (name.includes(" ") ? name.split(" ").slice(1).join(" ") : "");
 
+    // ── Signup flow: mint a short-lived prefill token and return to /contact ──
+    if (decoded.flow === "signup") {
+      let prefillToken: string;
+      try {
+        prefillToken = await mintSignupPrefillToken({ sub, email, firstName, lastName });
+      } catch (err) {
+        console.error("[google-auth] signup prefill token mint failed:", err);
+        res.redirect("/contact?google_error=token");
+        return;
+      }
+      const contactRedirect = new URL(`${decoded.redirectUri.replace("/api/portal/auth/google/callback", "/contact")}`);
+      contactRedirect.searchParams.set("gpt", prefillToken);
+      res.redirect(contactRedirect.toString());
+      return;
+    }
+
+    // ── Login flow: find or create portal user and issue a session token ──────
     // Find or create the portal user
     const result = await findOrCreateGoogleUser({ sub, email, firstName, lastName });
     if (!result) {
