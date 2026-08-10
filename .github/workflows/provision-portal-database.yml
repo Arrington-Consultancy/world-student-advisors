@@ -1,0 +1,100 @@
+name: Provision portal database (one-time)
+
+# Manual-only, one-time infrastructure step. Adds a MySQL database to the
+# production Railway project, points the app service's DATABASE_URL at it
+# (via Railway's own ${{ServiceName.VARIABLE}} reference syntax, so this
+# workflow never reads or prints the actual connection string/credentials),
+# then runs the drizzle migration (pnpm run db:push) against it using a
+# temporary reference variable for public reachability from this runner.
+#
+# Safety: every step below prints service/variable NAMES only, never
+# values. If a step fails, this workflow does not attempt alternative
+# approaches — it stops so the actual error can be reviewed.
+on:
+  workflow_dispatch:
+    inputs:
+      service_name:
+        description: "Railway app service name"
+        required: true
+        default: "world-student-advisors"
+      environment_name:
+        description: "Railway environment name"
+        required: true
+        default: "production"
+      database_service_name:
+        description: "Name to expect/assign for the new MySQL database service"
+        required: true
+        default: "MySQL"
+
+jobs:
+  provision:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Install Railway CLI
+        run: npm install -g @railway/cli
+
+      - name: Confirm project/environment context (no secrets)
+        env:
+          RAILWAY_TOKEN: ${{ secrets.githubactionsprod }}
+        run: |
+          railway --version
+          railway whoami || true
+          railway status || true
+
+      - name: Add MySQL database to the project
+        env:
+          RAILWAY_TOKEN: ${{ secrets.githubactionsprod }}
+        run: |
+          railway add --database mysql
+
+      - name: List services after provisioning (names only, no secrets)
+        env:
+          RAILWAY_TOKEN: ${{ secrets.githubactionsprod }}
+        run: |
+          railway status
+
+      - name: Point app service's DATABASE_URL at the new database (reference syntax — no secret ever read or printed here)
+        env:
+          RAILWAY_TOKEN: ${{ secrets.githubactionsprod }}
+        run: |
+          railway variables \
+            --service "${{ github.event.inputs.service_name }}" \
+            --environment "${{ github.event.inputs.environment_name }}" \
+            --set "DATABASE_URL=\${{${{ github.event.inputs.database_service_name }}.DATABASE_URL}}"
+
+      - name: Set a temporary public-reachable migration URL on the app service (removed after migration)
+        env:
+          RAILWAY_TOKEN: ${{ secrets.githubactionsprod }}
+        run: |
+          railway variables \
+            --service "${{ github.event.inputs.service_name }}" \
+            --environment "${{ github.event.inputs.environment_name }}" \
+            --set "MIGRATION_DATABASE_URL=\${{${{ github.event.inputs.database_service_name }}.DATABASE_PUBLIC_URL}}"
+
+      - name: Run the drizzle migration (creates portal_users, resources, failed_submissions from the corrected schema)
+        env:
+          RAILWAY_TOKEN: ${{ secrets.githubactionsprod }}
+        run: |
+          railway run --service "${{ github.event.inputs.service_name }}" --environment "${{ github.event.inputs.environment_name }}" -- \
+            sh -c 'DATABASE_URL="$MIGRATION_DATABASE_URL" pnpm run db:push'
+
+      - name: Remove the temporary migration URL variable
+        env:
+          RAILWAY_TOKEN: ${{ secrets.githubactionsprod }}
+        run: |
+          railway variables \
+            --service "${{ github.event.inputs.service_name }}" \
+            --environment "${{ github.event.inputs.environment_name }}" \
+            --set "MIGRATION_DATABASE_URL="
