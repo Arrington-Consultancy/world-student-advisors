@@ -64,6 +64,8 @@ export const portalUsers = mysqlTable("portal_users", {
   /** Token for password creation/reset (hashed) */
   resetToken: varchar("resetToken", { length: 255 }),
   resetTokenExpiry: timestamp("resetTokenExpiry"),
+  /** Google OAuth subject identifier — set when user signs in with Google. */
+  googleSub: varchar("googleSub", { length: 255 }).unique(),
   /** Portal access status */
   isActive: int("isActive").default(1).notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),

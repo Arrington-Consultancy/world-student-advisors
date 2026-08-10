@@ -7,6 +7,7 @@ import { appRouter } from "../routers";
 import { createContext } from "./context";
 import { legacyRedirects } from "./legacyRedirects";
 import { serveStatic, setupVite } from "./vite";
+import { registerGoogleAuthRoutes } from "../portal-google-auth";
 
 function isPortAvailable(port: number): Promise<boolean> {
   return new Promise(resolve => {
@@ -41,6 +42,8 @@ async function startServer() {
       createContext,
     })
   );
+  // Google OAuth routes for Student Portal sign-in
+  registerGoogleAuthRoutes(app);
   // Legacy Squarespace-slug 301s must run before the SPA/static handling
   // below, so a redirect always wins outright instead of ever falling
   // through to a 404 or chaining through another handler first.
