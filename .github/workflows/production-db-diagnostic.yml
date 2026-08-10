@@ -52,6 +52,12 @@ jobs:
           railway service || true
           railway environment || true
 
+      - name: List app-service variable NAMES only (values never read or printed)
+        env:
+          RAILWAY_TOKEN: ${{ secrets.githubactionsprod }}
+        run: |
+          railway variables --service "${{ github.event.inputs.service_name }}" --environment "${{ github.event.inputs.environment_name }}" --json | jq -r 'keys[]' | sort
+
       - name: Run read-only schema check against production
         env:
           RAILWAY_TOKEN: ${{ secrets.githubactionsprod }}
