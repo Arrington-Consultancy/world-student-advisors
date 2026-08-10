@@ -10,6 +10,12 @@ name: Provision portal database (one-time)
 # Safety: every step below prints service/variable NAMES only, never
 # values. If a step fails, this workflow does not attempt alternative
 # approaches — it stops so the actual error can be reviewed.
+#
+# Note: every input is passed through `env:` and referenced as a shell
+# variable in `run:`, never inlined as `${{ github.event.inputs.x }}`
+# directly next to Railway's own literal `${{ }}` reference syntax — GitHub
+# Actions' own expression parser chokes on the two `${{ }}` syntaxes
+# sitting adjacent to each other in the raw YAML.
 on:
   workflow_dispatch:
     inputs:
@@ -29,6 +35,10 @@ on:
 jobs:
   provision:
     runs-on: ubuntu-latest
+    env:
+      APP_SERVICE_NAME: ${{ github.event.inputs.service_name }}
+      APP_ENV_NAME: ${{ github.event.inputs.environment_name }}
+      DB_SERVICE_NAME: ${{ github.event.inputs.database_service_name }}
     steps:
       - uses: actions/checkout@v4
 
@@ -70,24 +80,24 @@ jobs:
           RAILWAY_TOKEN: ${{ secrets.githubactionsprod }}
         run: |
           railway variables \
-            --service "${{ github.event.inputs.service_name }}" \
-            --environment "${{ github.event.inputs.environment_name }}" \
-            --set "DATABASE_URL=\${{${{ github.event.inputs.database_service_name }}.DATABASE_URL}}"
+            --service "$APP_SERVICE_NAME" \
+            --environment "$APP_ENV_NAME" \
+            --set "DATABASE_URL=\${{${DB_SERVICE_NAME}.DATABASE_URL}}"
 
       - name: Set a temporary public-reachable migration URL on the app service (removed after migration)
         env:
           RAILWAY_TOKEN: ${{ secrets.githubactionsprod }}
         run: |
           railway variables \
-            --service "${{ github.event.inputs.service_name }}" \
-            --environment "${{ github.event.inputs.environment_name }}" \
-            --set "MIGRATION_DATABASE_URL=\${{${{ github.event.inputs.database_service_name }}.DATABASE_PUBLIC_URL}}"
+            --service "$APP_SERVICE_NAME" \
+            --environment "$APP_ENV_NAME" \
+            --set "MIGRATION_DATABASE_URL=\${{${DB_SERVICE_NAME}.DATABASE_PUBLIC_URL}}"
 
       - name: Run the drizzle migration (creates portal_users, resources, failed_submissions from the corrected schema)
         env:
           RAILWAY_TOKEN: ${{ secrets.githubactionsprod }}
         run: |
-          railway run --service "${{ github.event.inputs.service_name }}" --environment "${{ github.event.inputs.environment_name }}" -- \
+          railway run --service "$APP_SERVICE_NAME" --environment "$APP_ENV_NAME" -- \
             sh -c 'DATABASE_URL="$MIGRATION_DATABASE_URL" pnpm run db:push'
 
       - name: Remove the temporary migration URL variable
@@ -95,6 +105,6 @@ jobs:
           RAILWAY_TOKEN: ${{ secrets.githubactionsprod }}
         run: |
           railway variables \
-            --service "${{ github.event.inputs.service_name }}" \
-            --environment "${{ github.event.inputs.environment_name }}" \
+            --service "$APP_SERVICE_NAME" \
+            --environment "$APP_ENV_NAME" \
             --set "MIGRATION_DATABASE_URL="
