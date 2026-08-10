@@ -1,5 +1,6 @@
 import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
+import type { ReactNode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mockNavigate = vi.fn();
@@ -13,7 +14,7 @@ vi.mock("wouter", () => ({
   }: {
     href: string;
     className?: string;
-    children: unknown;
+    children: ReactNode;
   }) => (
     <a href={href} className={className}>
       {children}
