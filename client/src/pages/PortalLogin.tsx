@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import { Link, useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -9,6 +9,34 @@ type LoginErrorNotice = {
   message: string;
   contactLabel?: string;
 };
+
+export function getLoginErrorNotice(oauthError: string | null): LoginErrorNotice | null {
+  if (!oauthError) return null;
+
+  const messages: Record<string, LoginErrorNotice> = {
+    google_denied: { message: "Google sign-in was cancelled." },
+    google_token: { message: "Could not complete Google sign-in. Please try again." },
+    google_verify: { message: "Google sign-in verification failed. Please try again." },
+    google_claims: { message: "Google did not provide the required account information." },
+    google_account: { message: "We couldn't access your student portal account. Please contact support." },
+    google_no_account: {
+      message:
+        "No student portal account exists for that Google account. Please contact WSA to complete your registration.",
+      contactLabel: "Complete registration",
+    },
+    google_account_inactive: {
+      message: "Your student portal account is inactive. Please contact WSA for help reactivating it.",
+      contactLabel: "Contact WSA",
+    },
+    google_account_conflict: {
+      message:
+        "We couldn't sign you in because this Google account does not match your student portal account details. Please contact WSA for assistance.",
+      contactLabel: "Contact WSA",
+    },
+  };
+
+  return messages[oauthError] ?? { message: "Google sign-in failed. Please try again." };
+}
 
 /** Navigates to the Google OAuth start endpoint. Call from an event handler only — never during render. */
 function startGoogleLogin() {
@@ -24,7 +52,11 @@ export default function PortalLogin() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
-  const [error, setError] = useState<LoginErrorNotice | null>(null);
+  const [error, setError] = useState<LoginErrorNotice | null>(() => {
+    if (typeof window === "undefined") return null;
+    const params = new URLSearchParams(window.location.search);
+    return getLoginErrorNotice(params.get("error"));
+  });
 
   // Handle token delivered by the Google OAuth callback redirect
   useEffect(() => {
@@ -41,30 +73,7 @@ export default function PortalLogin() {
       return;
     }
 
-    if (oauthError) {
-      const messages: Record<string, LoginErrorNotice> = {
-        google_denied: { message: "Google sign-in was cancelled." },
-        google_token: { message: "Could not complete Google sign-in. Please try again." },
-        google_verify: { message: "Google sign-in verification failed. Please try again." },
-        google_claims: { message: "Google did not provide the required account information." },
-        google_account: { message: "We couldn't access your student portal account. Please contact support." },
-        google_no_account: {
-          message:
-            "No student portal account exists for that Google account. Please contact WSA to complete your registration.",
-          contactLabel: "Complete registration",
-        },
-        google_account_inactive: {
-          message: "Your student portal account is inactive. Please contact WSA for help reactivating it.",
-          contactLabel: "Contact WSA",
-        },
-        google_account_conflict: {
-          message:
-            "We couldn't sign you in because this Google account does not match your student portal account details. Please contact WSA for assistance.",
-          contactLabel: "Contact WSA",
-        },
-      };
-      setError(messages[oauthError] ?? { message: "Google sign-in failed. Please try again." });
-    }
+    if (oauthError) setError(getLoginErrorNotice(oauthError));
   }, [navigate]);
 
   const loginMutation = trpc.portal.login.useMutation({
