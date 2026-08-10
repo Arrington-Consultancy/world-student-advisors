@@ -17,8 +17,29 @@ const KNOWN_STAFF: Record<number, string> = {
   25633455: "Sarafina Kihumbu",
 };
 
-function resolveCounsellorName(ownerId: number | null): string | null {
+/**
+ * The four normal counsellors who may be treated as a confirmed allocation
+ * on a pre-conversion Lead. Tim Hunt is deliberately excluded: a fresh Lead
+ * owned by Tim is not safe evidence of deliberate allocation (a previous
+ * live test proved the website enquiry flow does not set owner_id, and the
+ * resulting Lead was owned by Tim anyway). Once a student is converted to a
+ * Deal, the native Deal owner — including Tim — is reliable.
+ */
+const LEAD_COUNSELLOR_IDS = new Set([25633444, 25633433, 25633422, 25633455]);
+
+/** Resolves an owner for a Deal — Tim Hunt is permitted here. */
+function resolveDealCounsellorName(ownerId: number | null): string | null {
   if (ownerId === null) return null;
+  return KNOWN_STAFF[ownerId] ?? null;
+}
+
+/**
+ * Resolves an owner for a pre-conversion Lead. Tim Hunt is suppressed: his
+ * ownership of a Lead cannot be treated as a confirmed counsellor allocation.
+ */
+function resolveLeadCounsellorName(ownerId: number | null): string | null {
+  if (ownerId === null) return null;
+  if (!LEAD_COUNSELLOR_IDS.has(ownerId)) return null;
   return KNOWN_STAFF[ownerId] ?? null;
 }
 
@@ -51,7 +72,7 @@ export async function resolvePortalDashboard(pipedrivePersonId: number): Promise
         stageLabel: stage.label,
         nextAction: stage.nextAction,
         position: stage.position,
-        counsellor: resolveCounsellorName(deal.ownerId),
+        counsellor: resolveDealCounsellorName(deal.ownerId),
       };
     }
 
@@ -62,7 +83,7 @@ export async function resolvePortalDashboard(pipedrivePersonId: number): Promise
         stageLabel: "Getting to know you",
         nextAction: "Your counsellor is learning about your goals and options",
         position: 0,
-        counsellor: resolveCounsellorName(lead.ownerId),
+        counsellor: resolveLeadCounsellorName(lead.ownerId),
       };
     }
 
