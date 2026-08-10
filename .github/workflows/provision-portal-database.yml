@@ -1,22 +1,26 @@
 name: Apply portal schema migration (one-time)
 
-# Manual-only, one-time step. Content replaced 2026-08-10 — this file
-# previously attempted full database provisioning (railway add) and failed
-# ("Project not found. Run `railway link`", a Project Token limitation, not
-# a code bug); the database was provisioned manually via the Railway
-# dashboard instead, and DATABASE_URL is already set on the
-# world-student-advisors production service as a reference to the MySQL
-# service. This workflow no longer provisions anything and never touches
-# DATABASE_URL — it only:
-#   1. runs the drizzle migration (pnpm run db:push) against the corrected
-#      schema on this branch (pipedriveObjectType / pipedriveObjectId,
-#      replacing the old incompatible integer pipedriveDealId column) using
-#      the existing production Railway/project credentials, against the
-#      already-connected production MySQL database, then
-#   2. verifies the live schema by listing every table and, for
-#      portal_users specifically (the table the fix applies to), every
-#      column with type/nullability — metadata only, never row data, never
-#      the connection string.
+# Manual-only, one-time step. DATABASE_URL is already set on the
+# world-student-advisors production service (via the Railway dashboard, as
+# a reference to the MySQL service's private URL) — this workflow never
+# touches DATABASE_URL and provisions nothing.
+#
+# The private URL (mysql.railway.internal) is unreachable from this
+# GitHub-hosted runner (confirmed: ENOTFOUND on a prior run), so this
+# workflow uses the MySQL service's public TCP proxy instead, for this
+# one-off migration only:
+#   1. Discovers the exact public-URL variable NAME on the MySQL service
+#      (key only, via --json + jq, value never printed).
+#   2. Sets a temporary MIGRATION_DATABASE_URL reference on the app
+#      service pointing at that variable (reference syntax only — this
+#      workflow never reads or prints the actual connection string).
+#   3. Runs `drizzle-kit migrate` directly against the hand-authored,
+#      already-reviewed 0002 migration (NOT `pnpm run db:push`, which
+#      would also run `drizzle-kit generate` and hit an interactive
+#      rename-vs-add prompt that has no non-interactive answer).
+#   4. Verifies the live schema (table list + portal_users columns,
+#      metadata only, never row data).
+#   5. Removes the temporary variable.
 on:
   workflow_dispatch:
     inputs:
@@ -28,6 +32,10 @@ on:
         description: "Railway environment name"
         required: true
         default: "production"
+      database_service_name:
+        description: "Railway MySQL service name"
+        required: true
+        default: "MySQL"
 
 jobs:
   migrate:
@@ -35,6 +43,7 @@ jobs:
     env:
       APP_SERVICE_NAME: ${{ github.event.inputs.service_name }}
       APP_ENV_NAME: ${{ github.event.inputs.environment_name }}
+      DB_SERVICE_NAME: ${{ github.event.inputs.database_service_name }}
     steps:
       - uses: actions/checkout@v4
 
@@ -51,14 +60,53 @@ jobs:
       - name: Install Railway CLI
         run: npm install -g @railway/cli
 
-      - name: Apply the corrected portal schema (pnpm run db:push)
+      - name: Discover the MySQL service's public-URL variable NAME (key only, value never printed)
+        id: discover
         env:
           RAILWAY_TOKEN: ${{ secrets.githubactionsprod }}
         run: |
-          railway run --service "$APP_SERVICE_NAME" --environment "$APP_ENV_NAME" -- pnpm run db:push
+          KEYS=$(railway variables --service "$DB_SERVICE_NAME" --environment "$APP_ENV_NAME" --json | jq -r 'keys[]')
+          echo "Variable names found on $DB_SERVICE_NAME (names only):"
+          echo "$KEYS"
+          PUBLIC_KEY=$(echo "$KEYS" | grep -i -E '^(MYSQL_PUBLIC_URL|DATABASE_PUBLIC_URL)$' | head -n1)
+          if [ -z "$PUBLIC_KEY" ]; then
+            echo "No public-URL-shaped variable found on $DB_SERVICE_NAME. Stopping — not guessing further."
+            exit 1
+          fi
+          echo "Using public URL variable: $PUBLIC_KEY"
+          echo "public_key=$PUBLIC_KEY" >> "$GITHUB_OUTPUT"
+
+      - name: Set a temporary public-reachable migration URL on the app service
+        env:
+          RAILWAY_TOKEN: ${{ secrets.githubactionsprod }}
+          PUBLIC_KEY: ${{ steps.discover.outputs.public_key }}
+        run: |
+          REF=$(printf '\044{{%s.%s}}' "$DB_SERVICE_NAME" "$PUBLIC_KEY")
+          railway variables \
+            --service "$APP_SERVICE_NAME" \
+            --environment "$APP_ENV_NAME" \
+            --set "MIGRATION_DATABASE_URL=${REF}"
+
+      - name: Apply migration 0002 only (drizzle-kit migrate, not db:push/generate)
+        env:
+          RAILWAY_TOKEN: ${{ secrets.githubactionsprod }}
+        run: |
+          railway run --service "$APP_SERVICE_NAME" --environment "$APP_ENV_NAME" -- \
+            sh -c 'DATABASE_URL="$MIGRATION_DATABASE_URL" pnpm exec drizzle-kit migrate'
 
       - name: Verify live schema — every table, then portal_users columns (metadata only, no row data)
         env:
           RAILWAY_TOKEN: ${{ secrets.githubactionsprod }}
         run: |
-          railway run --service "$APP_SERVICE_NAME" --environment "$APP_ENV_NAME" -- node scripts/prod-db-diagnostic.mjs
+          railway run --service "$APP_SERVICE_NAME" --environment "$APP_ENV_NAME" -- \
+            sh -c 'DATABASE_URL="$MIGRATION_DATABASE_URL" node scripts/prod-db-diagnostic.mjs'
+
+      - name: Remove the temporary migration URL variable
+        if: always()
+        env:
+          RAILWAY_TOKEN: ${{ secrets.githubactionsprod }}
+        run: |
+          railway variables \
+            --service "$APP_SERVICE_NAME" \
+            --environment "$APP_ENV_NAME" \
+            --set "MIGRATION_DATABASE_URL="

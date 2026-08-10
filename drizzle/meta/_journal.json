@@ -15,6 +15,13 @@
       "when": 1785335990750,
       "tag": "0001_glorious_legion",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "5",
+      "when": 1786367981244,
+      "tag": "0002_fix_portal_pipedrive_id_columns",
+      "breakpoints": true
     }
   ]
 }
