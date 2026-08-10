@@ -8,6 +8,8 @@ vi.mock("./_core/notification", () => ({
   notifyStaff: vi.fn().mockResolvedValue(true),
   notifyInterviewCoachResult: vi.fn().mockResolvedValue(true),
   sendApplicantConfirmation: vi.fn().mockResolvedValue(true),
+  sendPortalSetupEmail: vi.fn().mockResolvedValue(true),
+  sendPasswordResetEmail: vi.fn().mockResolvedValue(true),
 }));
 vi.mock("./db", () => ({
   recordFailedSubmission: vi.fn().mockResolvedValue(undefined),
@@ -18,6 +20,10 @@ vi.mock("./portal-auth", () => ({
   setPasswordWithToken: vi.fn(),
   requestPasswordReset: vi.fn().mockResolvedValue(null),
   verifyPortalToken: vi.fn(),
+  getPortalUserById: vi.fn().mockResolvedValue(null),
+}));
+vi.mock("./portal-resolver", () => ({
+  resolvePortalDashboard: vi.fn().mockResolvedValue({ state: "no_record" }),
 }));
 vi.mock("./interviewCoach", () => ({
   getSessionQuestions: vi.fn().mockResolvedValue(["Q1", "Q2", "Q3"]),
