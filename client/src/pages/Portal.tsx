@@ -1,39 +1,95 @@
 import { useState, useEffect } from "react";
 import { useLocation, Link } from "wouter";
 import { Button } from "@/components/ui/button";
-import { GraduationCap, BookOpen, Mic, LogOut, ChevronRight, Video, Users, Phone, Mail } from "lucide-react";
+import { GraduationCap, BookOpen, Mic, LogOut, ChevronRight, Video, Users, Phone, Mail, Clock } from "lucide-react";
 import { SOCIAL_LINKS } from "@/lib/socialLinks";
+import { trpc } from "@/lib/trpc";
 
-interface PortalUser {
-  id: number;
-  email: string;
-  firstName: string;
-  lastName: string;
+/** Mirrors server/portal-stages.ts's STAGE_DISPLAY entry count — keep in sync. */
+const TOTAL_STAGES = 6;
+
+function PortalShell({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+      <div className="text-center">{children}</div>
+    </div>
+  );
 }
 
+/**
+ * Auth-gated: this page requires a valid portal session. No visitor — logged
+ * out, or logged in with a database/Pipedrive outage — ever sees the
+ * resource-hub content below by accident. See server/routers.ts's
+ * portal.dashboard for the exact status states this renders.
+ */
 export default function Portal() {
   const [, navigate] = useLocation();
-  const [user, setUser] = useState<PortalUser | null>(null);
+  const [token, setToken] = useState<string | null>(null);
+  const [checkedStorage, setCheckedStorage] = useState(false);
 
   useEffect(() => {
-    const token = localStorage.getItem("portal_token");
-    const userStr = localStorage.getItem("portal_user");
-    // Open access: no login required. Personalise only when a session exists.
-    if (token && userStr) {
-      try {
-        setUser(JSON.parse(userStr));
-      } catch {
-        setUser(null);
-      }
+    const stored = localStorage.getItem("portal_token");
+    if (!stored) {
+      navigate("/portal/login");
+      return;
     }
+    setToken(stored);
+    setCheckedStorage(true);
   }, []);
+
+  const dashboardQuery = trpc.portal.dashboard.useQuery(
+    { token: token ?? "" },
+    { enabled: !!token }
+  );
+
+  useEffect(() => {
+    if (dashboardQuery.data?.status === "unauthenticated") {
+      localStorage.removeItem("portal_token");
+      localStorage.removeItem("portal_user");
+      navigate("/portal/login");
+    }
+  }, [dashboardQuery.data]);
 
   const handleLogout = () => {
     localStorage.removeItem("portal_token");
     localStorage.removeItem("portal_user");
-    setUser(null);
     navigate("/");
   };
+
+  // Redirecting to login, or haven't checked localStorage yet — render
+  // nothing rather than flash any portal content.
+  if (!checkedStorage || !token) {
+    return null;
+  }
+
+  if (dashboardQuery.isLoading) {
+    return (
+      <PortalShell>
+        <p className="text-gray-500">Loading your portal…</p>
+      </PortalShell>
+    );
+  }
+
+  if (dashboardQuery.data?.status === "unauthenticated") {
+    return null; // redirecting via the effect above
+  }
+
+  // Database unavailable. Never falls back to the resource-hub content
+  // below — an authenticated student on a down database sees this, not an
+  // ungated version of the portal.
+  if (!dashboardQuery.data || dashboardQuery.data.status === "unavailable" || dashboardQuery.isError) {
+    return (
+      <PortalShell>
+        <GraduationCap className="w-10 h-10 text-wsa-navy mx-auto mb-3" />
+        <h1 className="text-xl font-bold text-wsa-navy mb-2">Student Portal temporarily unavailable</h1>
+        <p className="text-gray-600 max-w-sm mx-auto">
+          We're unable to load your portal right now. Please try again shortly, or contact your Student Counsellor directly.
+        </p>
+      </PortalShell>
+    );
+  }
+
+  const { name, progress } = dashboardQuery.data;
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -44,23 +100,21 @@ export default function Portal() {
             <GraduationCap className="w-8 h-8" />
             <div>
               <h1 className="text-lg font-bold">Student Portal</h1>
-              <p className="text-sm text-white/70">{user ? `Welcome back, ${user.firstName}` : "Free resources for every student"}</p>
+              <p className="text-sm text-white/70">Welcome back, {name}</p>
             </div>
           </div>
           <div className="flex items-center gap-4">
             <Link href="/" className="text-sm text-white/80 hover:text-white">
               ← Back to Website
             </Link>
-            {user && (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleLogout}
-                className="border-white/30 text-white hover:bg-white/10"
-              >
-                <LogOut className="w-4 h-4 mr-1" /> Sign Out
-              </Button>
-            )}
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleLogout}
+              className="border-white/30 text-white hover:bg-white/10"
+            >
+              <LogOut className="w-4 h-4 mr-1" /> Sign Out
+            </Button>
           </div>
         </div>
       </header>
@@ -168,37 +222,47 @@ export default function Portal() {
           </div>
         </div>
 
-        {/* Student Journey Quick View */}
+        {/* Your Progress — live from Pipedrive at read time, never cached/stored */}
         <div className="mt-12 bg-white rounded-xl shadow-md p-8 border border-gray-100">
-          <h3 className="text-xl font-bold text-wsa-navy mb-6">Your Student Journey</h3>
-          <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-3">
-            {[
-              "Relationship Building",
-              "Career Discussion",
-              "Country Choice",
-              "Course Choice",
-              "University Choice",
-              "Budget Discussion",
-              "Conditional Offer",
-              "Meeting Conditions",
-              "Unconditional Offer",
-              "CAS",
-              "CAS Interview",
-              "UKVI Interview",
-              "Uni Interview",
-              "Visa Application",
-              "Travel Prep",
-              "Enrolment",
-            ].map((stage, i) => (
-              <div
-                key={i}
-                className="text-center p-2 rounded-lg bg-gray-50 border border-gray-200"
-              >
-                <div className="text-xs font-bold text-wsa-red mb-1">{i + 1}</div>
-                <div className="text-xs text-gray-700 leading-tight">{stage}</div>
+          <h3 className="text-xl font-bold text-wsa-navy mb-6">Your Progress</h3>
+
+          {progress.state === "pipedrive_unavailable" && (
+            <div className="flex items-center gap-3 text-gray-500">
+              <Clock className="w-5 h-5 shrink-0" />
+              <p className="text-sm">Your live progress is temporarily unavailable. Please check back shortly.</p>
+            </div>
+          )}
+
+          {progress.state === "no_record" && (
+            <p className="text-sm text-gray-600">
+              We don't have an active enquiry on file for your account yet. If you've just signed up, this can take a little time to appear.
+            </p>
+          )}
+
+          {progress.state === "resolved" && (
+            <>
+              <div className="flex items-baseline justify-between mb-2">
+                <p className="text-lg font-semibold text-wsa-navy">{progress.stageLabel}</p>
+                {progress.position > 0 && (
+                  <p className="text-xs text-gray-500">Step {progress.position} of {TOTAL_STAGES}</p>
+                )}
               </div>
-            ))}
-          </div>
+              {progress.position > 0 && (
+                <div className="w-full h-2 bg-gray-100 rounded-full mb-4 overflow-hidden">
+                  <div
+                    className="h-full bg-wsa-red rounded-full"
+                    style={{ width: `${(progress.position / TOTAL_STAGES) * 100}%` }}
+                  />
+                </div>
+              )}
+              <p className="text-sm text-gray-600 mb-4">{progress.nextAction}</p>
+              {progress.counsellor && (
+                <p className="text-sm text-gray-700">
+                  <span className="font-medium">Your Student Counsellor:</span> {progress.counsellor}
+                </p>
+              )}
+            </>
+          )}
         </div>
 
         {/* Need Help — helpline contact details */}

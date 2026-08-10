@@ -1,11 +1,25 @@
 import { z } from "zod";
-import { notifyStaff, notifyInterviewCoachResult, sendApplicantConfirmation } from "./_core/notification";
+import {
+  notifyStaff,
+  notifyInterviewCoachResult,
+  sendApplicantConfirmation,
+  sendPortalSetupEmail,
+  sendPasswordResetEmail,
+} from "./_core/notification";
 import { systemRouter } from "./_core/systemRouter";
 import { publicProcedure, router } from "./_core/trpc";
 import { ENV } from "./_core/env";
 import { createStudentLead } from "./pipedrive";
 import { recordFailedSubmission } from "./db";
-import { createPortalUser, authenticatePortalUser, setPasswordWithToken, requestPasswordReset, verifyPortalToken } from "./portal-auth";
+import {
+  createPortalUser,
+  authenticatePortalUser,
+  setPasswordWithToken,
+  requestPasswordReset,
+  verifyPortalToken,
+  getPortalUserById,
+} from "./portal-auth";
+import { resolvePortalDashboard } from "./portal-resolver";
 import { getSessionQuestions, assessAnswer, summariseSession, TYPE_LABELS } from "./interviewCoach";
 import { requireTurnstile } from "./_core/turnstile";
 
@@ -59,7 +73,7 @@ export const appRouter = router({
         // Pipedrive/email either way, so skipping Turnstile here doesn't
         // weaken anything Turnstile is protecting.
         if (input.website) {
-          return { success: true as const, leadId: "", portalToken: null };
+          return { success: true as const, leadId: "" };
         }
 
         await requireTurnstile(input.turnstileToken, ctx.req.ip);
@@ -104,31 +118,53 @@ export const appRouter = router({
           };
         }
 
-        // Create portal user and generate password-creation token. This is
-        // best-effort: the sign-up itself already succeeded in Pipedrive.
-        let portalToken: string | null = null;
+        // Create the portal account and email the applicant their one-time
+        // setup link directly. Best-effort: the sign-up itself already
+        // succeeded in Pipedrive, so neither step here can fail the
+        // enquiry — but a failure must not look like a silent success
+        // either, so staff get an explicit alert rather than this state
+        // passing unseen. The raw token is never logged or returned to the
+        // client — it only ever exists inside the emailed link.
         try {
-          // portal-auth.ts's schema/signature is intentionally untouched in
-          // this cut (no portal/database changes) — pipedriveDealId is still
-          // the field name it expects, so the Lead's (UUID) id is passed
-          // through it as before. This whole call throws immediately in
-          // production today (no DATABASE_URL, caught below), so nothing
-          // here is reachable either way.
           const portalResult = await createPortalUser({
             email: input.email,
             firstName: input.firstName,
             lastName: input.lastName,
             pipedrivePersonId: result.personId,
-            pipedriveDealId: result.leadId,
+            pipedriveObjectType: "lead" as const,
+            pipedriveObjectId: result.leadId,
           });
-          portalToken = portalResult.token;
-        } catch (e) {
-          console.error("[Portal] Failed to create portal user:", e);
-        }
 
-        const portalSetupLink = portalToken
-          ? `${ENV.publicSiteUrl}/portal/set-password?token=${portalToken}&email=${encodeURIComponent(input.email)}`
-          : null;
+          const setupLink = `${ENV.publicSiteUrl}/portal/set-password?token=${portalResult.token}&email=${encodeURIComponent(input.email)}`;
+          const emailSent = await sendPortalSetupEmail(input.email, input.firstName, setupLink);
+
+          if (!emailSent) {
+            console.error(`[Portal] Setup email failed to send for ${safeSubmissionSummary(input)}`);
+            notifyStaff({
+              title: `Portal setup email FAILED to send: ${input.firstName} ${input.lastName}`,
+              content: [
+                `The portal account was created but the setup email could not be delivered.`,
+                `Name: ${input.firstName} ${input.lastName}`,
+                `Email: ${input.email}`,
+                `They will need the setup link resent manually.`,
+              ].join("\n"),
+            }).catch(err => console.error("[Notification] Failed to send portal-email-failure alert:", err));
+          }
+        } catch (e) {
+          console.error(
+            `[Portal] Failed to create portal account for ${safeSubmissionSummary(input)}:`,
+            e instanceof Error ? e.message : String(e)
+          );
+          notifyStaff({
+            title: `Portal account creation FAILED: ${input.firstName} ${input.lastName}`,
+            content: [
+              `The student's enquiry was saved successfully, but their Student Portal account could not be created.`,
+              `Name: ${input.firstName} ${input.lastName}`,
+              `Email: ${input.email}`,
+              `They will need a portal account created manually.`,
+            ].join("\n"),
+          }).catch(err => console.error("[Notification] Failed to send portal-failure alert:", err));
+        }
 
         // Notify staff of the new sign-up. Never swallowed silently — a
         // failure here is logged even though it doesn't block the response.
@@ -164,7 +200,6 @@ export const appRouter = router({
             result.reusedExistingPerson ? `\n(Matched an existing Pipedrive Person by email/phone — updated rather than duplicated.)` : "",
             ``,
             `Pipedrive Lead ID: ${result.leadId}`,
-            portalSetupLink ? `\nPortal Setup Link: ${portalSetupLink}` : "",
           ].filter(Boolean).join("\n"),
         }).catch(err => console.error("[Notification] Failed to send staff notification:", err));
 
@@ -173,7 +208,9 @@ export const appRouter = router({
           console.error("[Notification] Failed to send applicant confirmation:", err)
         );
 
-        return { success: true as const, leadId: result.leadId, portalToken };
+        // The portal setup token is never returned here — it only ever
+        // exists inside the email sent directly to the applicant above.
+        return { success: true as const, leadId: result.leadId };
       }),
   }),
 
@@ -204,13 +241,32 @@ export const appRouter = router({
       .input(z.object({ email: z.string().email(), ...turnstileField }))
       .mutation(async ({ input, ctx }) => {
         await requireTurnstile(input.turnstileToken, ctx.req.ip);
-        const token = await requestPasswordReset(input.email);
-        // Always return success to prevent email enumeration
-        // In production, send the reset email here
-        if (token) {
-          console.log(`[Portal] Password reset token for ${input.email}: ${token}`);
-          // TODO: Send email with reset link
+
+        // requestPasswordReset returns null for both "no database" and "no
+        // such account" — the response below is identical either way, and
+        // the raw token (when one exists) never leaves this block except
+        // inside the emailed link. Never logged.
+        const result = await requestPasswordReset(input.email);
+        if (result) {
+          const resetLink = `${ENV.publicSiteUrl}/portal/set-password?token=${result.token}&email=${encodeURIComponent(input.email)}`;
+          const emailSent = await sendPasswordResetEmail(input.email, result.firstName, resetLink);
+
+          if (!emailSent) {
+            console.error(`[Portal] Reset email failed to send for ${input.email}`);
+            notifyStaff({
+              title: `Portal reset email FAILED to send`,
+              content: [
+                `A password reset was requested and a token was generated, but the reset email could not be delivered.`,
+                `Email: ${input.email}`,
+                `They will need a reset link resent manually.`,
+              ].join("\n"),
+            }).catch(err => console.error("[Notification] Failed to send reset-email-failure alert:", err));
+          }
         }
+
+        // Always the same response, whether or not an account exists or
+        // the email actually sent — this endpoint must never reveal
+        // account existence via response content.
         return { success: true, message: "If an account exists with that email, a reset link has been sent." };
       }),
 
@@ -224,6 +280,35 @@ export const appRouter = router({
           email: payload.email,
           firstName: payload.firstName,
           lastName: payload.lastName,
+        };
+      }),
+
+    // The V1 dashboard. Deliberately returns only the locked allowlist —
+    // name, live stage/next-action/progress, counsellor (only when the
+    // native Pipedrive Owner resolves to a known WSA staff account) — never
+    // a raw Pipedrive object. "unavailable" covers the database being down,
+    // which must never fall back to any ungated portal content; a Pipedrive
+    // read failure after successful auth is a different, narrower case
+    // (progress.state "pipedrive_unavailable") that still returns the
+    // student's name, since that comes from the portal database, not
+    // Pipedrive. See server/portal-resolver.ts for the resolution logic.
+    dashboard: publicProcedure
+      .input(z.object({ token: z.string() }))
+      .query(async ({ input }) => {
+        const payload = await verifyPortalToken(input.token);
+        if (!payload) return { status: "unauthenticated" as const };
+
+        const portalUser = await getPortalUserById(payload.portalUserId);
+        if (!portalUser || !portalUser.pipedrivePersonId) {
+          return { status: "unavailable" as const };
+        }
+
+        const progress = await resolvePortalDashboard(portalUser.pipedrivePersonId);
+
+        return {
+          status: "ok" as const,
+          name: portalUser.firstName,
+          progress,
         };
       }),
   }),
