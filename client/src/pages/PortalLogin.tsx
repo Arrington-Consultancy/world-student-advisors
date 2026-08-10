@@ -5,6 +5,11 @@ import { Input } from "@/components/ui/input";
 import { trpc } from "@/lib/trpc";
 import { Eye, EyeOff, GraduationCap } from "lucide-react";
 
+type LoginErrorNotice = {
+  message: string;
+  contactLabel?: string;
+};
+
 /** Navigates to the Google OAuth start endpoint. Call from an event handler only — never during render. */
 function startGoogleLogin() {
   const origin = window.location.origin;
@@ -19,7 +24,7 @@ export default function PortalLogin() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
-  const [error, setError] = useState("");
+  const [error, setError] = useState<LoginErrorNotice | null>(null);
 
   // Handle token delivered by the Google OAuth callback redirect
   useEffect(() => {
@@ -37,14 +42,28 @@ export default function PortalLogin() {
     }
 
     if (oauthError) {
-      const messages: Record<string, string> = {
-        google_denied: "Google sign-in was cancelled.",
-        google_token: "Could not complete Google sign-in. Please try again.",
-        google_verify: "Google sign-in verification failed. Please try again.",
-        google_claims: "Google did not provide the required account information.",
-        google_account: "Your account is inactive. Please contact support.",
+      const messages: Record<string, LoginErrorNotice> = {
+        google_denied: { message: "Google sign-in was cancelled." },
+        google_token: { message: "Could not complete Google sign-in. Please try again." },
+        google_verify: { message: "Google sign-in verification failed. Please try again." },
+        google_claims: { message: "Google did not provide the required account information." },
+        google_account: { message: "We couldn't access your student portal account. Please contact support." },
+        google_no_account: {
+          message:
+            "No student portal account exists for that Google account. Please contact WSA to complete your registration.",
+          contactLabel: "Complete registration",
+        },
+        google_account_inactive: {
+          message: "Your student portal account is inactive. Please contact WSA for help reactivating it.",
+          contactLabel: "Contact WSA",
+        },
+        google_account_conflict: {
+          message:
+            "We couldn't sign you in because this Google account does not match your student portal account details. Please contact WSA for assistance.",
+          contactLabel: "Contact WSA",
+        },
       };
-      setError(messages[oauthError] ?? "Google sign-in failed. Please try again.");
+      setError(messages[oauthError] ?? { message: "Google sign-in failed. Please try again." });
     }
   }, [navigate]);
 
@@ -55,15 +74,15 @@ export default function PortalLogin() {
         localStorage.setItem("portal_user", JSON.stringify(data.user));
         navigate("/portal");
       } else {
-        setError(data.error || "Login failed");
+        setError({ message: data.error || "Login failed" });
       }
     },
-    onError: () => setError("Something went wrong. Please try again."),
+    onError: () => setError({ message: "Something went wrong. Please try again." }),
   });
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    setError("");
+    setError(null);
     loginMutation.mutate({ email, password });
   };
 
@@ -81,7 +100,12 @@ export default function PortalLogin() {
         <div className="bg-white rounded-xl shadow-lg p-8 space-y-5">
           {error && (
             <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm">
-              {error}
+              <p>{error.message}</p>
+              {error.contactLabel && (
+                <Link href="/contact" className="mt-2 inline-block font-medium underline">
+                  {error.contactLabel}
+                </Link>
+              )}
             </div>
           )}
 

@@ -242,6 +242,14 @@ export function registerGoogleAuthRoutes(app: Express) {
       res.redirect("/portal/login?error=google_account");
       return;
     }
+    if (result.status === "inactive") {
+      res.redirect("/portal/login?error=google_account_inactive");
+      return;
+    }
+    if (result.status === "conflict") {
+      res.redirect("/portal/login?error=google_account_conflict");
+      return;
+    }
     if (result.status === "not_found") {
       res.redirect("/portal/login?error=google_no_account");
       return;

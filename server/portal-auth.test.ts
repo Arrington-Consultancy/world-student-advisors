@@ -7,8 +7,9 @@
  * 3. Return { status: "not_found" } (not create a row) when email match exists
  *    but emailVerified=false.
  * 4. Return { status: "not_found" } (not create a row) when no match exists at all.
- * 5. Preserve isActive=false guard for both match paths.
- * 6. Return { status: "db_unavailable" } when getDb() returns null.
+ * 5. Return { status: "inactive" } for matched inactive accounts on both paths.
+ * 6. Refuse verified-email linking when a different googleSub is already linked.
+ * 7. Return { status: "db_unavailable" } when getDb() returns null.
  *
  * createPortalUser (the registration-only path) is NOT exercised here — it is
  * covered by server/contact.googleSignup.test.ts and portal-onboarding.test.ts.
@@ -183,12 +184,12 @@ describe("1 – googleSub match: existing user logs in", () => {
     expect(mockDb!.__getInsertCalls()).toHaveLength(0);
   });
 
-  it("returns not_found when the matching user is inactive (isActive=false)", async () => {
+  it("returns inactive when the matching user is inactive (isActive=false)", async () => {
     mockDb!.__setSelectRows([{ ...BASE_USER, isActive: false }]);
 
     const result = await findGoogleUserForLogin(PROFILE, true);
 
-    expect(result.status).toBe("not_found");
+    expect(result.status).toBe("inactive");
   });
 });
 
@@ -208,7 +209,7 @@ describe("2 – email match with emailVerified=true: links googleSub and logs in
     }
   });
 
-  it("issues an UPDATE to link googleSub to the existing account", async () => {
+  it("issues an UPDATE to link googleSub to the existing account when no googleSub is set", async () => {
     const userNoSub: MockUser = { ...BASE_USER, googleSub: null };
     mockDb!.__setSelectRows([], 0);
     mockDb!.__setSelectRows([userNoSub], 1);
@@ -230,14 +231,25 @@ describe("2 – email match with emailVerified=true: links googleSub and logs in
     expect(mockDb!.__getInsertCalls()).toHaveLength(0);
   });
 
-  it("returns not_found when the email-matched user is inactive", async () => {
+  it("returns inactive when the email-matched user is inactive", async () => {
     const inactiveUser: MockUser = { ...BASE_USER, googleSub: null, isActive: false };
     mockDb!.__setSelectRows([], 0);
     mockDb!.__setSelectRows([inactiveUser], 1);
 
     const result = await findGoogleUserForLogin(PROFILE, true);
 
-    expect(result.status).toBe("not_found");
+    expect(result.status).toBe("inactive");
+  });
+
+  it("returns conflict and does not overwrite a different existing googleSub", async () => {
+    const userWithDifferentSub: MockUser = { ...BASE_USER, googleSub: "different-google-sub" };
+    mockDb!.__setSelectRows([], 0);
+    mockDb!.__setSelectRows([userWithDifferentSub], 1);
+
+    const result = await findGoogleUserForLogin(PROFILE, true);
+
+    expect(result.status).toBe("conflict");
+    expect(mockDb!.__getUpdateCalls()).toHaveLength(0);
   });
 });
 
