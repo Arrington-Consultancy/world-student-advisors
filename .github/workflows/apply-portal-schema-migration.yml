@@ -1,0 +1,58 @@
+name: Apply portal schema migration (one-time)
+
+# Manual-only, one-time step. DATABASE_URL has already been set on the
+# world-student-advisors production service via the Railway dashboard (as
+# a reference to the MySQL service, confirmed directly by the operator —
+# not re-verified by this workflow, since doing so would mean printing or
+# grepping variable output this workflow has no proven-safe way to do
+# without risking exposing the value). This workflow only: (1) runs the
+# drizzle migration (pnpm run db:push) against the corrected schema on
+# this branch (pipedriveObjectType / pipedriveObjectId, not the old
+# incompatible integer pipedriveDealId column), and (2) verifies the live
+# portal_users column list. Prints column metadata only — never row data,
+# never the connection string.
+on:
+  workflow_dispatch:
+    inputs:
+      service_name:
+        description: "Railway app service name"
+        required: true
+        default: "world-student-advisors"
+      environment_name:
+        description: "Railway environment name"
+        required: true
+        default: "production"
+
+jobs:
+  migrate:
+    runs-on: ubuntu-latest
+    env:
+      APP_SERVICE_NAME: ${{ github.event.inputs.service_name }}
+      APP_ENV_NAME: ${{ github.event.inputs.environment_name }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Install Railway CLI
+        run: npm install -g @railway/cli
+
+      - name: Apply the corrected portal schema (pnpm run db:push)
+        env:
+          RAILWAY_TOKEN: ${{ secrets.githubactionsprod }}
+        run: |
+          railway run --service "$APP_SERVICE_NAME" --environment "$APP_ENV_NAME" -- pnpm run db:push
+
+      - name: Verify live schema — portal_users columns (metadata only, no row data)
+        env:
+          RAILWAY_TOKEN: ${{ secrets.githubactionsprod }}
+        run: |
+          railway run --service "$APP_SERVICE_NAME" --environment "$APP_ENV_NAME" -- node scripts/prod-db-diagnostic.mjs
