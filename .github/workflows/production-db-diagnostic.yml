@@ -58,6 +58,16 @@ jobs:
         run: |
           railway variables --service "${{ github.event.inputs.service_name }}" --environment "${{ github.event.inputs.environment_name }}" --json | jq -r 'keys[]' | sort
 
+      - name: Show railway variables --help (to find the exact removal flag, no guessing)
+        run: railway variables --help
+
+      - name: Remove the leftover empty MIGRATION_DATABASE_URL variable
+        env:
+          RAILWAY_TOKEN: ${{ secrets.githubactionsprod }}
+        run: |
+          railway variables --service "${{ github.event.inputs.service_name }}" --environment "${{ github.event.inputs.environment_name }}" --unset MIGRATION_DATABASE_URL || \
+          echo "::warning::--unset not supported by this CLI version; leftover empty variable was not removed automatically."
+
       - name: Run read-only schema check against production
         env:
           RAILWAY_TOKEN: ${{ secrets.githubactionsprod }}
