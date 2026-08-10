@@ -8,6 +8,7 @@ import crypto from "crypto";
 
 const PORTAL_JWT_SECRET = new TextEncoder().encode(ENV.cookieSecret + "-portal");
 const PORTAL_TOKEN_EXPIRY = "7d";
+const SIGNUP_PREFILL_EXPIRY = "15m";
 
 /**
  * Create a portal user record after registration form submission.
@@ -23,6 +24,8 @@ export async function createPortalUser(data: {
    * trail only; live portal resolution never reads this back. */
   pipedriveObjectType: "lead" | "deal";
   pipedriveObjectId: string;
+  /** When the student signed up via Google, link their sub so they can use Google portal login immediately. */
+  googleSub?: string;
 }) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
@@ -30,6 +33,10 @@ export async function createPortalUser(data: {
   // Check if user already exists
   const existing = await db.select().from(portalUsers).where(eq(portalUsers.email, data.email.toLowerCase())).limit(1);
   if (existing.length > 0) {
+    // Link the Google sub if this is a Google-verified registration and it isn't linked yet
+    if (data.googleSub && !existing[0].googleSub) {
+      await db.update(portalUsers).set({ googleSub: data.googleSub }).where(eq(portalUsers.id, existing[0].id));
+    }
     // User already registered - generate a new password reset token
     const token = await generateResetToken(data.email.toLowerCase());
     return { userId: existing[0].id, token, isExisting: true };
@@ -43,6 +50,7 @@ export async function createPortalUser(data: {
     pipedrivePersonId: data.pipedrivePersonId,
     pipedriveObjectType: data.pipedriveObjectType,
     pipedriveObjectId: data.pipedriveObjectId,
+    ...(data.googleSub ? { googleSub: data.googleSub } : {}),
   });
 
   const userId = result[0].insertId;
@@ -260,4 +268,54 @@ export async function getPortalUserById(
   if (!user.length || !user[0].isActive) return null;
 
   return { firstName: user[0].firstName, pipedrivePersonId: user[0].pipedrivePersonId };
+}
+
+/**
+ * Mint a short-lived JWT (15 min) that encodes verified Google identity claims
+ * for the sign-up pre-fill flow. The token is passed back to /contact via the
+ * OAuth callback redirect, decoded client-side for display, and verified
+ * server-side inside submitStudent to enforce the locked name/email values
+ * and link the googleSub to the resulting portal account.
+ *
+ * The `purpose` claim prevents reuse as a portal session token.
+ */
+export async function mintSignupPrefillToken(profile: {
+  sub: string;
+  email: string;
+  firstName: string;
+  lastName: string;
+}): Promise<string> {
+  return new jose.SignJWT({
+    purpose: "signup_prefill" as const,
+    sub: profile.sub,
+    email: profile.email,
+    firstName: profile.firstName,
+    lastName: profile.lastName,
+  })
+    .setProtectedHeader({ alg: "HS256" })
+    .setExpirationTime(SIGNUP_PREFILL_EXPIRY)
+    .sign(PORTAL_JWT_SECRET);
+}
+
+/**
+ * Verify a signup prefill token and return its claims, or null if the token is
+ * missing, expired, or not a signup_prefill token. Never throws.
+ */
+export async function verifySignupPrefillToken(
+  token: string,
+): Promise<{ sub: string; email: string; firstName: string; lastName: string } | null> {
+  try {
+    const { payload } = await jose.jwtVerify(token, PORTAL_JWT_SECRET);
+    if (payload.purpose !== "signup_prefill") return null;
+    const { sub, email, firstName, lastName } = payload as Record<string, unknown>;
+    if (typeof sub !== "string" || typeof email !== "string") return null;
+    return {
+      sub,
+      email,
+      firstName: typeof firstName === "string" ? firstName : "",
+      lastName: typeof lastName === "string" ? lastName : "",
+    };
+  } catch {
+    return null;
+  }
 }

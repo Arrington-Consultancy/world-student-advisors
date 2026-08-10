@@ -4,8 +4,28 @@ import InternationalPhoneInput from "@/components/InternationalPhoneInput";
 import ScrollReveal from "@/components/ScrollReveal";
 import TurnstileWidget, { type TurnstileWidgetHandle } from "@/components/TurnstileWidget";
 import { useTurnstileSiteKey } from "@/hooks/useTurnstileSiteKey";
-import { useRef, useState } from "react";
+import { useRef, useState, useEffect } from "react";
 import { trpc } from "@/lib/trpc";
+
+/** Navigates to the Google OAuth start endpoint with flow=signup. */
+function startGoogleSignup() {
+  const origin = window.location.origin;
+  window.location.href = `/api/portal/auth/google?origin=${encodeURIComponent(origin)}&flow=signup`;
+}
+
+/**
+ * Decode a JWT payload without verifying the signature — for display/pre-fill
+ * only. The server verifies the token at submission time via verifySignupPrefillToken.
+ */
+function decodeJwtPayload(token: string): Record<string, unknown> | null {
+  try {
+    const part = token.split(".")[1];
+    if (!part) return null;
+    return JSON.parse(atob(part.replace(/-/g, "+").replace(/_/g, "/")));
+  } catch {
+    return null;
+  }
+}
 
 const offices = [
   {
@@ -73,6 +93,33 @@ function StudentForm() {
   const turnstileRef = useRef<TurnstileWidgetHandle>(null);
   const turnstileSiteKey = useTurnstileSiteKey();
 
+  // Google signup prefill state
+  const [googlePrefillToken, setGooglePrefillToken] = useState("");
+  const [googleVerified, setGoogleVerified] = useState(false);
+
+  // On mount, read the ?gpt= param left by the Google OAuth signup callback.
+  // The payload is decoded client-side for display only; the server verifies
+  // the signature at submission time.
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const gpt = params.get("gpt");
+    if (!gpt) return;
+    const payload = decodeJwtPayload(gpt);
+    if (!payload || payload.purpose !== "signup_prefill") return;
+    setGooglePrefillToken(gpt);
+    setGoogleVerified(true);
+    setFormData(prev => ({
+      ...prev,
+      firstName: typeof payload.firstName === "string" ? payload.firstName : prev.firstName,
+      lastName: typeof payload.lastName === "string" ? payload.lastName : prev.lastName,
+      email: typeof payload.email === "string" ? payload.email : prev.email,
+    }));
+    // Remove the token from the URL so it isn't bookmarked or shared
+    const url = new URL(window.location.href);
+    url.searchParams.delete("gpt");
+    window.history.replaceState({}, "", url.toString());
+  }, []);
+
   const mutation = trpc.contact.submitStudent.useMutation({
     onSuccess: result => {
       if (result.success) {
@@ -120,7 +167,7 @@ function StudentForm() {
       setSubmitError("Please complete the verification check below, then try again.");
       return;
     }
-    mutation.mutate({ ...formData, turnstileToken });
+    mutation.mutate({ ...formData, turnstileToken, googlePrefillToken });
   };
 
   if (submitted) {
@@ -140,6 +187,48 @@ function StudentForm() {
       <p className="text-muted-foreground mb-8 text-[15px]">
         Students or parents can apply. A Student Counsellor will follow up within 48 hours to understand your goals in more detail.
       </p>
+
+      {/* Google sign-up */}
+      {!googleVerified && (
+        <>
+          <button
+            type="button"
+            onClick={() => startGoogleSignup()}
+            className="w-full h-11 flex items-center justify-center gap-3 border border-gray-300 bg-white hover:bg-gray-50 transition-colors rounded-none mb-4 text-sm font-medium text-gray-700"
+          >
+            <svg className="w-5 h-5" viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4" />
+              <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853" />
+              <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z" fill="#FBBC05" />
+              <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335" />
+            </svg>
+            Continue with Google
+          </button>
+          <div className="relative mb-6">
+            <div className="absolute inset-0 flex items-center">
+              <span className="w-full border-t border-gray-200" />
+            </div>
+            <div className="relative flex justify-center text-xs uppercase">
+              <span className="bg-white px-2 text-gray-400">or continue with your details</span>
+            </div>
+          </div>
+        </>
+      )}
+
+      {googleVerified && (
+        <div className="flex items-center gap-2 mb-6 px-4 py-3 bg-green-50 border border-green-200 rounded text-sm text-green-800">
+          <svg className="w-4 h-4 shrink-0" viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4" />
+            <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853" />
+            <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z" fill="#FBBC05" />
+            <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335" />
+          </svg>
+          <span>
+            <strong>Signed in with Google.</strong> Name and email are verified and locked. Please complete the remaining fields below.
+          </span>
+        </div>
+      )}
+
       <form className="space-y-5" onSubmit={handleSubmit}>
         <input
           type="text"
@@ -157,8 +246,9 @@ function StudentForm() {
             type="text"
             required
             value={formData.firstName}
-            onChange={(e) => { setFormData({ ...formData, firstName: e.target.value }); setErrors((prev) => ({ ...prev, firstName: "" })); }}
-            className={`w-full px-4 py-3 border bg-white focus:outline-none focus:ring-2 focus:ring-wsa-red/20 focus:border-wsa-red transition-colors ${errors.firstName ? "border-red-400" : "border-border"}`}
+            readOnly={googleVerified}
+            onChange={(e) => { if (!googleVerified) { setFormData({ ...formData, firstName: e.target.value }); setErrors((prev) => ({ ...prev, firstName: "" })); } }}
+            className={`w-full px-4 py-3 border bg-white focus:outline-none focus:ring-2 focus:ring-wsa-red/20 focus:border-wsa-red transition-colors ${googleVerified ? "bg-gray-50 cursor-default" : ""} ${errors.firstName ? "border-red-400" : "border-border"}`}
           />
           {errors.firstName && <p className="text-xs text-red-600 mt-1">{errors.firstName}</p>}
         </div>
@@ -177,8 +267,9 @@ function StudentForm() {
             type="text"
             required
             value={formData.lastName}
-            onChange={(e) => { setFormData({ ...formData, lastName: e.target.value }); setErrors((prev) => ({ ...prev, lastName: "" })); }}
-            className={`w-full px-4 py-3 border bg-white focus:outline-none focus:ring-2 focus:ring-wsa-red/20 focus:border-wsa-red transition-colors ${errors.lastName ? "border-red-400" : "border-border"}`}
+            readOnly={googleVerified}
+            onChange={(e) => { if (!googleVerified) { setFormData({ ...formData, lastName: e.target.value }); setErrors((prev) => ({ ...prev, lastName: "" })); } }}
+            className={`w-full px-4 py-3 border bg-white focus:outline-none focus:ring-2 focus:ring-wsa-red/20 focus:border-wsa-red transition-colors ${googleVerified ? "bg-gray-50 cursor-default" : ""} ${errors.lastName ? "border-red-400" : "border-border"}`}
           />
           {errors.lastName && <p className="text-xs text-red-600 mt-1">{errors.lastName}</p>}
         </div>
@@ -235,8 +326,9 @@ function StudentForm() {
             type="email"
             required
             value={formData.email}
-            onChange={(e) => { setFormData({ ...formData, email: e.target.value }); setErrors((prev) => ({ ...prev, email: "" })); }}
-            className={`w-full px-4 py-3 border bg-white focus:outline-none focus:ring-2 focus:ring-wsa-red/20 focus:border-wsa-red transition-colors ${errors.email ? "border-red-400" : "border-border"}`}
+            readOnly={googleVerified}
+            onChange={(e) => { if (!googleVerified) { setFormData({ ...formData, email: e.target.value }); setErrors((prev) => ({ ...prev, email: "" })); } }}
+            className={`w-full px-4 py-3 border bg-white focus:outline-none focus:ring-2 focus:ring-wsa-red/20 focus:border-wsa-red transition-colors ${googleVerified ? "bg-gray-50 cursor-default" : ""} ${errors.email ? "border-red-400" : "border-border"}`}
           />
           {errors.email && <p className="text-xs text-red-600 mt-1">{errors.email}</p>}
         </div>

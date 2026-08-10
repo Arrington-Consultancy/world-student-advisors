@@ -18,6 +18,7 @@ import {
   requestPasswordReset,
   verifyPortalToken,
   getPortalUserById,
+  verifySignupPrefillToken,
 } from "./portal-auth";
 import { resolvePortalDashboard } from "./portal-resolver";
 import { getSessionQuestions, assessAnswer, summariseSession, TYPE_LABELS } from "./interviewCoach";
@@ -51,6 +52,13 @@ const studentSignupSchema = z.object({
   gdprConsent: z.boolean(),
   /** Honeypot — real users never see or fill this field; bots often do. */
   website: z.string().optional().default(""),
+  /**
+   * Short-lived JWT minted by the Google OAuth callback when flow=signup.
+   * When present the server verifies it and uses the locked sub/email/name
+   * values from Google rather than the raw form fields, and links the
+   * resulting portal account to that Google subject.
+   */
+  googlePrefillToken: z.string().optional().default(""),
   ...turnstileField,
 });
 type StudentSignupInput = z.infer<typeof studentSignupSchema>;
@@ -78,35 +86,62 @@ export const appRouter = router({
 
         await requireTurnstile(input.turnstileToken, ctx.req.ip);
 
+        // ── Verify Google prefill token if the student used "Continue with Google" ──
+        // The token was minted server-side in the OAuth callback (flow=signup),
+        // so its claims are authoritative. We override the raw form fields with
+        // the verified values to prevent tampering, and record the Google sub
+        // so the portal account can be linked for immediate Google portal login.
+        let googleSub: string | undefined;
+        // effectiveInput allows us to override locked fields from the verified
+        // Google token while keeping the rest of the submitted form data intact.
+        let effectiveInput = input;
+        if (input.googlePrefillToken) {
+          const verified = await verifySignupPrefillToken(input.googlePrefillToken);
+          if (!verified) {
+            return {
+              success: false as const,
+              error: "Your Google sign-in session has expired. Please click 'Continue with Google' again.",
+            };
+          }
+          // Lock the identity fields to the verified Google values
+          effectiveInput = {
+            ...input,
+            firstName: verified.firstName || input.firstName,
+            lastName: verified.lastName || input.lastName,
+            email: verified.email,
+          };
+          googleSub = verified.sub;
+        }
+
         let result: Awaited<ReturnType<typeof createStudentLead>>;
         try {
-          result = await createStudentLead(input);
+          result = await createStudentLead(effectiveInput);
         } catch (error) {
           // Safe log only — no token, no passport number, no full payload.
           console.error(
-            `[Pipedrive] Sign-up failed to save for ${safeSubmissionSummary(input)}:`,
+            `[Pipedrive] Sign-up failed to save for ${safeSubmissionSummary(effectiveInput)}:`,
             error instanceof Error ? error.message : String(error)
           );
 
           // Preserve the full submission durably so it isn't silently lost.
           await recordFailedSubmission({
             formType: "student-signup",
-            email: input.email,
-            payload: input,
+            email: effectiveInput.email,
+            payload: effectiveInput,
             errorMessage: error instanceof Error ? error.message : String(error),
           });
 
           // Alert staff that a submission failed to save — separate from the
           // normal success notification, and never awaited-and-swallowed.
           notifyStaff({
-            title: `Sign-up FAILED to save: ${input.firstName} ${input.lastName}`,
+            title: `Sign-up FAILED to save: ${effectiveInput.firstName} ${effectiveInput.lastName}`,
             content: [
               `A student sign-up could not be saved to Pipedrive and needs manual follow-up.`,
               ``,
-              `Name: ${input.firstName} ${input.lastName}`,
-              `Email: ${input.email}`,
-              `Phone: ${input.phone}`,
-              `Desired Level: ${input.desiredLevel}`,
+              `Name: ${effectiveInput.firstName} ${effectiveInput.lastName}`,
+              `Email: ${effectiveInput.email}`,
+              `Phone: ${effectiveInput.phone}`,
+              `Desired Level: ${effectiveInput.desiredLevel}`,
               ``,
               `The full submission has been preserved for retry (see failed_submissions table if the database is connected; otherwise check server logs for the timestamp above).`,
             ].join("\n"),
@@ -127,40 +162,41 @@ export const appRouter = router({
         // client — it only ever exists inside the emailed link.
         try {
           const portalResult = await createPortalUser({
-            email: input.email,
-            firstName: input.firstName,
-            lastName: input.lastName,
+            email: effectiveInput.email,
+            firstName: effectiveInput.firstName,
+            lastName: effectiveInput.lastName,
             pipedrivePersonId: result.personId,
             pipedriveObjectType: "lead" as const,
             pipedriveObjectId: result.leadId,
+            ...(googleSub ? { googleSub } : {}),
           });
 
-          const setupLink = `${ENV.publicSiteUrl}/portal/set-password?token=${portalResult.token}&email=${encodeURIComponent(input.email)}`;
-          const emailSent = await sendPortalSetupEmail(input.email, input.firstName, setupLink);
+          const setupLink = `${ENV.publicSiteUrl}/portal/set-password?token=${portalResult.token}&email=${encodeURIComponent(effectiveInput.email)}`;
+          const emailSent = await sendPortalSetupEmail(effectiveInput.email, effectiveInput.firstName, setupLink);
 
           if (!emailSent) {
-            console.error(`[Portal] Setup email failed to send for ${safeSubmissionSummary(input)}`);
+            console.error(`[Portal] Setup email failed to send for ${safeSubmissionSummary(effectiveInput)}`);
             notifyStaff({
-              title: `Portal setup email FAILED to send: ${input.firstName} ${input.lastName}`,
+              title: `Portal setup email FAILED to send: ${effectiveInput.firstName} ${effectiveInput.lastName}`,
               content: [
                 `The portal account was created but the setup email could not be delivered.`,
-                `Name: ${input.firstName} ${input.lastName}`,
-                `Email: ${input.email}`,
+                `Name: ${effectiveInput.firstName} ${effectiveInput.lastName}`,
+                `Email: ${effectiveInput.email}`,
                 `They will need the setup link resent manually.`,
               ].join("\n"),
             }).catch(err => console.error("[Notification] Failed to send portal-email-failure alert:", err));
           }
         } catch (e) {
           console.error(
-            `[Portal] Failed to create portal account for ${safeSubmissionSummary(input)}:`,
+            `[Portal] Failed to create portal account for ${safeSubmissionSummary(effectiveInput)}:`,
             e instanceof Error ? e.message : String(e)
           );
           notifyStaff({
-            title: `Portal account creation FAILED: ${input.firstName} ${input.lastName}`,
+            title: `Portal account creation FAILED: ${effectiveInput.firstName} ${effectiveInput.lastName}`,
             content: [
               `The student's enquiry was saved successfully, but their Student Portal account could not be created.`,
-              `Name: ${input.firstName} ${input.lastName}`,
-              `Email: ${input.email}`,
+              `Name: ${effectiveInput.firstName} ${effectiveInput.lastName}`,
+              `Email: ${effectiveInput.email}`,
               `They will need a portal account created manually.`,
             ].join("\n"),
           }).catch(err => console.error("[Notification] Failed to send portal-failure alert:", err));
@@ -173,28 +209,28 @@ export const appRouter = router({
         // this is the student's stated preference at signup, not a claim
         // about who Pipedrive has actually assigned as the Lead's owner.
         notifyStaff({
-          title: `New Student Enquiry (Rec: ${result.recommendedCounsellorLabel}): ${input.firstName} ${input.lastName} - ${input.desiredLevel}`,
+          title: `New Student Enquiry (Rec: ${result.recommendedCounsellorLabel}): ${effectiveInput.firstName} ${effectiveInput.lastName} - ${effectiveInput.desiredLevel}`,
           content: [
-            `Name: ${input.firstName} ${input.lastName}`,
-            `Email: ${input.email}`,
-            input.phone ? `Phone: ${input.phone}` : "",
-            `Gender: ${input.gender}`,
-            `Date of Birth: ${input.dateOfBirth}`,
-            input.passportNumber ? `Passport Number: ${input.passportNumber}` : "",
-            `Nationality: ${input.nationality}`,
-            `Country: ${input.country}`,
-            `Highest Qualification: ${input.highestQualification}`,
-            `Desired Level: ${input.desiredLevel}`,
-            `Area of Study: ${input.areaOfStudy}`,
-            `Preferred Mode: ${input.preferredMode}`,
-            `Destination: ${input.preferredDestination}`,
-            `Start: ${input.preferredStartMonth}`,
-            `Education Funding: ${input.educationFunding}`,
-            input.promoCode ? `Promotional Code: ${input.promoCode}` : "",
-            input.referredToWSA === "yes"
-              ? `Referred to WSA: Yes — ${input.referredByWhom || "—"}`
-              : input.referredToWSA
-                ? `Referred to WSA: ${input.referredToWSA}`
+            `Name: ${effectiveInput.firstName} ${effectiveInput.lastName}`,
+            `Email: ${effectiveInput.email}`,
+            effectiveInput.phone ? `Phone: ${effectiveInput.phone}` : "",
+            `Gender: ${effectiveInput.gender}`,
+            `Date of Birth: ${effectiveInput.dateOfBirth}`,
+            effectiveInput.passportNumber ? `Passport Number: ${effectiveInput.passportNumber}` : "",
+            `Nationality: ${effectiveInput.nationality}`,
+            `Country: ${effectiveInput.country}`,
+            `Highest Qualification: ${effectiveInput.highestQualification}`,
+            `Desired Level: ${effectiveInput.desiredLevel}`,
+            `Area of Study: ${effectiveInput.areaOfStudy}`,
+            `Preferred Mode: ${effectiveInput.preferredMode}`,
+            `Destination: ${effectiveInput.preferredDestination}`,
+            `Start: ${effectiveInput.preferredStartMonth}`,
+            `Education Funding: ${effectiveInput.educationFunding}`,
+            effectiveInput.promoCode ? `Promotional Code: ${effectiveInput.promoCode}` : "",
+            effectiveInput.referredToWSA === "yes"
+              ? `Referred to WSA: Yes — ${effectiveInput.referredByWhom || "—"}`
+              : effectiveInput.referredToWSA
+                ? `Referred to WSA: ${effectiveInput.referredToWSA}`
                 : "",
             `Recommended Counsellor: ${result.recommendedCounsellorLabel}`,
             result.reusedExistingPerson ? `\n(Matched an existing Pipedrive Person by email/phone — updated rather than duplicated.)` : "",
@@ -204,7 +240,7 @@ export const appRouter = router({
         }).catch(err => console.error("[Notification] Failed to send staff notification:", err));
 
         // Confirm to the applicant — best-effort, logged rather than swallowed.
-        sendApplicantConfirmation(input.email, input.firstName).catch(err =>
+        sendApplicantConfirmation(effectiveInput.email, effectiveInput.firstName).catch(err =>
           console.error("[Notification] Failed to send applicant confirmation:", err)
         );
 
