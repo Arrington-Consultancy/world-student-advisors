@@ -122,16 +122,7 @@ export async function authenticatePortalUser(
   // Update last login
   await db.update(portalUsers).set({ lastLogin: new Date() }).where(eq(portalUsers.id, portalUser.id));
 
-  // Create JWT
-  const token = await new jose.SignJWT({
-    portalUserId: portalUser.id,
-    email: portalUser.email,
-    firstName: portalUser.firstName,
-    lastName: portalUser.lastName,
-  })
-    .setProtectedHeader({ alg: "HS256" })
-    .setExpirationTime(PORTAL_TOKEN_EXPIRY)
-    .sign(PORTAL_JWT_SECRET);
+  const token = await mintPortalToken(portalUser);
 
   return {
     token,
@@ -156,6 +147,85 @@ export async function verifyPortalToken(
   } catch {
     return null;
   }
+}
+
+/**
+ * Mint a signed portal JWT for a given user row.
+ * Shared by password login and the Google OAuth callback.
+ */
+export async function mintPortalToken(user: {
+  id: number;
+  email: string;
+  firstName: string;
+  lastName: string;
+}): Promise<string> {
+  return new jose.SignJWT({
+    portalUserId: user.id,
+    email: user.email,
+    firstName: user.firstName,
+    lastName: user.lastName,
+  })
+    .setProtectedHeader({ alg: "HS256" })
+    .setExpirationTime(PORTAL_TOKEN_EXPIRY)
+    .sign(PORTAL_JWT_SECRET);
+}
+
+/**
+ * Look up a portal user by their Google OAuth subject identifier, or create a
+ * new account if none exists for that sub. Returns the minted portal JWT.
+ *
+ * For existing password-only accounts with the same email, the googleSub is
+ * linked on first Google sign-in so future logins work via either method.
+ */
+export async function findOrCreateGoogleUser(profile: {
+  sub: string;
+  email: string;
+  firstName: string;
+  lastName: string;
+}): Promise<{ token: string; user: { id: number; email: string; firstName: string; lastName: string } } | null> {
+  const db = await getDb();
+  if (!db) return null;
+
+  const emailLower = profile.email.toLowerCase();
+
+  // Try by googleSub first (fastest path for returning users)
+  let rows = await db.select().from(portalUsers).where(eq(portalUsers.googleSub, profile.sub)).limit(1);
+
+  if (!rows.length) {
+    // Fall back to email — link an existing password account
+    rows = await db.select().from(portalUsers).where(eq(portalUsers.email, emailLower)).limit(1);
+
+    if (rows.length) {
+      // Link the Google sub to the existing account
+      await db.update(portalUsers).set({ googleSub: profile.sub }).where(eq(portalUsers.id, rows[0].id));
+    } else {
+      // Create a brand-new portal account (no Pipedrive record yet — staff will
+      // match manually if the student has already applied via the form)
+      const result = await db.insert(portalUsers).values({
+        email: emailLower,
+        firstName: profile.firstName,
+        lastName: profile.lastName,
+        googleSub: profile.sub,
+      });
+      rows = await db.select().from(portalUsers).where(eq(portalUsers.id, result[0].insertId)).limit(1);
+    }
+  }
+
+  const portalUser = rows[0];
+  if (!portalUser.isActive) return null;
+
+  await db.update(portalUsers).set({ lastLogin: new Date() }).where(eq(portalUsers.id, portalUser.id));
+
+  const token = await mintPortalToken(portalUser);
+  return {
+    token,
+    user: {
+      id: portalUser.id,
+      email: portalUser.email,
+      firstName: portalUser.firstName,
+      lastName: portalUser.lastName,
+    },
+  };
 }
 
 /**

@@ -45,4 +45,8 @@ export const ENV = {
   turnstileSiteKey: process.env.TURNSTILE_SITE_KEY ?? "",
   /** Server-only. Never send this to the client, log it, or include it in any response. */
   turnstileSecretKey: process.env.TURNSTILE_SECRET_KEY ?? "",
+  /** Google OAuth Client ID — safe to include in redirect URLs but keep it server-controlled. */
+  googleClientId: process.env.GOOGLE_CLIENT_ID ?? "",
+  /** Server-only. Never send this to the client, log it, or include it in any response. */
+  googleClientSecret: process.env.GOOGLE_CLIENT_SECRET ?? "",
 };

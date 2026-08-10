@@ -22,6 +22,13 @@
       "when": 1786367981244,
       "tag": "0002_fix_portal_pipedrive_id_columns",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "5",
+      "when": 1786900000000,
+      "tag": "0003_portal_google_sub",
+      "breakpoints": true
     }
   ]
 }
