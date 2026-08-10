@@ -96,4 +96,69 @@ describe("resolvePortalDashboard — read-time Person -> Lead/Deal resolution", 
 
     expect(result).toMatchObject({ state: "resolved", stageLabel: "In progress", position: 0, counsellor: "Tim Hunt" });
   });
+
+  // ── Lead counsellor display rules ────────────────────────────────────────
+
+  it("does NOT expose Tim Hunt as counsellor when the Lead is owned by Tim", async () => {
+    mockedGetOpenDealForPerson.mockResolvedValue(null);
+    // Tim's user ID: 25629968
+    mockedGetOpenLeadForPerson.mockResolvedValue({ id: "lead-uuid", ownerId: 25629968 });
+
+    const result = await resolvePortalDashboard(42);
+
+    expect(result).toMatchObject({ state: "resolved", counsellor: null });
+  });
+
+  it("exposes Eldah Therone as counsellor when the Lead is owned by Eldah", async () => {
+    mockedGetOpenDealForPerson.mockResolvedValue(null);
+    mockedGetOpenLeadForPerson.mockResolvedValue({ id: "lead-uuid", ownerId: 25633444 });
+
+    const result = await resolvePortalDashboard(42);
+
+    expect(result).toMatchObject({ state: "resolved", counsellor: "Eldah Therone" });
+  });
+
+  it("exposes Glenice Owino as counsellor when the Lead is owned by Glenice", async () => {
+    mockedGetOpenDealForPerson.mockResolvedValue(null);
+    mockedGetOpenLeadForPerson.mockResolvedValue({ id: "lead-uuid", ownerId: 25633433 });
+
+    const result = await resolvePortalDashboard(42);
+
+    expect(result).toMatchObject({ state: "resolved", counsellor: "Glenice Owino" });
+  });
+
+  it("exposes Manet Khamayo as counsellor when the Lead is owned by Manet", async () => {
+    mockedGetOpenDealForPerson.mockResolvedValue(null);
+    mockedGetOpenLeadForPerson.mockResolvedValue({ id: "lead-uuid", ownerId: 25633422 });
+
+    const result = await resolvePortalDashboard(42);
+
+    expect(result).toMatchObject({ state: "resolved", counsellor: "Manet Khamayo" });
+  });
+
+  it("exposes Tim Hunt as counsellor when a Deal is owned by Tim", async () => {
+    mockedGetOpenDealForPerson.mockResolvedValue({ id: 1, stageId: 16, ownerId: 25629968, updateTime: "2026-08-01" });
+
+    const result = await resolvePortalDashboard(42);
+
+    expect(result).toMatchObject({ state: "resolved", counsellor: "Tim Hunt" });
+  });
+
+  it("omits counsellor when Lead owner is unknown (not a recognised WSA staff ID)", async () => {
+    mockedGetOpenDealForPerson.mockResolvedValue(null);
+    mockedGetOpenLeadForPerson.mockResolvedValue({ id: "lead-uuid", ownerId: 999999 });
+
+    const result = await resolvePortalDashboard(42);
+
+    expect(result).toMatchObject({ state: "resolved", counsellor: null });
+  });
+
+  it("omits counsellor when Lead owner is unset", async () => {
+    mockedGetOpenDealForPerson.mockResolvedValue(null);
+    mockedGetOpenLeadForPerson.mockResolvedValue({ id: "lead-uuid", ownerId: null });
+
+    const result = await resolvePortalDashboard(42);
+
+    expect(result).toMatchObject({ state: "resolved", counsellor: null });
+  });
 });
