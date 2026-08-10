@@ -17,7 +17,7 @@ import type { Express } from "express";
 import crypto from "crypto";
 import * as jose from "jose";
 import { ENV } from "./_core/env";
-import { findOrCreateGoogleUser, mintSignupPrefillToken } from "./portal-auth";
+import { findGoogleUserForLogin, mintSignupPrefillToken } from "./portal-auth";
 
 const GOOGLE_AUTH_URL = "https://accounts.google.com/o/oauth2/v2/auth";
 const GOOGLE_TOKEN_URL = "https://oauth2.googleapis.com/token";
@@ -218,6 +218,8 @@ export function registerGoogleAuthRoutes(app: Express) {
     const firstName = givenName || name.split(" ")[0] || email.split("@")[0];
     const lastName = familyName || (name.includes(" ") ? name.split(" ").slice(1).join(" ") : "");
 
+    const emailVerified = claims.email_verified === true;
+
     // ── Signup flow: mint a short-lived prefill token and return to /contact ──
     if (decoded.flow === "signup") {
       let prefillToken: string;
@@ -234,11 +236,14 @@ export function registerGoogleAuthRoutes(app: Express) {
       return;
     }
 
-    // ── Login flow: find or create portal user and issue a session token ──────
-    // Find or create the portal user
-    const result = await findOrCreateGoogleUser({ sub, email, firstName, lastName });
-    if (!result) {
+    // ── Login flow: find portal user and issue a session token ───────────────
+    const result = await findGoogleUserForLogin({ sub, email, firstName, lastName }, emailVerified);
+    if (result.status === "db_unavailable") {
       res.redirect("/portal/login?error=google_account");
+      return;
+    }
+    if (result.status === "not_found") {
+      res.redirect("/portal/login?error=google_no_account");
       return;
     }
 
