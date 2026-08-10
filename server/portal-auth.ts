@@ -18,7 +18,11 @@ export async function createPortalUser(data: {
   firstName: string;
   lastName: string;
   pipedrivePersonId: number;
-  pipedriveDealId: number;
+  /** "lead" for everything created going forward — see the doc comment on
+   * drizzle/schema.ts's portalUsers.pipedriveObjectType. Write-once audit
+   * trail only; live portal resolution never reads this back. */
+  pipedriveObjectType: "lead" | "deal";
+  pipedriveObjectId: string;
 }) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
@@ -37,7 +41,8 @@ export async function createPortalUser(data: {
     firstName: data.firstName,
     lastName: data.lastName,
     pipedrivePersonId: data.pipedrivePersonId,
-    pipedriveDealId: data.pipedriveDealId,
+    pipedriveObjectType: data.pipedriveObjectType,
+    pipedriveObjectId: data.pipedriveObjectId,
   });
 
   const userId = result[0].insertId;
@@ -154,9 +159,11 @@ export async function verifyPortalToken(
 }
 
 /**
- * Request password reset - generates token for existing user
+ * Request password reset - generates token for existing user. Returns null
+ * for both "no database" and "no such account" so the caller can give an
+ * identical anti-enumeration response either way.
  */
-export async function requestPasswordReset(email: string): Promise<string | null> {
+export async function requestPasswordReset(email: string): Promise<{ token: string; firstName: string } | null> {
   const db = await getDb();
   if (!db) return null;
 
@@ -164,5 +171,23 @@ export async function requestPasswordReset(email: string): Promise<string | null
   if (!user.length) return null;
 
   const token = await generateResetToken(email.toLowerCase());
-  return token;
+  return { token, firstName: user[0].firstName };
+}
+
+/**
+ * Look up a portal user by their numeric id (the JWT's portalUserId claim)
+ * for use by portal.dashboard — returns the durable pipedrivePersonId
+ * anchor plus display name, or null if the account is missing/deactivated
+ * or the database is unavailable. Never throws.
+ */
+export async function getPortalUserById(
+  id: number
+): Promise<{ firstName: string; pipedrivePersonId: number | null } | null> {
+  const db = await getDb();
+  if (!db) return null;
+
+  const user = await db.select().from(portalUsers).where(eq(portalUsers.id, id)).limit(1);
+  if (!user.length || !user[0].isActive) return null;
+
+  return { firstName: user[0].firstName, pipedrivePersonId: user[0].pipedrivePersonId };
 }

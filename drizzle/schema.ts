@@ -36,10 +36,31 @@ export const portalUsers = mysqlTable("portal_users", {
   firstName: varchar("firstName", { length: 100 }).notNull(),
   lastName: varchar("lastName", { length: 100 }).notNull(),
   passwordHash: varchar("passwordHash", { length: 255 }),
-  /** Pipedrive person ID linked at registration */
+  /**
+   * The durable anchor for live portal resolution — every Pipedrive read
+   * (Person, current Lead/Deal, live stage/owner) is keyed off this alone.
+   * Never null once a portal account exists.
+   */
   pipedrivePersonId: int("pipedrivePersonId"),
-  /** Pipedrive deal ID linked at registration */
-  pipedriveDealId: int("pipedriveDealId"),
+  /**
+   * Which kind of Pipedrive object was created at registration time —
+   * "lead" for everything going forward, "deal" only for accounts created
+   * during the brief 2026-08-05/06 period when the sign-up flow incorrectly
+   * created Deals instead of Leads. Write-once audit trail only: records
+   * what was created at sign-up so staff can trace a portal account back to
+   * its origin. The portal never reads this to resolve current status —
+   * that's always a live lookup by pipedrivePersonId (see
+   * server/portal-resolver.ts) precisely because a Lead can later convert
+   * to a different Deal, which would make a stored ID stale.
+   */
+  pipedriveObjectType: varchar("pipedriveObjectType", { length: 10 }),
+  /**
+   * The Pipedrive Lead UUID (or, for historical Deal-period rows, the Deal's
+   * integer ID) created at registration, stored as text either way since a
+   * Lead ID is a UUID string and can't fit an int column — the bug this
+   * column replaces. Audit trail only, per pipedriveObjectType above.
+   */
+  pipedriveObjectId: varchar("pipedriveObjectId", { length: 64 }),
   /** Token for password creation/reset (hashed) */
   resetToken: varchar("resetToken", { length: 255 }),
   resetTokenExpiry: timestamp("resetTokenExpiry"),
