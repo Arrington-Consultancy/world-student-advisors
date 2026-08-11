@@ -99,14 +99,6 @@ const categories: PartnerCategory[] = [
         logo: "/manus-storage/fcv_academy_ef4cfccd.png",
       },
       {
-        name: "Hartpury College",
-        location: "Gloucestershire",
-        description: "Internationally recognised as one of the UK's leading land-based and sports colleges. Home to elite academies in Football, Rugby and Rowing, alongside outstanding facilities for equestrian studies.",
-        strengths: "Football, Rugby, Rowing, Equestrian, Agriculture",
-        usp: "Elite sports academies + working farm + equestrian excellence",
-        logo: "/manus-storage/hartpury_78473937.jpg",
-      },
-      {
         name: "New College Group (NCG)",
         location: "Manchester & Liverpool",
         description: "Provides high-quality English language training and academic preparation courses. WSA has a direct partnership with NCG and has successfully sent English language students to their programmes.",
@@ -216,7 +208,6 @@ const categories: PartnerCategory[] = [
       { name: "Bath Spa University", location: "Bath", description: "Set in a World Heritage city, renowned for Creative Arts, Humanities and Education.", strengths: "Creative Arts, Humanities, Education", usp: "Supportive community feel in a beautiful setting", logo: "/manus-storage/bath_spa_university_official_f842eb94.png" },
       { name: "Birmingham City University", location: "Birmingham", description: "Dynamic and industry-focused university in the UK's second city.", strengths: "Media, Business, Engineering", usp: "Strong employer links", logo: "/manus-storage/birmingham_city_university_final_a71309ee.png" },
       { name: "BPP University", location: "London & regional centres", description: "Specialist private university with a focus on practical training closely linked to industry.", strengths: "Law, Business, Professional Studies", usp: "Industry-focused training", logo: "/manus-storage/bpp_university_2a600f2b.svg" },
-      { name: "Hartpury University", location: "Gloucester", description: "Specialist in Sport, Agriculture, Animal Science and Equine studies.", strengths: "Sport, Agriculture, Equine, Animal Science", usp: "Elite academies in Rugby, Football and Rowing", logo: "/manus-storage/hartpury_78473937.jpg" },
       { name: "London South Bank University", location: "London", description: "Located in central London with strong vocational courses.", strengths: "Engineering, Health, Business", usp: "Excellent graduate employability", logo: "/manus-storage/london_south_bank_university_58c20e3d.svg" },
       { name: "University of Bradford", location: "Bradford", description: "Research-active university with global outlook.", strengths: "Peace Studies, Management, Engineering, Healthcare", usp: "Global outlook and research strength", logo: "/manus-storage/university_of_bradford_68e012ae.png" },
       { name: "University of Greenwich", location: "Greenwich, Avery Hill & Medway", description: "Beautiful riverside campus at Greenwich, plus the Avery Hill campus in south-east London and the Medway campus in Kent, with strong support for international students.", strengths: "Business, Computing, Education", usp: "Three campuses: riverside Greenwich, Avery Hill and Medway", logo: "/manus-storage/university_of_greenwich_b554e4c5.png" },
