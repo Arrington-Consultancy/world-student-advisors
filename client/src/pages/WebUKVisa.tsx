@@ -12,7 +12,6 @@ import ScrollReveal from "@/components/ScrollReveal";
  * CTAs:
  *  1. REGISTER FOR THE FREE WEBINAR → Google Form (external, new tab)
  *  2. DOWNLOAD THE FREE VISA SUMMARY → /downloads/uk-student-visa-summary-2026-27.pdf
- *     (TODO: swap placeholder PDF for approved asset before launch)
  *  3. START YOUR APPLICATION → /contact
  *
  * Podcast embed: YouTube video ID -l-HNsIcqUY (do not substitute the older visa ID)
@@ -188,12 +187,6 @@ export default function WebUKVisa() {
                 podcast. Keep it with you as you prepare your application and use it as a reference
                 throughout the process.
               </p>
-              {/*
-               * TODO (content owners): replace the placeholder PDF at
-               * client/public/downloads/uk-student-visa-summary-2026-27.pdf
-               * with the approved "3. PDF to DOWNLOAD THE FREE VISA SUMMARY.pdf"
-               * asset before launch. The link wiring below is complete.
-               */}
               <a
                 href={VISA_SUMMARY_PDF}
                 download="uk-student-visa-summary-2026-27.pdf"
