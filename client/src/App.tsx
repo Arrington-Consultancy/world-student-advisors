@@ -5,6 +5,7 @@ import { Route, Switch, useLocation } from "wouter";
 import ErrorBoundary from "./components/ErrorBoundary";
 import ScrollToTop from "./components/ScrollToTop";
 import CookieConsent from "./components/CookieConsent";
+import SeoHead from "./components/SeoHead";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import Home from "./pages/Home";
 import Header from "./components/Header";
@@ -110,6 +111,7 @@ function App() {
         <TooltipProvider>
           <Toaster />
           <ScrollToTop />
+          <SeoHead />
           {isPortalPage ? (
             <main>
               <Router />

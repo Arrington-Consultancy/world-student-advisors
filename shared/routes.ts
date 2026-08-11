@@ -52,6 +52,7 @@ export const VALID_CLIENT_ROUTES = [
   "/portal/library",
   "/portal/interview-coach",
   "/portal",
+  "/WebUKVisa",
   "/404",
 ] as const;
 

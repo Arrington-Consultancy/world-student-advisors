@@ -92,7 +92,6 @@ const QUALIFICATION_MAP: Record<string, number> = {
 
 const LEVEL_MAP: Record<string, number> = {
   foundation: 39, // International Foundation Program
-  hnd: 46, // Other (no dedicated HND option in this field — HND lives on Highest Qualification instead)
   undergraduate: 41, // Undergraduate (Bachelor's)
   "top-up": 42, // Top-Up Degree
   "pre-masters": 261, // Pre Masters
@@ -219,7 +218,6 @@ async function addPersonFollower(personId: number, userId: number): Promise<void
 
 const levelLabels: Record<string, string> = {
   foundation: "Foundation / Pathway",
-  hnd: "HND",
   undergraduate: "Undergraduate (Bachelor's)",
   "top-up": "Top-up Degree",
   "pre-masters": "Pre-Master's",

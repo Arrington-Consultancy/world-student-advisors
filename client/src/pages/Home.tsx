@@ -521,7 +521,6 @@ export default function Home() {
                 { src: "/manus-storage/oxford_international_2d3e6536.jpg", alt: "Oxford International" },
                 { src: "/manus-storage/study_group_8ee9a299.jpg", alt: "Study Group" },
                 { src: "/manus-storage/fcv_academy_ef4cfccd.png", alt: "FCV Academy" },
-                { src: "/manus-storage/hartpury_78473937.jpg", alt: "Hartpury" },
                 { src: "/manus-storage/ncg_3a880115.png", alt: "NCG" },
                 { src: "/manus-storage/royal_holloway_df8182a0.png", alt: "Royal Holloway" },
                 { src: "/manus-storage/university_of_greenwich_b554e4c5.png", alt: "University of Greenwich" },
@@ -603,12 +602,14 @@ export default function Home() {
               <div className="relative">
                 <img
                   src="/manus-storage/youtube_thumb_student_journey_a742c8be.jpg"
-                  alt="WSA Learning Hub resources"
+                  alt="Latest: The Student Journey podcast with Tim Hunt"
                   className="w-full aspect-[4/3] object-cover"
                 />
-                <div className="absolute bottom-0 left-0 right-0 p-6 bg-gradient-to-t from-black/70 to-transparent">
-                  <p className="text-white text-sm font-medium">Latest: The Student Journey podcast with Tim Hunt</p>
-                </div>
+                {/* Text overlay removed: the thumbnail image already has its own
+                    caption baked in near the bottom, and the two overlapping
+                    text layers were becoming illegible. The caption now lives
+                    only in the alt text for accessibility/SEO. If a caption-free
+                    thumbnail is supplied later, the overlay can be restored. */}
               </div>
             </ScrollReveal>
           </div>
