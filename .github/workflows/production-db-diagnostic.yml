@@ -52,8 +52,33 @@ jobs:
           railway service || true
           railway environment || true
 
-      - name: Run read-only schema check against production
+      - name: Set a temporary public-reachable read URL on the app service (removed after this run)
         env:
           RAILWAY_TOKEN: ${{ secrets.githubactionsprod }}
         run: |
-          railway run --service "${{ github.event.inputs.service_name }}" --environment "${{ github.event.inputs.environment_name }}" -- node scripts/prod-db-diagnostic.mjs
+          # Built via printf's octal escape (\044 = "$") so the literal
+          # 3-char sequence "$" "{" "{" never appears in this file's raw
+          # text — GitHub Actions' own expression parser intercepts that
+          # sequence anywhere in a run: block otherwise.
+          REF=$(printf '\044{{MySQL.MYSQL_PUBLIC_URL}}')
+          railway variables \
+            --service "${{ github.event.inputs.service_name }}" \
+            --environment "${{ github.event.inputs.environment_name }}" \
+            --set "VERIFY_DATABASE_URL=${REF}"
+
+      - name: Run read-only schema check against production (via public proxy — private DATABASE_URL is unreachable from this runner)
+        env:
+          RAILWAY_TOKEN: ${{ secrets.githubactionsprod }}
+        run: |
+          railway run --service "${{ github.event.inputs.service_name }}" --environment "${{ github.event.inputs.environment_name }}" -- \
+            sh -c 'DATABASE_URL="$VERIFY_DATABASE_URL" node scripts/prod-db-diagnostic.mjs'
+
+      - name: Remove the temporary read URL variable
+        if: always()
+        env:
+          RAILWAY_TOKEN: ${{ secrets.githubactionsprod }}
+        run: |
+          railway variables \
+            --service "${{ github.event.inputs.service_name }}" \
+            --environment "${{ github.event.inputs.environment_name }}" \
+            --set "VERIFY_DATABASE_URL="
