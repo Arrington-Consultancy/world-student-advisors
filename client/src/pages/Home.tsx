@@ -1,7 +1,7 @@
 import { Link } from "wouter";
-import { ArrowRight, Play } from "lucide-react";
+import { ArrowRight, ChevronLeft, ChevronRight, Play } from "lucide-react";
 import ScrollReveal from "@/components/ScrollReveal";
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 
 /**
  * WSA Homepage. Emotional Refinement
@@ -24,44 +24,77 @@ export default function Home() {
   const [videoPlaying, setVideoPlaying] = useState(false);
   const [activeSlide, setActiveSlide] = useState(0);
 
-  const heroSlides = [
-    {
-      image: "/manus-storage/wsa_counsellors_banner_948050db.jpg",
-      alt: "International students walking together on a university campus",
-      objectPosition: "object-right",
-      headline: "Study abroad with a personal Student Counsellor by your side",
-      tagline: "Your Future is Our Mission",
-      body: "Free, personal guidance from a dedicated British Council Certified counsellor. No fees to students or families. From your first questions to your first day at university.",
-      cta1: { label: "Explore Study Options", href: "/study-options" },
-      cta2: { label: "Get Started", href: "/contact" },
-    },
-    {
-      image: "/manus-storage/wsa_student_london_individual_54da4333.jpg",
-      alt: "International student in London with British architecture",
-      objectPosition: "object-top",
-      headline: "Study abroad with a personal Student Counsellor by your side",
-      tagline: "Your Future is Our Mission",
-      body: "Free, personal guidance from a dedicated British Council Certified counsellor. No fees to students or families. We help you understand your options, prepare applications, and move forward with confidence.",
-      cta1: { label: "Explore Study Options", href: "/study-options" },
-      cta2: { label: "Get Started", href: "/contact" },
-    },
-    {
-      image: "/manus-storage/wsa_confident_graduate_0e9accf4.jpg",
-      alt: "Happy graduate celebrating her achievement",
-      objectPosition: "object-center",
-      headline: "Study abroad with a personal Student Counsellor by your side",
-      tagline: "Your Future is Our Mission",
-      body: "Free, personal guidance from a dedicated British Council Certified counsellor. No fees to students or families. From choosing the right course to visa preparation, your counsellor is with you at every step.",
-      cta1: { label: "Meet the Counsellors", href: "/counsellors" },
-      cta2: { label: "Get Started", href: "/contact" },
-    },
-  ];
+  const heroSlides = useMemo(
+    () => [
+      {
+        image: "/manus-storage/hero_1_university_abroad_student_bb3c5236.jpg",
+        alt: "Student planning her university application abroad",
+        objectPosition: "78% 50%",
+        headline: [
+          { text: "Study at a Leading University " },
+          { text: "Abroad", emphasis: true },
+        ],
+        body: "Free personal admissions support for universities in the UK, Europe, Canada and the USA",
+      },
+      {
+        image: "/manus-storage/hero_2_counsellor_meeting_3eeb6857.jpg",
+        alt: "Student Counsellor meeting one-to-one with a student",
+        objectPosition: "74% 50%",
+        headline: [
+          { text: "Feel the " },
+          { text: "Personal", emphasis: true },
+          { text: " Touch" },
+        ],
+        body: "Your own UK Certified Counsellor, supporting you from your first enquiry to enrolment",
+      },
+      {
+        image: "/manus-storage/hero_3_student_visa_airport_76ff2b35.jpg",
+        alt: "Student departing for university, family waving her off at the airport",
+        objectPosition: "78% 50%",
+        headline: [
+          { text: "Be Ready for Your Student " },
+          { text: "Visa", emphasis: true },
+        ],
+        body: "AI supported Interview Readiness Coaching and real person mock interviews build your confidence",
+      },
+      {
+        image: "/manus-storage/hero_4_graduate_campus_ed3bb15a.jpg",
+        alt: "Graduate in gown standing on a university campus",
+        objectPosition: "78% 50%",
+        headline: [
+          { text: "Your", emphasis: true },
+          { text: " Success is Our Success" },
+        ],
+        body: "We get to know you, understand your ambitions and help you make the right choices for your future",
+      },
+      {
+        image: "/manus-storage/hero_5_graduation_group_efd5c019.jpg",
+        alt: "Group of graduates celebrating together",
+        objectPosition: "68% 50%",
+        headline: [
+          { text: "Your Ambition Your " },
+          { text: "Achievement", emphasis: true },
+        ],
+        body: "From your first application to graduation, WSA is with you on your student journey",
+      },
+    ],
+    []
+  );
+
+  const slideCount = heroSlides.length;
 
   const nextSlide = useCallback(() => {
-    setActiveSlide((prev) => (prev + 1) % 3);
-  }, []);
+    setActiveSlide((prev) => (prev + 1) % slideCount);
+  }, [slideCount]);
+
+  const prevSlide = useCallback(() => {
+    setActiveSlide((prev) => (prev - 1 + slideCount) % slideCount);
+  }, [slideCount]);
 
   useEffect(() => {
+    if (typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      return;
+    }
     const timer = setInterval(nextSlide, 6000);
     return () => clearInterval(timer);
   }, [nextSlide]);
@@ -71,83 +104,109 @@ export default function Home() {
 
       {/* ═══════════════════════════════════════════════════════════════
           SECTION 1: THE PROMISE
-         Hero carousel: rotating images, headlines, CTAs.
-         Trust strip sits fixed below.
+         Hero: five-slide rotating carousel. Clean light layout —
+         real HTML headline/body/CTAs on the left, photography on the
+         right. No text baked into the images.
       ═══════════════════════════════════════════════════════════════ */}
-      <section className="relative h-screen min-h-[700px] flex items-center overflow-hidden">
-        {/* Background images - all stacked, opacity controls visibility */}
-        {heroSlides.map((slide, i) => (
-          <div
-            key={i}
-            className={`absolute inset-0 transition-opacity duration-1000 ease-out ${
-              i === activeSlide ? "opacity-100" : "opacity-0"
-            }`}
-          >
-            <img
-              src={slide.image}
-              alt={slide.alt}
-              className={`w-full h-full object-cover ${slide.objectPosition}`}
-            />
-          </div>
-        ))}
-        <div className="absolute inset-0">
-          {/* Directional overlay: strong left for text readability, fading to natural on right */}
-          <div className="absolute inset-0 bg-gradient-to-r from-[#0f1a2e]/[0.82] via-[#0f1a2e]/50 to-transparent" />
-          {/* Subtle bottom vignette for depth */}
-          <div className="absolute inset-0 bg-gradient-to-t from-[#0f1a2e]/30 via-transparent to-transparent" />
-        </div>
-        <div className="relative container pt-24">
-          <div className="max-w-xl lg:max-w-[38rem]">
-            {heroSlides.map((slide, i) => (
-             <div
-               key={i}
-               className={`transition-all duration-700 ease-out ${
-                 i === activeSlide
-                   ? "opacity-100 translate-y-0"
-                   : "opacity-0 translate-y-4 absolute inset-0 pointer-events-none"
-               }`}
-             >
-                <h1 className="text-[2rem] sm:text-4xl md:text-5xl lg:text-[3.5rem] font-semibold leading-[1.15] sm:leading-[1.12] mb-7 font-sans" style={{ color: '#faf8f5', textShadow: '0 1px 8px rgba(0,0,0,0.2)' }}>
-                  {slide.headline}
-                </h1>
-                <p className="text-wsa-red font-semibold text-lg sm:text-xl md:text-2xl tracking-wide mb-5">
-                  {slide.tagline}
-                </p>
-                <p className="text-base sm:text-lg md:text-[1.125rem] leading-relaxed mb-12 max-w-md" style={{ color: 'rgba(250,248,245,0.75)' }}>
-                  {slide.body}
-                </p>
-                <div className="flex flex-col sm:flex-row gap-4 sm:gap-5">
-                  <Link
-                    href={slide.cta1.href}
-                    className="inline-flex items-center justify-center px-8 py-4 bg-white/95 text-wsa-navy text-[15px] font-semibold tracking-wide transition-all duration-200 hover:bg-white active:scale-[0.98]"
-                  >
-                    {slide.cta1.label}
-                    <ArrowRight className="ml-2.5" size={18} />
-                  </Link>
-                  <Link
-                    href={slide.cta2.href}
-                    className="inline-flex items-center justify-center px-8 py-4 bg-wsa-red text-white text-[15px] font-semibold tracking-wide transition-all duration-200 hover:bg-wsa-red/90 active:scale-[0.98]"
-                  >
-                    {slide.cta2.label}
-                    <ArrowRight className="ml-2.5" size={18} />
-                  </Link>
+      <section className="relative overflow-hidden bg-white" aria-roledescription="carousel" aria-label="World Student Advisors introduction">
+        <div className="container pt-28 pb-12 md:py-24 lg:py-28">
+          <div className="grid md:grid-cols-2 gap-10 md:gap-10 lg:gap-16 items-center">
+            {/* Text column */}
+            <div className="relative order-2 md:order-1">
+              {heroSlides.map((slide, i) => (
+                <div
+                  key={i}
+                  className={`transition-all duration-700 ease-out ${
+                    i === activeSlide
+                      ? "opacity-100 translate-y-0 relative"
+                      : "opacity-0 translate-y-4 absolute inset-0 pointer-events-none"
+                  }`}
+                  aria-hidden={i === activeSlide ? undefined : true}
+                >
+                  <h1 className="text-[1.75rem] sm:text-4xl md:text-[2.5rem] lg:text-5xl font-semibold leading-[1.15] text-wsa-navy mb-5">
+                    {slide.headline.map((part, p) =>
+                      part.emphasis ? (
+                        <span key={p} className="text-wsa-red">
+                          {part.text}
+                        </span>
+                      ) : (
+                        <span key={p}>{part.text}</span>
+                      )
+                    )}
+                  </h1>
+                  <p className="text-base sm:text-lg text-muted-foreground leading-relaxed mb-8 max-w-md">
+                    {slide.body}
+                  </p>
+                  <div className="flex flex-col sm:flex-row gap-4">
+                    <Link
+                      href="/counsellors"
+                      className="inline-flex items-center justify-center px-7 py-4 border-2 border-wsa-navy text-wsa-navy text-[15px] font-semibold tracking-wide transition-all duration-200 hover:bg-wsa-navy hover:text-white active:scale-[0.98]"
+                    >
+                      Talk to a Counsellor
+                    </Link>
+                    <Link
+                      href="/contact"
+                      className="inline-flex items-center justify-center px-7 py-4 bg-wsa-red text-white text-[15px] font-semibold tracking-wide transition-all duration-200 hover:bg-wsa-red/90 active:scale-[0.98]"
+                    >
+                      Start Your Application
+                      <ArrowRight className="ml-2.5" size={18} />
+                    </Link>
+                  </div>
                 </div>
-              </div>
-            ))}
-          </div>
+              ))}
 
-          {/* Slide indicators */}
-          <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-2.5 hidden md:flex">
-            {heroSlides.map((_, i) => (
-              <button
-                key={i}
-                onClick={() => setActiveSlide(i)}
-                className={`h-2 rounded-full transition-all duration-300 ${
-                  i === activeSlide ? "w-8 bg-white" : "w-2 bg-white/50 hover:bg-white/70"
-                }`}
-                aria-label={`Go to slide ${i + 1}`}
-              />
-            ))}
+              {/* Slide controls: previous/next + indicators */}
+              <div className="flex items-center gap-4 mt-10 md:mt-12">
+                <button
+                  type="button"
+                  onClick={prevSlide}
+                  className="w-10 h-10 flex items-center justify-center rounded-full border border-border text-wsa-navy hover:bg-slate-50 transition-colors"
+                  aria-label="Previous slide"
+                >
+                  <ChevronLeft size={20} />
+                </button>
+                <div className="flex gap-2.5">
+                  {heroSlides.map((_, i) => (
+                    <button
+                      key={i}
+                      onClick={() => setActiveSlide(i)}
+                      className={`h-2 rounded-full transition-all duration-300 ${
+                        i === activeSlide ? "w-8 bg-wsa-red" : "w-2 bg-wsa-navy/20 hover:bg-wsa-navy/40"
+                      }`}
+                      aria-label={`Go to slide ${i + 1} of ${slideCount}`}
+                      aria-current={i === activeSlide}
+                    />
+                  ))}
+                </div>
+                <button
+                  type="button"
+                  onClick={nextSlide}
+                  className="w-10 h-10 flex items-center justify-center rounded-full border border-border text-wsa-navy hover:bg-slate-50 transition-colors"
+                  aria-label="Next slide"
+                >
+                  <ChevronRight size={20} />
+                </button>
+              </div>
+            </div>
+
+            {/* Image column */}
+            <div className="relative order-1 md:order-2 w-full aspect-[16/11] overflow-hidden bg-slate-50">
+              {heroSlides.map((slide, i) => (
+                <img
+                  key={i}
+                  src={slide.image}
+                  alt={slide.alt}
+                  className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-1000 ease-out ${
+                    i === activeSlide ? "opacity-100" : "opacity-0"
+                  }`}
+                  style={{ objectPosition: slide.objectPosition }}
+                  loading={i === 0 ? "eager" : "lazy"}
+                  fetchPriority={i === 0 ? "high" : "auto"}
+                  decoding="async"
+                  aria-hidden={i === activeSlide ? undefined : true}
+                />
+              ))}
+            </div>
           </div>
         </div>
       </section>
