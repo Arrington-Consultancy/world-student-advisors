@@ -30,35 +30,51 @@ export default function Home() {
         image: "/manus-storage/hero_1_university_abroad_student_bb3c5236.jpg",
         alt: "Student planning her university application abroad",
         objectPosition: "78% 50%",
-        headline: "Study at a Leading University Abroad",
+        headline: [
+          { text: "Study at a Leading University " },
+          { text: "Abroad", emphasis: true },
+        ],
         body: "Free personal admissions support for universities in the UK, Europe, Canada and the USA",
       },
       {
         image: "/manus-storage/hero_2_counsellor_meeting_3eeb6857.jpg",
         alt: "Student Counsellor meeting one-to-one with a student",
         objectPosition: "74% 50%",
-        headline: "Feel the Personal Touch",
+        headline: [
+          { text: "Feel the " },
+          { text: "Personal", emphasis: true },
+          { text: " Touch" },
+        ],
         body: "Your own UK Certified Counsellor, supporting you from your first enquiry to enrolment",
       },
       {
         image: "/manus-storage/hero_3_student_visa_airport_76ff2b35.jpg",
         alt: "Student departing for university, family waving her off at the airport",
         objectPosition: "78% 50%",
-        headline: "Be Ready for Your Student Visa",
+        headline: [
+          { text: "Be Ready for Your Student " },
+          { text: "Visa", emphasis: true },
+        ],
         body: "AI supported Interview Readiness Coaching and real person mock interviews build your confidence",
       },
       {
         image: "/manus-storage/hero_4_graduate_campus_ed3bb15a.jpg",
         alt: "Graduate in gown standing on a university campus",
         objectPosition: "78% 50%",
-        headline: "Your Success is Our Success",
+        headline: [
+          { text: "Your", emphasis: true },
+          { text: " Success is Our Success" },
+        ],
         body: "We get to know you, understand your ambitions and help you make the right choices for your future",
       },
       {
         image: "/manus-storage/hero_5_graduation_group_efd5c019.jpg",
         alt: "Group of graduates celebrating together",
         objectPosition: "68% 50%",
-        headline: "Your Ambition Your Achievement",
+        headline: [
+          { text: "Your Ambition Your " },
+          { text: "Achievement", emphasis: true },
+        ],
         body: "From your first application to graduation, WSA is with you on your student journey",
       },
     ],
@@ -108,7 +124,15 @@ export default function Home() {
                   aria-hidden={i === activeSlide ? undefined : true}
                 >
                   <h1 className="text-[1.75rem] sm:text-4xl md:text-[2.5rem] lg:text-5xl font-semibold leading-[1.15] text-wsa-navy mb-5">
-                    {slide.headline}
+                    {slide.headline.map((part, p) =>
+                      part.emphasis ? (
+                        <span key={p} className="text-wsa-red">
+                          {part.text}
+                        </span>
+                      ) : (
+                        <span key={p}>{part.text}</span>
+                      )
+                    )}
                   </h1>
                   <p className="text-base sm:text-lg text-muted-foreground leading-relaxed mb-8 max-w-md">
                     {slide.body}
