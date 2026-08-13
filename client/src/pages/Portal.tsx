@@ -74,6 +74,27 @@ export default function Portal() {
     return null; // redirecting via the effect above
   }
 
+  // Real account, but no application on file yet (e.g. signed in with
+  // Google but hasn't submitted the full WSA registration form) — not an
+  // outage, so it gets its own friendlier, actionable message rather than
+  // the "temporarily unavailable" copy below.
+  if (dashboardQuery.data?.status === "no_application") {
+    return (
+      <PortalShell>
+        <GraduationCap className="w-10 h-10 text-wsa-navy mx-auto mb-3" />
+        <h1 className="text-xl font-bold text-wsa-navy mb-2">
+          {dashboardQuery.data.name ? `Welcome, ${dashboardQuery.data.name}!` : "Almost there!"}
+        </h1>
+        <p className="text-gray-600 max-w-sm mx-auto mb-6">
+          We don't have an application on file for this account yet. Complete your registration to unlock your student dashboard.
+        </p>
+        <Link href="/contact">
+          <Button className="bg-wsa-red hover:bg-wsa-red/90 text-white">Start Your Application</Button>
+        </Link>
+      </PortalShell>
+    );
+  }
+
   // Database unavailable. Never falls back to the resource-hub content
   // below — an authenticated student on a down database sees this, not an
   // ungated version of the portal.

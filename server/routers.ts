@@ -322,9 +322,13 @@ export const appRouter = router({
     // The V1 dashboard. Deliberately returns only the locked allowlist —
     // name, live stage/next-action/progress, counsellor (only when the
     // native Pipedrive Owner resolves to a known WSA staff account) — never
-    // a raw Pipedrive object. "unavailable" covers the database being down,
-    // which must never fall back to any ungated portal content; a Pipedrive
-    // read failure after successful auth is a different, narrower case
+    // a raw Pipedrive object. "unavailable" covers the database being down
+    // or the account not resolving at all, which must never fall back to
+    // any ungated portal content. "no_application" is a distinct, narrower
+    // case: a real, authenticated portal account (e.g. Google sign-in)
+    // that has no linked Pipedrive record yet — not an outage, so it gets
+    // its own status rather than being folded into "unavailable". A
+    // Pipedrive read failure after successful auth is different again
     // (progress.state "pipedrive_unavailable") that still returns the
     // student's name, since that comes from the portal database, not
     // Pipedrive. See server/portal-resolver.ts for the resolution logic.
@@ -335,8 +339,11 @@ export const appRouter = router({
         if (!payload) return { status: "unauthenticated" as const };
 
         const portalUser = await getPortalUserById(payload.portalUserId);
-        if (!portalUser || !portalUser.pipedrivePersonId) {
+        if (!portalUser) {
           return { status: "unavailable" as const };
+        }
+        if (!portalUser.pipedrivePersonId) {
+          return { status: "no_application" as const, name: portalUser.firstName };
         }
 
         const progress = await resolvePortalDashboard(portalUser.pipedrivePersonId);
