@@ -52,8 +52,38 @@ jobs:
           railway service || true
           railway environment || true
 
-      - name: Run read-only schema check against production
+      - name: Set a temporary public-reachable read URL on the app service (removed after this run)
         env:
           RAILWAY_TOKEN: ${{ secrets.githubactionsprod }}
         run: |
-          railway run --service "${{ github.event.inputs.service_name }}" --environment "${{ github.event.inputs.environment_name }}" -- node scripts/prod-db-diagnostic.mjs
+          REF=$(printf '\044{{MySQL.MYSQL_PUBLIC_URL}}')
+          railway variables \
+            --service "${{ github.event.inputs.service_name }}" \
+            --environment "${{ github.event.inputs.environment_name }}" \
+            --set "VERIFY_DATABASE_URL=${REF}"
+
+      - name: Run read-only schema check against production (via public proxy)
+        env:
+          RAILWAY_TOKEN: ${{ secrets.githubactionsprod }}
+        run: |
+          railway run --service "${{ github.event.inputs.service_name }}" --environment "${{ github.event.inputs.environment_name }}" -- \
+            sh -c 'DATABASE_URL="$VERIFY_DATABASE_URL" node scripts/prod-db-diagnostic.mjs'
+
+      - name: Remove the temporary read URL variable
+        if: always()
+        env:
+          RAILWAY_TOKEN: ${{ secrets.githubactionsprod }}
+        run: |
+          railway variables \
+            --service "${{ github.event.inputs.service_name }}" \
+            --environment "${{ github.event.inputs.environment_name }}" \
+            --set "VERIFY_DATABASE_URL="
+
+      - name: Recent app service logs (grepped for Database/error signals only)
+        if: always()
+        env:
+          RAILWAY_TOKEN: ${{ secrets.githubactionsprod }}
+        run: |
+          railway logs --service "${{ github.event.inputs.service_name }}" --environment "${{ github.event.inputs.environment_name }}" 2>&1 \
+            | grep -iE "database|portal|error|unavailable|econn|etimedout|enotfound" \
+            | tail -n 100 || echo "(no matching log lines, or railway logs unsupported in this CLI version)"
