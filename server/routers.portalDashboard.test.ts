@@ -60,14 +60,15 @@ describe("portal.dashboard — status states", () => {
     expect(mockedResolvePortalDashboard).not.toHaveBeenCalled();
   });
 
-  it("returns unavailable when the portal user has no pipedrivePersonId to anchor on", async () => {
+  it("returns no_application (not unavailable) when the portal user has no pipedrivePersonId to anchor on — this is not an outage", async () => {
     mockedVerifyPortalToken.mockResolvedValue({ portalUserId: 1, email: "a@b.com", firstName: "A", lastName: "B" });
     mockedGetPortalUserById.mockResolvedValue({ firstName: "Amara", pipedrivePersonId: null });
 
     const caller = makeCaller();
     const result = await caller.portal.dashboard({ token: "valid-token" });
 
-    expect(result).toEqual({ status: "unavailable" });
+    expect(result).toEqual({ status: "no_application", name: "Amara" });
+    expect(mockedResolvePortalDashboard).not.toHaveBeenCalled();
   });
 
   it("returns ok with the student's name and resolved progress on the happy path", async () => {
