@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo } from "react";
 import { useLocation, Link } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { GraduationCap, LogOut, Search, Video, Mic, Users } from "lucide-react";
+import { ArrowLeft, LogOut, Search, Video, Mic, Users } from "lucide-react";
 import { SOCIAL_LINKS } from "@/lib/socialLinks";
 
 interface PortalUser {
@@ -99,37 +99,40 @@ export default function PortalLibrary() {
   }, [searchQuery, selectedCategory]);
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <header className="bg-wsa-navy text-white shadow-lg">
-        <div className="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <GraduationCap className="w-8 h-8" />
-            <div>
-              <h1 className="text-lg font-bold">Media Library</h1>
-              <p className="text-sm text-white/70">All videos and podcast episodes, unlocked</p>
-            </div>
+    <div className="min-h-screen bg-wsa-warm-white pt-32 pb-20 lg:pt-40 lg:pb-28">
+      <main className="container">
+        <div className="mb-10 grid gap-6 lg:grid-cols-[1fr_auto] lg:items-end">
+          <div>
+            <Link href="/portal" className="mb-6 inline-flex items-center text-sm font-medium text-gray-600 hover:text-wsa-red">
+              <ArrowLeft className="mr-1.5 h-4 w-4" /> Back to Portal
+            </Link>
+            <p className="mb-5 text-sm font-medium tracking-[0.2em] uppercase text-wsa-red">Media Library</p>
+            <h1 className="mb-5 text-4xl font-semibold leading-[1.08] text-wsa-navy md:text-5xl">
+              WSA videos and podcasts, in one place.
+            </h1>
+            <p className="max-w-2xl text-lg leading-8 text-gray-600">
+              Watch practical guidance from the WSA team covering applications, visas, destinations, interviews and life as an international student.
+            </p>
           </div>
-          <div className="flex items-center gap-4">
-            <Link href="/portal" className="text-sm text-white/80 hover:text-white">
-              ← Back to Portal
+          <div className="flex flex-wrap gap-3">
+            <Link href="/contact">
+              <Button className="bg-wsa-red hover:bg-wsa-red/90 text-white">Apply Now</Button>
             </Link>
             {user && (
               <Button
                 variant="outline"
                 size="sm"
                 onClick={handleLogout}
-                className="border-white/30 text-white hover:bg-white/10"
+                className="border-wsa-navy/20 text-wsa-navy hover:border-wsa-red hover:text-wsa-red"
               >
                 <LogOut className="w-4 h-4 mr-1" /> Sign Out
               </Button>
             )}
           </div>
         </div>
-      </header>
 
-      <main className="max-w-7xl mx-auto px-4 py-8">
         {/* Search and category filter */}
-        <div className="bg-white rounded-xl shadow-sm p-6 mb-8 border border-gray-100">
+        <div className="bg-white p-6 mb-8 border border-border/70 shadow-[0_14px_50px_rgba(15,23,42,0.05)]">
           <div className="flex flex-col md:flex-row gap-4">
             <div className="flex-1 relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
@@ -144,7 +147,7 @@ export default function PortalLibrary() {
             <div className="flex gap-2 flex-wrap">
               <button
                 onClick={() => setSelectedCategory(null)}
-                className={`px-3 py-2 rounded-lg text-sm font-medium transition-all ${!selectedCategory ? "bg-wsa-navy text-white" : "bg-gray-100 text-gray-700 hover:bg-gray-200"}`}
+                className={`px-3 py-2 rounded-md text-sm font-medium transition-all ${!selectedCategory ? "bg-wsa-navy text-white" : "bg-wsa-stone text-gray-700 hover:bg-wsa-cream"}`}
               >
                 All
               </button>
@@ -152,7 +155,7 @@ export default function PortalLibrary() {
                 <button
                   key={cat}
                   onClick={() => setSelectedCategory(selectedCategory === cat ? null : cat)}
-                  className={`px-3 py-2 rounded-lg text-sm font-medium transition-all ${selectedCategory === cat ? "bg-wsa-navy text-white" : "bg-gray-100 text-gray-700 hover:bg-gray-200"}`}
+                  className={`px-3 py-2 rounded-md text-sm font-medium transition-all ${selectedCategory === cat ? "bg-wsa-navy text-white" : "bg-wsa-stone text-gray-700 hover:bg-wsa-cream"}`}
                 >
                   {cat}
                 </button>
@@ -163,7 +166,7 @@ export default function PortalLibrary() {
 
         {/* Video grid */}
         {filtered.length === 0 ? (
-          <div className="bg-white rounded-xl shadow-sm p-12 text-center border border-gray-100">
+          <div className="bg-white p-12 text-center border border-border/70">
             <Search className="w-12 h-12 text-gray-300 mx-auto mb-4" />
             <h3 className="text-lg font-medium text-gray-700 mb-2">No results found</h3>
             <p className="text-gray-500">Try adjusting your search or category filter.</p>
@@ -171,7 +174,7 @@ export default function PortalLibrary() {
         ) : (
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
             {filtered.map((v) => (
-              <div key={v.youtubeId} className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-md transition-all">
+              <div key={v.youtubeId} className="bg-white border border-border/70 overflow-hidden transition-all hover:-translate-y-0.5 hover:shadow-[0_14px_46px_rgba(15,23,42,0.06)]">
                 <div className="relative aspect-video bg-black">
                   {playingId === v.youtubeId ? (
                     <iframe
@@ -219,10 +222,10 @@ export default function PortalLibrary() {
         )}
 
         {/* Alumni / community links */}
-        <div className="mt-12 bg-white rounded-xl shadow-md p-8 border border-gray-100">
+        <div className="mt-12 bg-white border border-border/70 p-8 shadow-[0_18px_60px_rgba(15,23,42,0.06)]">
           <div className="flex items-start gap-4">
-            <div className="w-14 h-14 bg-green-100 rounded-xl flex items-center justify-center shrink-0">
-              <Users className="w-7 h-7 text-green-600" />
+            <div className="w-14 h-14 bg-wsa-navy flex items-center justify-center shrink-0">
+              <Users className="w-7 h-7 text-white" />
             </div>
             <div className="flex-1">
               <h3 className="text-xl font-bold text-wsa-navy mb-2">Join the WSA community</h3>

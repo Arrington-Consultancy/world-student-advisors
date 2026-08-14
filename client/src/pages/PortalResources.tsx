@@ -3,7 +3,6 @@ import { useLocation, Link } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
-  GraduationCap,
   BookOpen,
   Mic,
   Video,
@@ -13,18 +12,26 @@ import {
   ChevronRight,
   LogOut,
   ArrowLeft,
+  ShieldCheck,
+  Compass,
+  FilePenLine,
+  Award,
+  Landmark,
+  Plane,
+  Library,
+  GraduationCap,
 } from "lucide-react";
 import { SOCIAL_LINKS } from "@/lib/socialLinks";
 
 // Resource categories from the brief
 const CATEGORIES = [
-  { id: "explore-options", label: "Explore Your Options", icon: "🔍" },
-  { id: "prepare-application", label: "Prepare Your Application", icon: "📝" },
-  { id: "receive-offer", label: "Receive Your Offer", icon: "🎉" },
-  { id: "student-visa", label: "Student Visa", icon: "🛂" },
-  { id: "before-travel", label: "Before You Travel", icon: "✈️" },
-  { id: "while-studying", label: "While You're Studying", icon: "📚" },
-  { id: "graduation-beyond", label: "Graduation and Beyond", icon: "🎓" },
+  { id: "explore-options", label: "Explore Your Options", icon: Compass },
+  { id: "prepare-application", label: "Prepare Your Application", icon: FilePenLine },
+  { id: "receive-offer", label: "Receive Your Offer", icon: Award },
+  { id: "student-visa", label: "Student Visa", icon: Landmark },
+  { id: "before-travel", label: "Before You Travel", icon: Plane },
+  { id: "while-studying", label: "While You're Studying", icon: Library },
+  { id: "graduation-beyond", label: "Graduation and Beyond", icon: GraduationCap },
 ];
 
 // Resource types with icons
@@ -153,38 +160,40 @@ export default function PortalResources() {
   }, [searchQuery, selectedCategory, selectedType]);
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Portal Header */}
-      <header className="bg-wsa-navy text-white shadow-lg">
-        <div className="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <GraduationCap className="w-8 h-8" />
-            <div>
-              <h1 className="text-lg font-bold">Student Resource Centre</h1>
-              <p className="text-sm text-white/70">Guides, videos, podcasts and downloads</p>
-            </div>
+    <div className="min-h-screen bg-wsa-warm-white pt-32 pb-20 lg:pt-40 lg:pb-28">
+      <main className="container">
+        <div className="mb-10 grid gap-6 lg:grid-cols-[1fr_auto] lg:items-end">
+          <div>
+            <Link href="/portal" className="mb-6 inline-flex items-center text-sm font-medium text-gray-600 hover:text-wsa-red">
+              <ArrowLeft className="mr-1.5 h-4 w-4" /> Back to Portal
+            </Link>
+            <p className="mb-5 text-sm font-medium tracking-[0.2em] uppercase text-wsa-red">Resource Centre</p>
+            <h1 className="mb-5 text-4xl font-semibold leading-[1.08] text-wsa-navy md:text-5xl">
+              Practical resources for every stage.
+            </h1>
+            <p className="max-w-2xl text-lg leading-8 text-gray-600">
+              Search WSA guides, videos, podcasts and downloads. Use them with your counsellor so each decision stays grounded in your own study plan.
+            </p>
           </div>
-          <div className="flex items-center gap-4">
-            <Link href="/portal" className="text-sm text-white/80 hover:text-white">
-              ← Back to Portal
+          <div className="flex flex-wrap gap-3">
+            <Link href="/contact">
+              <Button className="bg-wsa-red hover:bg-wsa-red/90 text-white">Apply Now</Button>
             </Link>
             {user && (
               <Button
                 variant="outline"
                 size="sm"
                 onClick={handleLogout}
-                className="border-white/30 text-white hover:bg-white/10"
+                className="border-wsa-navy/20 text-wsa-navy hover:border-wsa-red hover:text-wsa-red"
               >
                 <LogOut className="w-4 h-4 mr-1" /> Sign Out
               </Button>
             )}
           </div>
         </div>
-      </header>
 
-      <main className="max-w-7xl mx-auto px-4 py-8">
         {/* Search and Filters */}
-        <div className="bg-white rounded-xl shadow-sm p-6 mb-8 border border-gray-100">
+        <div className="bg-white p-6 mb-8 border border-border/70 shadow-[0_14px_50px_rgba(15,23,42,0.05)]">
           <div className="flex flex-col md:flex-row gap-4">
             <div className="flex-1 relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
@@ -206,7 +215,7 @@ export default function PortalResources() {
                     className={`inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium transition-all ${
                       selectedType === type.id
                         ? "bg-wsa-navy text-white"
-                        : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                        : "bg-wsa-stone text-gray-700 hover:bg-wsa-cream"
                     }`}
                   >
                     <Icon className="w-3.5 h-3.5" />
@@ -221,32 +230,37 @@ export default function PortalResources() {
         <div className="flex flex-col lg:flex-row gap-8">
           {/* Category Sidebar */}
           <aside className="lg:w-64 shrink-0">
-            <nav className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 sticky top-4">
-              <h3 className="text-sm font-bold text-gray-500 uppercase tracking-wider mb-3">Categories</h3>
+            <nav className="bg-white border border-border/70 p-4 sticky top-28">
+              <h3 className="text-sm font-semibold text-wsa-navy mb-3 flex items-center gap-2">
+                <ShieldCheck className="h-4 w-4 text-wsa-red" /> Student journey
+              </h3>
               <ul className="space-y-1">
                 <li>
                   <button
                     onClick={() => setSelectedCategory(null)}
                     className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-all ${
-                      !selectedCategory ? "bg-wsa-navy text-white" : "text-gray-700 hover:bg-gray-100"
+                      !selectedCategory ? "bg-wsa-navy text-white" : "text-gray-700 hover:bg-wsa-stone"
                     }`}
                   >
                     All Resources
                   </button>
                 </li>
-                {CATEGORIES.map((cat) => (
-                  <li key={cat.id}>
-                    <button
-                      onClick={() => setSelectedCategory(selectedCategory === cat.id ? null : cat.id)}
-                      className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-all ${
-                        selectedCategory === cat.id ? "bg-wsa-navy text-white" : "text-gray-700 hover:bg-gray-100"
-                      }`}
-                    >
-                      <span className="mr-2">{cat.icon}</span>
-                      {cat.label}
-                    </button>
-                  </li>
-                ))}
+                {CATEGORIES.map((cat) => {
+                  const Icon = cat.icon;
+                  return (
+                    <li key={cat.id}>
+                      <button
+                        onClick={() => setSelectedCategory(selectedCategory === cat.id ? null : cat.id)}
+                        className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-all ${
+                          selectedCategory === cat.id ? "bg-wsa-navy text-white" : "text-gray-700 hover:bg-wsa-stone"
+                        }`}
+                      >
+                        <Icon className="mr-2 inline h-4 w-4 align-[-2px]" />
+                        {cat.label}
+                      </button>
+                    </li>
+                  );
+                })}
               </ul>
             </nav>
           </aside>
@@ -262,7 +276,7 @@ export default function PortalResources() {
             )}
 
             {filteredResources.length === 0 ? (
-              <div className="bg-white rounded-xl shadow-sm p-12 text-center border border-gray-100">
+              <div className="bg-white p-12 text-center border border-border/70">
                 <Search className="w-12 h-12 text-gray-300 mx-auto mb-4" />
                 <h3 className="text-lg font-medium text-gray-700 mb-2">No resources found</h3>
                 <p className="text-gray-500">Try adjusting your search or filters.</p>
@@ -277,7 +291,7 @@ export default function PortalResources() {
                   return (
                     <div
                       key={resource.id}
-                      className={`bg-white rounded-xl shadow-sm border border-gray-100 p-5 hover:shadow-md transition-all group ${isPlayableVideo ? "cursor-pointer" : ""} ${isOpen ? "sm:col-span-2" : ""}`}
+                      className={`bg-white border border-border/70 p-5 transition-all group hover:-translate-y-0.5 hover:shadow-[0_14px_46px_rgba(15,23,42,0.06)] ${isPlayableVideo ? "cursor-pointer" : ""} ${isOpen ? "sm:col-span-2" : ""}`}
                       onClick={() => {
                         if (isPlayableVideo) setOpenVideoId(isOpen ? null : resource.id);
                       }}

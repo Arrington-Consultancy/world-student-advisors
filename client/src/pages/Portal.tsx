@@ -1,7 +1,8 @@
 import { useState, useEffect } from "react";
+import type React from "react";
 import { useLocation, Link } from "wouter";
 import { Button } from "@/components/ui/button";
-import { GraduationCap, BookOpen, Mic, LogOut, ChevronRight, Video, Users, Phone, Mail, Clock } from "lucide-react";
+import { GraduationCap, BookOpen, Mic, LogOut, ChevronRight, Video, Users, Phone, Mail, Clock, ShieldCheck } from "lucide-react";
 import { SOCIAL_LINKS } from "@/lib/socialLinks";
 import { trpc } from "@/lib/trpc";
 
@@ -10,7 +11,7 @@ const TOTAL_STAGES = 6;
 
 function PortalShell({ children }: { children: React.ReactNode }) {
   return (
-    <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-wsa-warm-white pt-32 pb-20 flex items-center justify-center p-4">
       <div className="text-center">{children}</div>
     </div>
   );
@@ -113,49 +114,49 @@ export default function Portal() {
   const { name, progress } = dashboardQuery.data;
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Portal Header */}
-      <header className="bg-wsa-navy text-white shadow-lg">
-        <div className="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <GraduationCap className="w-8 h-8" />
-            <div>
-              <h1 className="text-lg font-bold">Student Portal</h1>
-              <p className="text-sm text-white/70">Welcome back, {name}</p>
+    <div className="min-h-screen bg-wsa-warm-white pt-32 pb-20 lg:pt-40 lg:pb-28">
+      <main className="container">
+        <div className="mb-10 grid gap-8 lg:grid-cols-[1.4fr_0.8fr] lg:items-end">
+          <div>
+            <p className="mb-5 text-sm font-medium tracking-[0.2em] uppercase text-wsa-red">Student Portal</p>
+            <h1 className="mb-5 text-4xl font-semibold leading-[1.08] text-wsa-navy md:text-5xl">
+              Welcome back, {name}.
+            </h1>
+            <p className="max-w-2xl text-lg leading-8 text-gray-600">
+              Your WSA tools, resources and adviser-led next steps are gathered here so your study abroad journey stays clear.
+            </p>
+          </div>
+          <div className="border-t-2 border-wsa-red/20 bg-white p-6">
+            <div className="mb-4 flex items-center gap-3">
+              <ShieldCheck className="h-5 w-5 text-wsa-red" />
+              <p className="text-sm font-semibold text-wsa-navy">Personal Student Counsellor support</p>
+            </div>
+            <p className="mb-5 text-sm leading-6 text-gray-600">
+              Use the portal alongside your named WSA adviser. For decisions, documents and applications, your counsellor remains your first point of contact.
+            </p>
+            <div className="flex flex-wrap gap-3">
+              <Link href="/contact">
+                <Button className="bg-wsa-red hover:bg-wsa-red/90 text-white">Apply Now</Button>
+              </Link>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleLogout}
+                className="border-wsa-navy/20 text-wsa-navy hover:border-wsa-red hover:text-wsa-red"
+              >
+                <LogOut className="w-4 h-4 mr-1" /> Sign Out
+              </Button>
             </div>
           </div>
-          <div className="flex items-center gap-4">
-            <Link href="/" className="text-sm text-white/80 hover:text-white">
-              ← Back to Website
-            </Link>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleLogout}
-              className="border-white/30 text-white hover:bg-white/10"
-            >
-              <LogOut className="w-4 h-4 mr-1" /> Sign Out
-            </Button>
-          </div>
-        </div>
-      </header>
-
-      {/* Portal Content */}
-      <main className="max-w-7xl mx-auto px-4 py-12">
-        <div className="mb-10">
-          <h2 className="text-3xl font-bold text-wsa-navy mb-2">Your Student Portal</h2>
-          <p className="text-gray-600">
-            Access resources, tools, and support to help you through every stage of your study abroad journey.
-          </p>
         </div>
 
         <div className="grid md:grid-cols-2 gap-8">
           {/* Student Resource Centre */}
           <Link href="/portal/resources">
-            <div className="bg-white rounded-xl shadow-md hover:shadow-xl transition-all duration-200 p-8 border border-gray-100 cursor-pointer group">
+            <div className="bg-white border border-border/70 p-8 cursor-pointer group transition-all duration-200 hover:-translate-y-1 hover:shadow-[0_18px_60px_rgba(15,23,42,0.08)]">
               <div className="flex items-start gap-4">
-                <div className="w-14 h-14 bg-blue-100 rounded-xl flex items-center justify-center shrink-0">
-                  <BookOpen className="w-7 h-7 text-blue-600" />
+                <div className="w-14 h-14 bg-wsa-navy flex items-center justify-center shrink-0">
+                  <BookOpen className="w-7 h-7 text-white" />
                 </div>
                 <div className="flex-1">
                   <h3 className="text-xl font-bold text-wsa-navy mb-2 group-hover:text-wsa-red transition-colors">
@@ -174,10 +175,10 @@ export default function Portal() {
 
           {/* Media Library */}
           <Link href="/portal/library">
-            <div className="bg-white rounded-xl shadow-md hover:shadow-xl transition-all duration-200 p-8 border border-gray-100 cursor-pointer group">
+            <div className="bg-white border border-border/70 p-8 cursor-pointer group transition-all duration-200 hover:-translate-y-1 hover:shadow-[0_18px_60px_rgba(15,23,42,0.08)]">
               <div className="flex items-start gap-4">
-                <div className="w-14 h-14 bg-red-100 rounded-xl flex items-center justify-center shrink-0">
-                  <Video className="w-7 h-7 text-red-600" />
+                <div className="w-14 h-14 bg-wsa-red flex items-center justify-center shrink-0">
+                  <Video className="w-7 h-7 text-white" />
                 </div>
                 <div className="flex-1">
                   <h3 className="text-xl font-bold text-wsa-navy mb-2 group-hover:text-wsa-red transition-colors">
@@ -196,10 +197,10 @@ export default function Portal() {
 
           {/* Interview Readiness Coach */}
           <Link href="/portal/interview-coach">
-            <div className="bg-white rounded-xl shadow-md hover:shadow-xl transition-all duration-200 p-8 border border-gray-100 cursor-pointer group">
+            <div className="bg-white border border-border/70 p-8 cursor-pointer group transition-all duration-200 hover:-translate-y-1 hover:shadow-[0_18px_60px_rgba(15,23,42,0.08)]">
               <div className="flex items-start gap-4">
-                <div className="w-14 h-14 bg-amber-100 rounded-xl flex items-center justify-center shrink-0">
-                  <Mic className="w-7 h-7 text-amber-600" />
+                <div className="w-14 h-14 bg-wsa-navy flex items-center justify-center shrink-0">
+                  <Mic className="w-7 h-7 text-white" />
                 </div>
                 <div className="flex-1">
                   <h3 className="text-xl font-bold text-wsa-navy mb-2 group-hover:text-wsa-red transition-colors">
@@ -217,10 +218,10 @@ export default function Portal() {
           </Link>
 
           {/* Community & Alumni */}
-          <div className="bg-white rounded-xl shadow-md p-8 border border-gray-100">
+          <div className="bg-white border border-border/70 p-8">
             <div className="flex items-start gap-4">
-              <div className="w-14 h-14 bg-green-100 rounded-xl flex items-center justify-center shrink-0">
-                <Users className="w-7 h-7 text-green-600" />
+              <div className="w-14 h-14 bg-wsa-red flex items-center justify-center shrink-0">
+                <Users className="w-7 h-7 text-white" />
               </div>
               <div className="flex-1">
                 <h3 className="text-xl font-bold text-wsa-navy mb-2">Community & Alumni</h3>
@@ -244,7 +245,7 @@ export default function Portal() {
         </div>
 
         {/* Your Progress — live from Pipedrive at read time, never cached/stored */}
-        <div className="mt-12 bg-white rounded-xl shadow-md p-8 border border-gray-100">
+        <div className="mt-12 bg-white border border-border/70 p-8 shadow-[0_18px_60px_rgba(15,23,42,0.06)]">
           <h3 className="text-xl font-bold text-wsa-navy mb-6">Your Progress</h3>
 
           {progress.state === "pipedrive_unavailable" && (
@@ -287,7 +288,7 @@ export default function Portal() {
         </div>
 
         {/* Need Help — helpline contact details */}
-        <div className="mt-12 bg-wsa-navy rounded-xl shadow-md p-8 text-white">
+        <div className="mt-12 bg-wsa-navy p-8 text-white shadow-[0_18px_60px_rgba(15,23,42,0.14)]">
           <h3 className="text-xl font-bold mb-2">Need help?</h3>
           <p className="text-white/70 text-sm mb-6">
             Your Student Counsellor is your first point of contact. You can also reach our offices directly.

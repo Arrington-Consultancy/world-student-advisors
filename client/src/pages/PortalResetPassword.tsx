@@ -2,8 +2,9 @@ import { useRef, useState } from "react";
 import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { PortalAuthShell, PortalMessageShell } from "@/components/PortalBrandShell";
 import { trpc } from "@/lib/trpc";
-import { GraduationCap, CheckCircle } from "lucide-react";
+import { CheckCircle } from "lucide-react";
 import TurnstileWidget, { type TurnstileWidgetHandle } from "@/components/TurnstileWidget";
 import { useTurnstileSiteKey } from "@/hooks/useTurnstileSiteKey";
 
@@ -36,33 +37,21 @@ export default function PortalResetPassword() {
 
   if (submitted) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 flex items-center justify-center p-4">
-        <div className="bg-white rounded-xl shadow-lg p-8 max-w-md text-center">
-          <CheckCircle className="w-16 h-16 text-green-500 mx-auto mb-4" />
-          <h1 className="text-xl font-bold text-wsa-navy mb-2">Check Your Email</h1>
-          <p className="text-gray-600 mb-6">
-            If an account exists with <strong>{email}</strong>, we've sent a password reset link.
-          </p>
-          <Link href="/portal/login">
-            <Button className="bg-wsa-navy hover:bg-wsa-navy/90 text-white">Back to Login</Button>
-          </Link>
-        </div>
-      </div>
+      <PortalMessageShell
+        title="Check your email"
+        message={`If an account exists with ${email}, we've sent a password reset link.`}
+        icon={<CheckCircle className="h-6 w-6" />}
+      >
+        <Link href="/portal/login">
+          <Button className="bg-wsa-navy hover:bg-wsa-navy/90 text-white">Back to Login</Button>
+        </Link>
+      </PortalMessageShell>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 flex items-center justify-center p-4">
-      <div className="w-full max-w-md">
-        <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-16 h-16 bg-wsa-navy rounded-full mb-4">
-            <GraduationCap className="w-8 h-8 text-white" />
-          </div>
-          <h1 className="text-2xl font-bold text-wsa-navy">Reset Password</h1>
-          <p className="text-gray-600 mt-2">Enter your email to receive a reset link</p>
-        </div>
-
-        <form onSubmit={handleSubmit} className="bg-white rounded-xl shadow-lg p-8 space-y-5">
+    <PortalAuthShell title="Reset password" description="Enter your email to receive a reset link.">
+        <form onSubmit={handleSubmit} className="space-y-5">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1.5">Email Address</label>
             <Input
@@ -99,7 +88,6 @@ export default function PortalResetPassword() {
             </Link>
           </div>
         </form>
-      </div>
-    </div>
+    </PortalAuthShell>
   );
 }

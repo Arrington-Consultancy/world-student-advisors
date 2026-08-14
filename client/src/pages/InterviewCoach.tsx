@@ -255,15 +255,30 @@ export default function InterviewCoach() {
   const isBusy = startMutation.isPending || submitMutation.isPending || finishMutation.isPending;
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="max-w-4xl mx-auto px-4 py-16">
-        <Link href="/portal" className="inline-flex items-center text-sm text-gray-600 hover:text-wsa-navy mb-8">
+    <div className="min-h-screen bg-wsa-warm-white pt-32 pb-20 lg:pt-40 lg:pb-28">
+      <div className="container">
+        <Link href="/portal" className="inline-flex items-center text-sm font-medium text-gray-600 hover:text-wsa-red mb-8">
           <ArrowLeft className="w-4 h-4 mr-1" /> Back to Portal
         </Link>
 
-        <div className="bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden">
-          <div className="bg-wsa-navy px-8 py-6 flex items-center gap-4">
-            <div className="w-12 h-12 bg-white/10 rounded-full flex items-center justify-center shrink-0">
+        <div className="mb-8 grid gap-6 lg:grid-cols-[1fr_auto] lg:items-end">
+          <div>
+            <p className="mb-5 text-sm font-medium tracking-[0.2em] uppercase text-wsa-red">Interview Coach</p>
+            <h1 className="mb-5 text-4xl font-semibold leading-[1.08] text-wsa-navy md:text-5xl">
+              Practise before your live mock interview.
+            </h1>
+            <p className="max-w-2xl text-lg leading-8 text-gray-600">
+              Prepare for CAS, UKVI, university and course interviews with honest feedback that supports your WSA counsellor sessions.
+            </p>
+          </div>
+          <Link href="/contact">
+            <Button className="bg-wsa-red hover:bg-wsa-red/90 text-white">Apply Now</Button>
+          </Link>
+        </div>
+
+        <div className="bg-white shadow-[0_18px_60px_rgba(15,23,42,0.08)] border border-border/70 overflow-hidden">
+          <div className="bg-wsa-navy px-6 py-6 flex items-center gap-4 md:px-8">
+            <div className="w-12 h-12 bg-white/10 flex items-center justify-center shrink-0">
               <Mic className="w-6 h-6 text-white" />
             </div>
             <div>
@@ -304,7 +319,7 @@ export default function InterviewCoach() {
                     <button
                       key={t.id}
                       onClick={() => setInterviewType(t.id)}
-                      className={`text-left p-4 rounded-xl border transition-colors ${
+                    className={`text-left p-4 rounded-md border transition-colors ${
                         interviewType === t.id
                           ? "border-wsa-red bg-wsa-red/5 ring-1 ring-wsa-red"
                           : "border-gray-200 hover:border-gray-300 bg-white"
@@ -371,7 +386,7 @@ export default function InterviewCoach() {
                 />
 
                 {stage === "followup" && (
-                  <div className="mb-6 rounded-xl border border-amber-200 bg-amber-50 p-5">
+                  <div className="mb-6 rounded-md border border-amber-200 bg-amber-50 p-5">
                     <div className="flex items-start gap-2 mb-3">
                       <MessageCircleQuestion className="w-4 h-4 mt-0.5 shrink-0 text-amber-600" />
                       <p className="text-sm text-amber-900 font-medium">
@@ -421,7 +436,7 @@ export default function InterviewCoach() {
             {stage === "question-result" && currentResult && (
               <div>
                 <div
-                  className={`rounded-xl p-6 mb-6 border ${
+                  className={`rounded-md p-6 mb-6 border ${
                     currentResult.score >= 85 ? "bg-green-50 border-green-200" : "bg-amber-50 border-amber-200"
                   }`}
                 >
@@ -508,7 +523,7 @@ export default function InterviewCoach() {
             {stage === "summary" && summary && (
               <div>
                 <div
-                  className={`rounded-xl p-6 mb-8 border ${
+                  className={`rounded-md p-6 mb-8 border ${
                     summary.passed ? "bg-green-50 border-green-200" : "bg-amber-50 border-amber-200"
                   }`}
                 >

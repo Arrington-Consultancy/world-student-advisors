@@ -2,8 +2,9 @@ import { useState, useEffect } from "react";
 import { Link, useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { PortalAuthShell } from "@/components/PortalBrandShell";
 import { trpc } from "@/lib/trpc";
-import { Eye, EyeOff, GraduationCap } from "lucide-react";
+import { Eye, EyeOff } from "lucide-react";
 
 /** Navigates to the Google OAuth start endpoint. Call from an event handler only — never during render. */
 function startGoogleLogin() {
@@ -68,17 +69,8 @@ export default function PortalLogin() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 flex items-center justify-center p-4">
-      <div className="w-full max-w-md">
-        <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-16 h-16 bg-wsa-navy rounded-full mb-4">
-            <GraduationCap className="w-8 h-8 text-white" />
-          </div>
-          <h1 className="text-2xl font-bold text-wsa-navy">Student Portal</h1>
-          <p className="text-gray-600 mt-2">Sign in to access your resources and tools</p>
-        </div>
-
-        <div className="bg-white rounded-xl shadow-lg p-8 space-y-5">
+    <PortalAuthShell title="Student Portal" description="Sign in to access your resources and tools.">
+        <div className="space-y-5">
           {error && (
             <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm">
               {error}
@@ -172,12 +164,11 @@ export default function PortalLogin() {
             <p className="text-sm text-gray-500">
               Don't have an account?{" "}
               <Link href="/contact" className="text-wsa-red hover:underline">
-                Register here
+                Apply Now
               </Link>
             </p>
           </div>
         </div>
-      </div>
-    </div>
+    </PortalAuthShell>
   );
 }

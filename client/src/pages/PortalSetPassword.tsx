@@ -2,8 +2,9 @@ import { useState, useEffect } from "react";
 import { useLocation, useSearch } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { PortalAuthShell, PortalMessageShell } from "@/components/PortalBrandShell";
 import { trpc } from "@/lib/trpc";
-import { Eye, EyeOff, GraduationCap, CheckCircle } from "lucide-react";
+import { Eye, EyeOff, CheckCircle } from "lucide-react";
 
 export default function PortalSetPassword() {
   const [, navigate] = useLocation();
@@ -50,42 +51,30 @@ export default function PortalSetPassword() {
 
   if (!emailParam || !tokenParam) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 flex items-center justify-center p-4">
-        <div className="bg-white rounded-xl shadow-lg p-8 max-w-md text-center">
-          <h1 className="text-xl font-bold text-wsa-navy mb-4">Invalid Link</h1>
-          <p className="text-gray-600 mb-6">This password creation link is invalid or has expired.</p>
-          <Button onClick={() => navigate("/portal/login")} className="bg-wsa-red hover:bg-wsa-red/90 text-white">
-            Go to Login
-          </Button>
-        </div>
-      </div>
+      <PortalMessageShell
+        title="Invalid link"
+        message="This password creation link is invalid or has expired."
+      >
+        <Button onClick={() => navigate("/portal/login")} className="bg-wsa-red hover:bg-wsa-red/90 text-white">
+          Go to Login
+        </Button>
+      </PortalMessageShell>
     );
   }
 
   if (success) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 flex items-center justify-center p-4">
-        <div className="bg-white rounded-xl shadow-lg p-8 max-w-md text-center">
-          <CheckCircle className="w-16 h-16 text-green-500 mx-auto mb-4" />
-          <h1 className="text-xl font-bold text-wsa-navy mb-2">Password Created!</h1>
-          <p className="text-gray-600">Redirecting to your Student Portal...</p>
-        </div>
-      </div>
+      <PortalMessageShell
+        title="Password created"
+        message="Redirecting to your Student Portal..."
+        icon={<CheckCircle className="h-6 w-6" />}
+      />
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 flex items-center justify-center p-4">
-      <div className="w-full max-w-md">
-        <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-16 h-16 bg-wsa-navy rounded-full mb-4">
-            <GraduationCap className="w-8 h-8 text-white" />
-          </div>
-          <h1 className="text-2xl font-bold text-wsa-navy">Create Your Password</h1>
-          <p className="text-gray-600 mt-2">Set a password to access your Student Portal</p>
-        </div>
-
-        <form onSubmit={handleSubmit} className="bg-white rounded-xl shadow-lg p-8 space-y-5">
+    <PortalAuthShell title="Create your password" description="Set a password to access your Student Portal.">
+        <form onSubmit={handleSubmit} className="space-y-5">
           {error && (
             <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm">
               {error}
@@ -138,7 +127,6 @@ export default function PortalSetPassword() {
             {setPasswordMutation.isPending ? "Creating..." : "Create Password & Enter Portal"}
           </Button>
         </form>
-      </div>
-    </div>
+    </PortalAuthShell>
   );
 }

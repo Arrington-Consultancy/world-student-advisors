@@ -1,7 +1,7 @@
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import NotFound from "@/pages/NotFound";
-import { Route, Switch, useLocation } from "wouter";
+import { Route, Switch } from "wouter";
 import ErrorBoundary from "./components/ErrorBoundary";
 import ScrollToTop from "./components/ScrollToTop";
 import CookieConsent from "./components/CookieConsent";
@@ -102,9 +102,6 @@ function Router() {
 }
 
 function App() {
-  const [location] = useLocation();
-  const isPortalPage = location.startsWith("/portal");
-
   return (
     <ErrorBoundary>
       <ThemeProvider defaultTheme="light">
@@ -112,19 +109,11 @@ function App() {
           <Toaster />
           <ScrollToTop />
           <SeoHead />
-          {isPortalPage ? (
-            <main>
-              <Router />
-            </main>
-          ) : (
-            <>
-              <Header />
-              <main>
-                <Router />
-              </main>
-              <Footer />
-            </>
-          )}
+          <Header />
+          <main>
+            <Router />
+          </main>
+          <Footer />
           <CookieConsent />
         </TooltipProvider>
       </ThemeProvider>
