@@ -30,14 +30,18 @@ function decodeJwtPayload(token: string): Record<string, unknown> | null {
 const offices = [
   {
     country: "United Kingdom",
-    role: "Headquarters",
-    address: "2 Newport Close, Clevedon, BS21 5DZ, England",
-    whatsapp: "+44 791 479 7830",
+    role: "Head Office",
+    name: "Timothy J. Hunt",
+    title: "CEO",
+    address: "2 Newport Close, Clevedon, BS21 5DZ, England, UK",
+    whatsapp: "+44 7914 797830",
     email: "UKHeadOffice@worldstudentadvisors.com",
   },
   {
     country: "Kenya",
-    role: "Sub-Saharan Regional Office",
+    role: "Sub-Saharan Africa Regional Office",
+    name: "Eldah Therone",
+    title: "Team Leader",
     address: "Waiyaki Way, Off Uthiru-Cooperation, Nafra Building, Nairobi, Kenya",
     phone: "+254 702 096 419",
     whatsapp: "+44 7470 689 849",
@@ -45,18 +49,31 @@ const offices = [
   },
   {
     country: "Nigeria",
-    role: "West Africa Office",
-    address: "DSTV Complex, Along Akala Express Way, New Garage, Ibadan, Oyo State",
+    role: "Nigeria Office",
+    name: "Babatunde Abdulia Azeez",
+    title: "Senior Director for Nigeria",
+    address: "DSTV Complex, Along Akala Express Way, New Garage, Ibadan, Oyo State, Nigeria",
     phone: "+234 812 929 2769",
     whatsapp: "+234 812 929 2769",
     email: "NigeriaOffice@worldstudentadvisors.com",
   },
   {
     country: "Ghana",
-    role: "West Africa Office",
-    address: "Afotey Osapesua Avenue, Adjiringanor, East Legon, Accra",
+    role: "Ghana Office",
+    name: "Gladys Naadi",
+    title: "Director for Ghana",
+    address: "Afotey Osapesua Avenue, Adjiringanor, East Legon, Accra, Ghana",
     whatsapp: "+233 55 610 2870",
     email: "GhanaOffice@worldstudentadvisors.com",
+  },
+  {
+    country: "Angola",
+    role: "Angola Office",
+    name: "Pedro Bezarra",
+    title: "Director for Angola",
+    address: "Município da Ingombota, Edifício Escom, Rua Marechal Brós Tito, 35/37, 10.º Piso, Fração D, Luanda, Angola",
+    phone: "+44 7512 055 433",
+    email: "beezaepy@hotmail.com",
   },
 ];
 
@@ -176,7 +193,7 @@ function StudentForm() {
         <CheckCircle className="mx-auto mb-4 text-green-600" size={48} />
         <h3 className="text-2xl font-semibold text-wsa-navy mb-3">Sign-up received</h3>
         <p className="text-muted-foreground text-[15px] max-w-md mx-auto">
-          A Student Counsellor will be in touch within 48 hours. Check your email for a confirmation.
+          A Student Counsellor will be in touch within 24 hours. Check your email for a confirmation.
         </p>
       </div>
     );
@@ -185,7 +202,7 @@ function StudentForm() {
   return (
     <div>
       <p className="text-muted-foreground mb-8 text-[15px]">
-        Students or parents can apply. A Student Counsellor will follow up within 48 hours to understand your goals in more detail.
+        Students and parents are welcome to complete this form. We will normally contact you within 24 hours.
       </p>
 
       {/* Google sign-up */}
@@ -551,7 +568,7 @@ function StudentForm() {
               className="mt-1 w-4 h-4 accent-wsa-red"
             />
             <span className="text-sm text-muted-foreground leading-relaxed">
-              I consent to WorldStudentAdvisors processing my personal data for the purpose of providing education guidance services. My data will be handled in accordance with the <a href="/privacy-policy" className="text-wsa-red underline">Privacy Policy</a> and GDPR regulations. *
+              I consent to WorldStudentAdvisors processing my personal data to provide education guidance and application support. Your information will be handled securely in accordance with our <a href="/privacy-policy" className="text-wsa-red underline">Privacy Policy</a>. *
             </span>
           </label>
           {errors.gdprConsent && <p className="text-xs text-red-600 mt-1">{errors.gdprConsent}</p>}
@@ -578,13 +595,13 @@ function StudentForm() {
             </>
           ) : (
             <>
-              Submit Enquiry
+              Start Your Application
               <ArrowRight className="ml-2.5" size={18} />
             </>
           )}
         </button>
         <p className="text-xs text-muted-foreground mt-3">
-          No fees. No obligation. Your counsellor will be in touch within 48 hours.
+          Our student support service is completely free. Your Student Counsellor will normally contact you within 24 hours.
         </p>
       </form>
     </div>
@@ -600,10 +617,10 @@ export default function Contact() {
             <div className="max-w-3xl">
               <p className="text-sm font-medium tracking-[0.2em] uppercase text-wsa-red mb-5">Get in touch</p>
               <h1 className="text-4xl md:text-5xl lg:text-[3.5rem] font-semibold text-wsa-navy leading-[1.1] mb-8">
-                Your counsellor is ready when you are
+                Ready to Study Abroad?
               </h1>
              <p className="text-xl text-muted-foreground leading-relaxed max-w-2xl">
-                Students, parents, and partner institutions are all welcome to get in touch. We respond personally, usually within one working day.
+                Complete the form below and one of our Student Counsellors will contact you personally to discuss your plans and help you take the next step.
              </p>
             </div>
           </ScrollReveal>
@@ -618,7 +635,7 @@ export default function Contact() {
             <ScrollReveal className="lg:col-span-3">
               <div>
                 <h2 className="text-xl font-semibold text-wsa-navy mb-8 pb-3 border-b border-border/40">
-                  Sign-up Form
+                  Start Your Application
                 </h2>
                 <StudentForm />
               </div>
@@ -627,15 +644,17 @@ export default function Contact() {
             {/* Office Details */}
             <ScrollReveal delay={100} className="lg:col-span-2">
               <div>
-                <h2 className="text-2xl font-semibold text-wsa-navy mb-6">Our offices</h2>
+                <h2 className="text-2xl font-semibold text-wsa-navy mb-6">WSA Regional Offices</h2>
                 <p className="text-muted-foreground mb-8 text-[15px]">
-                  You can also contact your nearest office directly by phone, WhatsApp, or email.
+                  You're always welcome to contact your nearest WSA office directly. Our team will be happy to help by phone, WhatsApp or email.
                 </p>
                 <div className="space-y-6">
                   {offices.map((office) => (
                     <div key={office.country} className="border-t border-border/40 pt-5">
                       <h3 className="text-base font-semibold text-wsa-navy mb-0.5">{office.country}</h3>
                       <p className="text-xs font-medium tracking-wide uppercase text-wsa-red/70 mb-3">{office.role}</p>
+                      <p className="text-sm font-semibold text-wsa-navy">{office.name}</p>
+                      <p className="text-xs text-muted-foreground mb-3">{office.title}</p>
                       <div className="space-y-1.5 text-sm text-muted-foreground">
                         <div className="flex items-start gap-2">
                           <MapPin size={13} className="mt-0.5 flex-shrink-0 text-muted-foreground/50" />
@@ -647,10 +666,12 @@ export default function Contact() {
                             <a href={`tel:${office.phone}`} className="hover:text-wsa-red transition-colors">{office.phone}</a>
                           </div>
                         )}
-                        <div className="flex items-center gap-2">
-                          <Phone size={13} className="flex-shrink-0 text-muted-foreground/50" />
-                          <a href={`https://wa.me/${office.whatsapp.replace(/[^0-9]/g, '')}`} target="_blank" rel="noopener noreferrer" className="hover:text-green-600 transition-colors">WhatsApp: {office.whatsapp}</a>
-                        </div>
+                        {office.whatsapp && (
+                          <div className="flex items-center gap-2">
+                            <Phone size={13} className="flex-shrink-0 text-muted-foreground/50" />
+                            <a href={`https://wa.me/${office.whatsapp.replace(/[^0-9]/g, '')}`} target="_blank" rel="noopener noreferrer" className="hover:text-green-600 transition-colors">WhatsApp: {office.whatsapp}</a>
+                          </div>
+                        )}
                         <div className="flex items-center gap-2">
                           <Mail size={13} className="flex-shrink-0 text-muted-foreground/50" />
                           <a href={`mailto:${office.email}`} className="hover:text-wsa-red transition-colors break-all">{office.email}</a>
@@ -674,7 +695,7 @@ export default function Contact() {
                 What happens after you apply?
               </h2>
               <p className="text-[17px] text-muted-foreground leading-relaxed">
-                A named Student Counsellor will contact you within 48 hours. They'll listen to your goals, answer your questions, and explain how WSA can help. There's no commitment at this stage, just a conversation. If WSA isn't the right fit, they'll tell you honestly.
+                A named Student Counsellor will contact you personally within 24 hours. They'll listen to your study abroad plans, answer your questions and help you explore the right options for you. Your counsellor will support you from your first conversation through application, admission, visa and enrolment.
               </p>
             </div>
           </ScrollReveal>
