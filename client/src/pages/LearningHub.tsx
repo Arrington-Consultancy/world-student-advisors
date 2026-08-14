@@ -13,7 +13,7 @@ interface GuideItem {
 
 /**
  * Learning Hub. Connected Knowledge Centre
- * Design system: Editorial Calm (Source Sans 3 headings, generous spacing, trust-led)
+ * Design system: Editorial Calm (Poppins headings, generous spacing, trust-led)
  *
  * All YouTube IDs are from the verified @WorldStudentAdvisors channel.
  * Per brief S14, ONLY four items are publicly viewable without portal registration:
