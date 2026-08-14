@@ -8,8 +8,8 @@
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
   --radius-xl: calc(var(--radius) + 4px);
-  --font-sans: 'Source Sans 3', system-ui, sans-serif;
-  --font-serif: 'Source Sans 3', system-ui, sans-serif;
+  --font-sans: 'Poppins', system-ui, sans-serif;
+  --font-serif: 'Poppins', system-ui, sans-serif;
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-card: var(--card);
@@ -91,12 +91,12 @@
   }
   body {
     @apply bg-background text-foreground;
-    font-family: 'Source Sans 3', system-ui, sans-serif;
+    font-family: 'Poppins', system-ui, sans-serif;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
   }
   h1, h2, h3, h4, h5, h6 {
-    font-family: 'Source Sans 3', system-ui, sans-serif;
+    font-family: 'Poppins', system-ui, sans-serif;
     letter-spacing: -0.01em;
   }
   button:not(:disabled),

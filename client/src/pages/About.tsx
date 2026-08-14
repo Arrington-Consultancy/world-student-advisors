@@ -6,7 +6,7 @@ import ScrollReveal from "@/components/ScrollReveal";
  * About WSA Page
  *
  * Design system: Editorial Calm (frozen homepage blueprint)
- * Typography: Source Sans 3 headings, Source Sans 3 body
+ * Typography: Poppins headings, Poppins body
  * Structure: Every section answers a question, builds trust
  * No fake claims. Verified facts only.
  */
