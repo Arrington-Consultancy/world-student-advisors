@@ -8,6 +8,7 @@ import path from "path";
 import { legacyRedirects } from "./legacyRedirects";
 import { serveStatic } from "./vite";
 import { VALID_CLIENT_ROUTES } from "../../shared/routes";
+import { CANONICAL_PATHS } from "../../shared/seo";
 
 // Real Express app, real HTTP server, real fetch() requests, `redirect:
 // "manual"` so we can inspect the 301 itself instead of following it —
@@ -43,12 +44,27 @@ describe("legacyRedirects — evidenced Squarespace-slug 301s ahead of the SPA f
     ["/AboutUS", "/about"],
     ["/meet-our-counsellors", "/counsellors"],
   ];
+  const canonicalCases = Object.entries(CANONICAL_PATHS);
 
   it.each(cases)("redirects %s to %s with a 301 and no chain", async (from, to) => {
     const res = await fetch(`${baseUrl}${from}`, { redirect: "manual" });
     await res.text();
     expect(res.status).toBe(301);
     expect(res.headers.get("location")).toBe(to);
+  });
+
+  it.each(canonicalCases)("redirects duplicate/case alias %s to canonical %s with a 301", async (from, to) => {
+    const res = await fetch(`${baseUrl}${from}`, { redirect: "manual" });
+    await res.text();
+    expect(res.status).toBe(301);
+    expect(res.headers.get("location")).toBe(to);
+  });
+
+  it("redirects a trailing slash on a known route to the canonical no-slash URL", async () => {
+    const res = await fetch(`${baseUrl}/a-levels/`, { redirect: "manual" });
+    await res.text();
+    expect(res.status).toBe(301);
+    expect(res.headers.get("location")).toBe("/a-levels");
   });
 
   it.each(cases)("%s's destination %s is itself a real, valid route (single hop lands on 200)", async (_from, to) => {
@@ -83,8 +99,10 @@ describe("legacyRedirects — evidenced Squarespace-slug 301s ahead of the SPA f
     expect(res.status).toBe(404);
   });
 
-  it("every sitemap/route URL still returns 200 with the redirect middleware installed ahead of it", async () => {
+  it("every non-alias route still returns 200 with the redirect middleware installed ahead of it", async () => {
+    const canonicalAliases = new Set(Object.keys(CANONICAL_PATHS));
     for (const route of VALID_CLIENT_ROUTES) {
+      if (canonicalAliases.has(route)) continue;
       const res = await fetch(`${baseUrl}${route}`, { redirect: "manual" });
       await res.text();
       expect(res.status, `expected 200 for ${route}, got ${res.status}`).toBe(200);

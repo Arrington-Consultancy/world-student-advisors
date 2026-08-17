@@ -7,6 +7,7 @@ import os from "os";
 import path from "path";
 import { serveStatic } from "./vite";
 import { VALID_CLIENT_ROUTES } from "../../shared/routes";
+import { CANONICAL_PATHS } from "../../shared/seo";
 
 // Real Express app, real HTTP server, real fetch() requests — this is the
 // exact code path Railway serves in production. A fake index.html in a
@@ -19,7 +20,19 @@ describe("serveStatic — real HTTP status codes for known vs unknown routes", (
 
   beforeAll(async () => {
     tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "wsa-static-test-"));
-    fs.writeFileSync(path.join(tmpDir, "index.html"), "<!doctype html><html><body>SPA shell</body></html>");
+    fs.writeFileSync(
+      path.join(tmpDir, "index.html"),
+      `<!doctype html><html><head>
+        <title>World Student Advisors</title>
+        <meta name="description" content="Default description" />
+        <meta name="robots" content="index, follow" />
+        <link rel="canonical" href="https://www.worldstudentadvisors.com/" />
+        <meta property="og:title" content="World Student Advisors" />
+        <meta property="og:description" content="Default description" />
+        <meta name="twitter:title" content="World Student Advisors" />
+        <meta name="twitter:description" content="Default description" />
+      </head><body>SPA shell</body></html>`
+    );
 
     const app = express();
     serveStatic(app, tmpDir);
@@ -37,11 +50,25 @@ describe("serveStatic — real HTTP status codes for known vs unknown routes", (
   });
 
   it("returns 200 for every valid client route, including the homepage", async () => {
+    const canonicalAliases = new Set(Object.keys(CANONICAL_PATHS));
     for (const route of VALID_CLIENT_ROUTES) {
+      if (canonicalAliases.has(route)) continue;
       const res = await fetch(`${baseUrl}${route}`);
       await res.text(); // drain the body — an unread keep-alive response can desync the next request
       expect(res.status, `expected 200 for ${route}, got ${res.status}`).toBe(200);
     }
+  });
+
+  it("injects route-specific metadata, canonical URL and robots directives into the HTML shell", async () => {
+    const masters = await fetch(`${baseUrl}/masters-doctoral-degrees`);
+    const mastersHtml = await masters.text();
+    expect(mastersHtml).toContain("<title>Master's &amp; Doctoral Degrees | World Student Advisors</title>");
+    expect(mastersHtml).toContain('<link rel="canonical" href="https://www.worldstudentadvisors.com/masters-doctoral-degrees" />');
+    expect(mastersHtml).toContain('<meta name="robots" content="index, follow" />');
+
+    const portal = await fetch(`${baseUrl}/portal/login`);
+    const portalHtml = await portal.text();
+    expect(portalHtml).toContain('<meta name="robots" content="noindex, nofollow" />');
   });
 
   it("returns 404 for a fake/unknown path", async () => {

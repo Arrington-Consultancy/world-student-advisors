@@ -113,47 +113,37 @@ export default function Home() {
           <div className="grid md:grid-cols-2 gap-10 md:gap-10 lg:gap-16 items-center">
             {/* Text column */}
             <div className="relative order-2 md:order-1">
-              {heroSlides.map((slide, i) => (
-                <div
-                  key={i}
-                  className={`transition-all duration-700 ease-out ${
-                    i === activeSlide
-                      ? "opacity-100 translate-y-0 relative"
-                      : "opacity-0 translate-y-4 absolute inset-0 pointer-events-none"
-                  }`}
-                  aria-hidden={i === activeSlide ? undefined : true}
-                >
-                  <h1 className="text-[1.75rem] sm:text-4xl md:text-[2.5rem] lg:text-5xl font-semibold leading-[1.15] text-wsa-navy mb-5">
-                    {slide.headline.map((part, p) =>
-                      part.emphasis ? (
-                        <span key={p} className="text-wsa-red">
-                          {part.text}
-                        </span>
-                      ) : (
-                        <span key={p}>{part.text}</span>
-                      )
-                    )}
-                  </h1>
-                  <p className="text-base sm:text-lg text-muted-foreground leading-relaxed mb-8 max-w-md">
-                    {slide.body}
-                  </p>
-                  <div className="flex flex-col sm:flex-row gap-4">
-                    <Link
-                      href="/counsellors"
-                      className="inline-flex items-center justify-center px-7 py-4 border-2 border-wsa-navy text-wsa-navy text-[15px] font-semibold tracking-wide transition-all duration-200 hover:bg-wsa-navy hover:text-white active:scale-[0.98]"
-                    >
-                      Talk to a Counsellor
-                    </Link>
-                    <Link
-                      href="/contact"
-                      className="inline-flex items-center justify-center px-7 py-4 bg-wsa-red text-white text-[15px] font-semibold tracking-wide transition-all duration-200 hover:bg-wsa-red/90 active:scale-[0.98]"
-                    >
-                      Start Your Application
-                      <ArrowRight className="ml-2.5" size={18} />
-                    </Link>
-                  </div>
+              <div key={activeSlide} className="transition-all duration-700 ease-out opacity-100 translate-y-0">
+                <h1 className="text-[1.75rem] sm:text-4xl md:text-[2.5rem] lg:text-5xl font-semibold leading-[1.15] text-wsa-navy mb-5">
+                  {heroSlides[activeSlide].headline.map((part, p) =>
+                    part.emphasis ? (
+                      <span key={p} className="text-wsa-red">
+                        {part.text}
+                      </span>
+                    ) : (
+                      <span key={p}>{part.text}</span>
+                    )
+                  )}
+                </h1>
+                <p className="text-base sm:text-lg text-muted-foreground leading-relaxed mb-8 max-w-md">
+                  {heroSlides[activeSlide].body}
+                </p>
+                <div className="flex flex-col sm:flex-row gap-4">
+                  <Link
+                    href="/counsellors"
+                    className="inline-flex items-center justify-center px-7 py-4 border-2 border-wsa-navy text-wsa-navy text-[15px] font-semibold tracking-wide transition-all duration-200 hover:bg-wsa-navy hover:text-white active:scale-[0.98]"
+                  >
+                    Talk to a Counsellor
+                  </Link>
+                  <Link
+                    href="/contact"
+                    className="inline-flex items-center justify-center px-7 py-4 bg-wsa-red text-white text-[15px] font-semibold tracking-wide transition-all duration-200 hover:bg-wsa-red/90 active:scale-[0.98]"
+                  >
+                    Start Your Application
+                    <ArrowRight className="ml-2.5" size={18} />
+                  </Link>
                 </div>
-              ))}
+              </div>
 
               {/* Slide controls: previous/next + indicators */}
               <div className="flex items-center gap-4 mt-10 md:mt-12">

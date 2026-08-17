@@ -307,7 +307,7 @@ export default function LearningHub() {
               <span className="inline-flex items-center gap-2 px-4 py-2 bg-wsa-navy text-white text-sm font-medium">
                 <Video size={16} /> Videos
               </span>
-              <Link href="/learning-hub/podcasts" className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-wsa-navy/70 hover:text-wsa-red transition-colors border border-border">
+              <Link href="/podcasts" className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-wsa-navy/70 hover:text-wsa-red transition-colors border border-border">
                 <Headphones size={16} /> 90-Second Advisor Podcast
               </Link>
               <span className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-wsa-navy/40 border border-border/50 cursor-default">
@@ -456,7 +456,7 @@ export default function LearningHub() {
                 Quick, practical advice from WSA counsellors. Each episode covers one topic that matters to students and parents considering studying abroad.
               </p>
               <Link
-                href="/learning-hub/podcasts"
+                href="/podcasts"
                 className="inline-flex items-center px-8 py-4 bg-wsa-red text-white text-lg font-semibold tracking-wide transition-all duration-200 hover:bg-wsa-red/90 active:scale-[0.98]"
               >
                 <Headphones className="mr-3" size={20} />

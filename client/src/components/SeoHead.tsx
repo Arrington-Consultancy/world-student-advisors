@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 import { useLocation } from "wouter";
-import { getSeoForPath } from "@/lib/seo";
+import { getCanonicalUrl, getSeoForPath, shouldNoindex } from "@/lib/seo";
 
 // Updates document.title and the meta description / OG / Twitter tags on every
 // route change. This is a client-side fix (the app has no SSR/prerendering),
@@ -26,6 +26,11 @@ export default function SeoHead() {
     setMeta('meta[property="og:description"]', "content", description);
     setMeta('meta[name="twitter:title"]', "content", title);
     setMeta('meta[name="twitter:description"]', "content", description);
+    setMeta(
+      'meta[name="robots"]',
+      "content",
+      shouldNoindex(location) ? "noindex, nofollow" : "index, follow"
+    );
 
     let canonical = document.head.querySelector('link[rel="canonical"]');
     if (!canonical) {
@@ -33,7 +38,7 @@ export default function SeoHead() {
       canonical.setAttribute("rel", "canonical");
       document.head.appendChild(canonical);
     }
-    canonical.setAttribute("href", `https://www.worldstudentadvisors.com${location}`);
+    canonical.setAttribute("href", getCanonicalUrl(location));
   }, [location]);
 
   return null;

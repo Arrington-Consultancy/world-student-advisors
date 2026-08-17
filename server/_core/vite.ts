@@ -6,6 +6,34 @@ import path from "path";
 import { createServer as createViteServer } from "vite";
 import viteConfig from "../../vite.config";
 import { isValidClientRoute } from "../../shared/routes";
+import { getCanonicalUrl, getSeoForPath, shouldNoindex } from "../../shared/seo";
+
+function escapeHtml(value: string): string {
+  return value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
+export function injectSeoMeta(html: string, path: string): string {
+  const { title, description } = getSeoForPath(path);
+  const canonical = getCanonicalUrl(path);
+  const robots = shouldNoindex(path) ? "noindex, nofollow" : "index, follow";
+  const escapedTitle = escapeHtml(title);
+  const escapedDescription = escapeHtml(description);
+  const escapedCanonical = escapeHtml(canonical);
+
+  return html
+    .replace(/<title>[\s\S]*?<\/title>/, `<title>${escapedTitle}</title>`)
+    .replace(/<meta name="description" content="[^"]*" \/>/, `<meta name="description" content="${escapedDescription}" />`)
+    .replace(/<meta name="robots" content="[^"]*" \/>/, `<meta name="robots" content="${robots}" />`)
+    .replace(/<link rel="canonical" href="[^"]*" \/>/, `<link rel="canonical" href="${escapedCanonical}" />`)
+    .replace(/<meta property="og:title" content="[^"]*" \/>/, `<meta property="og:title" content="${escapedTitle}" />`)
+    .replace(/<meta property="og:description" content="[^"]*" \/>/, `<meta property="og:description" content="${escapedDescription}" />`)
+    .replace(/<meta name="twitter:title" content="[^"]*" \/>/, `<meta name="twitter:title" content="${escapedTitle}" />`)
+    .replace(/<meta name="twitter:description" content="[^"]*" \/>/, `<meta name="twitter:description" content="${escapedDescription}" />`);
+}
 
 export async function setupVite(app: Express, server: Server) {
   const serverOptions = {
@@ -44,7 +72,7 @@ export async function setupVite(app: Express, server: Server) {
         `src="/src/main.tsx"`,
         `src="/src/main.tsx?v=${nanoid()}"`
       );
-      const page = await vite.transformIndexHtml(url, template);
+      const page = injectSeoMeta(await vite.transformIndexHtml(url, template), req.path);
       // Real 404s for unknown paths, even though the SPA shell (and its own
       // NotFound UI) still renders either way — see shared/routes.ts.
       const status = isValidClientRoute(req.path) ? 200 : 404;
@@ -87,6 +115,16 @@ export function serveStatic(app: Express, distPathOverride?: string) {
   // is a route match, not a mount, so req.path stays the real path.
   app.get("*", (req, res) => {
     const status = isValidClientRoute(req.path) ? 200 : 404;
-    res.status(status).sendFile(path.resolve(distPath, "index.html"));
+    fs.promises
+      .readFile(path.resolve(distPath, "index.html"), "utf-8")
+      .then(template => {
+        res
+          .status(status)
+          .set({ "Content-Type": "text/html" })
+          .end(injectSeoMeta(template, req.path));
+      })
+      .catch(() => {
+        res.status(status).sendFile(path.resolve(distPath, "index.html"));
+      });
   });
 }
