@@ -59,6 +59,10 @@ const studentSignupSchema = z.object({
    * resulting portal account to that Google subject.
    */
   googlePrefillToken: z.string().optional().default(""),
+  /** Google Ads click identifiers, captured client-side from the landing URL. */
+  gclid: z.string().optional().default(""),
+  gbraid: z.string().optional().default(""),
+  wbraid: z.string().optional().default(""),
   ...turnstileField,
 });
 type StudentSignupInput = z.infer<typeof studentSignupSchema>;

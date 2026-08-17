@@ -6,6 +6,7 @@ import TurnstileWidget, { type TurnstileWidgetHandle } from "@/components/Turnst
 import { useTurnstileSiteKey } from "@/hooks/useTurnstileSiteKey";
 import { useRef, useState, useEffect } from "react";
 import { trpc } from "@/lib/trpc";
+import { getStoredAdClickIds } from "@/lib/adClickIds";
 
 /** Navigates to the Google OAuth start endpoint with flow=signup. */
 function startGoogleSignup() {
@@ -184,7 +185,7 @@ function StudentForm() {
       setSubmitError("Please complete the verification check below, then try again.");
       return;
     }
-    mutation.mutate({ ...formData, turnstileToken, googlePrefillToken });
+    mutation.mutate({ ...formData, turnstileToken, googlePrefillToken, ...getStoredAdClickIds() });
   };
 
   if (submitted) {

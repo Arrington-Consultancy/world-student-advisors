@@ -25,6 +25,10 @@ interface StudentFormData {
   referredByWhom?: string;
   recommendedCounsellor: string;
   gdprConsent: boolean;
+  /** Google Ads click identifiers, captured client-side from the landing URL. */
+  gclid?: string;
+  gbraid?: string;
+  wbraid?: string;
 }
 
 async function pipedriveRequest(endpoint: string, method: string, body?: Record<string, unknown>) {
@@ -65,6 +69,11 @@ const PF = {
   referredBy: "a08cf6343f3d302fdf15306c24d01e004ab47724",
   recommendedCounsellor: "91cce905e99d4d7ad6a8e2b4db41b89f8a5a72cf",
   gdprConsent: "507b7011ec6784002524c02f940ef8610059cd1e",
+  // Created 2026-08-17 for Google Ads click-ID attribution — verified no
+  // pre-existing fields with these names before creating them.
+  gclid: "d970d238a2fb0326527b340d0277167043f53348",
+  gbraid: "89385b2ee447e241a5166e5d0dc80adadbe52cb3",
+  wbraid: "19c0ef543f99a042852b58e2bd414361fb6467db",
 };
 
 // ===== ENUM OPTION ID MAPS =====
@@ -301,6 +310,9 @@ function buildPersonPayload(data: StudentFormData): Record<string, unknown> {
     [PF.referredBy]: data.referredToWSA === "yes" && data.referredByWhom ? `yes — ${data.referredByWhom}` : (data.referredToWSA || undefined),
     [PF.recommendedCounsellor]: COUNSELLOR_MAP[data.recommendedCounsellor] ?? COUNSELLOR_MAP["help-me-choose"],
     [PF.gdprConsent]: data.gdprConsent ? 105 : 106,
+    [PF.gclid]: data.gclid || undefined,
+    [PF.gbraid]: data.gbraid || undefined,
+    [PF.wbraid]: data.wbraid || undefined,
   };
 
   Object.keys(payload).forEach(key => {
@@ -333,6 +345,9 @@ function buildNote(data: StudentFormData): string {
     `**Referrer Name:** ${data.referredToWSA === "yes" && data.referredByWhom ? data.referredByWhom : "—"}`,
     `**Recommended Student Counsellor:** ${data.recommendedCounsellor || "Help me choose"}`,
     `**GDPR Consent:** ${data.gdprConsent ? "Yes" : "No"}`,
+    ...(data.gclid ? [`**Google Click ID (gclid):** ${data.gclid}`] : []),
+    ...(data.gbraid ? [`**Google Click ID (gbraid):** ${data.gbraid}`] : []),
+    ...(data.wbraid ? [`**Google Click ID (wbraid):** ${data.wbraid}`] : []),
     ``,
     `**Source:** WSA Website - Sign-up Form`,
   ];
