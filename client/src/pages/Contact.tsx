@@ -7,6 +7,7 @@ import { useTurnstileSiteKey } from "@/hooks/useTurnstileSiteKey";
 import { useRef, useState, useEffect } from "react";
 import { trpc } from "@/lib/trpc";
 import { getStoredAdClickIds } from "@/lib/adClickIds";
+import { reportSignupConversion } from "@/lib/googleAdsConversion";
 
 /** Navigates to the Google OAuth start endpoint with flow=signup. */
 function startGoogleSignup() {
@@ -142,6 +143,10 @@ function StudentForm() {
     onSuccess: result => {
       if (result.success) {
         setSubmitted(true);
+        // The honeypot bypass also returns success:true (with an empty
+        // leadId) so bots get no signal they were caught — only report a
+        // conversion for a submission that actually reached Pipedrive.
+        if (result.leadId) reportSignupConversion();
       } else {
         setSubmitError(result.error);
         setTurnstileToken("");
