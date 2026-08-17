@@ -54,6 +54,8 @@ export const VALID_CLIENT_ROUTES = [
   "/portal",
   "/WebUKVisa",
   "/DDVavita",
+  "/uk-masters-study",
+  "/uk-masters-nigeria",
   "/404",
 ] as const;
 

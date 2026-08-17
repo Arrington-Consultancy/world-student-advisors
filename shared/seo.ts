@@ -148,6 +148,16 @@ export const SEO_MAP: Record<string, SeoEntry> = {
     description:
       "Read the WorldStudentAdvisors due diligence review carried out before introducing Vavita to students and families.",
   },
+  "/uk-masters-study": {
+    title: "UK Taught Master's Study | World Student Advisors",
+    description:
+      "Guidance for international graduates considering MSc, MA, MBA and other taught Master's degrees in the UK, with free WSA Student Counsellor support.",
+  },
+  "/uk-masters-nigeria": {
+    title: "UK Master's Study from Nigeria | World Student Advisors",
+    description:
+      "Practical UK taught Master's guidance for Nigerian graduates, covering entry requirements, WAEC evidence, funding, CAS, visa preparation and WSA counsellor support.",
+  },
 };
 
 export const CANONICAL_PATHS: Record<string, string> = {

@@ -45,6 +45,8 @@ import InterviewCoach from "./pages/InterviewCoach";
 import CVUniversityApplication from "./pages/CVUniversityApplication";
 import WebUKVisa from "./pages/WebUKVisa";
 import DDVavita from "./pages/DDVavita";
+import UKMastersStudy from "./pages/UKMastersStudy";
+import UKMastersNigeria from "./pages/UKMastersNigeria";
 
 
 function Router() {
@@ -97,6 +99,8 @@ function Router() {
       <Route path={"/portal"} component={Portal} />
       <Route path={"/WebUKVisa"} component={WebUKVisa} />
       <Route path={"/DDVavita"} component={DDVavita} />
+      <Route path={"/uk-masters-study"} component={UKMastersStudy} />
+      <Route path={"/uk-masters-nigeria"} component={UKMastersNigeria} />
       <Route path={"/404"} component={NotFound} />
       <Route component={NotFound} />
     </Switch>
