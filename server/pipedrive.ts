@@ -29,6 +29,11 @@ interface StudentFormData {
   gclid?: string;
   gbraid?: string;
   wbraid?: string;
+  utm_source?: string;
+  utm_medium?: string;
+  utm_campaign?: string;
+  utm_term?: string;
+  utm_content?: string;
 }
 
 async function pipedriveRequest(endpoint: string, method: string, body?: Record<string, unknown>) {
@@ -81,6 +86,13 @@ const PF = {
 // for Leads and Deals.
 const LF = {
   gclid: "19e66a5b2b1da9bd2d84c0ac33c36bb87204967a",
+  gbraid: "2b218a5930dbb5e1a853137737ed6fdeaecf468f",
+  wbraid: "0a1191cb3cbab21347e92f2fae140eb52e64a2d4",
+  utmSource: "13bf265fcef8764f0651e20dff1f9e396f1b6499",
+  utmMedium: "1f64e0247f47fe9db320fd578e705957a27a1f5a",
+  utmCampaign: "b6c70f440a98bf4ca284123177e6da3734cc98e4",
+  utmTerm: "bab15d4d15824e1288606473167849c41f545fdb",
+  utmContent: "bd5e3520068911e614fce7c282a4518b80852631",
 };
 
 // ===== ENUM OPTION ID MAPS =====
@@ -361,6 +373,28 @@ function buildNote(data: StudentFormData): string {
   return lines.join("\n");
 }
 
+function nonEmpty(value: string | undefined): string | undefined {
+  const trimmed = value?.trim();
+  return trimmed || undefined;
+}
+
+function buildLeadAttributionPayload(data: StudentFormData): Record<string, string> {
+  const attribution = {
+    [LF.gclid]: nonEmpty(data.gclid),
+    [LF.gbraid]: nonEmpty(data.gbraid),
+    [LF.wbraid]: nonEmpty(data.wbraid),
+    [LF.utmSource]: nonEmpty(data.utm_source),
+    [LF.utmMedium]: nonEmpty(data.utm_medium),
+    [LF.utmCampaign]: nonEmpty(data.utm_campaign),
+    [LF.utmTerm]: nonEmpty(data.utm_term),
+    [LF.utmContent]: nonEmpty(data.utm_content),
+  };
+
+  return Object.fromEntries(
+    Object.entries(attribution).filter((entry): entry is [string, string] => Boolean(entry[1])),
+  );
+}
+
 /**
  * Create or reuse a Person and Lead in Pipedrive from the Sign-up Form.
  * Searches for an existing Person by email, then phone, before creating a
@@ -403,12 +437,11 @@ export async function createStudentLead(data: StudentFormData) {
 
   const recommendedCounsellorLabel = resolveCounsellorLabel(data.recommendedCounsellor);
   const leadTitle = `${data.firstName} ${data.lastName} - ${levelLabels[data.desiredLevel] || data.desiredLevel} [Rec: ${recommendedCounsellorLabel}]`;
-  const gclid = data.gclid?.trim();
 
   const leadResult = await pipedriveRequest("/leads", "POST", {
     title: leadTitle,
     person_id: personId,
-    ...(gclid ? { [LF.gclid]: gclid } : {}),
+    ...buildLeadAttributionPayload(data),
   });
 
   const leadId = leadResult.data.id;

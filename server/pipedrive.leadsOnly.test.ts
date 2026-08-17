@@ -12,7 +12,16 @@ import { createStudentLead } from "./pipedrive";
 // explicit rather than folded into the no-owner_id assertions.
 const TIM_USER_ID = 25629968;
 const ELDAH_USER_ID = 25633444;
-const LEAD_GCLID_FIELD = "19e66a5b2b1da9bd2d84c0ac33c36bb87204967a";
+const LEAD_ATTRIBUTION_FIELDS = {
+  gclid: "19e66a5b2b1da9bd2d84c0ac33c36bb87204967a",
+  gbraid: "2b218a5930dbb5e1a853137737ed6fdeaecf468f",
+  wbraid: "0a1191cb3cbab21347e92f2fae140eb52e64a2d4",
+  utm_source: "13bf265fcef8764f0651e20dff1f9e396f1b6499",
+  utm_medium: "1f64e0247f47fe9db320fd578e705957a27a1f5a",
+  utm_campaign: "b6c70f440a98bf4ca284123177e6da3734cc98e4",
+  utm_term: "bab15d4d15824e1288606473167849c41f545fdb",
+  utm_content: "bd5e3520068911e614fce7c282a4518b80852631",
+} as const;
 
 const baseData = {
   firstName: "Test",
@@ -112,7 +121,9 @@ describe("createStudentLead — Leads only, no owner/allocation logic", () => {
     // The core assertion for this cut: no owner_id anywhere on the Lead body.
     expect(leadCreates[0].body).not.toHaveProperty("owner_id");
     expect(Object.keys(leadCreates[0].body).sort()).toEqual(["person_id", "title"]);
-    expect(leadCreates[0].body).not.toHaveProperty(LEAD_GCLID_FIELD);
+    for (const fieldKey of Object.values(LEAD_ATTRIBUTION_FIELDS)) {
+      expect(leadCreates[0].body).not.toHaveProperty(fieldKey);
+    }
 
     expect(callsTo(calls, "/deals")).toHaveLength(0);
 
@@ -123,24 +134,45 @@ describe("createStudentLead — Leads only, no owner/allocation logic", () => {
     expect(noteCreates[0].body.pinned_to_lead_flag).toBe(1);
   });
 
-  it("stores a present GCLID on the Pipedrive Lead custom field", async () => {
+  it.each([
+    ["gclid", "test-gclid-123"],
+    ["gbraid", "test-gbraid-123"],
+    ["wbraid", "test-wbraid-123"],
+    ["utm_source", "google"],
+    ["utm_medium", "cpc"],
+    ["utm_campaign", "autumn-intake"],
+    ["utm_term", "study abroad advisor"],
+    ["utm_content", "hero-button"],
+  ] as const)("stores a present %s value on the matching Pipedrive Lead field", async (field, value) => {
     const calls = installMockFetch();
 
-    await createStudentLead({ ...baseData, gclid: "test-gclid-123" });
+    await createStudentLead({ ...baseData, [field]: value });
 
     const leadCreates = callsTo(calls, "/leads", "POST");
     expect(leadCreates).toHaveLength(1);
-    expect(leadCreates[0].body[LEAD_GCLID_FIELD]).toBe("test-gclid-123");
+    expect(leadCreates[0].body[LEAD_ATTRIBUTION_FIELDS[field]]).toBe(value);
   });
 
-  it("does not populate the Lead GCLID field with blank or missing data", async () => {
+  it("does not populate Lead attribution fields with blank or missing data", async () => {
     const calls = installMockFetch();
 
-    await createStudentLead({ ...baseData, gclid: "   " });
+    await createStudentLead({
+      ...baseData,
+      gclid: "   ",
+      gbraid: "",
+      wbraid: " ",
+      utm_source: "",
+      utm_medium: " ",
+      utm_campaign: "",
+      utm_term: "   ",
+      utm_content: "",
+    });
 
     const leadCreates = callsTo(calls, "/leads", "POST");
     expect(leadCreates).toHaveLength(1);
-    expect(leadCreates[0].body).not.toHaveProperty(LEAD_GCLID_FIELD);
+    for (const fieldKey of Object.values(LEAD_ATTRIBUTION_FIELDS)) {
+      expect(leadCreates[0].body).not.toHaveProperty(fieldKey);
+    }
   });
 
   it("adds both Tim and Eldah as Person followers on every enquiry — visibility, not ownership", async () => {

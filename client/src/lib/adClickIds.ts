@@ -1,20 +1,29 @@
 /**
- * Google Ads click-ID persistence, so a lead can be traced back to the ad
- * click that produced it even when the visitor lands on one page (e.g. the
- * homepage) and doesn't submit the Sign-up Form until several pages/visits
- * later. gclid = standard Google Ads clicks, gbraid = App campaigns /
+ * Attribution persistence, so a lead can be traced back to the ad click or
+ * campaign that produced it even when the visitor lands on one page (e.g.
+ * the homepage) and doesn't submit the Sign-up Form until several pages or
+ * visits later. gclid = standard Google Ads clicks, gbraid = App campaigns /
  * privacy-sandbox iOS clicks, wbraid = web-to-app clicks.
  */
 
 const STORAGE_KEY = "wsa_ad_click_ids";
-const CLICK_ID_PARAMS = ["gclid", "gbraid", "wbraid"] as const;
+const CLICK_ID_PARAMS = [
+  "gclid",
+  "gbraid",
+  "wbraid",
+  "utm_source",
+  "utm_medium",
+  "utm_campaign",
+  "utm_term",
+  "utm_content",
+] as const;
 type ClickIdParam = (typeof CLICK_ID_PARAMS)[number];
 export type AdClickIds = Partial<Record<ClickIdParam, string>>;
 
 /**
- * Reads gclid/gbraid/wbraid from the current URL, if present, and stores
- * the first non-empty value seen for this browser. Call once on app mount so
- * it runs regardless of which page a visitor lands on.
+ * Reads attribution values from the current URL, if present, and stores the
+ * first non-empty value seen for this browser. Call once on app mount so it
+ * runs regardless of which page a visitor lands on.
  */
 export function captureAdClickIds(): void {
   if (typeof window === "undefined") return;

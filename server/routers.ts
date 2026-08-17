@@ -63,6 +63,11 @@ const studentSignupSchema = z.object({
   gclid: z.string().optional().default(""),
   gbraid: z.string().optional().default(""),
   wbraid: z.string().optional().default(""),
+  utm_source: z.string().optional().default(""),
+  utm_medium: z.string().optional().default(""),
+  utm_campaign: z.string().optional().default(""),
+  utm_term: z.string().optional().default(""),
+  utm_content: z.string().optional().default(""),
   ...turnstileField,
 });
 type StudentSignupInput = z.infer<typeof studentSignupSchema>;

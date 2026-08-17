@@ -47,4 +47,41 @@ describe("Google Ads click-ID persistence", () => {
 
     expect(getStoredAdClickIds()).toEqual({ gclid: "first-gclid" });
   });
+
+  it("captures click IDs and UTM values from the landing URL", () => {
+    stubWindow(
+      "?gclid=test-gclid&gbraid=test-gbraid&wbraid=test-wbraid&utm_source=google&utm_medium=cpc&utm_campaign=autumn&utm_term=study&utm_content=hero",
+    );
+
+    captureAdClickIds();
+
+    expect(getStoredAdClickIds()).toEqual({
+      gclid: "test-gclid",
+      gbraid: "test-gbraid",
+      wbraid: "test-wbraid",
+      utm_source: "google",
+      utm_medium: "cpc",
+      utm_campaign: "autumn",
+      utm_term: "study",
+      utm_content: "hero",
+    });
+  });
+
+  it("preserves first-touch UTM values for the session", () => {
+    stubWindow("?utm_source=bing&utm_medium=organic&utm_campaign=later", {
+      wsa_ad_click_ids: JSON.stringify({
+        utm_source: "google",
+        utm_medium: "cpc",
+        utm_campaign: "first",
+      }),
+    });
+
+    captureAdClickIds();
+
+    expect(getStoredAdClickIds()).toEqual({
+      utm_source: "google",
+      utm_medium: "cpc",
+      utm_campaign: "first",
+    });
+  });
 });
