@@ -76,6 +76,13 @@ const PF = {
   wbraid: "19c0ef543f99a042852b58e2bd414361fb6467db",
 };
 
+// Lead/deal custom fields — verified 2026-08-17 against the live WSA
+// Pipedrive account's /leadFields and /dealFields. The same key is exposed
+// for Leads and Deals.
+const LF = {
+  gclid: "19e66a5b2b1da9bd2d84c0ac33c36bb87204967a",
+};
+
 // ===== ENUM OPTION ID MAPS =====
 // Every numeric ID below was verified 2026-07-29 against the live WSA
 // Pipedrive account's /personFields option lists. Where the front-end offers
@@ -396,10 +403,12 @@ export async function createStudentLead(data: StudentFormData) {
 
   const recommendedCounsellorLabel = resolveCounsellorLabel(data.recommendedCounsellor);
   const leadTitle = `${data.firstName} ${data.lastName} - ${levelLabels[data.desiredLevel] || data.desiredLevel} [Rec: ${recommendedCounsellorLabel}]`;
+  const gclid = data.gclid?.trim();
 
   const leadResult = await pipedriveRequest("/leads", "POST", {
     title: leadTitle,
     person_id: personId,
+    ...(gclid ? { [LF.gclid]: gclid } : {}),
   });
 
   const leadId = leadResult.data.id;

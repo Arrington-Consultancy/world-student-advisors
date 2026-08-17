@@ -12,10 +12,9 @@ type ClickIdParam = (typeof CLICK_ID_PARAMS)[number];
 export type AdClickIds = Partial<Record<ClickIdParam, string>>;
 
 /**
- * Reads gclid/gbraid/wbraid from the current URL, if present, and merges
- * them into localStorage (a later click overwrites an earlier one — this
- * reflects the visitor's most recent ad interaction). Call once on app
- * mount so it runs regardless of which page a visitor lands on.
+ * Reads gclid/gbraid/wbraid from the current URL, if present, and stores
+ * the first non-empty value seen for this browser. Call once on app mount so
+ * it runs regardless of which page a visitor lands on.
  */
 export function captureAdClickIds(): void {
   if (typeof window === "undefined") return;
@@ -30,7 +29,11 @@ export function captureAdClickIds(): void {
 
   try {
     const existing = getStoredAdClickIds();
-    window.localStorage.setItem(STORAGE_KEY, JSON.stringify({ ...existing, ...found }));
+    const next: AdClickIds = { ...existing };
+    for (const key of CLICK_ID_PARAMS) {
+      if (!next[key] && found[key]) next[key] = found[key];
+    }
+    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
   } catch {
     // localStorage unavailable (private browsing, disabled storage) — the
     // click ID simply won't be attributed. Not worth failing anything over.
