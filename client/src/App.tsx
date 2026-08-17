@@ -44,6 +44,7 @@ import PortalLibrary from "./pages/PortalLibrary";
 import InterviewCoach from "./pages/InterviewCoach";
 import CVUniversityApplication from "./pages/CVUniversityApplication";
 import WebUKVisa from "./pages/WebUKVisa";
+import DDVavita from "./pages/DDVavita";
 
 
 function Router() {
@@ -95,6 +96,7 @@ function Router() {
       <Route path={"/portal/interview-coach"} component={InterviewCoach} />
       <Route path={"/portal"} component={Portal} />
       <Route path={"/WebUKVisa"} component={WebUKVisa} />
+      <Route path={"/DDVavita"} component={DDVavita} />
       <Route path={"/404"} component={NotFound} />
       <Route component={NotFound} />
     </Switch>

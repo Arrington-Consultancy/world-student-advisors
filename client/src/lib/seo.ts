@@ -120,6 +120,11 @@ export const SEO_MAP: Record<string, SeoEntry> = {
     description:
       "Free UK Student Visa masterclass and resources from WorldStudentAdvisors — bank statements, CAS, IHS, and common mistakes to avoid.",
   },
+  "/DDVavita": {
+    title: "WorldStudentAdvisors Due Diligence Review - Vavita",
+    description:
+      "Read the WorldStudentAdvisors due diligence review carried out before introducing Vavita to students and families.",
+  },
 };
 
 export function getSeoForPath(path: string): SeoEntry {

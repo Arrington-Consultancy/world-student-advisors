@@ -1,5 +1,5 @@
 import { Link } from "wouter";
-import { Shield, FileText, Users, Globe, Lock } from "lucide-react";
+import { Shield, FileText, Users, Globe, Lock, ShieldCheck } from "lucide-react";
 import ScrollReveal from "@/components/ScrollReveal";
 
 const policies = [
@@ -37,6 +37,13 @@ const policies = [
     href: "/sub-saharan-regional-office-policy",
     icon: Globe,
     version: "v1.1, January 2026",
+  },
+  {
+    title: "Vavita Due Diligence Review",
+    description: "WorldStudentAdvisors' due diligence review before introducing Vavita to students and families.",
+    href: "/DDVavita",
+    icon: ShieldCheck,
+    version: "August 2026",
   },
 ];
 
@@ -104,4 +111,3 @@ export default function Compliance() {
     </div>
   );
 }
-
