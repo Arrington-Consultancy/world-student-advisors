@@ -9,21 +9,30 @@
 declare global {
   interface Window {
     gtag?: (...args: unknown[]) => void;
+    dataLayer?: unknown[][];
   }
 }
 
 const CONVERSION_SEND_TO = "AW-946725823/hviLCPiHkOMcEL_Ht8MD";
+const CONVERSION_ARGS = [
+  "event",
+  "conversion",
+  { send_to: CONVERSION_SEND_TO },
+] as const;
 
 export function reportSignupConversion(): void {
-  if (typeof window === "undefined" || typeof window.gtag !== "function") {
-    // gtag.js hasn't loaded (ad blocker, slow network, etc.) — the
-    // submission itself already succeeded, so this is never worth
-    // blocking or retrying over.
+  if (typeof window === "undefined") {
     return;
   }
-  window.gtag("event", "conversion", {
-    send_to: CONVERSION_SEND_TO,
-    value: 1.0,
-    currency: "GBP",
-  });
+
+  if (typeof window.gtag === "function") {
+    window.gtag(...CONVERSION_ARGS);
+    return;
+  }
+
+  // The base tag loads async. If the form succeeds before gtag is ready,
+  // queue the exact same conversion call so gtag.js can process it when it
+  // finishes loading.
+  window.dataLayer = window.dataLayer || [];
+  window.dataLayer.push([...CONVERSION_ARGS]);
 }
