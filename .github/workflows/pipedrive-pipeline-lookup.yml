@@ -1,0 +1,45 @@
+name: Pipedrive pipeline/stage lookup (read-only)
+
+# Manual-only. Prints pipelines, stages, the deal status field, and a
+# sample of recent won deals from the real production Pipedrive account.
+# Read-only GET requests via scripts/pipedrive-pipeline-lookup.mjs — no
+# writes, ever. Reuses the existing githubactionsprod Railway token (same
+# one production-db-diagnostic.yml and pipedrive-lead-lookup.yml use)
+# purely to obtain PIPEDRIVE_API_TOKEN from the real production
+# environment via `railway run` — no new secret is added by this workflow.
+on:
+  workflow_dispatch:
+    inputs:
+      service_name:
+        description: "Railway service name"
+        required: true
+        default: "world-student-advisors"
+      environment_name:
+        description: "Railway environment name"
+        required: true
+        default: "production"
+
+jobs:
+  lookup:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Install Railway CLI
+        run: npm install -g @railway/cli
+
+      - name: Look up pipelines, stages, deal fields, sample won deals
+        env:
+          RAILWAY_TOKEN: ${{ secrets.githubactionsprod }}
+        run: |
+          railway run --service "${{ github.event.inputs.service_name }}" --environment "${{ github.event.inputs.environment_name }}" -- node scripts/pipedrive-pipeline-lookup.mjs
