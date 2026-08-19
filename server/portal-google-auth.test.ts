@@ -5,6 +5,8 @@
  * We mock findGoogleUserForLogin so we can test each status branch:
  * - ok        → redirects to /portal/login?token=...
  * - not_found → redirects to /portal/login?error=google_no_account
+ * - inactive  → redirects to /portal/login?error=google_account_inactive
+ * - conflict  → redirects to /portal/login?error=google_account_conflict
  * - db_unavailable → redirects to /portal/login?error=google_account
  */
 
@@ -183,6 +185,30 @@ describe("portal-google-auth callback: login flow result routing", () => {
     expect(location).not.toContain("token=");
   });
 
+  it("redirects to /portal/login?error=google_account_inactive on status=inactive", async () => {
+    const app = await buildApp();
+    mockedFindGoogleUserForLogin.mockResolvedValue({ status: "inactive" });
+
+    const { location } = await invokeCallback(app);
+
+    expect(location).toContain("error=google_account_inactive");
+    expect(location).not.toContain("error=google_no_account");
+    expect(location).not.toContain("error=google_account_conflict");
+    expect(location).not.toContain("token=");
+  });
+
+  it("redirects to /portal/login?error=google_account_conflict on status=conflict", async () => {
+    const app = await buildApp();
+    mockedFindGoogleUserForLogin.mockResolvedValue({ status: "conflict" });
+
+    const { location } = await invokeCallback(app);
+
+    expect(location).toContain("error=google_account_conflict");
+    expect(location).not.toContain("error=google_no_account");
+    expect(location).not.toContain("error=google_account_inactive");
+    expect(location).not.toContain("token=");
+  });
+
   it("does not create a portal user on not_found — createPortalUser is never called", async () => {
     const app = await buildApp();
     mockedFindGoogleUserForLogin.mockResolvedValue({ status: "not_found" });
@@ -206,5 +232,24 @@ describe("portal-google-auth callback: login flow result routing", () => {
     expect(notFoundLoc).toContain("google_no_account");
     expect(dbLoc).toContain("google_account");
     expect(dbLoc).not.toContain("google_no_account");
+  });
+
+  it("uses distinct error params for no account, inactive, and conflict states", async () => {
+    const app = await buildApp();
+
+    mockedFindGoogleUserForLogin.mockResolvedValue({ status: "not_found" });
+    const { location: notFoundLoc } = await invokeCallback(app);
+
+    mockedFindGoogleUserForLogin.mockResolvedValue({ status: "inactive" });
+    const { location: inactiveLoc } = await invokeCallback(app);
+
+    mockedFindGoogleUserForLogin.mockResolvedValue({ status: "conflict" });
+    const { location: conflictLoc } = await invokeCallback(app);
+
+    expect(notFoundLoc).toContain("google_no_account");
+    expect(inactiveLoc).toContain("google_account_inactive");
+    expect(conflictLoc).toContain("google_account_conflict");
+    expect(inactiveLoc).not.toContain("google_no_account");
+    expect(conflictLoc).not.toContain("google_no_account");
   });
 });

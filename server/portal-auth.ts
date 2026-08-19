@@ -181,6 +181,8 @@ export async function mintPortalToken(user: {
 export type FindGoogleUserResult =
   | { status: "ok"; token: string; user: { id: number; email: string; firstName: string; lastName: string } }
   | { status: "not_found" }
+  | { status: "inactive" }
+  | { status: "conflict" }
   | { status: "db_unavailable" };
 
 /**
@@ -190,8 +192,9 @@ export type FindGoogleUserResult =
  *
  * Resolution order:
  * 1. Match by googleSub → log in.
- * 2. No googleSub match + emailVerified=true → match by email, link the sub, log in.
- * 3. No match → return { status: "not_found" } without creating any record.
+ * 2. No googleSub match + emailVerified=true → match by email, link the sub if safe, log in.
+ * 3. Conflicting Google linkage → return { status: "conflict" } without mutating any record.
+ * 4. No match → return { status: "not_found" } without creating any record.
  */
 export async function findGoogleUserForLogin(
   profile: { sub: string; email: string; firstName: string; lastName: string },
@@ -211,8 +214,14 @@ export async function findGoogleUserForLogin(
       rows = await db.select().from(portalUsers).where(eq(portalUsers.email, emailLower)).limit(1);
 
       if (rows.length) {
-        // Link the Google sub to the existing account
-        await db.update(portalUsers).set({ googleSub: profile.sub }).where(eq(portalUsers.id, rows[0].id));
+        const existingGoogleSub = rows[0].googleSub?.trim() ?? "";
+        if (existingGoogleSub && existingGoogleSub !== profile.sub) {
+          return { status: "conflict" };
+        }
+
+        if (!existingGoogleSub) {
+          await db.update(portalUsers).set({ googleSub: profile.sub }).where(eq(portalUsers.id, rows[0].id));
+        }
       }
     }
   }
@@ -220,7 +229,7 @@ export async function findGoogleUserForLogin(
   if (!rows.length) return { status: "not_found" };
 
   const portalUser = rows[0];
-  if (!portalUser.isActive) return { status: "not_found" };
+  if (!portalUser.isActive) return { status: "inactive" };
 
   await db.update(portalUsers).set({ lastLogin: new Date() }).where(eq(portalUsers.id, portalUser.id));
 
