@@ -369,8 +369,8 @@ export default function Home() {
             <ScrollReveal>
               <div className="relative">
                 <img
-                  src="/manus-storage/wsa_diverse_student_group_a6478cd9.jpg"
-                  alt="A diverse group of international students in a university common room"
+                  src="/manus-storage/eldah_therone_desk_office_5bdeccd1.jpg"
+                  alt="Eldah Therone at her desk in the WSA office"
                   className="w-full aspect-[4/3] object-cover"
                 />
                 {/* Named counsellor, clearly labelled placeholder */}
