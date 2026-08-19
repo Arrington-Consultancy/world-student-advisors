@@ -34,7 +34,7 @@ const offices = [
     country: "United Kingdom",
     role: "Head Office",
     name: "Timothy J. Hunt",
-    title: "CEO",
+    title: "Managing Director",
     address: "2 Newport Close, Clevedon, BS21 5DZ, England, UK",
     whatsapp: "+44 7914 797830",
     email: "UKHeadOffice@worldstudentadvisors.com",
@@ -71,11 +71,21 @@ const offices = [
   {
     country: "Angola",
     role: "Angola Office",
-    name: "Pedro Bezarra",
+    name: "Pedro Bezerra",
     title: "Director for Angola",
     address: "Município da Ingombota, Edifício Escom, Rua Marechal Brós Tito, 35/37, 10.º Piso, Fração D, Luanda, Angola",
     phone: "+44 7512 055 433",
-    email: "beezaepy@hotmail.com",
+    email: "beezapy@hotmail.com",
+  },
+  {
+    country: "Cameroon",
+    role: "Central Africa Regional Office",
+    name: "Lamango Enow Magdaline Esq.",
+    title: "Exclusive Regional Representative, Central Africa",
+    address: "Carrefour Ministre via 10ème arrêt Bitotol, PO Box 863, Yaoundé, Cameroon",
+    phone: "+237 699 93 10 86",
+    whatsapp: "+237 699 93 10 86",
+    email: "Lamango.enow@worldstudentadvisors.com",
   },
 ];
 
