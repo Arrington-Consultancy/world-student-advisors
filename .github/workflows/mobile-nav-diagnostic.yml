@@ -38,12 +38,17 @@ jobs:
           echo "=== Script/link asset tags in served HTML ==="
           grep -oE '<(script|link)[^>]*(src|href)="[^"]*"[^>]*>' /tmp/live.html | grep -E "assets/|\.js|\.css" || true
           echo ""
-          echo "=== viewport meta tag as served ==="
-          grep -o '<meta[^>]*viewport[^>]*>' /tmp/live.html || echo "NO VIEWPORT META TAG FOUND IN SERVED HTML"
+          echo "=== viewport meta tag as served (multi-line-aware) ==="
+          python3 -c "
+          import re
+          content = open('/tmp/live.html').read()
+          m = re.search(r'<meta[^>]*viewport[^>]*>', content, re.DOTALL)
+          print(repr(m.group(0)) if m else 'NO VIEWPORT META TAG FOUND IN SERVED HTML (multi-line-aware check)')
+          "
 
       - name: Render with real iPhone emulation and inspect nav
         run: |
-          cat > /tmp/check.js << 'EOF'
+          cat > check.js << 'EOF'
           const { chromium, devices } = require('playwright');
           (async () => {
             const url = process.argv[2];
@@ -64,6 +69,10 @@ jobs:
             console.log('document.documentElement.clientWidth:', await page.evaluate(() => document.documentElement.clientWidth));
             console.log('body.scrollWidth:', await page.evaluate(() => document.body.scrollWidth));
             console.log('visualViewport.width:', await page.evaluate(() => window.visualViewport ? window.visualViewport.width : 'n/a'));
+            console.log('parsed viewport meta content (from live DOM):', await page.evaluate(() => {
+              const m = document.querySelector('meta[name="viewport"]');
+              return m ? m.getAttribute('content') : 'NO VIEWPORT META ELEMENT IN PARSED DOM';
+            }));
 
             const desktopNav = page.locator('nav.hidden.lg\\:flex');
             const mobileButton = page.locator('button[aria-label="Toggle menu"]');
@@ -94,7 +103,7 @@ jobs:
           })();
           EOF
           mkdir -p /tmp/artifacts
-          node /tmp/check.js "${{ github.event.inputs.url }}"
+          node check.js "${{ github.event.inputs.url }}"
 
       - name: Upload screenshot artifact
         uses: actions/upload-artifact@v4
