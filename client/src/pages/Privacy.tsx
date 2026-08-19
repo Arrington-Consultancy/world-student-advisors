@@ -28,7 +28,7 @@ export default function Privacy() {
               <div>
                 <h2 className="text-2xl font-semibold text-wsa-navy mb-4">Who we are</h2>
                 <p className="text-[17px] text-muted-foreground leading-relaxed">
-                  World Student Advisors (WSA) is an international education advisory service founded in 2012. We are a British Council Certified Agency with offices in the United Kingdom, Kenya, Nigeria, and Ghana. This privacy policy explains how we collect, use, and protect your personal information when you use our website or services.
+                  World Student Advisors (WSA) is an international education advisory service founded in 2012. We have British Council Certified Counsellors, with offices in the United Kingdom, Kenya, Nigeria, and Ghana. This privacy policy explains how we collect, use, and protect your personal information when you use our website or services.
                 </p>
               </div>
             </ScrollReveal>

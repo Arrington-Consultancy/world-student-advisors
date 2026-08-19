@@ -73,7 +73,7 @@ export default function Terms() {
               <div>
                 <h2 className="text-2xl font-semibold text-wsa-navy mb-4">Ethical standards</h2>
                 <div className="space-y-3 text-[17px] text-muted-foreground leading-relaxed">
-                  <p>As a British Council Certified Agency, WSA adheres to strict ethical standards:</p>
+                  <p>As an agency with British Council Certified Counsellors, WSA adheres to strict ethical standards:</p>
                   <p className="pl-6">We recommend institutions and programmes based on what is right for the student, not what is most profitable for WSA.</p>
                   <p className="pl-6">We provide honest assessments of a student's chances of admission.</p>
                   <p className="pl-6">We will advise against applying to programmes we believe are not suitable, even if the student requests it.</p>

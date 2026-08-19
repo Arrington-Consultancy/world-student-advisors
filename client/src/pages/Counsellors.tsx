@@ -228,11 +228,11 @@ export default function Counsellors() {
             <div className="flex flex-col sm:flex-row items-center gap-6 sm:gap-8 justify-center">
               <img
                 src="/manus-storage/british_council_certified_b72a19c7.png"
-                alt="British Council Certified Agency"
+                alt="British Council Certified Counsellors"
                 className="h-16 w-auto"
               />
               <div className="text-center sm:text-left">
-                <p className="text-lg font-semibold text-wsa-navy">British Council Certified Agency</p>
+                <p className="text-lg font-semibold text-wsa-navy">British Council Certified Counsellors</p>
                 <p className="text-sm text-muted-foreground">Supporting students with trusted international education guidance since 2012.</p>
               </div>
             </div>

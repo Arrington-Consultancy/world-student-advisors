@@ -315,7 +315,7 @@ export default function Partners() {
               {[
                 { title: "Quality first", text: "We only partner with institutions we've vetted and trust. If we wouldn't recommend it to our own family, we don't recommend it to yours." },
                 { title: "Student welfare", text: "Every partner institution must demonstrate strong student support services, pastoral care, and a genuine commitment to international student success." },
-                { title: "Ethical recruitment", text: "As a British Council Certified Agency, we maintain strict ethical standards. We never recommend an institution solely because of commercial incentives." },
+                { title: "Ethical recruitment", text: "As an agency with British Council Certified Counsellors, we maintain strict ethical standards. We never recommend an institution solely because of commercial incentives." },
               ].map((item, i) => (
                 <ScrollReveal key={item.title} delay={i * 80}>
                   <div>
@@ -433,7 +433,7 @@ export default function Partners() {
                     If you represent a university, school, or education provider and would like to explore a partnership with World Student Advisors, we'd welcome a conversation.
                   </p>
                   <p>
-                    We're a British Council Certified Agency with offices in the UK, Kenya, Nigeria, and Ghana. We support students from across Sub-Saharan Africa with ethical, personalised guidance.
+                    We have British Council Certified Counsellors, with offices in the UK, Kenya, Nigeria, and Ghana. We support students from across Sub-Saharan Africa with ethical, personalised guidance.
                   </p>
                   <p className="text-white font-medium">
                     We partner based on quality and shared values, not volume targets.
