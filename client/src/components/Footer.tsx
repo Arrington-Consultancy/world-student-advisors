@@ -76,23 +76,31 @@ export default function Footer() {
             <h4 className="text-white/90 text-xs font-semibold tracking-[0.15em] uppercase mb-5">Get in touch</h4>
             <div className="space-y-4 text-sm">
               <div>
-                <p className="text-white/90 font-medium">UK Headquarters</p>
-                <p>2 Newport Close, Clevedon, BS21 5DZ</p>
+                <p className="text-white/90 font-medium">Head Office</p>
+                <p>2 Newport Close, Clevedon, BS21 5DZ, England, UK</p>
               </div>
               <div>
-                <p className="text-white/90 font-medium">Kenya Office</p>
+                <p className="text-white/90 font-medium">Sub-Saharan Africa Regional Office</p>
                 <p>Waiyaki Way, Off Uthiru-Cooperation, Nafra Building, Nairobi, Kenya</p>
               </div>
               <div>
                 <p className="text-white/90 font-medium">Nigeria Office</p>
-                <p>DSTV Complex, Akala Express Way, Ibadan</p>
+                <p>DSTV Complex, Along Akala Express Way, New Garage, Ibadan, Oyo State, Nigeria</p>
+              </div>
+              <div>
+                <p className="text-white/90 font-medium">Ghana Office</p>
+                <p>Afotey Osapesua Avenue, Adjiringanor, East Legon, Accra, Ghana</p>
+              </div>
+              <div>
+                <p className="text-white/90 font-medium">Angola Office</p>
+                <p>Município da Ingombota, Edifício Escom, Rua Marechal Brós Tito, 35/37, 10.º Piso, Fração D, Luanda, Angola</p>
               </div>
               <div>
                 <a href="mailto:UKHeadOffice@worldstudentadvisors.com" className="hover:text-white transition-colors block">
                   UKHeadOffice@worldstudentadvisors.com
                 </a>
                 <a href="https://wa.me/447914797830" className="hover:text-white transition-colors block mt-1">
-                  WhatsApp: +44 791 479 7830
+                  WhatsApp: +44 7914 797830
                 </a>
               </div>
             </div>

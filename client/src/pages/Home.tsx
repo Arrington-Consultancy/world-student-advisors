@@ -317,22 +317,22 @@ export default function Home() {
             {[
               {
                 heading: "University applications",
-                copy: "Support with undergraduate, postgraduate and doctoral study, from course selection through to application.",
+                copy: "Course selection, personal statements and application support for undergraduate, postgraduate and doctoral study.",
                 href: "/study-options",
               },
               {
-                heading: "Schools and pathways",
+                heading: "Boarding schools and pathways",
                 copy: "Guidance on boarding schools, foundation programmes, International Year One and other routes into higher education.",
                 href: "/international-foundation-programme",
               },
               {
-                heading: "Specialist opportunities",
+                heading: "Specialist study opportunities",
                 copy: "Support with sport pathways, summer programmes, creative subjects, healthcare and online learning.",
                 href: "/sport-pathways",
               },
               {
-                heading: "Visa and preparation support",
-                copy: "Help with documents, interviews, visa preparation and the practical steps before departure.",
+                heading: "Visa and departure support",
+                copy: "Visa guidance, interview preparation and pre-departure support for the practical steps before you travel.",
                 href: "/learning-hub",
               },
             ].map((block, i) => (
@@ -508,7 +508,7 @@ export default function Home() {
               <div>
                 <p className="text-sm font-medium tracking-[0.2em] uppercase text-wsa-red mb-5">Study destinations</p>
                 <h2 className="text-3xl md:text-4xl font-semibold text-wsa-navy leading-[1.15]">
-                  Where will your future take you?
+                  Where would you like to study?
                 </h2>
               </div>
               <Link
@@ -538,7 +538,7 @@ export default function Home() {
                   <div className="absolute bottom-0 left-0 right-0 p-8 lg:p-10">
                     <p className="text-white/60 text-sm font-medium tracking-wide uppercase mb-2">Primary destination</p>
                     <h3 className="text-3xl lg:text-4xl font-semibold text-white mb-2">United Kingdom</h3>
-                    <p className="text-white/70 text-base max-w-md">Universities, boarding schools, language programmes, and sport academies.</p>
+                    <p className="text-white/70 text-base max-w-md">Internationally recognised degrees, shorter Master's programmes and strong links with employers.</p>
                   </div>
                 </div>
               </Link>
@@ -556,7 +556,7 @@ export default function Home() {
                     <div className="absolute inset-0 bg-gradient-to-t from-black/65 via-black/10 to-transparent" />
                     <div className="absolute bottom-0 left-0 right-0 p-6 lg:p-8">
                       <h3 className="text-2xl font-semibold text-white mb-1">USA and Canada</h3>
-                      <p className="text-white/70 text-sm">Higher-budget pathways with strong post-study work options</p>
+                      <p className="text-white/70 text-sm">Highly ranked universities, flexible study options and strong career pathways for international graduates.</p>
                     </div>
                   </div>
                 </Link>
@@ -572,7 +572,7 @@ export default function Home() {
                     <div className="absolute inset-0 bg-gradient-to-t from-black/65 via-black/10 to-transparent" />
                     <div className="absolute bottom-0 left-0 right-0 p-6 lg:p-8">
                       <h3 className="text-2xl font-semibold text-white mb-1">Europe</h3>
-                      <p className="text-white/70 text-sm">Cyprus, Hungary, and more — lower-budget options with quality programmes</p>
+                      <p className="text-white/70 text-sm">High quality education, international campuses and a wide range of English-taught programmes.</p>
                     </div>
                   </div>
                 </Link>
@@ -709,7 +709,7 @@ export default function Home() {
                 Your counsellor is ready when you are
               </h2>
               <p className="text-lg text-muted-foreground leading-relaxed mb-12">
-                Complete a short application and a personal Student Counsellor will be in touch within 48 hours. No fee. No obligation. Students or parents can apply.
+                Your future matters. Let's take the next step together. Complete a short application and a personal Student Counsellor will be in touch within 48 hours. No fee. No obligation. Students or parents can apply.
               </p>
               <Link
                 href="/contact"
