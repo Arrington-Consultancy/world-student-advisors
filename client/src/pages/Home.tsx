@@ -298,129 +298,8 @@ export default function Home() {
       </section>
 
       {/* ═══════════════════════════════════════════════════════════════
-          SECTION 2B: WHAT WE HELP WITH
-         Four linked content blocks showing key service areas.
-      ═══════════════════════════════════════════════════════════════ */}
-      <section className="py-20 lg:py-28">
-        <div className="container">
-          <ScrollReveal>
-            <p className="text-sm font-medium tracking-[0.2em] uppercase text-wsa-red mb-5">What we help with</p>
-            <h2 className="text-3xl md:text-4xl font-semibold text-wsa-navy leading-[1.15] mb-5">
-              Everything you need for your study journey
-            </h2>
-            <p className="text-[17px] text-muted-foreground leading-relaxed mb-14 max-w-2xl">
-              Your counsellor helps you understand your options, prepare a strong application and manage the practical steps involved in studying abroad.
-            </p>
-          </ScrollReveal>
-
-          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6">
-            {[
-              {
-                heading: "University applications",
-                copy: "Course selection, personal statements and application support for undergraduate, postgraduate and doctoral study.",
-                href: "/study-options",
-              },
-              {
-                heading: "Boarding schools and pathways",
-                copy: "Guidance on boarding schools, foundation programmes, International Year One and other routes into higher education.",
-                href: "/international-foundation-programme",
-              },
-              {
-                heading: "Specialist study opportunities",
-                copy: "Support with sport pathways, summer programmes, creative subjects, healthcare and online learning.",
-                href: "/sport-pathways",
-              },
-              {
-                heading: "Visa and departure support",
-                copy: "Visa guidance, interview preparation and pre-departure support for the practical steps before you travel.",
-                href: "/learning-hub",
-              },
-            ].map((block, i) => (
-              <ScrollReveal key={block.heading} delay={i * 80}>
-                <Link href={block.href} className="group block h-full">
-                  <div className="border border-border/40 p-8 h-full transition-all duration-200 hover:border-wsa-red/30 hover:shadow-sm">
-                    <h3 className="text-lg font-semibold text-wsa-navy mb-3 group-hover:text-wsa-red transition-colors duration-200">
-                      {block.heading}
-                    </h3>
-                    <p className="text-[15px] text-muted-foreground leading-relaxed mb-5">
-                      {block.copy}
-                    </p>
-                    <span className="inline-flex items-center text-sm font-medium text-wsa-navy group-hover:text-wsa-red transition-colors duration-200">
-                      Learn more
-                      <ArrowRight className="ml-1.5" size={14} />
-                    </span>
-                  </div>
-                </Link>
-              </ScrollReveal>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* ═══════════════════════════════════════════════════════════════
-          SECTION 3: WHO WILL HELP ME?
-         "A real person who is accountable to your family."
-         Streamlined. Tim quote opens. One named counsellor placeholder.
-         British Council badge woven in naturally.
-      ═══════════════════════════════════════════════════════════════ */}
-      <section className="py-20 lg:py-28">
-        <div className="container">
-          <div className="grid lg:grid-cols-2 gap-14 lg:gap-20 items-center">
-            <ScrollReveal>
-              <div className="relative">
-                <img
-                  src="/manus-storage/eldah_therone_desk_office_5bdeccd1.jpg"
-                  alt="Eldah Therone at her desk in the WSA office"
-                  className="w-full aspect-[4/3] object-cover"
-                />
-                {/* Named counsellor, clearly labelled placeholder */}
-                <div className="mt-6 flex items-center gap-4">
-                  <img
-                    src="/manus-storage/eldah_therone_6c167959.jpg"
-                    alt="Eldah Therone"
-                    className="w-12 h-12 object-cover object-top flex-shrink-0"
-                  />
-                  <div>
-                   <p className="text-sm font-semibold text-wsa-navy">Eldah Therone</p>
-                   <p className="text-xs text-muted-foreground">Team Leader, Nairobi</p>
-                 </div>
-               </div>
-                <p className="mt-4 text-[15px] text-muted-foreground italic leading-relaxed border-l-2 border-wsa-red/20 pl-4">
-                  "I know my students personally. They know how to reach me, and I stay with them throughout their journey."
-                </p>
-             </div>
-           </ScrollReveal>
-            <ScrollReveal delay={80}>
-              <div>
-                <p className="text-sm font-medium tracking-[0.2em] uppercase text-wsa-red mb-5">Your Student Counsellor</p>
-                <h2 className="text-3xl md:text-4xl lg:text-[2.75rem] font-semibold text-wsa-navy leading-[1.12] mb-8">
-                  One named professional.<br />Dedicated to your family.
-                </h2>
-                <p className="text-[17px] text-muted-foreground leading-relaxed mb-6">
-                  From your first enquiry, you will have your own named WSA Student Counsellor. They will get to know you, understand what and where you want to study, and personally support you throughout your journey — from choosing a course and making your application, through to your visa, travel and enrolment.
-                </p>
-                <p className="text-[17px] text-muted-foreground leading-relaxed mb-8">
-                  You can speak to your counsellor directly by WhatsApp, telephone or email. They recommend what's genuinely right, and they never submit anything without your family's approval.
-                </p>
-                <p className="text-[15px] text-wsa-navy/60 border-l-2 border-wsa-red/30 pl-5 italic mb-10">
-                  For parents: your child's counsellor is available to you directly. You'll always know who to call.
-                </p>
-                <Link
-                  href="/counsellors"
-                  className="inline-flex items-center text-wsa-navy font-semibold hover:text-wsa-red transition-colors duration-200"
-                >
-                  Meet your WSA Counsellors
-                  <ArrowRight className="ml-2" size={16} />
-                </Link>
-              </div>
-            </ScrollReveal>
-          </div>
-        </div>
-      </section>
-
-      {/* ═══════════════════════════════════════════════════════════════
           SECTION 4: HEAR FROM TIM
-          Moved higher, immediately after the counsellor promise.
+          Opens the homepage narrative, per Tim's supplied section order.
           Premium video treatment: Tim's real photo as thumbnail.
           "Here's the person behind the promise."
       ═══════════════════════════════════════════════════════════════ */}
@@ -497,6 +376,67 @@ export default function Home() {
       </section>
 
       {/* ═══════════════════════════════════════════════════════════════
+          SECTION 3: WHO WILL HELP ME?
+         "A real person who is accountable to your family."
+         Streamlined. Tim quote opens. One named counsellor placeholder.
+         British Council badge woven in naturally.
+      ═══════════════════════════════════════════════════════════════ */}
+      <section className="py-20 lg:py-28">
+        <div className="container">
+          <div className="grid lg:grid-cols-2 gap-14 lg:gap-20 items-center">
+            <ScrollReveal>
+              <div className="relative">
+                <img
+                  src="/manus-storage/eldah_therone_desk_office_5bdeccd1.jpg"
+                  alt="Eldah Therone at her desk in the WSA office"
+                  className="w-full aspect-[4/3] object-cover"
+                />
+                {/* Named counsellor, clearly labelled placeholder */}
+                <div className="mt-6 flex items-center gap-4">
+                  <img
+                    src="/manus-storage/eldah_therone_6c167959.jpg"
+                    alt="Eldah Therone"
+                    className="w-12 h-12 object-cover object-top flex-shrink-0"
+                  />
+                  <div>
+                   <p className="text-sm font-semibold text-wsa-navy">Eldah Therone</p>
+                   <p className="text-xs text-muted-foreground">Team Leader, Nairobi</p>
+                 </div>
+               </div>
+                <p className="mt-4 text-[15px] text-muted-foreground italic leading-relaxed border-l-2 border-wsa-red/20 pl-4">
+                  "I know my students personally. They know how to reach me, and I stay with them throughout their journey."
+                </p>
+             </div>
+           </ScrollReveal>
+            <ScrollReveal delay={80}>
+              <div>
+                <p className="text-sm font-medium tracking-[0.2em] uppercase text-wsa-red mb-5">Your Student Counsellor</p>
+                <h2 className="text-3xl md:text-4xl lg:text-[2.75rem] font-semibold text-wsa-navy leading-[1.12] mb-8">
+                  One named professional.<br />Dedicated to your family.
+                </h2>
+                <p className="text-[17px] text-muted-foreground leading-relaxed mb-6">
+                  From your first enquiry, you will have your own named WSA Student Counsellor. They will get to know you, understand what and where you want to study, and personally support you throughout your journey — from choosing a course and making your application, through to your visa, travel and enrolment.
+                </p>
+                <p className="text-[17px] text-muted-foreground leading-relaxed mb-8">
+                  You can speak to your counsellor directly by WhatsApp, telephone or email. They recommend what's genuinely right, and they never submit anything without your family's approval.
+                </p>
+                <p className="text-[15px] text-wsa-navy/60 border-l-2 border-wsa-red/30 pl-5 italic mb-10">
+                  For parents: your child's counsellor is available to you directly. You'll always know who to call.
+                </p>
+                <Link
+                  href="/counsellors"
+                  className="inline-flex items-center text-wsa-navy font-semibold hover:text-wsa-red transition-colors duration-200"
+                >
+                  Meet your WSA Counsellors
+                  <ArrowRight className="ml-2" size={16} />
+                </Link>
+              </div>
+            </ScrollReveal>
+          </div>
+        </div>
+      </section>
+
+      {/* ═══════════════════════════════════════════════════════════════
           SECTION 6: WHERE CAN I STUDY?
          Destinations, now connected back to personal guidance.
          One line ties it to the counsellor story.
@@ -556,7 +496,7 @@ export default function Home() {
                     <div className="absolute inset-0 bg-gradient-to-t from-black/65 via-black/10 to-transparent" />
                     <div className="absolute bottom-0 left-0 right-0 p-6 lg:p-8">
                       <h3 className="text-2xl font-semibold text-white mb-1">USA and Canada</h3>
-                      <p className="text-white/70 text-sm">Higher-budget pathways with strong post-study work options.</p>
+                      <p className="text-white/70 text-sm">Higher-budget pathways with strong post-study work options</p>
                     </div>
                   </div>
                 </Link>
@@ -572,12 +512,72 @@ export default function Home() {
                     <div className="absolute inset-0 bg-gradient-to-t from-black/65 via-black/10 to-transparent" />
                     <div className="absolute bottom-0 left-0 right-0 p-6 lg:p-8">
                       <h3 className="text-2xl font-semibold text-white mb-1">Europe</h3>
-                      <p className="text-white/70 text-sm">Cyprus, Hungary, and more — lower-budget options with quality programmes.</p>
+                      <p className="text-white/70 text-sm">Cyprus, Hungary, and more — lower-budget options with quality programmes</p>
                     </div>
                   </div>
                 </Link>
               </ScrollReveal>
             </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ═══════════════════════════════════════════════════════════════
+          SECTION 2B: WHAT WE HELP WITH
+         Four linked content blocks showing key service areas.
+      ═══════════════════════════════════════════════════════════════ */}
+      <section className="py-20 lg:py-28">
+        <div className="container">
+          <ScrollReveal>
+            <p className="text-sm font-medium tracking-[0.2em] uppercase text-wsa-red mb-5">What we help with</p>
+            <h2 className="text-3xl md:text-4xl font-semibold text-wsa-navy leading-[1.15] mb-5">
+              Everything you need for your study journey
+            </h2>
+            <p className="text-[17px] text-muted-foreground leading-relaxed mb-14 max-w-2xl">
+              Your counsellor helps you understand your options, prepare a strong application and manage the practical steps involved in studying abroad.
+            </p>
+          </ScrollReveal>
+
+          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6">
+            {[
+              {
+                heading: "University applications",
+                copy: "Course selection, personal statements and application support for undergraduate, postgraduate and doctoral study.",
+                href: "/study-options",
+              },
+              {
+                heading: "Boarding schools and pathways",
+                copy: "Guidance on boarding schools, foundation programmes, International Year One and other routes into higher education.",
+                href: "/international-foundation-programme",
+              },
+              {
+                heading: "Specialist study opportunities",
+                copy: "Support with sport pathways, summer programmes, creative subjects, healthcare and online learning.",
+                href: "/sport-pathways",
+              },
+              {
+                heading: "Visa and departure support",
+                copy: "Visa guidance, interview preparation and pre-departure support for the practical steps before you travel.",
+                href: "/learning-hub",
+              },
+            ].map((block, i) => (
+              <ScrollReveal key={block.heading} delay={i * 80}>
+                <Link href={block.href} className="group block h-full">
+                  <div className="border border-border/40 p-8 h-full transition-all duration-200 hover:border-wsa-red/30 hover:shadow-sm">
+                    <h3 className="text-lg font-semibold text-wsa-navy mb-3 group-hover:text-wsa-red transition-colors duration-200">
+                      {block.heading}
+                    </h3>
+                    <p className="text-[15px] text-muted-foreground leading-relaxed mb-5">
+                      {block.copy}
+                    </p>
+                    <span className="inline-flex items-center text-sm font-medium text-wsa-navy group-hover:text-wsa-red transition-colors duration-200">
+                      Learn more
+                      <ArrowRight className="ml-1.5" size={14} />
+                    </span>
+                  </div>
+                </Link>
+              </ScrollReveal>
+            ))}
           </div>
         </div>
       </section>
