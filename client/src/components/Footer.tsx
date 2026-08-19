@@ -14,7 +14,7 @@ export default function Footer() {
               className="h-12 w-auto mb-6 brightness-0 invert opacity-80"
             />
             <p className="text-sm leading-relaxed max-w-xs">
-              Your trusted global advisors for international students since 2012. British Council certified education agency.
+              Your trusted global advisors for international students since 2012, with British Council Certified Counsellors.
             </p>
             <div className="flex items-center gap-3 mt-5">
               <img src="/manus-storage/british_council_badge_694f3fc2.png" alt="British Council" className="h-7 w-7 opacity-80" />
@@ -111,7 +111,7 @@ export default function Footer() {
             <span className="text-white/20">|</span>
             <Link href="/compliance" className="hover:text-white/70 transition-colors">Compliance & Policies</Link>
             <span className="text-white/20">|</span>
-            <span>British Council Certified Agency</span>
+            <span>British Council Certified Counsellors</span>
           </div>
         </div>
       </div>

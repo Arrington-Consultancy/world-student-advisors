@@ -20,9 +20,31 @@ import { useState, useEffect, useCallback, useMemo } from "react";
  * 8. No invented content, all verified or clearly labelled as placeholder
  */
 
+const journeyStages = [
+  { label: "Relationship Building", detail: "We get to know you, your ambitions and what matters to you." },
+  { label: "Career Discussion", detail: "We explore your career plans and how your studies can support them." },
+  { label: "Course Choice", detail: "We help you identify the right course for your future." },
+  { label: "Budget Discussion", detail: "We discuss tuition fees, living costs and what is affordable for you." },
+  { label: "Country Choice", detail: "We help you compare destinations and choose the country that suits you best." },
+  { label: "University Choice", detail: "We help you select universities that match your academic, career and personal needs." },
+  { label: "Application Preparation", detail: "We help prepare and check your application and supporting documents." },
+  { label: "Conditional Offer", detail: "We explain your offer and exactly what you need to do next." },
+  { label: "Meeting Conditions", detail: "We help you meet the academic, financial and other conditions of your offer." },
+  { label: "Unconditional Offer", detail: "We confirm your place is unconditional and prepare you for the next stage." },
+  { label: "Interview Preparation", detail: "We prepare you for the questions, expectations and format of your interview." },
+  { label: "Mock Interview", detail: "We conduct a realistic practice interview and give you personalised feedback." },
+  { label: "CAS Application", detail: "We guide you through the university's CAS application process and requirements." },
+  { label: "CAS/UKVI Interview", detail: "We support you through any credibility interview required by your university or UKVI." },
+  { label: "CAS Issued", detail: "We check your CAS carefully before you proceed with your visa application." },
+  { label: "Visa Application", detail: "We guide you through the Student Visa application process and required documents." },
+  { label: "Visa Issued", detail: "We help you understand your visa and prepare for your move to the UK." },
+  { label: "Pre-departure Briefing", detail: "We make sure you have the right documents for immigration, know your nearest airport and understand how to travel safely to your university accommodation." },
+];
+
 export default function Home() {
   const [videoPlaying, setVideoPlaying] = useState(false);
   const [activeSlide, setActiveSlide] = useState(0);
+  const [activeJourneyStep, setActiveJourneyStep] = useState(0);
 
   const heroSlides = useMemo(
     () => [
@@ -210,7 +232,7 @@ export default function Home() {
         <div className="container">
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-x-8 gap-y-4">
             {[
-              "British Council Certified Agency",
+              "British Council Certified Counsellors",
               "Dedicated Student Counsellor",
               "No fees to students or families",
              "Application and visa guidance",
@@ -428,34 +450,6 @@ export default function Home() {
       </section>
 
       {/* ═══════════════════════════════════════════════════════════════
-          SECTION 5: THE SIGNATURE MOMENT. "The First Call Home"
-          Emotional centrepiece. Unchanged, it works.
-      ═══════════════════════════════════════════════════════════════ */}
-      <section className="relative">
-        <div className="relative h-[70vh] min-h-[500px] lg:min-h-[650px]">
-          <img
-            src="/manus-storage/first_call_home_african_student_2f7df693.jpg"
-            alt="A student video-calling their proud family from their university room, the first call home"
-            className="w-full h-full object-cover"
-          />
-          <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-transparent" />
-          <div className="absolute bottom-0 left-0 right-0 pb-16 lg:pb-24">
-            <div className="container">
-              <ScrollReveal>
-                <p className="text-sm font-medium tracking-[0.2em] uppercase text-wsa-red mb-4">The moment that makes it all worth it</p>
-                <h2 className="text-3xl md:text-4xl lg:text-5xl font-semibold text-white leading-[1.12] max-w-2xl mb-5">
-                  The first call home
-                </h2>
-                <p className="text-lg text-white/70 max-w-lg">
-                  When your child calls from their new university room, happy, settled, thriving, you'll know every step was worth it.
-                </p>
-              </ScrollReveal>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* ═══════════════════════════════════════════════════════════════
           SECTION 6: WHERE CAN I STUDY?
          Destinations, now connected back to personal guidance.
          One line ties it to the counsellor story.
@@ -542,189 +536,10 @@ export default function Home() {
       </section>
 
       {/* ═══════════════════════════════════════════════════════════════
-          SECTION 7: WHY WSA?
-        Shorter. Bolder. Three human promises, not corporate values.
-        Phrased as what a parent/student actually cares about.
-     ═══════════════════════════════════════════════════════════════ */}
-      {/* ═══════════════════════════════════════════════════════════════
-          SECTION 6B: EDUCATION PARTNERS
-         Shows partner logos and links to the full partner directory.
+          SECTION 8: YOUR STUDENT JOURNEY
+         Interactive 18-stage timeline. Click a stage to reveal what
+         happens at that point in the journey.
       ═══════════════════════════════════════════════════════════════ */}
-      <section className="py-20 lg:py-28 bg-slate-50">
-        <div className="container">
-          <ScrollReveal>
-            <p className="text-sm font-medium tracking-[0.2em] uppercase text-wsa-red mb-5">Our partners</p>
-            <h2 className="text-3xl md:text-4xl font-semibold text-wsa-navy leading-[1.15] mb-5">
-              Trusted education partners around the world
-            </h2>
-            <p className="text-[17px] text-muted-foreground leading-relaxed mb-14 max-w-2xl">
-              We work with carefully selected schools, colleges, pathway providers and universities that meet WSA's standards for quality, student support and positive outcomes.
-            </p>
-          </ScrollReveal>
-
-          <ScrollReveal delay={60}>
-            <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-6 items-center mb-12">
-              {[
-                { src: "/manus-storage/into_global_dd630efe.png", alt: "INTO Global" },
-                { src: "/manus-storage/oncampus_6bd095a4.png", alt: "ONCAMPUS" },
-                { src: "/manus-storage/oxford_international_2d3e6536.jpg", alt: "Oxford International" },
-                { src: "/manus-storage/study_group_8ee9a299.jpg", alt: "Study Group" },
-                { src: "/manus-storage/fcv_academy_ef4cfccd.png", alt: "FCV Academy" },
-                { src: "/manus-storage/ncg_3a880115.png", alt: "NCG" },
-                { src: "/manus-storage/royal_holloway_df8182a0.png", alt: "Royal Holloway" },
-                { src: "/manus-storage/university_of_greenwich_b554e4c5.png", alt: "University of Greenwich" },
-                { src: "/manus-storage/uni_portsmouth_8111efe4.png", alt: "University of Portsmouth" },
-                { src: "/manus-storage/birmingham_city_university_final_a71309ee.png", alt: "Birmingham City University" },
-                { src: "/manus-storage/bath_spa_university_official_f842eb94.png", alt: "Bath Spa University" },
-                { src: "/manus-storage/teesside_university_417c98a8.png", alt: "Teesside University" },
-                { src: "/manus-storage/university_of_salford_ef172ca3.png", alt: "University of Salford" },
-                { src: "/manus-storage/university_of_bradford_68e012ae.png", alt: "University of Bradford" },
-                { src: "/manus-storage/abbey_dld_group_cd40fa74.jpg", alt: "Abbey DLD Group" },
-              ].map((logo) => (
-                <div key={logo.alt} className="flex items-center justify-center p-3 h-16">
-                  <img
-                    src={logo.src}
-                    alt={logo.alt}
-                    className="max-h-full max-w-full object-contain opacity-70 hover:opacity-100 transition-opacity duration-200"
-                  />
-                </div>
-              ))}
-            </div>
-          </ScrollReveal>
-
-          <ScrollReveal delay={100}>
-            <div className="text-center">
-              <Link
-                href="/partners"
-                className="inline-flex items-center text-wsa-navy font-semibold hover:text-wsa-red transition-colors duration-200"
-              >
-                View all education partners
-                <ArrowRight className="ml-2" size={16} />
-              </Link>
-            </div>
-          </ScrollReveal>
-        </div>
-      </section>
-
-      {/* ═══════════════════════════════════════════════════════════════
-          SECTION 6C: LEARNING HUB
-         Prominent link to the Learning Hub resources.
-      ═══════════════════════════════════════════════════════════════ */}
-      <section className="py-20 lg:py-28">
-        <div className="container">
-          <div className="grid lg:grid-cols-2 gap-12 lg:gap-20 items-center">
-            <ScrollReveal>
-              <div>
-                <p className="text-sm font-medium tracking-[0.2em] uppercase text-wsa-red mb-5">Learning Hub</p>
-                <h2 className="text-3xl md:text-4xl font-semibold text-wsa-navy leading-[1.15] mb-6">
-                  Free resources to help you prepare
-                </h2>
-                <p className="text-[17px] text-muted-foreground leading-relaxed mb-6">
-                  Podcasts, study guides, visa preparation tips and practical advice from our counsellors. Everything you need to feel ready before you start.
-                </p>
-                <div className="space-y-3 mb-8">
-                  {[
-                    { label: "Podcasts with Tim Hunt", href: "/learning-hub/podcasts" },
-                    { label: "Study guides and resources", href: "/learning-hub" },
-                    { label: "Training and workshops", href: "/training-workshops" },
-                  ].map((item) => (
-                    <Link
-                      key={item.label}
-                      href={item.href}
-                      className="flex items-center gap-3 text-[16px] text-wsa-navy hover:text-wsa-red transition-colors duration-200 group"
-                    >
-                      <ArrowRight size={14} className="text-wsa-red group-hover:translate-x-0.5 transition-transform duration-200" />
-                      {item.label}
-                    </Link>
-                  ))}
-                </div>
-                <Link
-                  href="/learning-hub"
-                  className="inline-flex items-center text-wsa-navy font-semibold hover:text-wsa-red transition-colors duration-200"
-                >
-                  Explore the Learning Hub
-                  <ArrowRight className="ml-2" size={16} />
-                </Link>
-              </div>
-            </ScrollReveal>
-            <ScrollReveal delay={80}>
-              <div className="relative">
-                <img
-                  src="/manus-storage/youtube_thumb_student_journey_a742c8be.jpg"
-                  alt="Latest: The Student Journey podcast with Tim Hunt"
-                  className="w-full aspect-[4/3] object-cover"
-                />
-                {/* Text overlay removed: the thumbnail image already has its own
-                    caption baked in near the bottom, and the two overlapping
-                    text layers were becoming illegible. The caption now lives
-                    only in the alt text for accessibility/SEO. If a caption-free
-                    thumbnail is supplied later, the overlay can be restored. */}
-              </div>
-            </ScrollReveal>
-          </div>
-        </div>
-      </section>
-
-      {/* ═══════════════════════════════════════════════════════════════
-          SECTION 7: WHY WSA?
-         Shorter. Bolder. Three human promises, not corporate values.
-         Phrased as what a parent/student actually cares about.
-      ═══════════════════════════════════════════════════════════════ */}
-      <section className="py-20 lg:py-32 bg-wsa-navy">
-        <div className="container">
-          <ScrollReveal>
-            <div className="max-w-3xl mx-auto text-center mb-16 lg:mb-20">
-              <h2 className="text-3xl md:text-4xl lg:text-[2.75rem] font-semibold text-white leading-[1.15]">
-                Why families trust WSA
-              </h2>
-            </div>
-          </ScrollReveal>
-
-          <div className="grid md:grid-cols-3 gap-px bg-white/10">
-            {[
-              {
-                statement: "You'll always know who to call",
-                detail: "One named counsellor for your entire journey. Not a rotating team. Not a chatbot. A professional who answers when you call, available to both students and parents."
-              },
-              {
-                statement: "We recommend what's right",
-                detail: "British Council certified. We guide based on what's genuinely best for your child, not what pays the highest commission. If studying abroad isn't the right choice, we'll say so."
-              },
-              {
-                statement: "No fees. No pressure. No surprises.",
-                detail: "Our guidance is completely free to families. We're funded by education partners. Nothing is ever submitted without your approval, and there are no hidden costs."
-              },
-            ].map((item, i) => (
-              <ScrollReveal key={item.statement} delay={i * 100}>
-                <div className="bg-wsa-navy p-10 lg:p-14 h-full">
-                  <h3 className="text-xl font-semibold text-white mb-4">{item.statement}</h3>
-                  <p className="text-white/50 leading-relaxed text-[15px]">{item.detail}</p>
-                </div>
-              </ScrollReveal>
-            ))}
-          </div>
-
-          <ScrollReveal>
-            <div className="mt-12 flex flex-col sm:flex-row items-center justify-center gap-8 text-white/60">
-              <div className="flex items-center gap-3">
-                <img src="/manus-storage/british_council_badge_694f3fc2.png" alt="British Council" className="h-8 w-8" />
-                <span className="text-sm">British Council Certified</span>
-              </div>
-              <span className="hidden sm:inline text-white/20">|</span>
-              <div className="flex items-center gap-2">
-                <span className="text-yellow-400 text-lg">★★★★★</span>
-                <span className="text-sm">5.0 Excellent on Google</span>
-             </div>
-             <span className="hidden sm:inline text-white/20">|</span>
-              <span className="text-sm">Local staff available</span>
-            </div>
-          </ScrollReveal>
-        </div>
-      </section>
-
-      {/* ═══════════════════════════════════════════════════════════════
-          SECTION 8: GET STARTED
-         ═══════════════════════════════════════════════════════════════ */}
       <section className="py-20 lg:py-28 bg-gradient-to-b from-white to-slate-50">
         <div className="container">
           <ScrollReveal>
@@ -733,38 +548,38 @@ export default function Home() {
                 Your Student Journey
               </h2>
               <p className="text-muted-foreground max-w-2xl mx-auto">
-                From your first conversation to graduation day, we guide you through every stage.
+                From your first conversation to graduation day, we guide you through every stage. Click a stage below to see what happens.
               </p>
             </div>
           </ScrollReveal>
           <ScrollReveal delay={100}>
-            <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-3">
-              {[
-                "Relationship Building",
-                "Career Discussion",
-                "Country Choice",
-                "Course Choice",
-                "University Choice",
-                "Budget Discussion",
-                "Conditional Offer",
-                "Meeting Conditions",
-                "Unconditional Offer",
-                "CAS",
-                "CAS Interview",
-                "UKVI Interview",
-                "Uni Interview",
-                "Visa Application",
-                "Travel Prep",
-                "Enrolment",
-              ].map((stage, i) => (
-                <div
-                  key={i}
-                  className="text-center p-3 rounded-xl bg-white border border-gray-200 shadow-sm hover:shadow-md hover:border-wsa-red/30 transition-all duration-200"
+            <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 gap-3">
+              {journeyStages.map((stage, i) => (
+                <button
+                  key={stage.label}
+                  type="button"
+                  onClick={() => setActiveJourneyStep(i)}
+                  aria-pressed={activeJourneyStep === i}
+                  className={`text-center p-3 rounded-xl border shadow-sm transition-all duration-200 ${
+                    activeJourneyStep === i
+                      ? "bg-wsa-red border-wsa-red shadow-md"
+                      : "bg-white border-gray-200 hover:shadow-md hover:border-wsa-red/30"
+                  }`}
                 >
-                  <div className="text-sm font-bold text-wsa-red mb-1">{i + 1}</div>
-                  <div className="text-xs text-gray-700 leading-tight font-medium">{stage}</div>
-                </div>
+                  <div className={`text-sm font-bold mb-1 ${activeJourneyStep === i ? "text-white" : "text-wsa-red"}`}>{i + 1}</div>
+                  <div className={`text-xs leading-tight font-medium ${activeJourneyStep === i ? "text-white" : "text-gray-700"}`}>{stage.label}</div>
+                </button>
               ))}
+            </div>
+          </ScrollReveal>
+          <ScrollReveal delay={150}>
+            <div className="mt-8 max-w-2xl mx-auto bg-white border border-gray-200 rounded-xl p-6 lg:p-8 text-center">
+              <p className="text-sm font-bold text-wsa-red mb-2">
+                {activeJourneyStep + 1}. {journeyStages[activeJourneyStep].label}
+              </p>
+              <p className="text-[15px] text-muted-foreground leading-relaxed">
+                {journeyStages[activeJourneyStep].detail}
+              </p>
             </div>
           </ScrollReveal>
           <ScrollReveal delay={200}>
