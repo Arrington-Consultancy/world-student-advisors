@@ -536,6 +536,63 @@ export default function Home() {
       </section>
 
       {/* ═══════════════════════════════════════════════════════════════
+          SECTION 7: WHY WSA?
+         Shorter. Bolder. Three human promises, not corporate values.
+         Phrased as what a parent/student actually cares about.
+      ═══════════════════════════════════════════════════════════════ */}
+      <section className="py-20 lg:py-32 bg-wsa-navy">
+        <div className="container">
+          <ScrollReveal>
+            <div className="max-w-3xl mx-auto text-center mb-16 lg:mb-20">
+              <h2 className="text-3xl md:text-4xl lg:text-[2.75rem] font-semibold text-white leading-[1.15]">
+                Why families trust WSA
+              </h2>
+            </div>
+          </ScrollReveal>
+
+          <div className="grid md:grid-cols-3 gap-px bg-white/10">
+            {[
+              {
+                statement: "You'll always know who to call",
+                detail: "One named counsellor for your entire journey. Not a rotating team. Not a chatbot. A professional who answers when you call, available to both students and parents."
+              },
+              {
+                statement: "We recommend what's right",
+                detail: "British Council certified. We guide based on what's genuinely best for your child, not what pays the highest commission. If studying abroad isn't the right choice, we'll say so."
+              },
+              {
+                statement: "No fees. No pressure. No surprises.",
+                detail: "Our guidance is completely free to families. We're funded by education partners. Nothing is ever submitted without your approval, and there are no hidden costs."
+              },
+            ].map((item, i) => (
+              <ScrollReveal key={item.statement} delay={i * 100}>
+                <div className="bg-wsa-navy p-10 lg:p-14 h-full">
+                  <h3 className="text-xl font-semibold text-white mb-4">{item.statement}</h3>
+                  <p className="text-white/50 leading-relaxed text-[15px]">{item.detail}</p>
+                </div>
+              </ScrollReveal>
+            ))}
+          </div>
+
+          <ScrollReveal>
+            <div className="mt-12 flex flex-col sm:flex-row items-center justify-center gap-8 text-white/60">
+              <div className="flex items-center gap-3">
+                <img src="/manus-storage/british_council_badge_694f3fc2.png" alt="British Council" className="h-8 w-8" />
+                <span className="text-sm">British Council Certified</span>
+              </div>
+              <span className="hidden sm:inline text-white/20">|</span>
+              <div className="flex items-center gap-2">
+                <span className="text-yellow-400 text-lg">★★★★★</span>
+                <span className="text-sm">5.0 Excellent on Google</span>
+             </div>
+             <span className="hidden sm:inline text-white/20">|</span>
+              <span className="text-sm">Local staff available</span>
+            </div>
+          </ScrollReveal>
+        </div>
+      </section>
+
+      {/* ═══════════════════════════════════════════════════════════════
           SECTION 8: YOUR STUDENT JOURNEY
          Interactive 18-stage timeline. Click a stage to reveal what
          happens at that point in the journey.
