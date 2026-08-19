@@ -377,7 +377,7 @@ export default function Home() {
 
       {/* ═══════════════════════════════════════════════════════════════
           SECTION 3: WHO WILL HELP ME?
-         "A real person who is accountable to your family."
+         "A real person who is accountable to you."
          Streamlined. Tim quote opens. One named counsellor placeholder.
          British Council badge woven in naturally.
       ═══════════════════════════════════════════════════════════════ */}
@@ -412,13 +412,13 @@ export default function Home() {
               <div>
                 <p className="text-sm font-medium tracking-[0.2em] uppercase text-wsa-red mb-5">Your Student Counsellor</p>
                 <h2 className="text-3xl md:text-4xl lg:text-[2.75rem] font-semibold text-wsa-navy leading-[1.12] mb-8">
-                  One named professional.<br />Dedicated to your family.
+                  One named professional.<br />Dedicated to you.
                 </h2>
                 <p className="text-[17px] text-muted-foreground leading-relaxed mb-6">
                   From your first enquiry, you will have your own named WSA Student Counsellor. They will get to know you, understand what and where you want to study, and personally support you throughout your journey — from choosing a course and making your application, through to your visa, travel and enrolment.
                 </p>
                 <p className="text-[17px] text-muted-foreground leading-relaxed mb-8">
-                  You can speak to your counsellor directly by WhatsApp, telephone or email. They recommend what's genuinely right, and they never submit anything without your family's approval.
+                  You can speak to your counsellor directly by WhatsApp, telephone or email. They recommend what's genuinely right, and they never submit anything without your approval.
                 </p>
                 <p className="text-[15px] text-wsa-navy/60 border-l-2 border-wsa-red/30 pl-5 italic mb-10">
                   For parents: your child's counsellor is available to you directly. You'll always know who to call.
@@ -585,14 +585,14 @@ export default function Home() {
       {/* ═══════════════════════════════════════════════════════════════
           SECTION 7: WHY WSA?
          Shorter. Bolder. Three human promises, not corporate values.
-         Phrased as what a parent/student actually cares about.
+         Phrased as what a student actually cares about.
       ═══════════════════════════════════════════════════════════════ */}
       <section className="py-20 lg:py-32 bg-wsa-navy">
         <div className="container">
           <ScrollReveal>
             <div className="max-w-3xl mx-auto text-center mb-16 lg:mb-20">
               <h2 className="text-3xl md:text-4xl lg:text-[2.75rem] font-semibold text-white leading-[1.15]">
-                Why families trust WSA
+                Why students trust WSA
               </h2>
             </div>
           </ScrollReveal>
@@ -605,11 +605,11 @@ export default function Home() {
               },
               {
                 statement: "We recommend what's right",
-                detail: "British Council certified. We guide based on what's genuinely best for your child, not what pays the highest commission. If studying abroad isn't the right choice, we'll say so."
+                detail: "British Council certified. We guide based on what's genuinely best for you, not what pays the highest commission. If studying abroad isn't the right choice, we'll say so."
               },
               {
                 statement: "No fees. No pressure. No surprises.",
-                detail: "Our guidance is completely free to families. We're funded by education partners. Nothing is ever submitted without your approval, and there are no hidden costs."
+                detail: "Our guidance is completely free. We're funded by education partners. Nothing is ever submitted without your approval, and there are no hidden costs."
               },
             ].map((item, i) => (
               <ScrollReveal key={item.statement} delay={i * 100}>
