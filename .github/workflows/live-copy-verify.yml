@@ -1,0 +1,83 @@
+name: Live copy verification (read-only)
+
+# Manual-only, temporary. Loads the real production site under a headless
+# browser and checks for specific text strings, to verify a copy change
+# actually deployed. No writes, no deploys, removed after use.
+on:
+  workflow_dispatch:
+    inputs:
+      url:
+        description: "URL to check"
+        required: true
+        default: "https://www.worldstudentadvisors.com/"
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Install Playwright + Chromium
+        run: |
+          npm install playwright@1.56.1
+          npx playwright install --with-deps chromium
+      - name: Check text on each page
+        run: |
+          cat > check.cjs << 'EOF'
+          const { chromium } = require('playwright');
+          const base = process.argv[2];
+          const pages = [
+            { path: '/', checks: [
+              ['Why students trust WSA', true],
+              ['Why families trust WSA', false],
+              ['Dedicated to you.', true],
+              ['Dedicated to your family.', false],
+              ["For parents: your child's counsellor is available to you directly", true],
+            ]},
+            { path: '/about', checks: [
+              ['For many students, the decision to study abroad', true],
+              ['For many families, the decision to study abroad', false],
+              ['Cost to students', true],
+            ]},
+            { path: '/masters-doctoral-degrees', checks: [
+              ['Student-Centred Guidance', true],
+              ['Family-Centred Guidance', false],
+            ]},
+            { path: '/pre-masters-top-up-degrees', checks: [
+              ['Student-Centred Guidance', true],
+              ['Family-Centred Guidance', false],
+            ]},
+            { path: '/a-levels', checks: [
+              ['Why Families Choose A Levels', true],
+            ]},
+            { path: '/international-foundation-programme', checks: [
+              ['Why Families Choose an International Foundation Programme', true],
+            ]},
+            { path: '/international-year-one', checks: [
+              ['Why Families Choose International Year One', true],
+            ]},
+          ];
+          (async () => {
+            const browser = await chromium.launch();
+            const page = await browser.newPage();
+            let allPass = true;
+            for (const { path, checks } of pages) {
+              const resp = await page.goto(base.replace(/\/$/, '') + path, { waitUntil: 'networkidle', timeout: 30000 });
+              await page.waitForTimeout(500);
+              const text = await page.locator('body').innerText();
+              console.log(`=== ${path} (HTTP ${resp.status()}) ===`);
+              for (const [needle, shouldBePresent] of checks) {
+                const present = text.includes(needle);
+                const ok = present === shouldBePresent;
+                if (!ok) allPass = false;
+                console.log(`${ok ? 'PASS' : 'FAIL'} — "${needle}" expected present=${shouldBePresent}, actual=${present}`);
+              }
+            }
+            await browser.close();
+            console.log(allPass ? '\nALL CHECKS PASSED' : '\nSOME CHECKS FAILED');
+            process.exit(allPass ? 0 : 1);
+          })();
+          EOF
+          node check.cjs "${{ github.event.inputs.url }}"
