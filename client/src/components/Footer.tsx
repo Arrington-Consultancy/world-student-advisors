@@ -96,6 +96,10 @@ export default function Footer() {
                 <p>Município da Ingombota, Edifício Escom, Rua Marechal Brós Tito, 35/37, 10.º Piso, Fração D, Luanda, Angola</p>
               </div>
               <div>
+                <p className="text-white/90 font-medium">Central Africa Regional Office</p>
+                <p>Carrefour Ministre via 10ème arrêt Bitotol, PO Box 863, Yaoundé, Cameroon</p>
+              </div>
+              <div>
                 <a href="mailto:UKHeadOffice@worldstudentadvisors.com" className="hover:text-white transition-colors block">
                   UKHeadOffice@worldstudentadvisors.com
                 </a>

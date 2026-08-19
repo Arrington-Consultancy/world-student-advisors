@@ -306,7 +306,7 @@ export default function Home() {
           <ScrollReveal>
             <p className="text-sm font-medium tracking-[0.2em] uppercase text-wsa-red mb-5">What we help with</p>
             <h2 className="text-3xl md:text-4xl font-semibold text-wsa-navy leading-[1.15] mb-5">
-              Everything you need to move forward with confidence
+              Everything you need for your study journey
             </h2>
             <p className="text-[17px] text-muted-foreground leading-relaxed mb-14 max-w-2xl">
               Your counsellor helps you understand your options, prepare a strong application and manage the practical steps involved in studying abroad.
@@ -538,7 +538,7 @@ export default function Home() {
                   <div className="absolute bottom-0 left-0 right-0 p-8 lg:p-10">
                     <p className="text-white/60 text-sm font-medium tracking-wide uppercase mb-2">Primary destination</p>
                     <h3 className="text-3xl lg:text-4xl font-semibold text-white mb-2">United Kingdom</h3>
-                    <p className="text-white/70 text-base max-w-md">Internationally recognised degrees, shorter Master's programmes and strong links with employers.</p>
+                    <p className="text-white/70 text-base max-w-md">Universities, boarding schools, language programmes, and sport academies.</p>
                   </div>
                 </div>
               </Link>
@@ -556,7 +556,7 @@ export default function Home() {
                     <div className="absolute inset-0 bg-gradient-to-t from-black/65 via-black/10 to-transparent" />
                     <div className="absolute bottom-0 left-0 right-0 p-6 lg:p-8">
                       <h3 className="text-2xl font-semibold text-white mb-1">USA and Canada</h3>
-                      <p className="text-white/70 text-sm">Highly ranked universities, flexible study options and strong career pathways for international graduates.</p>
+                      <p className="text-white/70 text-sm">Higher-budget pathways with strong post-study work options.</p>
                     </div>
                   </div>
                 </Link>
@@ -572,7 +572,7 @@ export default function Home() {
                     <div className="absolute inset-0 bg-gradient-to-t from-black/65 via-black/10 to-transparent" />
                     <div className="absolute bottom-0 left-0 right-0 p-6 lg:p-8">
                       <h3 className="text-2xl font-semibold text-white mb-1">Europe</h3>
-                      <p className="text-white/70 text-sm">High quality education, international campuses and a wide range of English-taught programmes.</p>
+                      <p className="text-white/70 text-sm">Cyprus, Hungary, and more — lower-budget options with quality programmes.</p>
                     </div>
                   </div>
                 </Link>
