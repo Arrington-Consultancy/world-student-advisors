@@ -1,0 +1,104 @@
+name: Mobile nav read-only diagnostic
+
+# Manual-only. Loads the REAL production site (read-only GET requests
+# and a headless browser render) to inspect why the mobile navigation
+# may be rendering incorrectly on phones. Makes no changes to any
+# system: no deploys, no writes, no auth. Prints findings (viewport
+# width, element visibility/computed styles, served asset filenames,
+# response cache headers) to the job log; also uploads a screenshot as
+# a workflow artifact for visual confirmation.
+on:
+  workflow_dispatch:
+    inputs:
+      url:
+        description: "URL to check"
+        required: true
+        default: "https://www.worldstudentadvisors.com/"
+
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install Playwright + Chromium
+        run: |
+          npm install playwright@1.56.1
+          npx playwright install --with-deps chromium
+
+      - name: Fetch raw HTML and headers (no browser)
+        run: |
+          echo "=== Response headers ==="
+          curl -sS -D - -o /tmp/live.html "${{ github.event.inputs.url }}" -A "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15" | grep -i -E "^(HTTP|cache-control|cf-cache-status|age|etag|last-modified|x-|server):" || true
+          echo ""
+          echo "=== Script/link asset tags in served HTML ==="
+          grep -oE '<(script|link)[^>]*(src|href)="[^"]*"[^>]*>' /tmp/live.html | grep -E "assets/|\.js|\.css" || true
+          echo ""
+          echo "=== viewport meta tag as served ==="
+          grep -o '<meta[^>]*viewport[^>]*>' /tmp/live.html || echo "NO VIEWPORT META TAG FOUND IN SERVED HTML"
+
+      - name: Render with real iPhone emulation and inspect nav
+        run: |
+          cat > /tmp/check.js << 'EOF'
+          const { chromium, devices } = require('playwright');
+          (async () => {
+            const url = process.argv[2];
+            const browser = await chromium.launch();
+            const iPhone = devices['iPhone 13'];
+            const context = await browser.newContext({ ...iPhone });
+            const page = await context.newPage();
+            const consoleErrors = [];
+            page.on('pageerror', e => consoleErrors.push('PAGEERROR: ' + e.message));
+            page.on('requestfailed', r => consoleErrors.push('REQUESTFAILED: ' + r.url() + ' :: ' + (r.failure()?.errorText)));
+
+            const resp = await page.goto(url, { waitUntil: 'networkidle', timeout: 30000 });
+            console.log('HTTP status:', resp.status());
+            await page.waitForTimeout(1500);
+
+            console.log('window.innerWidth:', await page.evaluate(() => window.innerWidth));
+            console.log('window.devicePixelRatio:', await page.evaluate(() => window.devicePixelRatio));
+            console.log('document.documentElement.clientWidth:', await page.evaluate(() => document.documentElement.clientWidth));
+            console.log('body.scrollWidth:', await page.evaluate(() => document.body.scrollWidth));
+            console.log('visualViewport.width:', await page.evaluate(() => window.visualViewport ? window.visualViewport.width : 'n/a'));
+
+            const desktopNav = page.locator('nav.hidden.lg\\:flex');
+            const mobileButton = page.locator('button[aria-label="Toggle menu"]');
+            console.log('desktop nav count:', await desktopNav.count());
+            console.log('desktop nav visible:', await desktopNav.isVisible().catch(e => 'ERROR: ' + e.message));
+            console.log('mobile button count:', await mobileButton.count());
+            console.log('mobile button visible:', await mobileButton.isVisible().catch(e => 'ERROR: ' + e.message));
+
+            if (await desktopNav.count() > 0) {
+              const style = await desktopNav.evaluate(el => {
+                const cs = getComputedStyle(el);
+                return { display: cs.display, width: el.getBoundingClientRect().width };
+              });
+              console.log('desktop nav computed style:', JSON.stringify(style));
+            }
+
+            // What CSS/JS bundle is actually live
+            const assets = await page.evaluate(() =>
+              Array.from(document.querySelectorAll('script[src], link[rel="stylesheet"]')).map(el => el.src || el.href)
+            );
+            console.log('Live assets:', JSON.stringify(assets, null, 2));
+
+            console.log('Console/network errors:', JSON.stringify(consoleErrors, null, 2));
+
+            await page.screenshot({ path: '/tmp/artifacts/mobile-live.png', fullPage: false });
+            await context.close();
+            await browser.close();
+          })();
+          EOF
+          mkdir -p /tmp/artifacts
+          node /tmp/check.js "${{ github.event.inputs.url }}"
+
+      - name: Upload screenshot artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: mobile-nav-screenshot
+          path: /tmp/artifacts/
+          retention-days: 7
