@@ -57,7 +57,7 @@ export default function About() {
                 </h2>
                 <div className="space-y-5 text-[17px] text-muted-foreground leading-relaxed">
                   <p>
-                    For many families, the decision to study abroad is one of the biggest they'll ever make, financially, emotionally, and practically. The process can feel complex, unfamiliar, and high-stakes.
+                    For many students, the decision to study abroad is one of the biggest they'll ever make, financially, emotionally, and practically. The process can feel complex, unfamiliar, and high-stakes.
                   </p>
                  <p>
                     Tim Hunt founded WSA in 2012 because he believed every student deserves a qualified professional who takes the time to understand their ambitions, circumstances, and concerns, and who stays by their side until they're settled, thriving, and calling home with good news.
@@ -77,7 +77,7 @@ export default function About() {
                   { label: "Founded", value: "2012" },
                   { label: "Certification", value: "British Council Certified Counsellors" },
                   { label: "Model", value: "One dedicated counsellor per student" },
-                  { label: "Cost to families", value: "Free, funded by education partners" },
+                  { label: "Cost to students", value: "Free, funded by education partners" },
                   { label: "Offices", value: "United Kingdom, Kenya, Nigeria, Ghana" },
                   { label: "Reach", value: "Students from 8+ African countries" },
                 ].map((item) => (
@@ -108,7 +108,7 @@ export default function About() {
             {[
               { title: "Personal, not automated", text: "Every student gets a named counsellor, not a chatbot, not a rotating team, not an anonymous support desk. Real relationships produce better outcomes." },
               { title: "Ethical, always", text: "We recommend what's genuinely right for the student, not what pays the highest commission. If studying abroad isn't the right choice, we'll say so honestly." },
-              { title: "Transparent from day one", text: "No hidden fees, no pressure, no surprises. Families know exactly what's happening at every stage. Nothing is submitted without their full approval." },
+              { title: "Transparent from day one", text: "No hidden fees, no pressure, no surprises. You know exactly what's happening at every stage. Nothing is submitted without your full approval." },
               { title: "End-to-end commitment", text: "We don't disappear after enrolment. Your counsellor stays in touch through visa applications, pre-departure, arrival, and beyond." },
             ].map((item, i) => (
               <ScrollReveal key={item.title} delay={i * 80}>

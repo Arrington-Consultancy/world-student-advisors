@@ -196,7 +196,7 @@ export default function PreMasters() {
                   {[
                     { title: "Honest Assessment", desc: "We review your student's qualifications and give a clear, unbiased recommendation, not the easiest or most profitable one." },
                     { title: "Long-Term Thinking", desc: "We consider where the student wants to be in five years, not just which programme they can enrol in next September." },
-                    { title: "Family-Centred Guidance", desc: "We advise as we would for our own family, with care, transparency, and a genuine commitment to the right outcome." },
+                    { title: "Student-Centred Guidance", desc: "We advise as we would want for ourselves, with care, transparency, and a genuine commitment to the right outcome." },
                   ].map((item) => (
                     <div key={item.title}>
                       <h3 className="text-base font-semibold text-wsa-navy mb-1">{item.title}</h3>
