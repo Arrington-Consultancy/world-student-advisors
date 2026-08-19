@@ -218,7 +218,7 @@ export default function WebUKVisa() {
                 and university application service is free to students.
               </p>
               <p className="text-muted-foreground leading-relaxed mb-10">
-                Complete the short form and a WSA Student Counsellor will contact you within 24 hours.
+                Complete the short form and a WSA Student Counsellor will contact you within 48 hours.
               </p>
               <Link
                 href="/contact"

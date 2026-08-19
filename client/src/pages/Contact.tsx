@@ -199,7 +199,7 @@ function StudentForm() {
         <CheckCircle className="mx-auto mb-4 text-green-600" size={48} />
         <h3 className="text-2xl font-semibold text-wsa-navy mb-3">Sign-up received</h3>
         <p className="text-muted-foreground text-[15px] max-w-md mx-auto">
-          A Student Counsellor will be in touch within 24 hours. Check your email for a confirmation.
+          A Student Counsellor will be in touch within 48 hours. Check your email for a confirmation.
         </p>
       </div>
     );
@@ -208,7 +208,7 @@ function StudentForm() {
   return (
     <div>
       <p className="text-muted-foreground mb-8 text-[15px]">
-        Students and parents are welcome to complete this form. We will normally contact you within 24 hours.
+        Students and parents are welcome to complete this form. We will normally contact you within 48 hours.
       </p>
 
       {/* Google sign-up */}
@@ -607,7 +607,7 @@ function StudentForm() {
           )}
         </button>
         <p className="text-xs text-muted-foreground mt-3">
-          Our student support service is completely free. Your Student Counsellor will normally contact you within 24 hours.
+          Our student support service is completely free. Your Student Counsellor will normally contact you within 48 hours.
         </p>
       </form>
     </div>
@@ -701,7 +701,7 @@ export default function Contact() {
                 What happens after you apply?
               </h2>
               <p className="text-[17px] text-muted-foreground leading-relaxed">
-                A named Student Counsellor will contact you personally within 24 hours. They'll listen to your study abroad plans, answer your questions and help you explore the right options for you. Your counsellor will support you from your first conversation through application, admission, visa and enrolment.
+                A named Student Counsellor will contact you personally within 48 hours. They'll listen to your study abroad plans, answer your questions and help you explore the right options for you. Your counsellor will support you from your first conversation through application, admission, visa and enrolment.
               </p>
             </div>
           </ScrollReveal>
