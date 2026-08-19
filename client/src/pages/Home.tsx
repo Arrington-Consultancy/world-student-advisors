@@ -20,6 +20,36 @@ import { useState, useEffect, useCallback, useMemo } from "react";
  * 8. No invented content, all verified or clearly labelled as placeholder
  */
 
+// Data-driven: edit/add/remove benefits here without touching the rotation
+// logic. Each inner array is a complete set of six that fades in/out as a
+// whole — never rotate positions independently within a set.
+const BENEFIT_SETS = [
+  [
+    "British Council Certified Counsellors",
+    "Your Own Dedicated Student Counsellor",
+    "No Fees to Students or Families",
+    "Application and Visa Guidance",
+    "Local Support Across Africa",
+    "Support from Enquiry to Enrolment",
+  ],
+  [
+    "Free Mock Visa Interviews",
+    "Interview Readiness Coach (IRC)",
+    "Personal Statement Support",
+    "CAS and Visa Guidance",
+    "Course and University Selection",
+    "Accommodation Guidance",
+  ],
+  [
+    "100+ Student Support Podcasts & Guides",
+    "Education DNA",
+    "CV Review and Guidance",
+    "University Interview Preparation",
+    "Pre Departure Support",
+    "Support After You Arrive",
+  ],
+];
+
 const journeyStages = [
   { label: "Relationship Building", detail: "We get to know you, your ambitions and what matters to you." },
   { label: "Career Discussion", detail: "We explore your career plans and how your studies can support them." },
@@ -45,6 +75,8 @@ export default function Home() {
   const [videoPlaying, setVideoPlaying] = useState(false);
   const [activeSlide, setActiveSlide] = useState(0);
   const [activeJourneyStep, setActiveJourneyStep] = useState(0);
+  const [benefitSet, setBenefitSet] = useState(0);
+  const [benefitsFading, setBenefitsFading] = useState(false);
 
   const heroSlides = useMemo(
     () => [
@@ -120,6 +152,22 @@ export default function Home() {
     const timer = setInterval(nextSlide, 6000);
     return () => clearInterval(timer);
   }, [nextSlide]);
+
+  // Whole-set crossfade: fade the entire row out, swap all six benefits at
+  // once, fade back in. Never rotates individual positions independently.
+  useEffect(() => {
+    if (typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      return;
+    }
+    const timer = setInterval(() => {
+      setBenefitsFading(true);
+      setTimeout(() => {
+        setBenefitSet((prev) => (prev + 1) % BENEFIT_SETS.length);
+        setBenefitsFading(false);
+      }, 400);
+    }, 8000);
+    return () => clearInterval(timer);
+  }, []);
 
   return (
     <div className="min-h-screen">
@@ -227,18 +275,17 @@ export default function Home() {
          SECTION 2: CAN I TRUST THEM?
         Trust signals, kept but refined. British Council prominent.
         Tim's name woven in naturally ("Founded by Tim Hunt in 2012").
+        Three complete sets of six benefits crossfade as a whole every
+        ~8s (BENEFIT_SETS above) — never rotates positions independently.
     ═══════════════════════════════════════════════════════════════ */}
      <section className="py-6 lg:py-8 border-b border-border/30 bg-slate-50">
         <div className="container">
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-x-8 gap-y-4">
-            {[
-              "British Council Certified Counsellors",
-              "Dedicated Student Counsellor",
-              "No fees to students or families",
-             "Application and visa guidance",
-              "Local staff available",
-              "5.0 Google rating",
-            ].map((item) => (
+          <div
+            className={`grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-x-8 gap-y-4 transition-opacity duration-500 ease-out ${
+              benefitsFading ? "opacity-0" : "opacity-100"
+            }`}
+          >
+            {BENEFIT_SETS[benefitSet].map((item) => (
               <span key={item} className="flex items-center gap-2.5 text-sm text-wsa-navy/80 font-medium">
                 <svg className="w-5 h-5 text-wsa-red flex-shrink-0" viewBox="0 0 20 20" fill="currentColor">
                   <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
@@ -339,7 +386,7 @@ export default function Home() {
                  </div>
                </div>
                 <p className="mt-4 text-[15px] text-muted-foreground italic leading-relaxed border-l-2 border-wsa-red/20 pl-4">
-                  "I stay with my students from their very first question right through to move-in day. They're not a file number, they're family."
+                  "I know my students personally. They know how to reach me, and I stay with them throughout their journey."
                 </p>
              </div>
            </ScrollReveal>
@@ -350,10 +397,10 @@ export default function Home() {
                   One named professional.<br />Dedicated to your family.
                 </h2>
                 <p className="text-[17px] text-muted-foreground leading-relaxed mb-6">
-                  Every student is assigned a qualified counsellor who knows your name, understands your goals, and stays with you from first enquiry through to your first day of study.
+                  From your first enquiry, you will have your own named WSA Student Counsellor. They will get to know you, understand what and where you want to study, and personally support you throughout your journey — from choosing a course and making your application, through to your visa, travel and enrolment.
                 </p>
                 <p className="text-[17px] text-muted-foreground leading-relaxed mb-8">
-                  Available by phone, email, or WhatsApp. They recommend what's genuinely right, and they never submit anything without your family's approval.
+                  You can speak to your counsellor directly by WhatsApp, telephone or email. They recommend what's genuinely right, and they never submit anything without your family's approval.
                 </p>
                 <p className="text-[15px] text-wsa-navy/60 border-l-2 border-wsa-red/30 pl-5 italic mb-10">
                   For parents: your child's counsellor is available to you directly. You'll always know who to call.
@@ -362,7 +409,7 @@ export default function Home() {
                   href="/counsellors"
                   className="inline-flex items-center text-wsa-navy font-semibold hover:text-wsa-red transition-colors duration-200"
                 >
-                  Meet the counsellors
+                  Meet your WSA Counsellors
                   <ArrowRight className="ml-2" size={16} />
                 </Link>
               </div>
@@ -384,7 +431,7 @@ export default function Home() {
               <div>
                 <p className="text-sm font-medium tracking-[0.2em] uppercase text-wsa-red mb-5">From our founder</p>
                 <h2 className="text-3xl md:text-4xl font-semibold text-wsa-navy leading-[1.15] mb-6">
-                  "I started WSA because I believe every student deserves a guide."
+                  "I started WSA because I believed international education should be about the student, not simply the number of students recruited. We put students and their families at the centre of everything we do."
                 </h2>
                 <div className="flex items-center gap-4 mb-6">
                   <img
@@ -399,13 +446,13 @@ export default function Home() {
                   </div>
                 </div>
                 <p className="text-[17px] text-muted-foreground leading-relaxed mb-6">
-                  In this 11-minute video, Tim walks through the complete student journey, from first enquiry to graduation. No sales pitch. Just clarity about what happens at every stage.
+                  After many years working in international education, Tim wanted to create a different kind of organisation. One built around personal advice, long term relationships and people who genuinely care about the students they support. That philosophy became the WSA Family.
                 </p>
                 <Link
                   href="/counsellors"
                   className="inline-flex items-center text-wsa-navy font-semibold hover:text-wsa-red transition-colors duration-200"
                 >
-                  Speak to a counsellor
+                  Meet your WSA Counsellors
                   <ArrowRight className="ml-2" size={16} />
                 </Link>
               </div>
@@ -668,7 +715,7 @@ export default function Home() {
                 href="/contact"
                 className="inline-flex items-center px-10 py-4 bg-wsa-red text-white text-lg font-semibold tracking-wide transition-all duration-200 hover:bg-wsa-red/90 active:scale-[0.98]"
               >
-                Get Started
+                Start Your Application
                 <ArrowRight className="ml-3" size={20} />
               </Link>
               <p className="mt-6 text-sm text-muted-foreground/70">
