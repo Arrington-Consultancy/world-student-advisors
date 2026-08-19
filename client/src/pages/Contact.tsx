@@ -44,6 +44,7 @@ const offices = [
     role: "Sub-Saharan Africa Regional Office",
     name: "Eldah Therone",
     title: "Team Leader",
+    photo: "/manus-storage/eldah_therone_6c167959.jpg",
     address: "Waiyaki Way, Off Uthiru-Cooperation, Nafra Building, Nairobi, Kenya",
     phone: "+254 702 096 419",
     whatsapp: "+44 7470 689 849",
@@ -669,8 +670,19 @@ export default function Contact() {
                     <div key={office.country} className="border-t border-border/40 pt-5">
                       <h3 className="text-base font-semibold text-wsa-navy mb-0.5">{office.country}</h3>
                       <p className="text-xs font-medium tracking-wide uppercase text-wsa-red/70 mb-3">{office.role}</p>
-                      <p className="text-sm font-semibold text-wsa-navy">{office.name}</p>
-                      <p className="text-xs text-muted-foreground mb-3">{office.title}</p>
+                      <div className="flex items-center gap-3 mb-3">
+                        {office.photo && (
+                          <img
+                            src={office.photo}
+                            alt={office.name}
+                            className="w-10 h-10 rounded-full object-cover object-top flex-shrink-0"
+                          />
+                        )}
+                        <div>
+                          <p className="text-sm font-semibold text-wsa-navy">{office.name}</p>
+                          <p className="text-xs text-muted-foreground">{office.title}</p>
+                        </div>
+                      </div>
                       <div className="space-y-1.5 text-sm text-muted-foreground">
                         <div className="flex items-start gap-2">
                           <MapPin size={13} className="mt-0.5 flex-shrink-0 text-muted-foreground/50" />

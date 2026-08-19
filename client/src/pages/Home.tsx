@@ -387,8 +387,8 @@ export default function Home() {
             <ScrollReveal>
               <div className="relative">
                 <img
-                  src="/manus-storage/wsa_diverse_student_group_a6478cd9.jpg"
-                  alt="A diverse group of international students in a university common room"
+                  src="/manus-storage/eldah_therone_desk_office_5bdeccd1.jpg"
+                  alt="Eldah Therone at her desk in the WSA office"
                   className="w-full aspect-[4/3] object-cover"
                 />
                 {/* Named counsellor, clearly labelled placeholder */}
@@ -448,7 +448,7 @@ export default function Home() {
               <div>
                 <p className="text-sm font-medium tracking-[0.2em] uppercase text-wsa-red mb-5">Study destinations</p>
                 <h2 className="text-3xl md:text-4xl font-semibold text-wsa-navy leading-[1.15]">
-                  Where will your future take you?
+                  Where would you like to study?
                 </h2>
               </div>
               <Link
@@ -531,7 +531,7 @@ export default function Home() {
           <ScrollReveal>
             <p className="text-sm font-medium tracking-[0.2em] uppercase text-wsa-red mb-5">What we help with</p>
             <h2 className="text-3xl md:text-4xl font-semibold text-wsa-navy leading-[1.15] mb-5">
-              Everything you need to move forward with confidence
+              Everything you need for your study journey
             </h2>
             <p className="text-[17px] text-muted-foreground leading-relaxed mb-14 max-w-2xl">
               Your counsellor helps you understand your options, prepare a strong application and manage the practical steps involved in studying abroad.
@@ -542,22 +542,22 @@ export default function Home() {
             {[
               {
                 heading: "University applications",
-                copy: "Support with undergraduate, postgraduate and doctoral study, from course selection through to application.",
+                copy: "Course selection, personal statements and application support for undergraduate, postgraduate and doctoral study.",
                 href: "/study-options",
               },
               {
-                heading: "Schools and pathways",
+                heading: "Boarding schools and pathways",
                 copy: "Guidance on boarding schools, foundation programmes, International Year One and other routes into higher education.",
                 href: "/international-foundation-programme",
               },
               {
-                heading: "Specialist opportunities",
+                heading: "Specialist study opportunities",
                 copy: "Support with sport pathways, summer programmes, creative subjects, healthcare and online learning.",
                 href: "/sport-pathways",
               },
               {
-                heading: "Visa and preparation support",
-                copy: "Help with documents, interviews, visa preparation and the practical steps before departure.",
+                heading: "Visa and departure support",
+                copy: "Visa guidance, interview preparation and pre-departure support for the practical steps before you travel.",
                 href: "/learning-hub",
               },
             ].map((block, i) => (
@@ -709,7 +709,7 @@ export default function Home() {
                 Your counsellor is ready when you are
               </h2>
               <p className="text-lg text-muted-foreground leading-relaxed mb-12">
-                Complete a short application and a personal Student Counsellor will be in touch within 48 hours. No fee. No obligation. Students or parents can apply.
+                Your future matters. Let's take the next step together. Complete a short application and a personal Student Counsellor will be in touch within 48 hours. No fee. No obligation. Students or parents can apply.
               </p>
               <Link
                 href="/contact"
