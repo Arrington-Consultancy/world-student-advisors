@@ -49,4 +49,8 @@ export const ENV = {
   googleClientId: process.env.GOOGLE_CLIENT_ID ?? "",
   /** Server-only. Never send this to the client, log it, or include it in any response. */
   googleClientSecret: process.env.GOOGLE_CLIENT_SECRET ?? "",
+  /** Bcrypt hash of the Staff Portal shared password. Server-only — never send
+   * this to the client, log it, or include it in any response. Never falls
+   * back to a default: unset means the Staff Portal stays inaccessible. */
+  staffPortalPasswordHash: process.env.STAFF_PORTAL_PASSWORD_HASH ?? "",
 };

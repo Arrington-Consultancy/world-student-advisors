@@ -68,10 +68,14 @@ export const SEO_MAP: Record<string, SeoEntry> = {
     description:
       "Meet WorldStudentAdvisors' team of British Council certified counsellors across the UK, Kenya, Nigeria, Ghana, Angola, and Malawi.",
   },
-  "/learning-hub": {
-    title: "Learning Hub | World Student Advisors",
+  "/student-support-library": {
+    title: "Student Support Library | World Student Advisors",
     description:
-      "Free videos, podcasts, and guides on UK student visas, university applications, and studying abroad from WorldStudentAdvisors.",
+      "Free videos and guides on UK student visas, university applications, interviews, and studying abroad, organised by stage of your journey — from WorldStudentAdvisors.",
+  },
+  "/staff-portal": {
+    title: "Staff Portal | World Student Advisors",
+    description: "Internal WorldStudentAdvisors staff resources.",
   },
   "/learning-hub/cv-university-application": {
     title: "CV & University Application Guidance | World Student Advisors",
@@ -92,11 +96,6 @@ export const SEO_MAP: Record<string, SeoEntry> = {
     title: "Educational Partners | World Student Advisors",
     description:
       "WorldStudentAdvisors' trusted network of UK and international university and college partners.",
-  },
-  "/podcasts": {
-    title: "Podcasts | World Student Advisors",
-    description:
-      "Listen to WorldStudentAdvisors' podcast series on UK student visas, university applications, and studying abroad.",
   },
   "/contact": {
     title: "Contact & Registration | World Student Advisors",
@@ -171,12 +170,14 @@ export const CANONICAL_PATHS: Record<string, string> = {
   "/study-options/online-learning": "/online-learning",
   "/privacy": "/privacy-policy",
   "/our-global-education-partners": "/partners",
-  "/learning-hub/podcasts": "/podcasts",
+  "/learning-hub": "/student-support-library",
+  "/learning-hub/podcasts": "/student-support-library",
+  "/podcasts": "/student-support-library",
   "/webukvisa": "/WebUKVisa",
   "/ddvavita": "/DDVavita",
 };
 
-export const NOINDEX_PATH_PREFIXES = ["/portal"];
+export const NOINDEX_PATH_PREFIXES = ["/portal", "/staff-portal"];
 export const NOINDEX_PATHS = new Set(["/404"]);
 
 export function getCanonicalPath(path: string): string {

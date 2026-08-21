@@ -14,7 +14,7 @@ export function PortalAuthShell({ title, description, children }: PortalAuthShel
         <div className="grid gap-10 lg:grid-cols-[1.05fr_0.95fr] lg:items-center">
           <div>
             <p className="mb-5 text-sm font-medium tracking-[0.2em] uppercase text-wsa-red">
-              WSA Student Portal
+              Interview Readiness Coach (IRC)
             </p>
             <h1 className="mb-6 max-w-2xl text-4xl font-semibold leading-[1.08] text-wsa-navy md:text-5xl">
               Your study abroad journey, guided by real advisers.

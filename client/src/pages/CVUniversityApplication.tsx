@@ -106,8 +106,8 @@ export default function CVUniversityApplication() {
       <section className="pt-32 lg:pt-40 pb-16 lg:pb-20">
         <div className="container">
           <ScrollReveal>
-            <Link href="/learning-hub" className="inline-flex items-center text-sm text-muted-foreground hover:text-wsa-red transition-colors mb-6">
-              <ArrowLeft className="mr-1.5" size={14} /> Back to Learning Hub
+            <Link href="/student-support-library" className="inline-flex items-center text-sm text-muted-foreground hover:text-wsa-red transition-colors mb-6">
+              <ArrowLeft className="mr-1.5" size={14} /> Back to Student Support Library
             </Link>
             <div className="max-w-3xl">
               <p className="text-sm font-medium tracking-[0.2em] uppercase text-wsa-red mb-5">Application Preparation</p>

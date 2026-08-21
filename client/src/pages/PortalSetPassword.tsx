@@ -66,14 +66,14 @@ export default function PortalSetPassword() {
     return (
       <PortalMessageShell
         title="Password created"
-        message="Redirecting to your Student Portal..."
+        message="Redirecting to your Interview Readiness Coach..."
         icon={<CheckCircle className="h-6 w-6" />}
       />
     );
   }
 
   return (
-    <PortalAuthShell title="Create your password" description="Set a password to access your Student Portal.">
+    <PortalAuthShell title="Create your password" description="Set a password to access your Interview Readiness Coach.">
         <form onSubmit={handleSubmit} className="space-y-5">
           {error && (
             <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm">

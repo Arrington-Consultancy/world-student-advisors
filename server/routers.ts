@@ -23,6 +23,7 @@ import {
 import { resolvePortalDashboard } from "./portal-resolver";
 import { getSessionQuestions, assessAnswer, summariseSession, TYPE_LABELS } from "./interviewCoach";
 import { requireTurnstile } from "./_core/turnstile";
+import { authenticateStaffPortal, verifyStaffPortalToken, isStaffPortalLoginRateLimited } from "./staffPortalAuth";
 
 /** Shared by every Turnstile-protected mutation's input schema. */
 const turnstileField = { turnstileToken: z.string().min(1, "Verification required") };
@@ -362,6 +363,28 @@ export const appRouter = router({
           name: portalUser.firstName,
           progress,
         };
+      }),
+  }),
+
+  staffPortal: router({
+    login: publicProcedure
+      .input(z.object({ password: z.string().min(1) }))
+      .mutation(async ({ input, ctx }) => {
+        if (isStaffPortalLoginRateLimited(ctx.req.ip ?? "unknown")) {
+          return { success: false as const, error: "Too many attempts. Please try again in a minute." };
+        }
+        const token = await authenticateStaffPortal(input.password);
+        if (!token) {
+          return { success: false as const, error: "Incorrect password" };
+        }
+        return { success: true as const, token };
+      }),
+
+    me: publicProcedure
+      .input(z.object({ token: z.string() }))
+      .query(async ({ input }) => {
+        const authenticated = await verifyStaffPortalToken(input.token);
+        return { authenticated };
       }),
   }),
 
