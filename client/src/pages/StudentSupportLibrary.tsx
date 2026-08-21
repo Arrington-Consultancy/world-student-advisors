@@ -1,7 +1,10 @@
-import { ArrowRight, ArrowUpRight } from "lucide-react";
+import { useState } from "react";
+import { ArrowRight, PlayCircle } from "lucide-react";
 import ScrollReveal from "@/components/ScrollReveal";
 import { Link } from "wouter";
-import { STUDENT_SUPPORT_LIBRARY } from "@/lib/studentSupportLibrary";
+import { STUDENT_SUPPORT_LIBRARY, type LibraryResource } from "@/lib/studentSupportLibrary";
+import { getYouTubeVideoId } from "@/lib/youtube";
+import VideoModal from "@/components/VideoModal";
 
 /**
  * Student Support Library — Stage 1.
@@ -12,6 +15,19 @@ import { STUDENT_SUPPORT_LIBRARY } from "@/lib/studentSupportLibrary";
  * more than one category — see client/src/lib/studentSupportLibrary.ts.
  */
 export default function StudentSupportLibrary() {
+  const [selected, setSelected] = useState<{ title: string; videoId: string; url: string } | null>(null);
+
+  const handleResourceClick = (resource: LibraryResource) => {
+    const videoId = getYouTubeVideoId(resource.url);
+    if (!videoId) {
+      // Shouldn't happen (every URL in the data file is validated against
+      // this same parser), but never fail silently on a click.
+      window.open(resource.url, "_blank", "noopener,noreferrer");
+      return;
+    }
+    setSelected({ title: resource.title, videoId, url: resource.url });
+  };
+
   return (
     <div className="min-h-screen">
       {/* Hero */}
@@ -62,19 +78,18 @@ export default function StudentSupportLibrary() {
                 <ul className="grid sm:grid-cols-2 gap-x-8 gap-y-1">
                   {cat.resources.map(resource => (
                     <li key={`${cat.title}-${resource.title}-${resource.url}`}>
-                      <a
-                        href={resource.url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="group flex items-start gap-2 py-2.5 text-[15px] text-wsa-navy/90 hover:text-wsa-red transition-colors border-b border-border/40 sm:border-none"
+                      <button
+                        type="button"
+                        onClick={() => handleResourceClick(resource)}
+                        className="group flex items-start gap-2 py-2.5 w-full text-left text-[15px] text-wsa-navy/90 hover:text-wsa-red transition-colors border-b border-border/40 sm:border-none"
                       >
                         <span className="leading-snug">{resource.title}</span>
-                        <ArrowUpRight
+                        <PlayCircle
                           size={14}
                           className="shrink-0 mt-1 text-wsa-navy/30 group-hover:text-wsa-red transition-colors"
                           aria-hidden="true"
                         />
-                      </a>
+                      </button>
                     </li>
                   ))}
                 </ul>
@@ -106,6 +121,8 @@ export default function StudentSupportLibrary() {
           </ScrollReveal>
         </div>
       </section>
+
+      <VideoModal resource={selected} onOpenChange={open => !open && setSelected(null)} />
     </div>
   );
 }
