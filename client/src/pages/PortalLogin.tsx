@@ -69,7 +69,7 @@ export default function PortalLogin() {
   };
 
   return (
-    <PortalAuthShell title="Student Portal" description="Sign in to access your resources and tools.">
+    <PortalAuthShell title="Interview Readiness Coach" description="Sign in to access your resources and tools.">
         <div className="space-y-5">
           {error && (
             <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm">

@@ -558,7 +558,7 @@ export default function Home() {
               {
                 heading: "Visa and departure support",
                 copy: "Visa guidance, interview preparation and pre-departure support for the practical steps before you travel.",
-                href: "/learning-hub",
+                href: "/student-support-library",
               },
             ].map((block, i) => (
               <ScrollReveal key={block.heading} delay={i * 80}>

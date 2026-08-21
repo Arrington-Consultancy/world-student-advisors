@@ -118,7 +118,7 @@ export default function Portal() {
       <main className="container">
         <div className="mb-10 grid gap-8 lg:grid-cols-[1.4fr_0.8fr] lg:items-end">
           <div>
-            <p className="mb-5 text-sm font-medium tracking-[0.2em] uppercase text-wsa-red">Student Portal</p>
+            <p className="mb-5 text-sm font-medium tracking-[0.2em] uppercase text-wsa-red">Interview Readiness Coach (IRC)</p>
             <h1 className="mb-5 text-4xl font-semibold leading-[1.08] text-wsa-navy md:text-5xl">
               Welcome back, {name}.
             </h1>

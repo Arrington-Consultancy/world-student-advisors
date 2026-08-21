@@ -13,13 +13,13 @@ import Footer from "./components/Footer";
 import About from "./pages/About";
 import StudyOptions from "./pages/StudyOptions";
 import Counsellors from "./pages/Counsellors";
-import LearningHub from "./pages/LearningHub";
+import StudentSupportLibrary from "./pages/StudentSupportLibrary";
+import StaffPortal from "./pages/StaffPortal";
 import Events from "./pages/Events";
 import Partners from "./pages/Partners";
 import Contact from "./pages/Contact";
 import SportPathways from "./pages/SportPathways";
 import OnlineLearning from "./pages/OnlineLearning";
-import Podcasts from "./pages/Podcasts";
 import Privacy from "./pages/Privacy";
 import Terms from "./pages/Terms";
 import ALevels from "./pages/ALevels";
@@ -73,14 +73,13 @@ function Router() {
       <Route path={"/study-options/pre-masters-top-up-degrees"} component={PreMasters} />
       <Route path={"/study-options/masters-doctoral-degrees"} component={MastersDoctoral} />
       <Route path={"/counsellors"} component={Counsellors} />
-      <Route path={"/learning-hub"} component={LearningHub} />
-      <Route path={"/learning-hub/podcasts"} component={Podcasts} />
+      <Route path={"/student-support-library"} component={StudentSupportLibrary} />
+      <Route path={"/staff-portal"} component={StaffPortal} />
       <Route path={"/learning-hub/cv-university-application"} component={CVUniversityApplication} />
       <Route path={"/training-workshops"} component={TrainingWorkshops} />
       <Route path={"/events"} component={Events} />
       <Route path={"/partners"} component={Partners} />
       <Route path={"/our-global-education-partners"} component={Partners} />
-      <Route path={"/podcasts"} component={Podcasts} />
       <Route path={"/contact"} component={Contact} />
       <Route path={"/privacy"} component={PrivacyPolicy} />
       <Route path={"/privacy-policy"} component={PrivacyPolicy} />

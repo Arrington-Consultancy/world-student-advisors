@@ -2,15 +2,19 @@ import { useState, useEffect } from "react";
 import { Link, useLocation } from "wouter";
 import { Menu, X } from "lucide-react";
 
+// `navLabel` overrides `label` for the compact desktop bar only — the full
+// name is what's shown everywhere else (mobile menu, page headings).
+// Interview Readiness Coach doesn't fit the desktop bar at full length, so
+// it uses the IRC abbreviation there per the brief.
 const navItems = [
   { label: "About", href: "/about" },
   { label: "Study Options", href: "/study-options" },
   { label: "Educational Partners", href: "/partners" },
   { label: "Counsellors", href: "/counsellors" },
-  { label: "Learning Hub", href: "/learning-hub" },
+  { label: "Staff Portal", href: "/staff-portal" },
   { label: "Events", href: "/events" },
-  { label: "Contact", href: "/contact" },
-  { label: "Student Portal", href: "/portal" },
+  { label: "Student Support Library", href: "/student-support-library" },
+  { label: "Interview Readiness Coach", navLabel: "IRC", href: "/portal" },
 ];
 
 export default function Header() {
@@ -45,8 +49,11 @@ export default function Header() {
       {isTransparent && (
         <div className="absolute inset-0 -bottom-12 bg-gradient-to-b from-black/50 via-black/25 to-transparent pointer-events-none" />
       )}
-      <div className="container relative flex items-center justify-between h-20 lg:h-24">
-     <Link href="/" className="relative flex items-center">
+      {/* Not the shared .container (max-width 1320px) — the full nav row
+          needs more room than the site's content width caps at; same
+          responsive padding scale, just without that cap. */}
+      <div className="relative mx-auto w-full max-w-[1680px] px-5 sm:px-8 lg:px-12 flex items-center justify-between h-20 lg:h-24">
+     <Link href="/" className="relative flex items-center shrink-0">
        <img
           src="/manus-storage/wsa_logo_beb199d6.png"
           alt="World Student Advisors"
@@ -54,33 +61,36 @@ export default function Header() {
         />
       </Link>
 
-        {/* Desktop Navigation */}
-        <nav className="relative hidden lg:flex items-center gap-8">
+        {/* Desktop Navigation. Bar only appears once there's genuinely room
+            for every item at full length without compressing the logo —
+            see the width math in the PR/commit description. Narrower
+            desktops fall back to the (fully equivalent) mobile menu. */}
+        <nav className="relative hidden min-[1680px]:flex items-center gap-4 2xl:gap-6 shrink-0">
           {navItems.map((item) => (
             <Link
               key={item.href}
               href={item.href}
-              className={`text-sm font-semibold tracking-wide uppercase transition-colors duration-200 ${
+              className={`whitespace-nowrap text-[12px] 2xl:text-[13px] font-semibold tracking-normal uppercase transition-colors duration-200 ${
                 isTransparent
                   ? "text-white/95 hover:text-white font-bold [text-shadow:0_1px_4px_rgba(0,0,0,0.6),0_0px_2px_rgba(0,0,0,0.3)]"
                   : "text-wsa-navy/70 hover:text-wsa-navy"
               } ${location === item.href ? "!text-wsa-red" : ""}`}
             >
-              {item.label}
+              {item.navLabel ?? item.label}
             </Link>
           ))}
           <Link
             href="/contact"
-            className="ml-4 px-6 py-2.5 bg-wsa-red text-white text-[13px] font-semibold tracking-wide uppercase transition-all duration-200 hover:bg-wsa-red/90 active:scale-[0.98]"
+            className="ml-2 px-5 py-2.5 bg-wsa-red text-white text-[12px] whitespace-nowrap font-semibold tracking-wide uppercase transition-all duration-200 hover:bg-wsa-red/90 active:scale-[0.98]"
           >
-            Get Started
+            Start Your Application
           </Link>
         </nav>
 
         {/* Mobile Menu Button */}
         <button
           onClick={() => setMobileOpen(!mobileOpen)}
-          className={`relative lg:hidden p-2 transition-colors ${
+          className={`relative min-[1680px]:hidden p-2 transition-colors ${
             isTransparent ? "text-white drop-shadow-[0_1px_3px_rgba(0,0,0,0.7)]" : "text-wsa-navy"
           }`}
           aria-label="Toggle menu"
@@ -91,7 +101,7 @@ export default function Header() {
 
       {/* Mobile Navigation */}
       {mobileOpen && (
-        <div className="lg:hidden bg-white border-t border-border/40">
+        <div className="min-[1680px]:hidden bg-white border-t border-border/40">
           <nav className="container py-8 flex flex-col gap-5">
             {navItems.map((item) => (
               <Link
@@ -108,7 +118,7 @@ export default function Header() {
               href="/contact"
               className="mt-4 px-6 py-3.5 bg-wsa-red text-white text-center font-semibold tracking-wide"
             >
-              Get Started
+              Start Your Application
             </Link>
           </nav>
         </div>
