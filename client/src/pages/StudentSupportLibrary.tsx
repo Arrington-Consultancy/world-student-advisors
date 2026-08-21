@@ -35,12 +35,12 @@ export default function StudentSupportLibrary() {
         <div className="container">
           <ScrollReveal>
             <div className="max-w-3xl">
-              <p className="text-sm font-medium tracking-[0.2em] uppercase text-wsa-red mb-5">Student Support Library</p>
+              <p className="text-sm font-medium tracking-[0.2em] uppercase text-wsa-red mb-5">Podcasts • Guides • Student Support</p>
               <h1 className="text-4xl md:text-5xl lg:text-[3.5rem] font-semibold text-wsa-navy leading-[1.1] mb-8">
-                Free guidance for every stage of your journey
+                Your Student Support Library
               </h1>
               <p className="text-xl text-muted-foreground leading-relaxed max-w-2xl">
-                Videos and guides from WSA's counsellors, organised by where you are in the process — from your first question to arriving abroad. All free to watch, no sign-up needed.
+                Free podcasts and practical guides from WSA's student counsellors, supporting you at every stage of your journey, from choosing where and what to study through to your visa, travel and arrival. No sign up. Just straightforward advice when you need it.
               </p>
             </div>
           </ScrollReveal>
@@ -81,7 +81,7 @@ export default function StudentSupportLibrary() {
                       <button
                         type="button"
                         onClick={() => handleResourceClick(resource)}
-                        className="group flex items-start gap-2 py-2.5 w-full text-left text-[15px] text-wsa-navy/90 hover:text-wsa-red transition-colors border-b border-border/40 sm:border-none"
+                        className="group flex items-start gap-2 py-2.5 w-full text-left text-[17px] text-wsa-navy/90 hover:text-wsa-red transition-colors border-b border-border/40 sm:border-none"
                       >
                         <span className="leading-snug">{resource.title}</span>
                         <PlayCircle

@@ -117,7 +117,7 @@ export const STUDENT_SUPPORT_LIBRARY: LibraryCategory[] = [
     ],
   },
   {
-    title: "Your Student Journey",
+    title: "The WSA Student Journey",
     resources: [
       { title: "Eldah Therone, Team Leader WSA", url: "https://www.youtube.com/watch?v=_VvWRjVXsEg" },
       { title: "Glenice Owino, Senior Student Counsellor", url: "https://www.youtube.com/shorts/e6-bf2vKoao" },
