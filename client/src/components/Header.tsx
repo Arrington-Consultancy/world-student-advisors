@@ -14,7 +14,7 @@ const navItems = [
   { label: "Staff Portal", href: "/staff-portal" },
   { label: "Events", href: "/events" },
   { label: "Student Support Library", href: "/student-support-library" },
-  { label: "Interview Readiness Coach", navLabel: "IRC", href: "/portal" },
+  { label: "Interview Readiness Coach", navLabel: "IRC", href: "/portal/interview-coach" },
 ];
 
 export default function Header() {
