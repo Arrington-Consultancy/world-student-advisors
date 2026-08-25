@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { Link, useLocation } from "wouter";
 import { Menu, X } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 
 // `navLabel` overrides `label` for the compact desktop bar only — the full
 // name is what's shown everywhere else (mobile menu, page headings).
@@ -66,19 +67,37 @@ export default function Header() {
             see the width math in the PR/commit description. Narrower
             desktops fall back to the (fully equivalent) mobile menu. */}
         <nav className="relative hidden min-[1680px]:flex items-center gap-4 2xl:gap-6 shrink-0">
-          {navItems.map((item) => (
-            <Link
-              key={item.href}
-              href={item.href}
-              className={`whitespace-nowrap text-[12px] 2xl:text-[13px] font-semibold tracking-normal uppercase transition-colors duration-200 ${
-                isTransparent
-                  ? "text-white/95 hover:text-white font-bold [text-shadow:0_1px_4px_rgba(0,0,0,0.6),0_0px_2px_rgba(0,0,0,0.3)]"
-                  : "text-wsa-navy/70 hover:text-wsa-navy"
-              } ${location === item.href ? "!text-wsa-red" : ""}`}
-            >
-              {item.navLabel ?? item.label}
-            </Link>
-          ))}
+          {navItems.map((item) => {
+            const linkClassName = `whitespace-nowrap text-[12px] 2xl:text-[13px] font-semibold tracking-normal uppercase transition-colors duration-200 ${
+              isTransparent
+                ? "text-white/95 hover:text-white font-bold [text-shadow:0_1px_4px_rgba(0,0,0,0.6),0_0px_2px_rgba(0,0,0,0.3)]"
+                : "text-wsa-navy/70 hover:text-wsa-navy"
+            } ${location === item.href ? "!text-wsa-red" : ""}`;
+
+            // An abbreviated navLabel (currently just IRC) needs an accessible
+            // name beyond the abbreviation itself, plus a sighted hover/focus
+            // hint — via aria-label and the existing Radix tooltip, not by
+            // adding visible characters that would reopen the width problem
+            // this abbreviation exists to avoid.
+            if (item.navLabel) {
+              return (
+                <Tooltip key={item.href}>
+                  <TooltipTrigger asChild>
+                    <Link href={item.href} aria-label={item.label} className={linkClassName}>
+                      {item.navLabel}
+                    </Link>
+                  </TooltipTrigger>
+                  <TooltipContent side="bottom">{item.label}</TooltipContent>
+                </Tooltip>
+              );
+            }
+
+            return (
+              <Link key={item.href} href={item.href} className={linkClassName}>
+                {item.label}
+              </Link>
+            );
+          })}
           <Link
             href="/contact"
             className="ml-2 px-5 py-2.5 bg-wsa-red text-white text-[12px] whitespace-nowrap font-semibold tracking-wide uppercase transition-all duration-200 hover:bg-wsa-red/90 active:scale-[0.98]"

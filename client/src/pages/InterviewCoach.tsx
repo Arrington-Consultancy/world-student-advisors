@@ -263,7 +263,7 @@ export default function InterviewCoach() {
 
         <div className="mb-8 grid gap-6 lg:grid-cols-[1fr_auto] lg:items-end">
           <div>
-            <p className="mb-5 text-sm font-medium tracking-[0.2em] uppercase text-wsa-red">Interview Coach</p>
+            <p className="mb-5 text-sm font-medium tracking-[0.2em] uppercase text-wsa-red">Interview Readiness Coach</p>
             <h1 className="mb-5 text-4xl font-semibold leading-[1.08] text-wsa-navy md:text-5xl">
               Practise before your live mock interview.
             </h1>
@@ -282,7 +282,7 @@ export default function InterviewCoach() {
               <Mic className="w-6 h-6 text-white" />
             </div>
             <div>
-              <h1 className="text-2xl font-bold text-white">AI Interview Coach</h1>
+              <h2 className="text-2xl font-bold text-white">AI Interview Coach</h2>
               <p className="text-white/70 text-sm">One question at a time. Marked honestly. Pass mark: 85%.</p>
             </div>
           </div>
