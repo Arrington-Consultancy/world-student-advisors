@@ -77,6 +77,11 @@ export const SEO_MAP: Record<string, SeoEntry> = {
     title: "Staff Portal | World Student Advisors",
     description: "Internal WorldStudentAdvisors staff resources.",
   },
+  "/portal/interview-coach": {
+    title: "Interview Readiness Coach | World Student Advisors",
+    description:
+      "Practise CAS, UKVI, university and course interview questions with honest AI-marked feedback — free interview preparation from WorldStudentAdvisors that supports your Student Counsellor sessions.",
+  },
   "/learning-hub/cv-university-application": {
     title: "CV & University Application Guidance | World Student Advisors",
     description:
