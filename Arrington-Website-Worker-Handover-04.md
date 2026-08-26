@@ -1,8 +1,8 @@
 ARRINGTON WEBSITE WORKER HANDOVER 04 — YOU CAN TRAIN, BUT YOU SHOULDN'T BLAME
 
-Status: DRAFTED FOR TOM'S FINAL READ — NOT YET CONFIRMED READY FOR WEBSITE WORKER. Prepared by the content/Business Brain worker. Does not touch the website, CMS, sitemap, redirects, code or Railway deployment — nothing here has been implemented or published.
+Status: TOM-APPROVED. READY FOR WEBSITE WORKER. Prepared by the content/Business Brain worker. Does not touch the website, CMS, sitemap, redirects, code or Railway deployment — nothing here has been implemented or published.
 
-Flagging this plainly rather than assuming it: the instruction that produced this piece was explicit — "Return the complete revised article to Tom for one final read. Once Tom approves that exact version, it can move to Website & Hosting for implementation." That revised text was returned to chat and Tom's next message was "ok lets breif the website worker." That reads as authorisation to prepare this handover, and this document does exactly that. It is not being treated as confirmation that Tom has done the final read of the exact revised wording below. This handover should not actually be passed to Website & Hosting until that specific confirmation is given — consistent with how handovers 01-03 were only sent on to Drive once content was checked, not assumed correct.
+Tom confirmed the exact revised wording below on 26 Aug 2026. The controlled Google Drive document has been updated to match this exact text (see Evidence source, below) — the old, pre-edit Drive doc has been renamed "SUPERSEDED (pre-edit draft, kept for reference)" rather than deleted, so a website worker pulling the doc by its original title now gets the approved, revised version.
 
 Scope: one piece, sourced from the controlled Drive document "Useful Thinking - You Can Train, But You Shouldn't Blame," reviewed for factual clarity, repetition, voice, legal/reputational risk, format fit and overlap, then revised against Tom's six explicit editorial decisions.
 
@@ -72,7 +72,7 @@ Plain-language Commercial Gaps Review subjects: owner dependency and delegation;
 
 Suggested internal links: "Being Certain Isn't the Same as Being Right" (item 1) — both concern judgement under uncertainty in a staff-discipline/trust context, from opposite angles (one is about the owner's own certainty, this one is about trusting someone else's). "The Reverse Economy of Scale" (item 9) — both concern decisions travelling back up to the owner as structure fails to keep pace.
 
-Evidence source: controlled Drive document "Useful Thinking - You Can Train, But You Shouldn't Blame" (id 1bs9RUzI_UO3V8XtzGV1HNNu71JPRN8NexgiU2racpek), originally marked "TOM-APPROVED USEFUL THINKING ARTICLE" in the source doc itself, then reviewed fresh this session and revised against six explicit editorial decisions from Tom before this handover was prepared.
+Evidence source: controlled Drive document "Useful Thinking - You Can Train, But You Shouldn't Blame" (new id 1P-fYJfabOaKvI7yK_GGpFJ8-46oZEo7bgr7_TbT8FC4, same title, same folder as the original), reviewed for factual clarity, repetition, voice, legal risk and format fit, revised against six explicit editorial decisions from Tom, then confirmed by Tom before this handover was finalised. Content verified matches this handover exactly via full download and decode, including the closing lines. The pre-edit version of the document (id 1bs9RUzI_UO3V8XtzGV1HNNu71JPRN8NexgiU2racpek) has been renamed "SUPERSEDED (pre-edit draft, kept for reference)" and kept, not deleted, in case anything needs checking against the original wording.
 
 Wording caveats the website worker must preserve:
 - Do not reintroduce the cut sentence about the other driver "potentially free to endanger somebody else's life" — removed per Tom's explicit instruction (point 2). The suspected-drink-driving fact and the non-contact-with-police fact both stay; the speculation about consequences does not.
@@ -85,7 +85,7 @@ Wording caveats the website worker must preserve:
 LinkedIn version: not yet prepared — no instruction from Tom to produce one for this piece.
 
 ================================================================
-OPEN ITEM
+STATUS
 ================================================================
 
-This piece has not yet had Tom's explicit confirmation on the exact revised wording above. Once that confirmation is given, this handover is ready to move to Website & Hosting exactly as it stands — no further editorial work identified.
+Confirmed by Tom and ready to move to Website & Hosting exactly as it stands — no further editorial work identified. The Drive document is now the accurate source of truth for a website worker to build from; no separate correction to the implementation brief should be needed on the content side.
