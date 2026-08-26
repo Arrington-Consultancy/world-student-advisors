@@ -119,7 +119,7 @@ export default function InterviewCoach() {
 
   const submitFirstAnswer = () => {
     if (!turnstileToken) {
-      setErrorMsg("Verification check is still preparing — please wait a moment and try again.");
+      setErrorMsg("Verification check is still preparing. Please wait a moment and try again.");
       return;
     }
     setErrorMsg("");
@@ -159,7 +159,7 @@ export default function InterviewCoach() {
 
   const submitFollowUpAnswer = () => {
     if (!turnstileToken) {
-      setErrorMsg("Verification check is still preparing — please wait a moment and try again.");
+      setErrorMsg("Verification check is still preparing. Please wait a moment and try again.");
       return;
     }
     setErrorMsg("");
@@ -205,7 +205,7 @@ export default function InterviewCoach() {
     }
 
     if (!turnstileToken) {
-      setErrorMsg("Verification check is still preparing — please wait a moment and try again.");
+      setErrorMsg("Verification check is still preparing. Please wait a moment and try again.");
       return;
     }
     setStage("assessing");
@@ -539,8 +539,8 @@ export default function InterviewCoach() {
                       </p>
                       <p className={`font-medium ${summary.passed ? "text-green-700" : "text-amber-700"}`}>
                         {summary.readyForMockInterview
-                          ? "Pass — you're ready for a live mock interview with your Student Counsellor."
-                          : "Not yet at pass standard — review the research tasks below, then try again."}
+                          ? "Pass: you're ready for a live mock interview with your Student Counsellor."
+                          : "Not yet at pass standard: review the research tasks below, then try again."}
                       </p>
                     </div>
                   </div>
@@ -565,7 +565,7 @@ export default function InterviewCoach() {
                 </div>
 
                 <p className="text-xs text-gray-500 mb-6">
-                  The coach never provides model answers. Genuine, personal answers are what interviewers — and visa officers — are listening for. This tool prepares you; it doesn't replace a live mock interview with your Student Counsellor.
+                  The coach never provides model answers. Genuine, personal answers are what interviewers (and visa officers) are listening for. This tool prepares you; it doesn't replace a live mock interview with your Student Counsellor.
                 </p>
 
                 <Button onClick={reset} variant="outline" className="mr-3">

@@ -460,7 +460,7 @@ export default function Counsellors() {
               <div>
                 <h3 className="text-xl font-semibold text-wsa-navy mb-2">What students say about us</h3>
                 <p className="text-muted-foreground text-[15px] leading-relaxed max-w-xl">
-                  Read genuine, independent reviews from students and families on our Google profile — or leave one of your own after working with your counsellor.
+                  Read genuine, independent reviews from students and families on our Google profile, or leave one of your own after working with your counsellor.
                 </p>
               </div>
               <a

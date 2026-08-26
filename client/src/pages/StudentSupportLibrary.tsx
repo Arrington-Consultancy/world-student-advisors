@@ -195,7 +195,7 @@ function SearchResults({ query, results, onPlay }: SearchResultsProps) {
       <div className="py-16 text-center">
         <p className="text-lg text-wsa-navy mb-2">No results for "{query}"</p>
         <p className="text-muted-foreground">
-          Try a different word, or browse the sections above — your Student Counsellor can also help you find what you need.
+          Try a different word, or browse the sections above. Your Student Counsellor can also help you find what you need.
         </p>
       </div>
     );

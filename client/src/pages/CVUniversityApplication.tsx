@@ -44,7 +44,7 @@ const SECTIONS: {
   {
     icon: IdCard,
     title: "Personal Details",
-    points: ["Name, email, phone number, country", "Keep it professional — no nicknames or casual email addresses"],
+    points: ["Name, email, phone number, country", "Keep it professional: no nicknames or casual email addresses"],
   },
   {
     icon: MessageSquareText,
@@ -56,13 +56,13 @@ const SECTIONS: {
     icon: GraduationCap,
     title: "Education",
     tag: "Most recent first",
-    points: ["Institution and qualification", "Grades — actual or predicted", "Relevant projects or research"],
+    points: ["Institution and qualification", "Grades (actual or predicted)", "Relevant projects or research"],
   },
   {
     icon: Briefcase,
     title: "Work Experience",
     tag: "Include start/end month and year",
-    points: ["Don't just list duties — show what you achieved", "Skills you developed", "Responsibilities you held"],
+    points: ["Don't just list duties: show what you achieved", "Skills you developed", "Responsibilities you held"],
   },
   {
     icon: HeartHandshake,
@@ -115,7 +115,7 @@ export default function CVUniversityApplication() {
                 How to Write a University CV That Gets You Noticed
               </h1>
               <p className="text-xl text-muted-foreground leading-relaxed max-w-2xl">
-                Your CV is your personal advert — its one job is to answer the question every admissions team is
+                Your CV is your personal advert. Its one job is to answer the question every admissions team is
                 asking: <strong className="text-wsa-navy">why should we choose you?</strong> Here are the seven
                 sections that matter, presented by Tim Hunt, CEO and Managing Director of WorldStudentAdvisors.
               </p>
@@ -143,7 +143,7 @@ export default function CVUniversityApplication() {
                 </div>
               </div>
               <p className="text-xs text-muted-foreground mt-3">
-                Presented by Tim Hunt, CEO and Managing Director, WorldStudentAdvisors — 90-Second Advisor series.
+                Presented by Tim Hunt, CEO and Managing Director, WorldStudentAdvisors (90-Second Advisor series).
               </p>
             </div>
           </ScrollReveal>
@@ -260,7 +260,7 @@ export default function CVUniversityApplication() {
                 Get the free CV checklist
               </h2>
               <p className="text-muted-foreground leading-relaxed mb-8 max-w-xl mx-auto">
-                All seven sections, the before-you-submit checklist, and the common mistakes to avoid — as a
+                All seven sections, the before-you-submit checklist, and the common mistakes to avoid, as a
                 one-page PDF you can keep open while you write.
               </p>
               <a
@@ -285,7 +285,7 @@ export default function CVUniversityApplication() {
                 Want a second pair of eyes on your CV?
               </h2>
               <p className="text-lg text-muted-foreground leading-relaxed mb-10">
-                Apply today and a named Student Counsellor will be in touch within 48 hours — free, no obligation.
+                Apply today and a named Student Counsellor will be in touch within 48 hours (free, no obligation).
               </p>
               <Link
                 href="/contact"

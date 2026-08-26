@@ -62,7 +62,7 @@ export default function WebUKVisa() {
                 <span className="text-white/80 font-medium">Thursday 20 August 2026</span>
                 <span className="hidden sm:block text-white/30">·</span>
                 <span className="text-white/60 text-sm">
-                  Presented by Tim Hunt — Managing Director, WorldStudentAdvisors
+                  Presented by Tim Hunt, Managing Director, WorldStudentAdvisors
                 </span>
               </div>
               <a
@@ -148,7 +148,7 @@ export default function WebUKVisa() {
               >
                 <iframe
                   src={`https://www.youtube.com/embed/${PODCAST_YOUTUBE_ID}`}
-                  title="UK Student Visa Guide 2026–27 — WorldStudentAdvisors"
+                  title="UK Student Visa Guide 2026–27: WorldStudentAdvisors"
                   allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
                   allowFullScreen
                   loading="lazy"
