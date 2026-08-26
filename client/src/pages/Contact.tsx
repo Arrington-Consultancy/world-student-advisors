@@ -343,7 +343,7 @@ function StudentForm() {
             value={formData.passportNumber}
             onChange={(e) => setFormData({ ...formData, passportNumber: e.target.value })}
             className="w-full px-4 py-3 border border-border bg-white focus:outline-none focus:ring-2 focus:ring-wsa-red/20 focus:border-wsa-red transition-colors"
-            placeholder="Optional — helps with visa processing later"
+            placeholder="Optional: helps with visa processing later"
           />
         </div>
         <div>

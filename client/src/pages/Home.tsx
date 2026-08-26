@@ -415,7 +415,7 @@ export default function Home() {
                   One named professional.<br />Dedicated to you.
                 </h2>
                 <p className="text-[17px] text-muted-foreground leading-relaxed mb-6">
-                  From your first enquiry, you will have your own named WSA Student Counsellor. They will get to know you, understand what and where you want to study, and personally support you throughout your journey — from choosing a course and making your application, through to your visa, travel and enrolment.
+                  From your first enquiry, you will have your own named WSA Student Counsellor. They will get to know you, understand what and where you want to study, and personally support you throughout your journey: from choosing a course and making your application, through to your visa, travel and enrolment.
                 </p>
                 <p className="text-[17px] text-muted-foreground leading-relaxed mb-8">
                   You can speak to your counsellor directly by WhatsApp, telephone or email. They recommend what's genuinely right, and they never submit anything without your approval.
@@ -512,7 +512,7 @@ export default function Home() {
                     <div className="absolute inset-0 bg-gradient-to-t from-black/65 via-black/10 to-transparent" />
                     <div className="absolute bottom-0 left-0 right-0 p-6 lg:p-8">
                       <h3 className="text-2xl font-semibold text-white mb-1">Europe</h3>
-                      <p className="text-white/70 text-sm">Cyprus, Hungary, and more — lower-budget options with quality programmes</p>
+                      <p className="text-white/70 text-sm">Cyprus, Hungary, and more (lower-budget options with quality programmes)</p>
                     </div>
                   </div>
                 </Link>

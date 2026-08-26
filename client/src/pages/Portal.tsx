@@ -207,7 +207,7 @@ export default function Portal() {
                     AI Interview Coach
                   </h3>
                   <p className="text-gray-600 text-sm mb-4">
-                    Practise CAS, UKVI, university, and course interviews. Marked against an 85% pass mark with honest feedback — never model answers.
+                    Practise CAS, UKVI, university, and course interviews. Marked against an 85% pass mark with honest feedback: never model answers.
                   </p>
                   <div className="flex items-center text-wsa-red text-sm font-medium">
                     Start Practising <ChevronRight className="w-4 h-4 ml-1" />

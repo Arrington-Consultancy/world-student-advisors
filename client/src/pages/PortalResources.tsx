@@ -66,7 +66,7 @@ const SAMPLE_RESOURCES: {
   { id: 7, title: "Master's Programmes", category: "explore-options", type: "guide", summary: "Explore postgraduate master's degree opportunities." },
   { id: 8, title: "PhD Research", category: "explore-options", type: "guide", summary: "How to apply for a PhD and what to expect from doctoral research." },
   // Prepare Your Application
-  { id: 9, title: "University CV", category: "prepare-application", type: "guide", summary: "How to write an effective academic CV for university applications — the seven sections every strong CV needs, plus a free downloadable checklist.", externalUrl: "/learning-hub/cv-university-application", externalLabel: "Read the full guide" },
+  { id: 9, title: "University CV", category: "prepare-application", type: "guide", summary: "How to write an effective academic CV for university applications: the seven sections every strong CV needs, plus a free downloadable checklist.", externalUrl: "/learning-hub/cv-university-application", externalLabel: "Read the full guide" },
   { id: 10, title: "Personal Statement", category: "prepare-application", type: "guide", summary: "Step-by-step guide to writing a compelling personal statement." },
   { id: 11, title: "References", category: "prepare-application", type: "guide", summary: "Who to ask and how to prepare strong academic references." },
   { id: 12, title: "Document Preparation", category: "prepare-application", type: "download", summary: "Checklist and templates for preparing your application documents." },
@@ -325,7 +325,7 @@ export default function PortalResources() {
                             )}
                             {isPlayableVideo && (
                               <span className="text-xs text-wsa-red font-medium">
-                                {isOpen ? "Playing — click to close" : "Click to watch"}
+                                {isOpen ? "Playing, click to close" : "Click to watch"}
                               </span>
                             )}
                           </div>

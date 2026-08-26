@@ -159,7 +159,7 @@ export const appRouter = router({
 
           return {
             success: false as const,
-            error: "We couldn't save your sign-up just now. Please try again in a few minutes, or contact us directly — your details have not been lost.",
+            error: "We couldn't save your sign-up just now. Please try again in a few minutes, or contact us directly. Your details have not been lost.",
           };
         }
 

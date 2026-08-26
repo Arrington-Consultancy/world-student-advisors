@@ -6,9 +6,9 @@ export interface SeoEntry {
 export const SITE_ORIGIN = "https://www.worldstudentadvisors.com";
 
 export const DEFAULT_SEO: SeoEntry = {
-  title: "World Student Advisors — Study Abroad with a Personal Counsellor",
+  title: "World Student Advisors: Study Abroad with a Personal Counsellor",
   description:
-    "World Student Advisors — British Council certified counsellors helping international students from Africa and beyond study in the UK, Canada, and Europe. Free personal counsellor guidance from first enquiry to enrolment.",
+    "World Student Advisors: British Council certified counsellors helping international students from Africa and beyond study in the UK, Canada, and Europe. Free personal counsellor guidance from first enquiry to enrolment.",
 };
 
 export const SEO_MAP: Record<string, SeoEntry> = {
@@ -16,7 +16,7 @@ export const SEO_MAP: Record<string, SeoEntry> = {
   "/about": {
     title: "About Us | World Student Advisors",
     description:
-      "Meet the WorldStudentAdvisors team — British Council certified counsellors giving every student a named personal counsellor, not a chatbot or call centre.",
+      "Meet the WorldStudentAdvisors team: British Council certified counsellors giving every student a named personal counsellor, not a chatbot or call centre.",
   },
   "/study-options": {
     title: "Study Options | World Student Advisors",
@@ -41,7 +41,7 @@ export const SEO_MAP: Record<string, SeoEntry> = {
   "/undergraduate-degrees": {
     title: "Undergraduate Degrees in the UK | World Student Advisors",
     description:
-      "Three-year UK bachelor's degrees providing subject expertise, transferable skills, and strong career foundations — with WorldStudentAdvisors guidance at every stage.",
+      "Three-year UK bachelor's degrees providing subject expertise, transferable skills, and strong career foundations, with WorldStudentAdvisors guidance at every stage.",
   },
   "/pre-masters-top-up-degrees": {
     title: "Pre-Master's & Top-Up Degrees | World Student Advisors",
@@ -51,7 +51,7 @@ export const SEO_MAP: Record<string, SeoEntry> = {
   "/masters-doctoral-degrees": {
     title: "Master's & Doctoral Degrees | World Student Advisors",
     description:
-      "Postgraduate study routes in the UK — Master's and Doctoral degrees — with personal counsellor support from WorldStudentAdvisors.",
+      "Postgraduate study routes in the UK: Master's and Doctoral degrees, with personal counsellor support from WorldStudentAdvisors.",
   },
   "/sport-pathways": {
     title: "Sport Pathways | World Student Advisors",
@@ -71,7 +71,7 @@ export const SEO_MAP: Record<string, SeoEntry> = {
   "/student-support-library": {
     title: "Student Support Library | World Student Advisors",
     description:
-      "Free videos and guides on UK student visas, university applications, interviews, and studying abroad, organised by stage of your journey — from WorldStudentAdvisors.",
+      "Free videos and guides on UK student visas, university applications, interviews, and studying abroad, organised by stage of your journey, from WorldStudentAdvisors.",
   },
   "/staff-portal": {
     title: "Staff Portal | World Student Advisors",
@@ -80,7 +80,7 @@ export const SEO_MAP: Record<string, SeoEntry> = {
   "/portal/interview-coach": {
     title: "Interview Readiness Coach | World Student Advisors",
     description:
-      "Practise CAS, UKVI, university and course interview questions with honest AI-marked feedback — free interview preparation from WorldStudentAdvisors that supports your Student Counsellor sessions.",
+      "Practise CAS, UKVI, university and course interview questions with honest AI-marked feedback, free interview preparation from WorldStudentAdvisors that supports your Student Counsellor sessions.",
   },
   "/learning-hub/cv-university-application": {
     title: "CV & University Application Guidance | World Student Advisors",
@@ -105,7 +105,7 @@ export const SEO_MAP: Record<string, SeoEntry> = {
   "/contact": {
     title: "Contact & Registration | World Student Advisors",
     description:
-      "Start your application or get in touch with WorldStudentAdvisors — free personal counsellor guidance for international students.",
+      "Start your application or get in touch with WorldStudentAdvisors, free personal counsellor guidance for international students.",
   },
   "/privacy-policy": {
     title: "Privacy Policy | World Student Advisors",
@@ -145,7 +145,7 @@ export const SEO_MAP: Record<string, SeoEntry> = {
   "/WebUKVisa": {
     title: "UK Student Visa Guide | World Student Advisors",
     description:
-      "Free UK Student Visa masterclass and resources from WorldStudentAdvisors — bank statements, CAS, IHS, and common mistakes to avoid.",
+      "Free UK Student Visa masterclass and resources from WorldStudentAdvisors: bank statements, CAS, IHS, and common mistakes to avoid.",
   },
   "/DDVavita": {
     title: "WorldStudentAdvisors Due Diligence Review - Vavita",
