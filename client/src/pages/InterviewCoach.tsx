@@ -300,7 +300,7 @@ export default function InterviewCoach() {
                 <div className="mb-6 flex items-start gap-2 bg-blue-50 border border-blue-100 rounded-lg p-4 text-sm text-blue-800">
                   <ShieldCheck className="w-4 h-4 mt-0.5 shrink-0" />
                   <span>
-                    The coach asks one question at a time and marks honestly against a <strong>pass mark of 85%</strong>. If an answer is vague or too short, it will ask a follow-up before scoring — it will <strong>never give you model answers</strong>, because interviewers can spot rehearsed scripts. This prepares you for a live mock interview with your Student Counsellor — it doesn't replace one.
+                    The coach asks one question at a time and marks honestly against a <strong>pass mark of 85%</strong>. If an answer is vague or too short, it will ask a follow-up before scoring. It will <strong>never give you model answers</strong>, because interviewers can spot rehearsed scripts. This prepares you for a live mock interview with your Student Counsellor. It doesn't replace one.
                   </span>
                 </div>
                 <label className="block text-sm font-medium text-wsa-navy mb-1.5">
