@@ -7,6 +7,9 @@ import { createServer as createViteServer } from "vite";
 import viteConfig from "../../vite.config";
 import { isValidClientRoute } from "../../shared/routes";
 import { getCanonicalUrl, getSeoForPath, shouldNoindex } from "../../shared/seo";
+import { ALL_PRERENDER_ROUTES, routeToPrerenderFile } from "../../shared/prerenderRoutes";
+
+const PRERENDER_ROUTE_SET = new Set<string>(ALL_PRERENDER_ROUTES);
 
 function escapeHtml(value: string): string {
   return value
@@ -97,7 +100,13 @@ export function serveStatic(app: Express, distPathOverride?: string) {
     );
   }
 
-  app.use(express.static(distPath));
+  // index: false — express.static's default behaviour auto-serves
+  // dist/public/index.html for a request to "/" before it ever reaches the
+  // app.get("*", ...) handler below, silently bypassing both injectSeoMeta
+  // and the prerendered-route lookup for the single most important path on
+  // the site. Every other static asset (JS/CSS/images/downloads) is still
+  // served exactly as before by exact filename match.
+  app.use(express.static(distPath, { index: false }));
 
   // Fall through to the SPA shell for any request express.static didn't
   // serve a real file for. Known client routes (shared/routes.ts) get a
@@ -115,8 +124,17 @@ export function serveStatic(app: Express, distPathOverride?: string) {
   // is a route match, not a mount, so req.path stays the real path.
   app.get("*", (req, res) => {
     const status = isValidClientRoute(req.path) ? 200 : 404;
+    // Prerendered routes (shared/prerenderRoutes.ts) get their build-time
+    // real HTML instead of the empty SPA shell — everything else below is
+    // completely unchanged. injectSeoMeta still runs on the result, so
+    // title/description/canonical/robots are identical either way; only the
+    // body content differs.
+    const templateFile =
+      PRERENDER_ROUTE_SET.has(req.path) && fs.existsSync(path.resolve(distPath, "__prerendered__", routeToPrerenderFile(req.path)))
+        ? path.resolve(distPath, "__prerendered__", routeToPrerenderFile(req.path))
+        : path.resolve(distPath, "index.html");
     fs.promises
-      .readFile(path.resolve(distPath, "index.html"), "utf-8")
+      .readFile(templateFile, "utf-8")
       .then(template => {
         res
           .status(status)

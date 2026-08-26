@@ -2,7 +2,7 @@ import { trpc } from "@/lib/trpc";
 import { captureAdClickIds } from "@/lib/adClickIds";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { httpBatchLink } from "@trpc/client";
-import { createRoot } from "react-dom/client";
+import { createRoot, hydrateRoot } from "react-dom/client";
 import superjson from "superjson";
 import App from "./App";
 import "./index.css";
@@ -40,10 +40,21 @@ const trpcClient = trpc.createClient({
   ],
 });
 
-createRoot(document.getElementById("root")!).render(
+const rootEl = document.getElementById("root")!;
+const tree = (
   <trpc.Provider client={trpcClient} queryClient={queryClient}>
     <QueryClientProvider client={queryClient}>
       <App />
     </QueryClientProvider>
   </trpc.Provider>
 );
+
+// Routes prerendered at build time (shared/prerenderRoutes.ts) send real
+// markup in #root, marked with data-prerendered so the client knows to
+// attach to it (hydrateRoot) instead of replacing it (createRoot) — every
+// other route still renders exactly as before.
+if (rootEl.dataset.prerendered === "true") {
+  hydrateRoot(rootEl, tree);
+} else {
+  createRoot(rootEl).render(tree);
+}
