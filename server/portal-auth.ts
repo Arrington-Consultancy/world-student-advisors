@@ -38,8 +38,9 @@ export async function createPortalUser(data: {
       await db.update(portalUsers).set({ googleSub: data.googleSub }).where(eq(portalUsers.id, existing[0].id));
     }
     // Repair a previously Pipedrive-less account (e.g. one created by
-    // "Sign in with Google" on the portal login page before ever applying —
-    // see findOrCreateGoogleUser) now that a genuine application has
+    // "Sign in with Google" on the portal login page back when that flow
+    // could create an account before an application existed — see
+    // findGoogleUser, now find-only) now that a genuine application has
     // produced a real Person/Lead. Only fills a gap, never overwrites an
     // already-linked account: pipedrivePersonId is the durable anchor every
     // live Pipedrive read is keyed on (see drizzle/schema.ts), and a second,
@@ -195,19 +196,34 @@ export async function mintPortalToken(user: {
     .sign(PORTAL_JWT_SECRET);
 }
 
+export type GoogleLoginResult =
+  | { status: "ok"; token: string; user: { id: number; email: string; firstName: string; lastName: string } }
+  | { status: "not_found" }
+  | { status: "inactive" };
+
 /**
- * Look up a portal user by their Google OAuth subject identifier, or create a
- * new account if none exists for that sub. Returns the minted portal JWT.
+ * Look up a portal user by their Google OAuth subject identifier for portal
+ * login. Find-only: the application is the registration, so Google sign-in
+ * never creates a portal account — it is only a convenience login method for
+ * an account that already exists (created by submitting a genuine
+ * application at /contact, which mints the portal record — see
+ * createPortalUser). Returns the minted portal JWT on success.
  *
- * For existing password-only accounts with the same email, the googleSub is
- * linked on first Google sign-in so future logins work via either method.
+ * For an existing account matched by email that doesn't yet have a googleSub
+ * (e.g. it was created before the student ever used Google), the googleSub is
+ * linked on this first Google sign-in so future logins work via either
+ * method — that is linking a login method, not creating an account.
+ *
+ * Returns null only when the database itself is unavailable; a real "no
+ * account" or "inactive account" outcome is returned as a distinct status so
+ * the caller can show the right message instead of a generic failure.
  */
-export async function findOrCreateGoogleUser(profile: {
+export async function findGoogleUser(profile: {
   sub: string;
   email: string;
   firstName: string;
   lastName: string;
-}): Promise<{ token: string; user: { id: number; email: string; firstName: string; lastName: string } } | null> {
+}): Promise<GoogleLoginResult | null> {
   const db = await getDb();
   if (!db) return null;
 
@@ -217,32 +233,26 @@ export async function findOrCreateGoogleUser(profile: {
   let rows = await db.select().from(portalUsers).where(eq(portalUsers.googleSub, profile.sub)).limit(1);
 
   if (!rows.length) {
-    // Fall back to email — link an existing password account
+    // Fall back to email — link this Google sub to an existing account as a
+    // login method. Never creates a new row: no matching account means no
+    // application has been submitted for this email yet.
     rows = await db.select().from(portalUsers).where(eq(portalUsers.email, emailLower)).limit(1);
 
     if (rows.length) {
-      // Link the Google sub to the existing account
       await db.update(portalUsers).set({ googleSub: profile.sub }).where(eq(portalUsers.id, rows[0].id));
     } else {
-      // Create a brand-new portal account (no Pipedrive record yet — staff will
-      // match manually if the student has already applied via the form)
-      const result = await db.insert(portalUsers).values({
-        email: emailLower,
-        firstName: profile.firstName,
-        lastName: profile.lastName,
-        googleSub: profile.sub,
-      });
-      rows = await db.select().from(portalUsers).where(eq(portalUsers.id, result[0].insertId)).limit(1);
+      return { status: "not_found" };
     }
   }
 
   const portalUser = rows[0];
-  if (!portalUser.isActive) return null;
+  if (!portalUser.isActive) return { status: "inactive" };
 
   await db.update(portalUsers).set({ lastLogin: new Date() }).where(eq(portalUsers.id, portalUser.id));
 
   const token = await mintPortalToken(portalUser);
   return {
+    status: "ok",
     token,
     user: {
       id: portalUser.id,

@@ -601,7 +601,7 @@ function StudentForm() {
                 {errors.scholarshipName && <p className="text-xs text-red-600 mt-1">{errors.scholarshipName}</p>}
               </div>
               <div>
-                <label className="block text-sm font-medium text-wsa-navy mb-1.5">Funding status *</label>
+                <label className="block text-sm font-medium text-wsa-navy mb-1.5">Scholarship status *</label>
                 <select
                   required
                   value={formData.scholarshipStatus}

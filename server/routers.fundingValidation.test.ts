@@ -132,6 +132,7 @@ describe("contact.submitStudent — server-side funding-status enforcement", () 
     expect(callArg.scholarshipStatus).toBe("Awarded");
     const emailContent = mockedNotifyStaff.mock.calls[0][0].content;
     expect(emailContent).toContain("Scholarship Name: Chevening");
+    expect(emailContent).toContain("Scholarship Status: Awarded");
     expect(emailContent).not.toContain("Covers:");
   });
 

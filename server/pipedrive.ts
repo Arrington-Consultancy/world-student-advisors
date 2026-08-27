@@ -397,7 +397,7 @@ function buildNote(data: StudentFormData): string {
     ] : []),
     ...(data.educationFunding === "scholarship" ? [
       `**Scholarship Name:** ${data.scholarshipName || "—"}`,
-      `**Funding Status:** ${data.scholarshipStatus || "—"}`,
+      `**Scholarship Status:** ${data.scholarshipStatus || "—"}`,
       `**Covers:** ${data.scholarshipCoverage || "—"}`,
     ] : []),
     ...(data.educationFunding === "mixed" ? [

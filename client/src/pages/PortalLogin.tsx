@@ -21,6 +21,7 @@ export default function PortalLogin() {
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
+  const [noPortalAccount, setNoPortalAccount] = useState(false);
 
   // Handle token delivered by the Google OAuth callback redirect
   useEffect(() => {
@@ -38,6 +39,11 @@ export default function PortalLogin() {
     }
 
     if (oauthError) {
+      if (oauthError === "google_no_account") {
+        setNoPortalAccount(true);
+        setError("We don't have a portal account for that email yet.");
+        return;
+      }
       const messages: Record<string, string> = {
         google_denied: "Google sign-in was cancelled.",
         google_token: "Could not complete Google sign-in. Please try again.",
@@ -74,6 +80,16 @@ export default function PortalLogin() {
           {error && (
             <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm">
               {error}
+              {noPortalAccount && (
+                <>
+                  {" "}
+                  Please complete your application at{" "}
+                  <Link href="/contact" className="underline font-medium">
+                    /contact
+                  </Link>{" "}
+                  to get started.
+                </>
+              )}
             </div>
           )}
 
