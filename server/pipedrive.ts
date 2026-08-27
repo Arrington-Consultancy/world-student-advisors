@@ -20,7 +20,14 @@ interface StudentFormData {
   preferredStartMonth: string;
   preferredDestination: string;
   educationFunding: string;
-  promoCode: string;
+  sponsorName?: string;
+  sponsorStatus?: string;
+  scholarshipName?: string;
+  scholarshipStatus?: string;
+  scholarshipCoverage?: string;
+  mixedFundingSources?: string;
+  mixedFundingConfirmedAmount?: string;
+  mixedFundingRemaining?: string;
   referredToWSA: string;
   referredByWhom?: string;
   recommendedCounsellor: string;
@@ -70,7 +77,13 @@ const PF = {
   preferredStartMonth: "3c131beee887a4391db98adf659bf03b67c2d576",
   preferredDestination: "1f3f30e974eaf7b88d1cd95b43efffc129abd71c",
   educationFunding: "147e0f451a4bd38bc35d7c1fe8c8631fee212160",
-  promoCode: "7243d4c977d88d238d62f109f4e8c9a323a7f23a",
+  // Dedicated Person field created 2026-08-27 to carry a condensed summary
+  // of the sponsor/scholarship/mixed-funding answer. Deliberately separate
+  // from the old, now-unused "Promotional Code" field (key
+  // 7243d4c977d88d238d62f109f4e8c9a323a7f23a) — that field is left
+  // completely untouched, not renamed or repurposed, and isn't referenced
+  // anywhere in this codebase.
+  fundingSource: "ccc2c853c22101435d6059306fcb644e2bf0a284",
   referredBy: "a08cf6343f3d302fdf15306c24d01e004ab47724",
   recommendedCounsellor: "91cce905e99d4d7ad6a8e2b4db41b89f8a5a72cf",
   gdprConsent: "507b7011ec6784002524c02f940ef8610059cd1e",
@@ -308,6 +321,25 @@ function extractMonth(value: string): string {
   return value;
 }
 
+/**
+ * Condenses the structured sponsor/scholarship/mixed-funding answers into
+ * the single line PF.fundingSource (one Pipedrive text field) can hold.
+ * The full breakdown also goes into buildNote() below, unabbreviated.
+ */
+function buildFundingSourceSummary(data: StudentFormData): string | undefined {
+  if (data.educationFunding === "sponsor") {
+    return `Sponsor: ${data.sponsorName || "—"} (${data.sponsorStatus || "status not given"})`;
+  }
+  if (data.educationFunding === "scholarship") {
+    const coverage = data.scholarshipCoverage ? `, covers: ${data.scholarshipCoverage}` : "";
+    return `Scholarship: ${data.scholarshipName || "—"} (${data.scholarshipStatus || "status not given"})${coverage}`;
+  }
+  if (data.educationFunding === "mixed") {
+    return `Mixed: ${data.mixedFundingSources || "—"}; confirmed: ${data.mixedFundingConfirmedAmount || "—"}; remaining: ${data.mixedFundingRemaining || "—"}`;
+  }
+  return undefined;
+}
+
 function buildPersonPayload(data: StudentFormData): Record<string, unknown> {
   const payload: Record<string, unknown> = {
     name: `${data.firstName}${data.middleName ? " " + data.middleName : ""} ${data.lastName}`,
@@ -325,7 +357,7 @@ function buildPersonPayload(data: StudentFormData): Record<string, unknown> {
     [PF.preferredStartMonth]: MONTH_MAP[extractMonth(data.preferredStartMonth)] || undefined,
     [PF.preferredDestination]: DESTINATION_MAP[data.preferredDestination] || undefined,
     [PF.educationFunding]: FUNDING_MAP[data.educationFunding] || undefined,
-    [PF.promoCode]: data.promoCode || undefined,
+    [PF.fundingSource]: buildFundingSourceSummary(data),
     [PF.referredBy]: data.referredToWSA === "yes" && data.referredByWhom ? `yes — ${data.referredByWhom}` : (data.referredToWSA || undefined),
     [PF.recommendedCounsellor]: COUNSELLOR_MAP[data.recommendedCounsellor] ?? COUNSELLOR_MAP["help-me-choose"],
     [PF.gdprConsent]: data.gdprConsent ? 105 : 106,
@@ -359,7 +391,20 @@ function buildNote(data: StudentFormData): string {
     `**Preferred Start Month:** ${data.preferredStartMonth || "—"}`,
     `**Preferred Destination:** ${destinationLabels[data.preferredDestination] || data.preferredDestination || "—"}`,
     `**Education Funding:** ${data.educationFunding || "—"}`,
-    `**Promotional Code:** ${data.promoCode || "—"}`,
+    ...(data.educationFunding === "sponsor" ? [
+      `**Sponsor Name:** ${data.sponsorName || "—"}`,
+      `**Funding Status:** ${data.sponsorStatus || "—"}`,
+    ] : []),
+    ...(data.educationFunding === "scholarship" ? [
+      `**Scholarship Name:** ${data.scholarshipName || "—"}`,
+      `**Funding Status:** ${data.scholarshipStatus || "—"}`,
+      `**Covers:** ${data.scholarshipCoverage || "—"}`,
+    ] : []),
+    ...(data.educationFunding === "mixed" ? [
+      `**Funding Sources:** ${data.mixedFundingSources || "—"}`,
+      `**Already Confirmed:** ${data.mixedFundingConfirmedAmount || "—"}`,
+      `**Still Dependent on Approval:** ${data.mixedFundingRemaining || "—"}`,
+    ] : []),
     `**Referred to WSA:** ${data.referredToWSA === "yes" ? "Yes" : data.referredToWSA === "no" ? "No" : "—"}`,
     `**Referrer Name:** ${data.referredToWSA === "yes" && data.referredByWhom ? data.referredByWhom : "—"}`,
     `**Recommended Student Counsellor:** ${data.recommendedCounsellor || "Help me choose"}`,

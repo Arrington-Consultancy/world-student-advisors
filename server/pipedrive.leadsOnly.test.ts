@@ -41,7 +41,6 @@ const baseData = {
   preferredStartMonth: "January",
   preferredDestination: "uk",
   educationFunding: "self-funded",
-  promoCode: "",
   referredToWSA: "",
   referredByWhom: "",
   recommendedCounsellor: "eldah",
