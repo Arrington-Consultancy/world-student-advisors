@@ -12,12 +12,19 @@ import { sql } from "drizzle-orm";
 // No writes, ever. Not part of any merged branch — created only to answer
 // a one-off ops question, on a throwaway branch that won't be merged.
 
-if (!process.env.DATABASE_URL) {
-  console.error("DATABASE_URL is not set in this environment.");
+// DATABASE_URL (as the app itself uses) points at Railway's private
+// internal hostname (mysql.railway.internal), unreachable from a GitHub
+// Actions runner outside Railway's network — confirmed via ENOTFOUND on an
+// earlier run of this same script. MYSQL_PUBLIC_URL (on the MySQL service
+// itself, not the app service) is the public proxy equivalent, reachable
+// from anywhere. Read-only either way; this only changes how we connect.
+const connectionUrl = process.env.MYSQL_PUBLIC_URL || process.env.DATABASE_URL;
+if (!connectionUrl) {
+  console.error("Neither MYSQL_PUBLIC_URL nor DATABASE_URL is set in this environment.");
   process.exit(1);
 }
 
-const db = drizzle(process.env.DATABASE_URL);
+const db = drizzle(connectionUrl);
 
 try {
   const [countRows] = await db.execute(

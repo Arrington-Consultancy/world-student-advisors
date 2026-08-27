@@ -61,4 +61,4 @@ jobs:
           RAILWAY_TOKEN: ${{ secrets.githubactionsprod }}
           AUDIT_EMAIL: ${{ github.event.inputs.audit_email }}
         run: |
-          railway run --service "${{ github.event.inputs.service_name }}" --environment "${{ github.event.inputs.environment_name }}" -- node scripts/portal-pipedrive-null-audit.mjs
+          railway run --service "MySQL" --environment "${{ github.event.inputs.environment_name }}" -- node scripts/portal-pipedrive-null-audit.mjs
