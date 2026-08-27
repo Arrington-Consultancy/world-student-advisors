@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { TRPCError } from "@trpc/server";
 import { SPONSOR_STATUS_OPTIONS, SCHOLARSHIP_STATUS_OPTIONS } from "../shared/fundingStatus";
 import {
   notifyStaff,
@@ -11,7 +12,7 @@ import { systemRouter } from "./_core/systemRouter";
 import { publicProcedure, router } from "./_core/trpc";
 import { ENV } from "./_core/env";
 import { createStudentLead } from "./pipedrive";
-import { recordFailedSubmission } from "./db";
+import { recordFailedSubmission, recordInterviewCoachSession } from "./db";
 import {
   createPortalUser,
   authenticatePortalUser,
@@ -34,9 +35,36 @@ const turnstileField = { turnstileToken: z.string().min(1, "Verification require
  * public application flow) for showing the Student Portal and AI tools to
  * staff, partners, or other visitors without touching real applicant data.
  * Used only by interviewCoach.finishSession to skip the real-student staff
- * notification for this one account — see the comment there.
+ * notification for this one account — see the comment there. Now compared
+ * against the verified portal-token identity rather than a client-supplied
+ * field (see requireActivePortalIdentity below), so it can no longer be
+ * triggered by anyone who doesn't actually hold that account's login.
  */
 const DEMO_PORTAL_EMAIL = "portal-demo@worldstudentadvisors.com";
+
+/**
+ * Verifies a portal session token and confirms the account is still active
+ * right now (not just valid when the token was minted up to 7 days ago) —
+ * reuses getPortalUserById exactly as portal.dashboard already does, so
+ * this introduces no new resolver behaviour. Throws (never returns a
+ * silent falsy value) so every caller fails closed the same way
+ * requireTurnstile already does elsewhere in this file. Identity fields
+ * (email, name) come from the verified JWT claims, not from getPortalUserById
+ * (which doesn't carry email) and never from anything the client typed.
+ */
+async function requireActivePortalIdentity(
+  token: string,
+): Promise<{ portalUserId: number; email: string; firstName: string; lastName: string }> {
+  const payload = await verifyPortalToken(token);
+  if (!payload) {
+    throw new TRPCError({ code: "UNAUTHORIZED", message: "Please sign in to your Student Portal account to use this tool." });
+  }
+  const portalUser = await getPortalUserById(payload.portalUserId);
+  if (!portalUser) {
+    throw new TRPCError({ code: "UNAUTHORIZED", message: "Your Student Portal account could not be verified. Please sign in again." });
+  }
+  return { portalUserId: payload.portalUserId, email: payload.email, firstName: payload.firstName, lastName: payload.lastName };
+}
 
 const studentSignupSchema = z.object({
   firstName: z.string().min(1),
@@ -454,11 +482,17 @@ export const appRouter = router({
   }),
 
   interviewCoach: router({
-    // Open access (since 28 Jul 2026, preserved deliberately): the Interview
-    // Coach does not require a portal session and has no rate limiting.
+    // Applicant tool, since 27 Aug 2026: requires a valid, currently-active
+    // Student Portal session token (requireActivePortalIdentity above) —
+    // any active account qualifies, linked to a Pipedrive record or not,
+    // and no particular pipeline stage is required. No separate
+    // registration path exists for this: the only way to get a portal
+    // account is still the genuine /contact application (application =
+    // registration, unchanged).
     startSession: publicProcedure
       .input(
         z.object({
+          token: z.string(),
           interviewType: z.enum(["cas", "ukvi", "university", "course"]),
           courseOrSubject: z.string().max(200).optional(),
           count: z.number().int().min(3).max(8).default(5),
@@ -466,6 +500,7 @@ export const appRouter = router({
         }),
       )
       .mutation(async ({ input, ctx }) => {
+        await requireActivePortalIdentity(input.token);
         await requireTurnstile(input.turnstileToken, ctx.req.ip);
         const questions = await getSessionQuestions(input.interviewType, input.courseOrSubject, input.count);
         return { success: true as const, questions };
@@ -480,6 +515,7 @@ export const appRouter = router({
     submitAnswer: publicProcedure
       .input(
         z.object({
+          token: z.string(),
           interviewType: z.enum(["cas", "ukvi", "university", "course"]),
           courseOrSubject: z.string().max(200).optional(),
           question: z.string().max(1000),
@@ -491,6 +527,7 @@ export const appRouter = router({
         }),
       )
       .mutation(async ({ input, ctx }) => {
+        await requireActivePortalIdentity(input.token);
         await requireTurnstile(input.turnstileToken, ctx.req.ip);
         const assessment = await assessAnswer(input);
         return { success: true as const, assessment };
@@ -499,18 +536,31 @@ export const appRouter = router({
     // Pure aggregation, no LLM call — averages the final score from every
     // substantive answer in the session and applies the 85% threshold that
     // gates progression to a live mock interview with a WSA Student Counsellor.
-    // Also emails the results to a fixed, smaller list (Tim, Eldah, Tom —
-    // see interviewCoachNotifyEmails in env.ts) on every completed session,
-    // not just passes — except the one WSA demo/test portal account
-    // (DEMO_PORTAL_EMAIL below), which never reaches a real applicant so
+    //
+    // Identity comes only from the verified portal token — no client-typed
+    // email is accepted at all, closing the "arbitrary email decides whose
+    // session this is" gap flagged in the data-flow audit.
+    //
+    // Persistence is the deliberately minimal model from the design report:
+    // one row (portalUserId, mode, score, pass/fail, completion date) in
+    // interview_coach_sessions — never the answer transcript, and never a
+    // Pipedrive write of any kind. This never creates or touches a
+    // Pipedrive Person/Lead/Deal, so repeated practice can never produce
+    // duplicate admissions activity.
+    //
+    // Emails the results to a fixed, smaller list (Tim, Eldah, Tom — see
+    // interviewCoachNotifyEmails in env.ts) on every completed session, not
+    // just passes — except the one WSA demo/test portal account
+    // (DEMO_PORTAL_EMAIL above), which never reaches a real applicant so
     // the notification would be noise, not signal. Deliberately a single
-    // hardcoded literal, not a "contains demo/test" or name-based check:
-    // a genuine applicant must never be able to suppress their own
-    // notification just by choosing what they type into the email field.
+    // hardcoded literal, not a "contains demo/test" or name-based check: a
+    // genuine applicant can no longer suppress their own notification by
+    // choosing what they type — there is nothing left to type, identity is
+    // the verified account they signed in with.
     finishSession: publicProcedure
       .input(
         z.object({
-          email: z.string().email(),
+          token: z.string(),
           interviewType: z.enum(["cas", "ukvi", "university", "course"]),
           courseOrSubject: z.string().max(200).optional(),
           results: z
@@ -525,15 +575,23 @@ export const appRouter = router({
         }),
       )
       .mutation(async ({ input, ctx }) => {
+        const identity = await requireActivePortalIdentity(input.token);
         await requireTurnstile(input.turnstileToken, ctx.req.ip);
         const scores = input.results.map(r => r.score);
         const summary = summariseSession(scores);
 
-        if (input.email.toLowerCase() !== DEMO_PORTAL_EMAIL) {
+        recordInterviewCoachSession({
+          portalUserId: identity.portalUserId,
+          interviewType: input.interviewType,
+          averageScore: summary.averageScore,
+          passed: summary.passed,
+        }).catch(err => console.error("[Database] Failed to persist Interview Coach session:", err));
+
+        if (identity.email.toLowerCase() !== DEMO_PORTAL_EMAIL) {
           notifyInterviewCoachResult({
-            title: `Interview Coach completed: ${input.email} - ${TYPE_LABELS[input.interviewType]}`,
+            title: `Interview Coach completed: ${identity.email} - ${TYPE_LABELS[input.interviewType]}`,
             content: [
-              `Email: ${input.email}`,
+              `Email: ${identity.email}`,
               `Interview Type: ${TYPE_LABELS[input.interviewType]}`,
               input.courseOrSubject ? `Course/Subject: ${input.courseOrSubject}` : "",
               `Average Score: ${summary.averageScore}%`,

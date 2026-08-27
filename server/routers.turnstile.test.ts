@@ -19,8 +19,13 @@ vi.mock("./portal-auth", () => ({
   authenticatePortalUser: vi.fn(),
   setPasswordWithToken: vi.fn(),
   requestPasswordReset: vi.fn().mockResolvedValue(null),
-  verifyPortalToken: vi.fn(),
-  getPortalUserById: vi.fn().mockResolvedValue(null),
+  verifyPortalToken: vi.fn().mockResolvedValue({
+    portalUserId: 1,
+    email: "test.student@example.com",
+    firstName: "Test",
+    lastName: "Student",
+  }),
+  getPortalUserById: vi.fn().mockResolvedValue({ firstName: "Test", pipedrivePersonId: null }),
 }));
 vi.mock("./portal-resolver", () => ({
   resolvePortalDashboard: vi.fn().mockResolvedValue({ state: "no_record" }),
@@ -140,7 +145,7 @@ describe("Turnstile gates interviewCoach endpoints", () => {
 
     const caller = makeCaller();
     await expect(
-      caller.interviewCoach.startSession({ interviewType: "cas", count: 5, turnstileToken: "bad" })
+      caller.interviewCoach.startSession({ token: "valid-token", interviewType: "cas", count: 5, turnstileToken: "bad" })
     ).rejects.toThrow();
 
     expect(mockedGetSessionQuestions).not.toHaveBeenCalled();
@@ -150,7 +155,12 @@ describe("Turnstile gates interviewCoach endpoints", () => {
     mockedRequireTurnstile.mockResolvedValue(undefined);
 
     const caller = makeCaller();
-    const result = await caller.interviewCoach.startSession({ interviewType: "cas", count: 5, turnstileToken: "ok" });
+    const result = await caller.interviewCoach.startSession({
+      token: "valid-token",
+      interviewType: "cas",
+      count: 5,
+      turnstileToken: "ok",
+    });
 
     expect(result.success).toBe(true);
     expect(mockedGetSessionQuestions).toHaveBeenCalledTimes(1);
@@ -162,6 +172,7 @@ describe("Turnstile gates interviewCoach endpoints", () => {
     const caller = makeCaller();
     await expect(
       caller.interviewCoach.submitAnswer({
+        token: "valid-token",
         interviewType: "cas",
         question: "Why this course?",
         answer: "Because...",

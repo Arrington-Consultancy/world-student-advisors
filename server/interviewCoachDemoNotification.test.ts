@@ -6,6 +6,12 @@ import { describe, expect, it, vi, beforeEach } from "vitest";
  * must never trigger the real-applicant staff notification, and nothing
  * else — not a similar-looking email, not a name, not a substring — may
  * suppress it. See server/routers.ts's DEMO_PORTAL_EMAIL.
+ *
+ * Since the applicant-gate change, identity comes only from the verified
+ * portal token (requireActivePortalIdentity), never from client-typed
+ * input — so these tests drive the exception entirely through what
+ * verifyPortalToken/getPortalUserById resolve for a given token, exactly
+ * as a real signed-in session would.
  */
 vi.mock("./pipedrive", () => ({ createStudentLead: vi.fn() }));
 vi.mock("./_core/notification", () => ({
@@ -15,14 +21,17 @@ vi.mock("./_core/notification", () => ({
   sendPortalSetupEmail: vi.fn().mockResolvedValue(true),
   sendPasswordResetEmail: vi.fn().mockResolvedValue(true),
 }));
-vi.mock("./db", () => ({ recordFailedSubmission: vi.fn().mockResolvedValue(undefined) }));
+vi.mock("./db", () => ({
+  recordFailedSubmission: vi.fn().mockResolvedValue(undefined),
+  recordInterviewCoachSession: vi.fn().mockResolvedValue(undefined),
+}));
 vi.mock("./portal-auth", () => ({
   createPortalUser: vi.fn(),
   authenticatePortalUser: vi.fn(),
   setPasswordWithToken: vi.fn(),
   requestPasswordReset: vi.fn().mockResolvedValue(null),
   verifyPortalToken: vi.fn(),
-  getPortalUserById: vi.fn().mockResolvedValue(null),
+  getPortalUserById: vi.fn(),
   verifySignupPrefillToken: vi.fn(),
 }));
 vi.mock("./portal-resolver", () => ({
@@ -43,14 +52,29 @@ vi.mock("./_core/turnstile", () => ({ requireTurnstile: vi.fn().mockResolvedValu
 
 const { appRouter } = await import("./routers");
 const { notifyInterviewCoachResult } = await import("./_core/notification");
+const { verifyPortalToken, getPortalUserById } = await import("./portal-auth");
 
 const mockedNotifyInterviewCoachResult = vi.mocked(notifyInterviewCoachResult);
+const mockedVerifyPortalToken = vi.mocked(verifyPortalToken);
+const mockedGetPortalUserById = vi.mocked(getPortalUserById);
 
 function makeCaller() {
   return appRouter.createCaller({ req: { ip: "203.0.113.9" } as any, res: {} as any });
 }
 
+/** Sets up a fake signed-in session identified by `email` for token "valid-token". */
+function mockSignedInAs(email: string) {
+  mockedVerifyPortalToken.mockResolvedValue({
+    portalUserId: 1,
+    email,
+    firstName: "Test",
+    lastName: "Student",
+  } as any);
+  mockedGetPortalUserById.mockResolvedValue({ firstName: "Test", pipedrivePersonId: null } as any);
+}
+
 const baseFinish = {
+  token: "valid-token",
   interviewType: "cas" as const,
   results: [{ question: "Why this course?", score: 90 }],
   turnstileToken: "valid",
@@ -61,33 +85,27 @@ beforeEach(() => {
 });
 
 describe("interviewCoach.finishSession — demo account notification exception", () => {
-  it("does not notify staff when the email is exactly the approved demo account", async () => {
+  it("does not notify staff when the signed-in account's email is exactly the approved demo account", async () => {
+    mockSignedInAs("portal-demo@worldstudentadvisors.com");
     const caller = makeCaller();
-    const result = await caller.interviewCoach.finishSession({
-      ...baseFinish,
-      email: "portal-demo@worldstudentadvisors.com",
-    });
+    const result = await caller.interviewCoach.finishSession({ ...baseFinish });
 
     expect(result.success).toBe(true);
     expect(mockedNotifyInterviewCoachResult).not.toHaveBeenCalled();
   });
 
-  it("is case-insensitive on the same exact address, not a pattern match (the email schema itself rejects untrimmed input, so only case needs handling here)", async () => {
+  it("is case-insensitive on the same exact address, not a pattern match", async () => {
+    mockSignedInAs("Portal-Demo@WorldStudentAdvisors.com");
     const caller = makeCaller();
-    await caller.interviewCoach.finishSession({
-      ...baseFinish,
-      email: "Portal-Demo@WorldStudentAdvisors.com",
-    });
+    await caller.interviewCoach.finishSession({ ...baseFinish });
 
     expect(mockedNotifyInterviewCoachResult).not.toHaveBeenCalled();
   });
 
   it("still notifies staff for a genuine student — the normal, unmodified path", async () => {
+    mockSignedInAs("genuine.student@example.com");
     const caller = makeCaller();
-    const result = await caller.interviewCoach.finishSession({
-      ...baseFinish,
-      email: "genuine.student@example.com",
-    });
+    const result = await caller.interviewCoach.finishSession({ ...baseFinish });
 
     expect(result.success).toBe(true);
     expect(mockedNotifyInterviewCoachResult).toHaveBeenCalledTimes(1);
@@ -96,7 +114,6 @@ describe("interviewCoach.finishSession — demo account notification exception",
   });
 
   it("does not suppress on a merely similar or demo-sounding email — only the exact address counts", async () => {
-    const caller = makeCaller();
     for (const email of [
       "demo@worldstudentadvisors.com",
       "test@worldstudentadvisors.com",
@@ -104,19 +121,36 @@ describe("interviewCoach.finishSession — demo account notification exception",
       "notportal-demo@worldstudentadvisors.com",
       "portal-demo@worldstudentadvisors.com.evil.example",
     ]) {
-      await caller.interviewCoach.finishSession({ ...baseFinish, email });
+      mockSignedInAs(email);
+      const caller = makeCaller();
+      await caller.interviewCoach.finishSession({ ...baseFinish });
     }
 
     expect(mockedNotifyInterviewCoachResult).toHaveBeenCalledTimes(5);
   });
 
   it("a genuine applicant cannot suppress their own notification by naming themselves 'demo' or 'test'", async () => {
+    mockSignedInAs("demo.student@example.com");
     const caller = makeCaller();
-    await caller.interviewCoach.finishSession({
+    await caller.interviewCoach.finishSession({ ...baseFinish });
+
+    expect(mockedNotifyInterviewCoachResult).toHaveBeenCalledTimes(1);
+  });
+
+  it("has no email field in its input schema at all — identity can only come from the verified token, never from anything the client types", async () => {
+    mockSignedInAs("genuine.student@example.com");
+    const caller = makeCaller();
+    // Even if a caller tries to smuggle an email in, the schema has no such
+    // field, and identity is still resolved solely from the token above.
+    const result = await caller.interviewCoach.finishSession({
       ...baseFinish,
-      email: "demo.student@example.com",
+      // @ts-expect-error — email is not part of the input schema
+      email: "portal-demo@worldstudentadvisors.com",
     });
 
+    expect(result.success).toBe(true);
+    // The spoofed "demo" email in the (rejected/ignored) extra field must
+    // not suppress the notification — only the verified token identity counts.
     expect(mockedNotifyInterviewCoachResult).toHaveBeenCalledTimes(1);
   });
 });
