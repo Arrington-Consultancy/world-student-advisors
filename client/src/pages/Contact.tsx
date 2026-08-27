@@ -130,7 +130,6 @@ function StudentForm() {
     preferredDestination: "",
     educationFunding: "",
     fundingDetails: "",
-    promoCode: "",
     referredToWSA: "",
     referredByWhom: "",
     recommendedCounsellor: "",
@@ -566,16 +565,6 @@ function StudentForm() {
         {/* Additional Section */}
         <div className="pt-6 mt-6 border-t border-border/50">
           <h3 className="text-lg font-semibold text-wsa-navy mb-5">Additional Information</h3>
-        </div>
-        <div>
-          <label className="block text-sm font-medium text-wsa-navy mb-1.5">Promotional Code</label>
-          <input
-            type="text"
-            value={formData.promoCode}
-            onChange={(e) => setFormData({ ...formData, promoCode: e.target.value })}
-            className="w-full px-4 py-3 border border-border bg-white focus:outline-none focus:ring-2 focus:ring-wsa-red/20 focus:border-wsa-red transition-colors"
-            placeholder="If you have a promotional code, enter it here"
-          />
         </div>
         <div className="grid sm:grid-cols-2 gap-4">
           <div>

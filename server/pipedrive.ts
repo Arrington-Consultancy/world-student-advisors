@@ -21,7 +21,6 @@ interface StudentFormData {
   preferredDestination: string;
   educationFunding: string;
   fundingDetails?: string;
-  promoCode: string;
   referredToWSA: string;
   referredByWhom?: string;
   recommendedCounsellor: string;
@@ -71,7 +70,13 @@ const PF = {
   preferredStartMonth: "3c131beee887a4391db98adf659bf03b67c2d576",
   preferredDestination: "1f3f30e974eaf7b88d1cd95b43efffc129abd71c",
   educationFunding: "147e0f451a4bd38bc35d7c1fe8c8631fee212160",
-  promoCode: "7243d4c977d88d238d62f109f4e8c9a323a7f23a",
+  // Formerly "Promotional Code" — a field the website never actually used
+  // for anything beyond capture-and-forward. Relabelled in Pipedrive
+  // (Settings -> Custom Fields -> Person) to "Funding Source" and repointed
+  // here to carry the sponsor/scholarship/mixed-funding explanation
+  // instead. Same field key, so no new Pipedrive schema and no data loss;
+  // only the label and what's written to it going forward have changed.
+  fundingSource: "7243d4c977d88d238d62f109f4e8c9a323a7f23a",
   referredBy: "a08cf6343f3d302fdf15306c24d01e004ab47724",
   recommendedCounsellor: "91cce905e99d4d7ad6a8e2b4db41b89f8a5a72cf",
   gdprConsent: "507b7011ec6784002524c02f940ef8610059cd1e",
@@ -326,7 +331,7 @@ function buildPersonPayload(data: StudentFormData): Record<string, unknown> {
     [PF.preferredStartMonth]: MONTH_MAP[extractMonth(data.preferredStartMonth)] || undefined,
     [PF.preferredDestination]: DESTINATION_MAP[data.preferredDestination] || undefined,
     [PF.educationFunding]: FUNDING_MAP[data.educationFunding] || undefined,
-    [PF.promoCode]: data.promoCode || undefined,
+    [PF.fundingSource]: data.fundingDetails || undefined,
     [PF.referredBy]: data.referredToWSA === "yes" && data.referredByWhom ? `yes — ${data.referredByWhom}` : (data.referredToWSA || undefined),
     [PF.recommendedCounsellor]: COUNSELLOR_MAP[data.recommendedCounsellor] ?? COUNSELLOR_MAP["help-me-choose"],
     [PF.gdprConsent]: data.gdprConsent ? 105 : 106,
@@ -361,7 +366,6 @@ function buildNote(data: StudentFormData): string {
     `**Preferred Destination:** ${destinationLabels[data.preferredDestination] || data.preferredDestination || "—"}`,
     `**Education Funding:** ${data.educationFunding || "—"}`,
     `**Funding Details:** ${data.fundingDetails || "—"}`,
-    `**Promotional Code:** ${data.promoCode || "—"}`,
     `**Referred to WSA:** ${data.referredToWSA === "yes" ? "Yes" : data.referredToWSA === "no" ? "No" : "—"}`,
     `**Referrer Name:** ${data.referredToWSA === "yes" && data.referredByWhom ? data.referredByWhom : "—"}`,
     `**Recommended Student Counsellor:** ${data.recommendedCounsellor || "Help me choose"}`,

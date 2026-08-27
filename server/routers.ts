@@ -51,7 +51,6 @@ const studentSignupSchema = z.object({
    *  validation of a conditional field isn't this codebase's existing pattern
    *  (see referredByWhom below). */
   fundingDetails: z.string().optional().default(""),
-  promoCode: z.string().optional().default(""),
   referredToWSA: z.string().optional().default(""),
   referredByWhom: z.string().optional().default(""),
   recommendedCounsellor: z.string().optional().default(""),
@@ -242,7 +241,6 @@ export const appRouter = router({
             `Start: ${effectiveInput.preferredStartMonth}`,
             `Education Funding: ${effectiveInput.educationFunding}`,
             effectiveInput.fundingDetails ? `Funding Details: ${effectiveInput.fundingDetails}` : "",
-            effectiveInput.promoCode ? `Promotional Code: ${effectiveInput.promoCode}` : "",
             effectiveInput.referredToWSA === "yes"
               ? `Referred to WSA: Yes — ${effectiveInput.referredByWhom || "—"}`
               : effectiveInput.referredToWSA
