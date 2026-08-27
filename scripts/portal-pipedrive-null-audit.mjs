@@ -44,6 +44,8 @@ try {
   }
 } catch (error) {
   console.error("Query failed:", error.message);
+  if (error.cause) console.error("Cause:", error.cause.message ?? error.cause);
+  console.error("Full error:", JSON.stringify(error, Object.getOwnPropertyNames(error)));
   process.exit(1);
 }
 
