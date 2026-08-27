@@ -9,6 +9,26 @@ import { trpc } from "@/lib/trpc";
 import { getStoredAdClickIds } from "@/lib/adClickIds";
 import { reportSignupConversion } from "@/lib/googleAdsConversion";
 
+/**
+ * Education Funding values that need a follow-up explanation before we can
+ * tell a genuinely funded enquiry from someone who picked the option that
+ * sounded best. Keyed by the <select>'s option value.
+ */
+const FUNDING_DETAIL_PROMPTS: Record<string, { label: string; placeholder: string }> = {
+  sponsor: {
+    label: "Who is your sponsor, and is the funding confirmed?",
+    placeholder: "e.g. employer, government scheme, or family member, and whether funding is already confirmed",
+  },
+  scholarship: {
+    label: "Which scholarship, and what stage is it at?",
+    placeholder: "Name of the scholarship, and its current status: applied, shortlisted, or confirmed",
+  },
+  mixed: {
+    label: "Please describe your funding mix",
+    placeholder: "e.g. self-funded plus a sponsor, or a partial scholarship plus a loan",
+  },
+};
+
 /** Navigates to the Google OAuth start endpoint with flow=signup. */
 function startGoogleSignup() {
   const origin = window.location.origin;
@@ -109,6 +129,7 @@ function StudentForm() {
     preferredStartMonth: "",
     preferredDestination: "",
     educationFunding: "",
+    fundingDetails: "",
     promoCode: "",
     referredToWSA: "",
     referredByWhom: "",
@@ -193,6 +214,9 @@ function StudentForm() {
     if (!formData.preferredStartMonth) newErrors.preferredStartMonth = "Please select your preferred start month";
     if (!formData.preferredDestination) newErrors.preferredDestination = "Please select your preferred study destination";
     if (!formData.educationFunding) newErrors.educationFunding = "Please select your education funding";
+    if (FUNDING_DETAIL_PROMPTS[formData.educationFunding] && !formData.fundingDetails.trim()) {
+      newErrors.fundingDetails = "Please give us a few more details so your counsellor can prepare properly";
+    }
     if (!formData.gdprConsent) newErrors.gdprConsent = "You must consent to data processing to submit";
     setErrors(newErrors);
     if (Object.keys(newErrors).length > 0) return;
@@ -506,7 +530,11 @@ function StudentForm() {
           <select
             required
             value={formData.educationFunding}
-            onChange={(e) => { setFormData({ ...formData, educationFunding: e.target.value }); setErrors((prev) => ({ ...prev, educationFunding: "" })); }}
+            onChange={(e) => {
+              const value = e.target.value;
+              setFormData({ ...formData, educationFunding: value, fundingDetails: FUNDING_DETAIL_PROMPTS[value] ? formData.fundingDetails : "" });
+              setErrors((prev) => ({ ...prev, educationFunding: "", fundingDetails: "" }));
+            }}
             className={`w-full px-4 py-3 border bg-white focus:outline-none focus:ring-2 focus:ring-wsa-red/20 focus:border-wsa-red transition-colors ${errors.educationFunding ? "border-red-400" : "border-border"}`}
           >
             <option value="">Select...</option>
@@ -518,6 +546,22 @@ function StudentForm() {
           </select>
           {errors.educationFunding && <p className="text-xs text-red-600 mt-1">{errors.educationFunding}</p>}
         </div>
+        {FUNDING_DETAIL_PROMPTS[formData.educationFunding] && (
+          <div>
+            <label className="block text-sm font-medium text-wsa-navy mb-1.5">
+              {FUNDING_DETAIL_PROMPTS[formData.educationFunding].label} *
+            </label>
+            <textarea
+              required
+              rows={2}
+              value={formData.fundingDetails}
+              onChange={(e) => { setFormData({ ...formData, fundingDetails: e.target.value }); setErrors((prev) => ({ ...prev, fundingDetails: "" })); }}
+              className={`w-full px-4 py-3 border bg-white focus:outline-none focus:ring-2 focus:ring-wsa-red/20 focus:border-wsa-red transition-colors ${errors.fundingDetails ? "border-red-400" : "border-border"}`}
+              placeholder={FUNDING_DETAIL_PROMPTS[formData.educationFunding].placeholder}
+            />
+            {errors.fundingDetails && <p className="text-xs text-red-600 mt-1">{errors.fundingDetails}</p>}
+          </div>
+        )}
 
         {/* Additional Section */}
         <div className="pt-6 mt-6 border-t border-border/50">

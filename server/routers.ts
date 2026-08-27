@@ -46,6 +46,11 @@ const studentSignupSchema = z.object({
   preferredStartMonth: z.string().min(1),
   preferredDestination: z.string().min(1),
   educationFunding: z.string().min(1),
+  /** Required client-side when educationFunding is sponsor/scholarship/mixed (see
+   *  Contact.tsx's FUNDING_DETAIL_PROMPTS); optional here since server-side
+   *  validation of a conditional field isn't this codebase's existing pattern
+   *  (see referredByWhom below). */
+  fundingDetails: z.string().optional().default(""),
   promoCode: z.string().optional().default(""),
   referredToWSA: z.string().optional().default(""),
   referredByWhom: z.string().optional().default(""),
@@ -236,6 +241,7 @@ export const appRouter = router({
             `Destination: ${effectiveInput.preferredDestination}`,
             `Start: ${effectiveInput.preferredStartMonth}`,
             `Education Funding: ${effectiveInput.educationFunding}`,
+            effectiveInput.fundingDetails ? `Funding Details: ${effectiveInput.fundingDetails}` : "",
             effectiveInput.promoCode ? `Promotional Code: ${effectiveInput.promoCode}` : "",
             effectiveInput.referredToWSA === "yes"
               ? `Referred to WSA: Yes — ${effectiveInput.referredByWhom || "—"}`

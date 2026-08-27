@@ -20,6 +20,7 @@ interface StudentFormData {
   preferredStartMonth: string;
   preferredDestination: string;
   educationFunding: string;
+  fundingDetails?: string;
   promoCode: string;
   referredToWSA: string;
   referredByWhom?: string;
@@ -359,6 +360,7 @@ function buildNote(data: StudentFormData): string {
     `**Preferred Start Month:** ${data.preferredStartMonth || "—"}`,
     `**Preferred Destination:** ${destinationLabels[data.preferredDestination] || data.preferredDestination || "—"}`,
     `**Education Funding:** ${data.educationFunding || "—"}`,
+    `**Funding Details:** ${data.fundingDetails || "—"}`,
     `**Promotional Code:** ${data.promoCode || "—"}`,
     `**Referred to WSA:** ${data.referredToWSA === "yes" ? "Yes" : data.referredToWSA === "no" ? "No" : "—"}`,
     `**Referrer Name:** ${data.referredToWSA === "yes" && data.referredByWhom ? data.referredByWhom : "—"}`,
