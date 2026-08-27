@@ -8,25 +8,24 @@ import { useRef, useState, useEffect } from "react";
 import { trpc } from "@/lib/trpc";
 import { getStoredAdClickIds } from "@/lib/adClickIds";
 import { reportSignupConversion } from "@/lib/googleAdsConversion";
+import { SPONSOR_STATUS_OPTIONS, SCHOLARSHIP_STATUS_OPTIONS } from "@shared/fundingStatus";
 
 /**
- * Education Funding values that need a follow-up explanation before we can
- * tell a genuinely funded enquiry from someone who picked the option that
- * sounded best. Keyed by the <select>'s option value.
+ * Every field this form asks for when Education Funding is sponsor,
+ * scholarship, or mixed, blanked out when clearing/switching away from that
+ * option. Keeping this as one object makes "reset everything not relevant
+ * to the newly selected type" a single spread rather than eight separate
+ * setters.
  */
-const FUNDING_DETAIL_PROMPTS: Record<string, { label: string; placeholder: string }> = {
-  sponsor: {
-    label: "Who is your sponsor, and is the funding confirmed?",
-    placeholder: "e.g. employer, government scheme, or family member, and whether funding is already confirmed",
-  },
-  scholarship: {
-    label: "Which scholarship, and what stage is it at?",
-    placeholder: "Name of the scholarship, and its current status: applied, shortlisted, or confirmed",
-  },
-  mixed: {
-    label: "Please describe your funding mix",
-    placeholder: "e.g. self-funded plus a sponsor, or a partial scholarship plus a loan",
-  },
+const BLANK_FUNDING_DETAILS = {
+  sponsorName: "",
+  sponsorStatus: "",
+  scholarshipName: "",
+  scholarshipStatus: "",
+  scholarshipCoverage: "",
+  mixedFundingSources: "",
+  mixedFundingConfirmedAmount: "",
+  mixedFundingRemaining: "",
 };
 
 /** Navigates to the Google OAuth start endpoint with flow=signup. */
@@ -129,7 +128,7 @@ function StudentForm() {
     preferredStartMonth: "",
     preferredDestination: "",
     educationFunding: "",
-    fundingDetails: "",
+    ...BLANK_FUNDING_DETAILS,
     referredToWSA: "",
     referredByWhom: "",
     recommendedCounsellor: "",
@@ -213,8 +212,18 @@ function StudentForm() {
     if (!formData.preferredStartMonth) newErrors.preferredStartMonth = "Please select your preferred start month";
     if (!formData.preferredDestination) newErrors.preferredDestination = "Please select your preferred study destination";
     if (!formData.educationFunding) newErrors.educationFunding = "Please select your education funding";
-    if (FUNDING_DETAIL_PROMPTS[formData.educationFunding] && !formData.fundingDetails.trim()) {
-      newErrors.fundingDetails = "Please give us a few more details so your counsellor can prepare properly";
+    if (formData.educationFunding === "sponsor") {
+      if (!formData.sponsorName.trim()) newErrors.sponsorName = "Please tell us who your sponsor is";
+      if (!formData.sponsorStatus) newErrors.sponsorStatus = "Please select the funding status";
+    }
+    if (formData.educationFunding === "scholarship") {
+      if (!formData.scholarshipName.trim()) newErrors.scholarshipName = "Please tell us which scholarship";
+      if (!formData.scholarshipStatus) newErrors.scholarshipStatus = "Please select the funding status";
+    }
+    if (formData.educationFunding === "mixed") {
+      if (!formData.mixedFundingSources.trim()) newErrors.mixedFundingSources = "Please describe your funding sources";
+      if (!formData.mixedFundingConfirmedAmount.trim()) newErrors.mixedFundingConfirmedAmount = "Please tell us what's already confirmed";
+      if (!formData.mixedFundingRemaining.trim()) newErrors.mixedFundingRemaining = "Please tell us what still depends on approval";
     }
     if (!formData.gdprConsent) newErrors.gdprConsent = "You must consent to data processing to submit";
     setErrors(newErrors);
@@ -531,8 +540,8 @@ function StudentForm() {
             value={formData.educationFunding}
             onChange={(e) => {
               const value = e.target.value;
-              setFormData({ ...formData, educationFunding: value, fundingDetails: FUNDING_DETAIL_PROMPTS[value] ? formData.fundingDetails : "" });
-              setErrors((prev) => ({ ...prev, educationFunding: "", fundingDetails: "" }));
+              setFormData({ ...formData, educationFunding: value, ...BLANK_FUNDING_DETAILS });
+              setErrors((prev) => ({ ...prev, educationFunding: "", ...Object.fromEntries(Object.keys(BLANK_FUNDING_DETAILS).map((key) => [key, ""])) }));
             }}
             className={`w-full px-4 py-3 border bg-white focus:outline-none focus:ring-2 focus:ring-wsa-red/20 focus:border-wsa-red transition-colors ${errors.educationFunding ? "border-red-400" : "border-border"}`}
           >
@@ -545,21 +554,119 @@ function StudentForm() {
           </select>
           {errors.educationFunding && <p className="text-xs text-red-600 mt-1">{errors.educationFunding}</p>}
         </div>
-        {FUNDING_DETAIL_PROMPTS[formData.educationFunding] && (
-          <div>
-            <label className="block text-sm font-medium text-wsa-navy mb-1.5">
-              {FUNDING_DETAIL_PROMPTS[formData.educationFunding].label} *
-            </label>
-            <textarea
-              required
-              rows={2}
-              value={formData.fundingDetails}
-              onChange={(e) => { setFormData({ ...formData, fundingDetails: e.target.value }); setErrors((prev) => ({ ...prev, fundingDetails: "" })); }}
-              className={`w-full px-4 py-3 border bg-white focus:outline-none focus:ring-2 focus:ring-wsa-red/20 focus:border-wsa-red transition-colors ${errors.fundingDetails ? "border-red-400" : "border-border"}`}
-              placeholder={FUNDING_DETAIL_PROMPTS[formData.educationFunding].placeholder}
-            />
-            {errors.fundingDetails && <p className="text-xs text-red-600 mt-1">{errors.fundingDetails}</p>}
+        {formData.educationFunding === "sponsor" && (
+          <div className="grid sm:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-wsa-navy mb-1.5">Sponsor name *</label>
+              <input
+                type="text"
+                required
+                value={formData.sponsorName}
+                onChange={(e) => { setFormData({ ...formData, sponsorName: e.target.value }); setErrors((prev) => ({ ...prev, sponsorName: "" })); }}
+                className={`w-full px-4 py-3 border bg-white focus:outline-none focus:ring-2 focus:ring-wsa-red/20 focus:border-wsa-red transition-colors ${errors.sponsorName ? "border-red-400" : "border-border"}`}
+                placeholder="e.g. employer, government scheme, or family member"
+              />
+              {errors.sponsorName && <p className="text-xs text-red-600 mt-1">{errors.sponsorName}</p>}
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-wsa-navy mb-1.5">Funding status *</label>
+              <select
+                required
+                value={formData.sponsorStatus}
+                onChange={(e) => { setFormData({ ...formData, sponsorStatus: e.target.value }); setErrors((prev) => ({ ...prev, sponsorStatus: "" })); }}
+                className={`w-full px-4 py-3 border bg-white focus:outline-none focus:ring-2 focus:ring-wsa-red/20 focus:border-wsa-red transition-colors ${errors.sponsorStatus ? "border-red-400" : "border-border"}`}
+              >
+                <option value="">Select...</option>
+                {SPONSOR_STATUS_OPTIONS.map((option) => (
+                  <option key={option} value={option}>{option}</option>
+                ))}
+              </select>
+              {errors.sponsorStatus && <p className="text-xs text-red-600 mt-1">{errors.sponsorStatus}</p>}
+            </div>
           </div>
+        )}
+        {formData.educationFunding === "scholarship" && (
+          <>
+            <div className="grid sm:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-wsa-navy mb-1.5">Scholarship name *</label>
+                <input
+                  type="text"
+                  required
+                  value={formData.scholarshipName}
+                  onChange={(e) => { setFormData({ ...formData, scholarshipName: e.target.value }); setErrors((prev) => ({ ...prev, scholarshipName: "" })); }}
+                  className={`w-full px-4 py-3 border bg-white focus:outline-none focus:ring-2 focus:ring-wsa-red/20 focus:border-wsa-red transition-colors ${errors.scholarshipName ? "border-red-400" : "border-border"}`}
+                  placeholder="Name of the scholarship or fund"
+                />
+                {errors.scholarshipName && <p className="text-xs text-red-600 mt-1">{errors.scholarshipName}</p>}
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-wsa-navy mb-1.5">Funding status *</label>
+                <select
+                  required
+                  value={formData.scholarshipStatus}
+                  onChange={(e) => { setFormData({ ...formData, scholarshipStatus: e.target.value }); setErrors((prev) => ({ ...prev, scholarshipStatus: "" })); }}
+                  className={`w-full px-4 py-3 border bg-white focus:outline-none focus:ring-2 focus:ring-wsa-red/20 focus:border-wsa-red transition-colors ${errors.scholarshipStatus ? "border-red-400" : "border-border"}`}
+                >
+                  <option value="">Select...</option>
+                  {SCHOLARSHIP_STATUS_OPTIONS.map((option) => (
+                    <option key={option} value={option}>{option}</option>
+                  ))}
+                </select>
+                {errors.scholarshipStatus && <p className="text-xs text-red-600 mt-1">{errors.scholarshipStatus}</p>}
+              </div>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-wsa-navy mb-1.5">What it covers (if known)</label>
+              <input
+                type="text"
+                value={formData.scholarshipCoverage}
+                onChange={(e) => setFormData({ ...formData, scholarshipCoverage: e.target.value })}
+                className="w-full px-4 py-3 border border-border bg-white focus:outline-none focus:ring-2 focus:ring-wsa-red/20 focus:border-wsa-red transition-colors"
+                placeholder="e.g. full tuition, partial tuition, tuition and living costs"
+              />
+            </div>
+          </>
+        )}
+        {formData.educationFunding === "mixed" && (
+          <>
+            <div>
+              <label className="block text-sm font-medium text-wsa-navy mb-1.5">Funding sources *</label>
+              <input
+                type="text"
+                required
+                value={formData.mixedFundingSources}
+                onChange={(e) => { setFormData({ ...formData, mixedFundingSources: e.target.value }); setErrors((prev) => ({ ...prev, mixedFundingSources: "" })); }}
+                className={`w-full px-4 py-3 border bg-white focus:outline-none focus:ring-2 focus:ring-wsa-red/20 focus:border-wsa-red transition-colors ${errors.mixedFundingSources ? "border-red-400" : "border-border"}`}
+                placeholder="e.g. self-funded plus a sponsor, or a partial scholarship plus a loan"
+              />
+              {errors.mixedFundingSources && <p className="text-xs text-red-600 mt-1">{errors.mixedFundingSources}</p>}
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-wsa-navy mb-1.5">Amount or proportion already confirmed *</label>
+              <input
+                type="text"
+                required
+                value={formData.mixedFundingConfirmedAmount}
+                onChange={(e) => { setFormData({ ...formData, mixedFundingConfirmedAmount: e.target.value }); setErrors((prev) => ({ ...prev, mixedFundingConfirmedAmount: "" })); }}
+                className={`w-full px-4 py-3 border bg-white focus:outline-none focus:ring-2 focus:ring-wsa-red/20 focus:border-wsa-red transition-colors ${errors.mixedFundingConfirmedAmount ? "border-red-400" : "border-border"}`}
+                placeholder="e.g. 50% self-funded and confirmed, or £10,000 already available"
+              />
+              {errors.mixedFundingConfirmedAmount && <p className="text-xs text-red-600 mt-1">{errors.mixedFundingConfirmedAmount}</p>}
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-wsa-navy mb-1.5">What remains dependent on approval *</label>
+              <input
+                type="text"
+                required
+                value={formData.mixedFundingRemaining}
+                onChange={(e) => { setFormData({ ...formData, mixedFundingRemaining: e.target.value }); setErrors((prev) => ({ ...prev, mixedFundingRemaining: "" })); }}
+                className={`w-full px-4 py-3 border bg-white focus:outline-none focus:ring-2 focus:ring-wsa-red/20 focus:border-wsa-red transition-colors ${errors.mixedFundingRemaining ? "border-red-400" : "border-border"}`}
+                placeholder="e.g. remaining balance depends on a pending scholarship decision"
+              />
+              {errors.mixedFundingRemaining && <p className="text-xs text-red-600 mt-1">{errors.mixedFundingRemaining}</p>}
+            </div>
+          </>
         )}
 
         {/* Additional Section */}

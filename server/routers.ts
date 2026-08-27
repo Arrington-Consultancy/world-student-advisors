@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { SPONSOR_STATUS_OPTIONS, SCHOLARSHIP_STATUS_OPTIONS } from "../shared/fundingStatus";
 import {
   notifyStaff,
   notifyInterviewCoachResult,
@@ -46,11 +47,17 @@ const studentSignupSchema = z.object({
   preferredStartMonth: z.string().min(1),
   preferredDestination: z.string().min(1),
   educationFunding: z.string().min(1),
-  /** Required client-side when educationFunding is sponsor/scholarship/mixed (see
-   *  Contact.tsx's FUNDING_DETAIL_PROMPTS); optional here since server-side
-   *  validation of a conditional field isn't this codebase's existing pattern
-   *  (see referredByWhom below). */
-  fundingDetails: z.string().optional().default(""),
+  // Required (enforced below, in .superRefine) when educationFunding is
+  // sponsor, scholarship, or mixed respectively — otherwise left blank.
+  sponsorName: z.string().optional().default(""),
+  sponsorStatus: z.string().optional().default(""),
+  scholarshipName: z.string().optional().default(""),
+  scholarshipStatus: z.string().optional().default(""),
+  /** Always optional, even for a scholarship enquiry: "if known". */
+  scholarshipCoverage: z.string().optional().default(""),
+  mixedFundingSources: z.string().optional().default(""),
+  mixedFundingConfirmedAmount: z.string().optional().default(""),
+  mixedFundingRemaining: z.string().optional().default(""),
   referredToWSA: z.string().optional().default(""),
   referredByWhom: z.string().optional().default(""),
   recommendedCounsellor: z.string().optional().default(""),
@@ -74,6 +81,38 @@ const studentSignupSchema = z.object({
   utm_term: z.string().optional().default(""),
   utm_content: z.string().optional().default(""),
   ...turnstileField,
+}).superRefine((data, ctx) => {
+  // Mirrors Contact.tsx's client-side validation so a request that skips
+  // the browser (a direct API call, or client JS that's out of sync) can't
+  // submit sponsor/scholarship/mixed funding without the structured
+  // status information that's the whole point of asking.
+  if (data.educationFunding === "sponsor") {
+    if (!data.sponsorName.trim()) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["sponsorName"], message: "Sponsor name is required" });
+    }
+    if (!SPONSOR_STATUS_OPTIONS.includes(data.sponsorStatus as (typeof SPONSOR_STATUS_OPTIONS)[number])) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["sponsorStatus"], message: "A valid funding status is required" });
+    }
+  }
+  if (data.educationFunding === "scholarship") {
+    if (!data.scholarshipName.trim()) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["scholarshipName"], message: "Scholarship name is required" });
+    }
+    if (!SCHOLARSHIP_STATUS_OPTIONS.includes(data.scholarshipStatus as (typeof SCHOLARSHIP_STATUS_OPTIONS)[number])) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["scholarshipStatus"], message: "A valid funding status is required" });
+    }
+  }
+  if (data.educationFunding === "mixed") {
+    if (!data.mixedFundingSources.trim()) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["mixedFundingSources"], message: "Funding sources are required" });
+    }
+    if (!data.mixedFundingConfirmedAmount.trim()) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["mixedFundingConfirmedAmount"], message: "The amount or proportion already confirmed is required" });
+    }
+    if (!data.mixedFundingRemaining.trim()) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["mixedFundingRemaining"], message: "What remains dependent on approval is required" });
+    }
+  }
 });
 type StudentSignupInput = z.infer<typeof studentSignupSchema>;
 
@@ -240,7 +279,20 @@ export const appRouter = router({
             `Destination: ${effectiveInput.preferredDestination}`,
             `Start: ${effectiveInput.preferredStartMonth}`,
             `Education Funding: ${effectiveInput.educationFunding}`,
-            effectiveInput.fundingDetails ? `Funding Details: ${effectiveInput.fundingDetails}` : "",
+            ...(effectiveInput.educationFunding === "sponsor" ? [
+              `Sponsor Name: ${effectiveInput.sponsorName}`,
+              `Funding Status: ${effectiveInput.sponsorStatus}`,
+            ] : []),
+            ...(effectiveInput.educationFunding === "scholarship" ? [
+              `Scholarship Name: ${effectiveInput.scholarshipName}`,
+              `Funding Status: ${effectiveInput.scholarshipStatus}`,
+              effectiveInput.scholarshipCoverage ? `Covers: ${effectiveInput.scholarshipCoverage}` : "",
+            ] : []),
+            ...(effectiveInput.educationFunding === "mixed" ? [
+              `Funding Sources: ${effectiveInput.mixedFundingSources}`,
+              `Already Confirmed: ${effectiveInput.mixedFundingConfirmedAmount}`,
+              `Still Dependent on Approval: ${effectiveInput.mixedFundingRemaining}`,
+            ] : []),
             effectiveInput.referredToWSA === "yes"
               ? `Referred to WSA: Yes — ${effectiveInput.referredByWhom || "—"}`
               : effectiveInput.referredToWSA
