@@ -1,0 +1,94 @@
+name: Audit orphaned portal accounts (read-only)
+
+# Manual-only. Strictly read-only — see scripts/audit-orphaned-portal-accounts.mjs.
+# For every portal_users row with no pipedrivePersonId (excluding
+# tom@arringtonconsultancy.com and the WSA demo account, both handled
+# separately), searches Pipedrive by exact email match and reports every
+# candidate Person, their Leads/Deals, and a SAFE TO REPAIR / NEEDS MANUAL
+# REVIEW / NO MATCH FOUND classification with its reason. Never writes to
+# Pipedrive or the database.
+#
+# Uses the MySQL service's public TCP proxy for the database connection,
+# same pattern as this repo's other one-off database workflows, since the
+# app service's own DATABASE_URL points at Railway's private-network-only
+# hostname, unreachable from this GitHub-hosted runner.
+on:
+  workflow_dispatch:
+    inputs:
+      service_name:
+        description: "Railway app service name"
+        required: true
+        default: "world-student-advisors"
+      environment_name:
+        description: "Railway environment name"
+        required: true
+        default: "production"
+      database_service_name:
+        description: "Railway MySQL service name"
+        required: true
+        default: "MySQL"
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    env:
+      APP_SERVICE_NAME: ${{ github.event.inputs.service_name }}
+      APP_ENV_NAME: ${{ github.event.inputs.environment_name }}
+      DB_SERVICE_NAME: ${{ github.event.inputs.database_service_name }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Install Railway CLI
+        run: npm install -g @railway/cli
+
+      - name: Discover the MySQL service's public-URL variable NAME (key only, value never printed)
+        id: discover
+        env:
+          RAILWAY_TOKEN: ${{ secrets.githubactionsprod }}
+        run: |
+          KEYS=$(railway variables --service "$DB_SERVICE_NAME" --environment "$APP_ENV_NAME" --json | jq -r 'keys[]')
+          PUBLIC_KEY=$(echo "$KEYS" | grep -i -E '^(MYSQL_PUBLIC_URL|DATABASE_PUBLIC_URL)$' | head -n1)
+          if [ -z "$PUBLIC_KEY" ]; then
+            echo "No public-URL-shaped variable found on $DB_SERVICE_NAME. Stopping — not guessing further."
+            exit 1
+          fi
+          echo "Using public URL variable: $PUBLIC_KEY"
+          echo "public_key=$PUBLIC_KEY" >> "$GITHUB_OUTPUT"
+
+      - name: Set a temporary public-reachable database URL on the app service
+        env:
+          RAILWAY_TOKEN: ${{ secrets.githubactionsprod }}
+          PUBLIC_KEY: ${{ steps.discover.outputs.public_key }}
+        run: |
+          REF=$(printf '\044{{%s.%s}}' "$DB_SERVICE_NAME" "$PUBLIC_KEY")
+          railway variables \
+            --service "$APP_SERVICE_NAME" \
+            --environment "$APP_ENV_NAME" \
+            --set "AUDIT_SCRIPT_DATABASE_URL=${REF}"
+
+      - name: Run audit
+        env:
+          RAILWAY_TOKEN: ${{ secrets.githubactionsprod }}
+        run: |
+          railway run --service "$APP_SERVICE_NAME" --environment "$APP_ENV_NAME" -- \
+            sh -c 'DATABASE_URL="$AUDIT_SCRIPT_DATABASE_URL" node scripts/audit-orphaned-portal-accounts.mjs'
+
+      - name: Remove the temporary database URL variable
+        if: always()
+        env:
+          RAILWAY_TOKEN: ${{ secrets.githubactionsprod }}
+        run: |
+          railway variables \
+            --service "$APP_SERVICE_NAME" \
+            --environment "$APP_ENV_NAME" \
+            --set "AUDIT_SCRIPT_DATABASE_URL="
