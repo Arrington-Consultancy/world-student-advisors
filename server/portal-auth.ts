@@ -37,6 +37,23 @@ export async function createPortalUser(data: {
     if (data.googleSub && !existing[0].googleSub) {
       await db.update(portalUsers).set({ googleSub: data.googleSub }).where(eq(portalUsers.id, existing[0].id));
     }
+    // Repair a previously Pipedrive-less account (e.g. one created by
+    // "Sign in with Google" on the portal login page before ever applying —
+    // see findOrCreateGoogleUser) now that a genuine application has
+    // produced a real Person/Lead. Only fills a gap, never overwrites an
+    // already-linked account: pipedrivePersonId is the durable anchor every
+    // live Pipedrive read is keyed on (see drizzle/schema.ts), and a second,
+    // possibly-wrong submission must not silently reassign it.
+    if (!existing[0].pipedrivePersonId) {
+      await db
+        .update(portalUsers)
+        .set({
+          pipedrivePersonId: data.pipedrivePersonId,
+          pipedriveObjectType: data.pipedriveObjectType,
+          pipedriveObjectId: data.pipedriveObjectId,
+        })
+        .where(eq(portalUsers.id, existing[0].id));
+    }
     // User already registered - generate a new password reset token
     const token = await generateResetToken(data.email.toLowerCase());
     return { userId: existing[0].id, token, isExisting: true };
