@@ -1,4 +1,5 @@
 import { ArrowRight, MapPin, Phone, Mail, CheckCircle, Loader2 } from "lucide-react";
+import { Link } from "wouter";
 import CountrySelect from "@/components/CountrySelect";
 import InternationalPhoneInput from "@/components/InternationalPhoneInput";
 import ScrollReveal from "@/components/ScrollReveal";
@@ -862,8 +863,15 @@ export default function Contact() {
               <h2 className="text-2xl md:text-3xl font-semibold text-wsa-navy leading-[1.2] mb-5">
                 What happens after you apply?
               </h2>
-              <p className="text-[17px] text-muted-foreground leading-relaxed">
+              <p className="text-[17px] text-muted-foreground leading-relaxed mb-6">
                 A named Student Counsellor will contact you personally within 48 hours. They'll listen to your study abroad plans, answer your questions and help you explore the right options for you. Your counsellor will support you from your first conversation through application, admission, visa and enrolment.
+              </p>
+              <p className="text-[17px] text-muted-foreground leading-relaxed">
+                You'll also get your own Student Portal account, giving you free access to our{" "}
+                <Link href="/portal/interview-coach" className="text-wsa-navy font-semibold hover:text-wsa-red transition-colors">
+                  AI Interview Readiness Coach
+                </Link>{" "}
+                to help you prepare for CAS, UKVI, university and course interviews.
               </p>
             </div>
           </ScrollReveal>

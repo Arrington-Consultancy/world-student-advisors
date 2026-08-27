@@ -146,6 +146,28 @@ export default function StudentSupportLibrary() {
         </div>
       </section>
 
+      {/* Interview Readiness Coach — applicant-benefit callout */}
+      <section className="pb-16 lg:pb-20">
+        <div className="container max-w-4xl">
+          <div className="border border-border/40 p-8 lg:p-10">
+            <p className="text-sm font-medium tracking-[0.2em] uppercase text-wsa-red mb-4">Applicant benefit</p>
+            <h2 className="text-2xl md:text-3xl font-semibold text-wsa-navy leading-[1.2] mb-4">
+              Prepare for your interview with the AI Interview Readiness Coach
+            </h2>
+            <p className="text-[15px] text-muted-foreground leading-relaxed mb-6 max-w-2xl">
+              Once you're a WSA applicant, your Student Portal gives you free access to structured AI practice for CAS interviews, UKVI credibility interviews, university interviews and course-specific interviews, with honest feedback before your live mock interview.
+            </p>
+            <Link
+              href="/portal/interview-coach"
+              className="inline-flex items-center text-wsa-navy font-semibold hover:text-wsa-red transition-colors duration-200"
+            >
+              Explore the Interview Readiness Coach
+              <ArrowRight className="ml-2" size={16} />
+            </Link>
+          </div>
+        </div>
+      </section>
+
       {/* Disclaimer — shown once for the whole library, not repeated per resource */}
       <section className="pb-16 lg:pb-20">
         <div className="container max-w-4xl">

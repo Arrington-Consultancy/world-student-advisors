@@ -196,9 +196,9 @@ export default function Portal() {
           </Link>
 
           {/* Interview Readiness Coach */}
-          <Link href="/portal/interview-coach">
-            <div className="bg-white border border-border/70 p-8 cursor-pointer group transition-all duration-200 hover:-translate-y-1 hover:shadow-[0_18px_60px_rgba(15,23,42,0.08)]">
-              <div className="flex items-start gap-4">
+          <div className="bg-white border border-border/70 p-8 group transition-all duration-200 hover:-translate-y-1 hover:shadow-[0_18px_60px_rgba(15,23,42,0.08)]">
+            <Link href="/portal/interview-coach">
+              <div className="flex items-start gap-4 cursor-pointer">
                 <div className="w-14 h-14 bg-wsa-navy flex items-center justify-center shrink-0">
                   <Mic className="w-7 h-7 text-white" />
                 </div>
@@ -214,8 +214,23 @@ export default function Portal() {
                   </div>
                 </div>
               </div>
+            </Link>
+            {/* Jump straight into a specific mode via InterviewCoach.tsx's ?mode= support. */}
+            <div className="mt-5 pt-5 border-t border-border/50 flex flex-wrap gap-2">
+              {[
+                { mode: "cas", label: "CAS" },
+                { mode: "ukvi", label: "UKVI Credibility" },
+                { mode: "university", label: "University" },
+                { mode: "course", label: "Course-Specific" },
+              ].map((m) => (
+                <Link key={m.mode} href={`/portal/interview-coach?mode=${m.mode}`}>
+                  <span className="inline-block text-xs font-medium text-wsa-navy/70 border border-border/60 px-3 py-1.5 hover:border-wsa-red hover:text-wsa-red transition-colors cursor-pointer">
+                    {m.label}
+                  </span>
+                </Link>
+              ))}
             </div>
-          </Link>
+          </div>
 
           {/* Community & Alumni */}
           <div className="bg-white border border-border/70 p-8">
