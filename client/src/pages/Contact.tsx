@@ -1,4 +1,4 @@
-import { ArrowRight, MapPin, Phone, Mail, CheckCircle, Loader2, ShieldCheck } from "lucide-react";
+import { ArrowRight, MapPin, Phone, Mail, CheckCircle, Loader2 } from "lucide-react";
 import CountrySelect from "@/components/CountrySelect";
 import InternationalPhoneInput from "@/components/InternationalPhoneInput";
 import ScrollReveal from "@/components/ScrollReveal";
@@ -109,33 +109,16 @@ const offices = [
   },
 ];
 
-/**
- * When set, StudentForm is being completed by an already-authenticated
- * portal member (light signup or Google, already signed in) rather than a
- * public visitor: identity is pre-filled and locked from the verified
- * session, the Google-signup button/copy is skipped, submission goes to
- * portal.submitApplication (which links this exact account) instead of
- * contact.submitStudent, and there's no "check your email" step afterwards
- * — onSuccess is called directly since the student is already signed in.
- */
-interface PortalModeProps {
-  token: string;
-  firstName: string;
-  lastName: string;
-  email: string;
-  onSuccess: () => void;
-}
-
-export function StudentForm({ portalMode }: { portalMode?: PortalModeProps } = {}) {
+function StudentForm() {
   const [formData, setFormData] = useState({
-    firstName: portalMode?.firstName ?? "",
+    firstName: "",
     middleName: "",
-    lastName: portalMode?.lastName ?? "",
+    lastName: "",
     gender: "",
     dateOfBirth: "",
     passportNumber: "",
     phone: "",
-    email: portalMode?.email ?? "",
+    email: "",
     nationality: "",
     country: "",
     highestQualification: "",
@@ -159,18 +142,14 @@ export function StudentForm({ portalMode }: { portalMode?: PortalModeProps } = {
   const turnstileRef = useRef<TurnstileWidgetHandle>(null);
   const turnstileSiteKey = useTurnstileSiteKey();
 
-  // Google signup prefill state — googleVerified doubles as "identity is
-  // known and locked" for portal mode too (starts true there, whatever got
-  // them signed in), even though no Google flow runs on this page in that
-  // case; see the banner JSX below for the portal-mode-specific copy.
+  // Google signup prefill state
   const [googlePrefillToken, setGooglePrefillToken] = useState("");
-  const [googleVerified, setGoogleVerified] = useState(!!portalMode);
+  const [googleVerified, setGoogleVerified] = useState(false);
 
   // On mount, read the ?gpt= param left by the Google OAuth signup callback.
   // The payload is decoded client-side for display only; the server verifies
   // the signature at submission time.
   useEffect(() => {
-    if (portalMode) return;
     const params = new URLSearchParams(window.location.search);
     const gpt = params.get("gpt");
     if (!gpt) return;
@@ -190,7 +169,7 @@ export function StudentForm({ portalMode }: { portalMode?: PortalModeProps } = {
     window.history.replaceState({}, "", url.toString());
   }, []);
 
-  const submitMutation = trpc.contact.submitStudent.useMutation({
+  const mutation = trpc.contact.submitStudent.useMutation({
     onSuccess: result => {
       if (result.success) {
         setSubmitted(true);
@@ -210,27 +189,6 @@ export function StudentForm({ portalMode }: { portalMode?: PortalModeProps } = {
       turnstileRef.current?.reset();
     },
   });
-
-  // Portal mode's counterpart to submitMutation: links the caller's own
-  // already-signed-in account directly, no email/activation step needed.
-  const applyMutation = trpc.portal.submitApplication.useMutation({
-    onSuccess: result => {
-      if (result.success) {
-        portalMode?.onSuccess();
-      } else {
-        setSubmitError(result.error);
-        setTurnstileToken("");
-        turnstileRef.current?.reset();
-      }
-    },
-    onError: error => {
-      setSubmitError(error.message || "Something went wrong. Please try again or contact us directly.");
-      setTurnstileToken("");
-      turnstileRef.current?.reset();
-    },
-  });
-
-  const mutation = portalMode ? applyMutation : submitMutation;
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -275,11 +233,7 @@ export function StudentForm({ portalMode }: { portalMode?: PortalModeProps } = {
       setSubmitError("Please complete the verification check below, then try again.");
       return;
     }
-    if (portalMode) {
-      applyMutation.mutate({ ...formData, token: portalMode.token, turnstileToken });
-    } else {
-      submitMutation.mutate({ ...formData, turnstileToken, googlePrefillToken, ...getStoredAdClickIds() });
-    }
+    mutation.mutate({ ...formData, turnstileToken, googlePrefillToken, ...getStoredAdClickIds() });
   };
 
   if (submitted) {
@@ -327,16 +281,7 @@ export function StudentForm({ portalMode }: { portalMode?: PortalModeProps } = {
         </>
       )}
 
-      {googleVerified && portalMode && (
-        <div className="flex items-center gap-2 mb-6 px-4 py-3 bg-green-50 border border-green-200 rounded text-sm text-green-800">
-          <ShieldCheck className="w-4 h-4 shrink-0" aria-hidden="true" />
-          <span>
-            <strong>Signed in.</strong> Name and email are already on file for your account. Please complete the fields below to finish your application.
-          </span>
-        </div>
-      )}
-
-      {googleVerified && !portalMode && (
+      {googleVerified && (
         <div className="flex items-center gap-2 mb-6 px-4 py-3 bg-green-50 border border-green-200 rounded text-sm text-green-800">
           <svg className="w-4 h-4 shrink-0" viewBox="0 0 24 24" aria-hidden="true">
             <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4" />
@@ -807,7 +752,7 @@ export function StudentForm({ portalMode }: { portalMode?: PortalModeProps } = {
             </>
           ) : (
             <>
-              {portalMode ? "Complete Your Application" : "Start Your Application"}
+              Start Your Application
               <ArrowRight className="ml-2.5" size={18} />
             </>
           )}

@@ -42,7 +42,6 @@ import Portal from "./pages/Portal";
 import PortalResources from "./pages/PortalResources";
 import PortalLibrary from "./pages/PortalLibrary";
 import InterviewCoach from "./pages/InterviewCoach";
-import PortalApply from "./pages/PortalApply";
 import CVUniversityApplication from "./pages/CVUniversityApplication";
 import WebUKVisa from "./pages/WebUKVisa";
 import DDVavita from "./pages/DDVavita";
@@ -96,7 +95,6 @@ function Router() {
       <Route path={"/portal/resources"} component={PortalResources} />
       <Route path={"/portal/library"} component={PortalLibrary} />
       <Route path={"/portal/interview-coach"} component={InterviewCoach} />
-      <Route path={"/portal/apply"} component={PortalApply} />
       <Route path={"/portal"} component={Portal} />
       <Route path={"/WebUKVisa"} component={WebUKVisa} />
       <Route path={"/DDVavita"} component={DDVavita} />

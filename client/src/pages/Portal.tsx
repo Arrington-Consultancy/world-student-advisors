@@ -75,12 +75,10 @@ export default function Portal() {
     return null; // redirecting via the effect above
   }
 
-  // Real account, but no application on file yet (light signup or Google
-  // sign-in, no application completed yet) — not an outage, so it gets its
-  // own friendlier, actionable message rather than the "temporarily
-  // unavailable" copy below. The next step stays inside the portal
-  // (/portal/apply, already signed in) rather than sending them back out to
-  // the public /contact form as though nothing they've done so far counts.
+  // Real account, but no application on file yet (e.g. signed in with
+  // Google but hasn't submitted the full WSA registration form) — not an
+  // outage, so it gets its own friendlier, actionable message rather than
+  // the "temporarily unavailable" copy below.
   if (dashboardQuery.data?.status === "no_application") {
     return (
       <PortalShell>
@@ -89,10 +87,10 @@ export default function Portal() {
           {dashboardQuery.data.name ? `Welcome, ${dashboardQuery.data.name}!` : "Almost there!"}
         </h1>
         <p className="text-gray-600 max-w-sm mx-auto mb-6">
-          We don't have an application on file for this account yet. Complete it now to unlock your full student dashboard.
+          We don't have an application on file for this account yet. Complete your registration to unlock your student dashboard.
         </p>
-        <Link href="/portal/apply">
-          <Button className="bg-wsa-red hover:bg-wsa-red/90 text-white">Complete Your Application</Button>
+        <Link href="/contact">
+          <Button className="bg-wsa-red hover:bg-wsa-red/90 text-white">Start Your Application</Button>
         </Link>
       </PortalShell>
     );

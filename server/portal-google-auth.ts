@@ -17,7 +17,7 @@ import type { Express } from "express";
 import crypto from "crypto";
 import * as jose from "jose";
 import { ENV } from "./_core/env";
-import { findOrCreateGoogleUser, mintSignupPrefillToken } from "./portal-auth";
+import { findGoogleUser, mintSignupPrefillToken } from "./portal-auth";
 
 const GOOGLE_AUTH_URL = "https://accounts.google.com/o/oauth2/v2/auth";
 const GOOGLE_TOKEN_URL = "https://oauth2.googleapis.com/token";
@@ -234,10 +234,19 @@ export function registerGoogleAuthRoutes(app: Express) {
       return;
     }
 
-    // ── Login flow: find or create portal user and issue a session token ──────
-    // Find or create the portal user
-    const result = await findOrCreateGoogleUser({ sub, email, firstName, lastName });
+    // ── Login flow: find (never create) the portal user and issue a session
+    // token. The application is the registration — Google sign-in here is
+    // only a login method for an account that already exists.
+    const result = await findGoogleUser({ sub, email, firstName, lastName });
     if (!result) {
+      res.redirect("/portal/login?error=google_token");
+      return;
+    }
+    if (result.status === "not_found") {
+      res.redirect("/portal/login?error=google_no_account");
+      return;
+    }
+    if (result.status === "inactive") {
       res.redirect("/portal/login?error=google_account");
       return;
     }

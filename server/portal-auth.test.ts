@@ -8,7 +8,7 @@ import { describe, expect, it, vi, beforeEach } from "vitest";
 vi.mock("./db", () => ({ getDb: vi.fn() }));
 
 const { getDb } = await import("./db");
-const { createPortalUser, linkPortalUserToPipedrive } = await import("./portal-auth");
+const { createPortalUser, findGoogleUser } = await import("./portal-auth");
 
 const mockedGetDb = vi.mocked(getDb);
 
@@ -145,73 +145,103 @@ describe("createPortalUser — pipedrivePersonId repair on an existing account",
   });
 });
 
-describe("createPortalUser — light signup (no Pipedrive fields at all)", () => {
-  it("creates a brand-new account with no pipedrivePersonId/objectType/objectId set", async () => {
-    const { db, insertValues } = makeFakeDb([]);
-    mockedGetDb.mockResolvedValue(db as any);
+/**
+ * findGoogleUser is find-only: the application is the registration, so
+ * Google sign-in on /portal/login must never create a portal account. This
+ * fakes the same select().from().where().limit() chain as makeFakeDb above,
+ * but per-call rather than a single fixed result, since the function makes
+ * up to two sequential lookups (by googleSub, then by email) and the two
+ * calls need to return different rows to exercise the fallback path.
+ */
+function makeSequencedFakeDb(selectResults: Record<string, unknown>[][]) {
+  const updateSets: Record<string, unknown>[] = [];
+  let selectCall = 0;
 
-    const result = await createPortalUser({
-      email: "light.signup@example.com",
-      firstName: "Light",
-      lastName: "Signup",
-    });
+  const db = {
+    select: vi.fn(() => ({
+      from: vi.fn(() => ({
+        where: vi.fn(() => ({
+          limit: vi.fn(() => Promise.resolve(selectResults[selectCall++] ?? [])),
+        })),
+      })),
+    })),
+    update: vi.fn(() => ({
+      set: vi.fn((payload: Record<string, unknown>) => {
+        updateSets.push(payload);
+        return { where: vi.fn(() => Promise.resolve()) };
+      }),
+    })),
+  };
 
-    expect(result.isExisting).toBe(false);
-    expect(insertValues[0]).toMatchObject({ email: "light.signup@example.com", firstName: "Light", lastName: "Signup" });
-    expect(insertValues[0]).not.toHaveProperty("pipedrivePersonId");
-    expect(insertValues[0]).not.toHaveProperty("pipedriveObjectType");
-    expect(insertValues[0]).not.toHaveProperty("pipedriveObjectId");
-  });
+  return { db, updateSets };
+}
 
-  it("a light-signup call for an already-linked account never touches its existing link", async () => {
-    const { db, updateSets } = makeFakeDb([
-      { id: 21, email: "already-applied@example.com", googleSub: null, pipedrivePersonId: 4242 },
+const GOOGLE_PROFILE = {
+  sub: "google-sub-1",
+  email: "student@example.com",
+  firstName: "Amara",
+  lastName: "Osei",
+};
+
+describe("findGoogleUser — find-only Google portal login", () => {
+  it("existing googleSub match logs in normally, without a second (email) lookup", async () => {
+    const { db, updateSets } = makeSequencedFakeDb([
+      [{ id: 7, email: "student@example.com", firstName: "Amara", lastName: "Osei", googleSub: "google-sub-1", isActive: 1 }],
     ]);
     mockedGetDb.mockResolvedValue(db as any);
 
-    const result = await createPortalUser({
-      email: "already-applied@example.com",
-      firstName: "Already",
-      lastName: "Applied",
-    });
+    const result = await findGoogleUser(GOOGLE_PROFILE);
 
-    // Re-request-style call (e.g. they used "Create a free account" again,
-    // or forgot they already have one) — still just reissues a token.
-    expect(result.isExisting).toBe(true);
-    expect(updateSets.find(s => "pipedrivePersonId" in s)).toBeUndefined();
+    expect(result?.status).toBe("ok");
+    if (result?.status === "ok") expect(result.user.id).toBe(7);
+    expect(db.select).toHaveBeenCalledTimes(1);
+    // Only the lastLogin write — no googleSub link needed, it was already set.
+    expect(updateSets).toEqual([{ lastLogin: expect.any(Date) }]);
   });
 
-  it("a light-signup call for an existing but still-unlinked account leaves it unlinked (nothing to repair yet)", async () => {
-    const { db, updateSets } = makeFakeDb([
-      { id: 22, email: "google-only@example.com", googleSub: "sub-abc", pipedrivePersonId: null },
+  it("existing email match with no googleSub yet links this Google sub as a login method and logs in", async () => {
+    const { db, updateSets } = makeSequencedFakeDb([
+      [], // no match by googleSub
+      [{ id: 9, email: "student@example.com", firstName: "Amara", lastName: "Osei", googleSub: null, isActive: 1 }],
     ]);
     mockedGetDb.mockResolvedValue(db as any);
 
-    await createPortalUser({
-      email: "google-only@example.com",
-      firstName: "Google",
-      lastName: "Only",
-    });
+    const result = await findGoogleUser(GOOGLE_PROFILE);
 
-    expect(updateSets.find(s => "pipedrivePersonId" in s)).toBeUndefined();
+    expect(result?.status).toBe("ok");
+    if (result?.status === "ok") expect(result.user.id).toBe(9);
+    expect(db.select).toHaveBeenCalledTimes(2);
+    expect(updateSets).toContainEqual({ googleSub: "google-sub-1" });
   });
-});
 
-describe("linkPortalUserToPipedrive", () => {
-  it("updates the exact account by id with the given Person/Lead", async () => {
-    const { db, updateSets } = makeFakeDb([]);
+  it("no account matches by googleSub or email — returns not_found and creates nothing", async () => {
+    const { db, updateSets } = makeSequencedFakeDb([[], []]);
     mockedGetDb.mockResolvedValue(db as any);
 
-    await linkPortalUserToPipedrive(55, {
-      pipedrivePersonId: 8371,
-      pipedriveObjectType: "lead",
-      pipedriveObjectId: "58877ff0-a229-11f1-a4a0-1756967adcc3",
-    });
+    const result = await findGoogleUser(GOOGLE_PROFILE);
 
-    expect(updateSets).toContainEqual({
-      pipedrivePersonId: 8371,
-      pipedriveObjectType: "lead",
-      pipedriveObjectId: "58877ff0-a229-11f1-a4a0-1756967adcc3",
-    });
+    expect(result).toEqual({ status: "not_found" });
+    expect(updateSets).toEqual([]);
+    expect((db as any).insert).toBeUndefined();
+  });
+
+  it("an existing but deactivated account returns inactive, without logging in", async () => {
+    const { db, updateSets } = makeSequencedFakeDb([
+      [{ id: 3, email: "student@example.com", firstName: "Amara", lastName: "Osei", googleSub: "google-sub-1", isActive: 0 }],
+    ]);
+    mockedGetDb.mockResolvedValue(db as any);
+
+    const result = await findGoogleUser(GOOGLE_PROFILE);
+
+    expect(result).toEqual({ status: "inactive" });
+    expect(updateSets).toEqual([]);
+  });
+
+  it("returns null when the database is unavailable", async () => {
+    mockedGetDb.mockResolvedValue(undefined as any);
+
+    const result = await findGoogleUser(GOOGLE_PROFILE);
+
+    expect(result).toBeNull();
   });
 });

@@ -1,10 +1,8 @@
-import { useRef, useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { Link, useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { PortalAuthShell } from "@/components/PortalBrandShell";
-import TurnstileWidget, { type TurnstileWidgetHandle } from "@/components/TurnstileWidget";
-import { useTurnstileSiteKey } from "@/hooks/useTurnstileSiteKey";
 import { trpc } from "@/lib/trpc";
 import { Eye, EyeOff } from "lucide-react";
 
@@ -19,21 +17,11 @@ function startGoogleLogin() {
 
 export default function PortalLogin() {
   const [, navigate] = useLocation();
-  const [mode, setMode] = useState<"login" | "signup">("login");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
-
-  // Light signup — name + email only. No application fields: portal access
-  // shouldn't require completing the full application first.
-  const [signupFirstName, setSignupFirstName] = useState("");
-  const [signupLastName, setSignupLastName] = useState("");
-  const [signupEmail, setSignupEmail] = useState("");
-  const [signupSubmitted, setSignupSubmitted] = useState(false);
-  const [signupTurnstileToken, setSignupTurnstileToken] = useState("");
-  const signupTurnstileRef = useRef<TurnstileWidgetHandle>(null);
-  const turnstileSiteKey = useTurnstileSiteKey();
+  const [noPortalAccount, setNoPortalAccount] = useState(false);
 
   // Handle token delivered by the Google OAuth callback redirect
   useEffect(() => {
@@ -51,6 +39,11 @@ export default function PortalLogin() {
     }
 
     if (oauthError) {
+      if (oauthError === "google_no_account") {
+        setNoPortalAccount(true);
+        setError("We don't have a portal account for that email yet.");
+        return;
+      }
       const messages: Record<string, string> = {
         google_denied: "Google sign-in was cancelled.",
         google_token: "Could not complete Google sign-in. Please try again.",
@@ -81,62 +74,26 @@ export default function PortalLogin() {
     loginMutation.mutate({ email, password });
   };
 
-  const signupMutation = trpc.portal.signup.useMutation({
-    onSuccess: (data) => {
-      if (data.success) {
-        setSignupSubmitted(true);
-      } else {
-        setError(data.error || "Something went wrong. Please try again.");
-        setSignupTurnstileToken("");
-        signupTurnstileRef.current?.reset();
-      }
-    },
-    onError: () => {
-      setError("Something went wrong. Please try again.");
-      setSignupTurnstileToken("");
-      signupTurnstileRef.current?.reset();
-    },
-  });
-
-  const handleSignupSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    setError("");
-    if (!signupTurnstileToken) {
-      setError("Please complete the verification check below, then try again.");
-      return;
-    }
-    signupMutation.mutate({
-      firstName: signupFirstName,
-      lastName: signupLastName,
-      email: signupEmail,
-      turnstileToken: signupTurnstileToken,
-    });
-  };
-
-  if (mode === "signup" && signupSubmitted) {
-    return (
-      <PortalAuthShell title="Check your email" description="One more step to get into your portal.">
-        <p className="text-sm text-gray-600 leading-relaxed">
-          We've sent a link to <strong>{signupEmail}</strong> to set your password. Once that's done you'll be straight into your portal — no application needed yet.
-        </p>
-      </PortalAuthShell>
-    );
-  }
-
   return (
-    <PortalAuthShell
-      title="Interview Readiness Coach"
-      description={mode === "signup" ? "Create your free portal account in seconds." : "Sign in to access your resources and tools."}
-    >
+    <PortalAuthShell title="Interview Readiness Coach" description="Sign in to access your resources and tools.">
         <div className="space-y-5">
           {error && (
             <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm">
               {error}
+              {noPortalAccount && (
+                <>
+                  {" "}
+                  Please complete your application at{" "}
+                  <Link href="/contact" className="underline font-medium">
+                    /contact
+                  </Link>{" "}
+                  to get started.
+                </>
+              )}
             </div>
           )}
 
-          {/* Google sign-in / sign-up — the same "light" entry either way,
-              no application required to create or activate a portal account. */}
+          {/* Google sign-in */}
           <Button
             type="button"
             variant="outline"
@@ -161,7 +118,7 @@ export default function PortalLogin() {
                 fill="#EA4335"
               />
             </svg>
-            {mode === "signup" ? "Sign up with Google" : "Sign in with Google"}
+            Sign in with Google
           </Button>
 
           <div className="relative">
@@ -169,130 +126,62 @@ export default function PortalLogin() {
               <span className="w-full border-t border-gray-200" />
             </div>
             <div className="relative flex justify-center text-xs uppercase">
-              <span className="bg-white px-2 text-gray-400">{mode === "signup" ? "or sign up with email" : "or sign in with email"}</span>
+              <span className="bg-white px-2 text-gray-400">or sign in with email</span>
             </div>
           </div>
 
-          {mode === "login" ? (
-            <form onSubmit={handleSubmit} className="space-y-5">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1.5">Email Address</label>
-                <Input
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="your.email@example.com"
-                  required
-                  className="h-11"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1.5">Password</label>
-                <div className="relative">
-                  <Input
-                    type={showPassword ? "text" : "password"}
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    placeholder="Enter your password"
-                    required
-                    className="h-11 pr-10"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
-                  >
-                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                  </button>
-                </div>
-              </div>
-
-              <Button
-                type="submit"
-                className="w-full h-11 bg-wsa-red hover:bg-wsa-red/90 text-white"
-                disabled={loginMutation.isPending}
-              >
-                {loginMutation.isPending ? "Signing in..." : "Sign In"}
-              </Button>
-            </form>
-          ) : (
-            <form onSubmit={handleSignupSubmit} className="space-y-5">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1.5">First Name</label>
-                  <Input
-                    type="text"
-                    value={signupFirstName}
-                    onChange={(e) => setSignupFirstName(e.target.value)}
-                    required
-                    className="h-11"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1.5">Last Name</label>
-                  <Input
-                    type="text"
-                    value={signupLastName}
-                    onChange={(e) => setSignupLastName(e.target.value)}
-                    required
-                    className="h-11"
-                  />
-                </div>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1.5">Email Address</label>
-                <Input
-                  type="email"
-                  value={signupEmail}
-                  onChange={(e) => setSignupEmail(e.target.value)}
-                  placeholder="your.email@example.com"
-                  required
-                  className="h-11"
-                />
-              </div>
-              <TurnstileWidget
-                ref={signupTurnstileRef}
-                siteKey={turnstileSiteKey}
-                onVerify={setSignupTurnstileToken}
-                onExpire={() => setSignupTurnstileToken("")}
-                onError={() => setSignupTurnstileToken("")}
+          <form onSubmit={handleSubmit} className="space-y-5">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1.5">Email Address</label>
+              <Input
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="your.email@example.com"
+                required
+                className="h-11"
               />
-              <Button
-                type="submit"
-                className="w-full h-11 bg-wsa-red hover:bg-wsa-red/90 text-white"
-                disabled={signupMutation.isPending || !signupTurnstileToken}
-              >
-                {signupMutation.isPending ? "Creating your account..." : "Create Account"}
-              </Button>
-              <p className="text-xs text-gray-500">
-                You'll complete your application inside the portal once you're signed in — no need to fill it in twice.
-              </p>
-            </form>
-          )}
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1.5">Password</label>
+              <div className="relative">
+                <Input
+                  type={showPassword ? "text" : "password"}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="Enter your password"
+                  required
+                  className="h-11 pr-10"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                >
+                  {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
+              </div>
+            </div>
+
+            <Button
+              type="submit"
+              className="w-full h-11 bg-wsa-red hover:bg-wsa-red/90 text-white"
+              disabled={loginMutation.isPending}
+            >
+              {loginMutation.isPending ? "Signing in..." : "Sign In"}
+            </Button>
+          </form>
 
           <div className="text-center space-y-2 pt-2">
-            {mode === "login" && (
-              <Link href="/portal/reset-password" className="text-sm text-wsa-red hover:underline block">
-                Forgot your password?
-              </Link>
-            )}
+            <Link href="/portal/reset-password" className="text-sm text-wsa-red hover:underline block">
+              Forgot your password?
+            </Link>
             <p className="text-sm text-gray-500">
-              {mode === "login" ? (
-                <>
-                  New here?{" "}
-                  <button type="button" onClick={() => { setMode("signup"); setError(""); }} className="text-wsa-red hover:underline">
-                    Create a free account
-                  </button>
-                </>
-              ) : (
-                <>
-                  Already have an account?{" "}
-                  <button type="button" onClick={() => { setMode("login"); setError(""); }} className="text-wsa-red hover:underline">
-                    Sign in
-                  </button>
-                </>
-              )}
+              Don't have an account?{" "}
+              <Link href="/contact" className="text-wsa-red hover:underline">
+                Apply Now
+              </Link>
             </p>
           </div>
         </div>

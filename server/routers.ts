@@ -20,7 +20,6 @@ import {
   verifyPortalToken,
   getPortalUserById,
   verifySignupPrefillToken,
-  linkPortalUserToPipedrive,
 } from "./portal-auth";
 import { resolvePortalDashboard } from "./portal-resolver";
 import { getSessionQuestions, assessAnswer, summariseSession, TYPE_LABELS } from "./interviewCoach";
@@ -30,20 +29,15 @@ import { authenticateStaffPortal, verifyStaffPortalToken, isStaffPortalLoginRate
 /** Shared by every Turnstile-protected mutation's input schema. */
 const turnstileField = { turnstileToken: z.string().min(1, "Verification required") };
 
-/**
- * The application itself — everything except identity (name/email) and
- * turnstile, so it can be shared between the public /contact form
- * (studentSignupSchema, identity supplied raw or via Google prefill) and an
- * already-authenticated portal member completing their application
- * in-portal (portalApplicationSchema, identity comes from their verified
- * session token, never re-asked).
- */
-const applicationFieldsShape = {
+const studentSignupSchema = z.object({
+  firstName: z.string().min(1),
   middleName: z.string().optional().default(""),
+  lastName: z.string().min(1),
   gender: z.string().min(1),
   dateOfBirth: z.string().min(1),
   passportNumber: z.string().optional().default(""),
   phone: z.string().min(1),
+  email: z.string().email(),
   nationality: z.string().min(1),
   country: z.string().min(1),
   highestQualification: z.string().min(1),
@@ -68,20 +62,30 @@ const applicationFieldsShape = {
   referredByWhom: z.string().optional().default(""),
   recommendedCounsellor: z.string().optional().default(""),
   gdprConsent: z.boolean(),
-};
-
-/**
- * Mirrors Contact.tsx's client-side validation so a request that skips the
- * browser (a direct API call, or client JS that's out of sync) can't submit
- * sponsor/scholarship/mixed funding without the structured status
- * information that's the whole point of asking. Shared by both schemas
- * below via .superRefine(validateFundingFields) — the fields it checks are
- * identical either way.
- */
-function validateFundingFields(
-  data: { educationFunding: string; sponsorName: string; sponsorStatus: string; scholarshipName: string; scholarshipStatus: string; mixedFundingSources: string; mixedFundingConfirmedAmount: string; mixedFundingRemaining: string },
-  ctx: z.RefinementCtx
-) {
+  /** Honeypot — real users never see or fill this field; bots often do. */
+  website: z.string().optional().default(""),
+  /**
+   * Short-lived JWT minted by the Google OAuth callback when flow=signup.
+   * When present the server verifies it and uses the locked sub/email/name
+   * values from Google rather than the raw form fields, and links the
+   * resulting portal account to that Google subject.
+   */
+  googlePrefillToken: z.string().optional().default(""),
+  /** Google Ads click identifiers, captured client-side from the landing URL. */
+  gclid: z.string().optional().default(""),
+  gbraid: z.string().optional().default(""),
+  wbraid: z.string().optional().default(""),
+  utm_source: z.string().optional().default(""),
+  utm_medium: z.string().optional().default(""),
+  utm_campaign: z.string().optional().default(""),
+  utm_term: z.string().optional().default(""),
+  utm_content: z.string().optional().default(""),
+  ...turnstileField,
+}).superRefine((data, ctx) => {
+  // Mirrors Contact.tsx's client-side validation so a request that skips
+  // the browser (a direct API call, or client JS that's out of sync) can't
+  // submit sponsor/scholarship/mixed funding without the structured
+  // status information that's the whole point of asking.
   if (data.educationFunding === "sponsor") {
     if (!data.sponsorName.trim()) {
       ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["sponsorName"], message: "Sponsor name is required" });
@@ -109,146 +113,12 @@ function validateFundingFields(
       ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["mixedFundingRemaining"], message: "What remains dependent on approval is required" });
     }
   }
-}
-
-const studentSignupSchema = z.object({
-  firstName: z.string().min(1),
-  lastName: z.string().min(1),
-  email: z.string().email(),
-  ...applicationFieldsShape,
-  /** Honeypot — real users never see or fill this field; bots often do. */
-  website: z.string().optional().default(""),
-  /**
-   * Short-lived JWT minted by the Google OAuth callback when flow=signup.
-   * When present the server verifies it and uses the locked sub/email/name
-   * values from Google rather than the raw form fields, and links the
-   * resulting portal account to that Google subject.
-   */
-  googlePrefillToken: z.string().optional().default(""),
-  /** Google Ads click identifiers, captured client-side from the landing URL. */
-  gclid: z.string().optional().default(""),
-  gbraid: z.string().optional().default(""),
-  wbraid: z.string().optional().default(""),
-  utm_source: z.string().optional().default(""),
-  utm_medium: z.string().optional().default(""),
-  utm_campaign: z.string().optional().default(""),
-  utm_term: z.string().optional().default(""),
-  utm_content: z.string().optional().default(""),
-  ...turnstileField,
-}).superRefine(validateFundingFields);
+});
 type StudentSignupInput = z.infer<typeof studentSignupSchema>;
 
-/**
- * The in-portal "complete your application" submission. No name/email/
- * honeypot/Google-prefill/ad-click fields — identity comes from the
- * verified portal session (`token`) alone, never re-collected.
- */
-const portalApplicationSchema = z.object({
-  token: z.string().min(1),
-  ...applicationFieldsShape,
-  ...turnstileField,
-}).superRefine(validateFundingFields);
-
 /** Safe-for-logs summary — never includes passport number or any secret. */
-function safeSubmissionSummary(input: { firstName: string; lastName: string; email: string; desiredLevel: string }): string {
+function safeSubmissionSummary(input: StudentSignupInput): string {
   return `${input.firstName} ${input.lastName} <${input.email}> (${input.desiredLevel})`;
-}
-
-/**
- * Builds the staff notification body for a new enquiry/application, shared
- * by contact.submitStudent (public /contact) and portal.submitApplication
- * (in-portal, already-authenticated) so the two surfaces can't drift.
- */
-function buildEnquiryNotificationLines(
-  input: Parameters<typeof createStudentLead>[0],
-  result: { recommendedCounsellorLabel: string; leadId: string; reusedExistingPerson: boolean }
-): string[] {
-  return [
-    `Name: ${input.firstName} ${input.lastName}`,
-    `Email: ${input.email}`,
-    input.phone ? `Phone: ${input.phone}` : "",
-    `Gender: ${input.gender}`,
-    `Date of Birth: ${input.dateOfBirth}`,
-    input.passportNumber ? `Passport Number: ${input.passportNumber}` : "",
-    `Nationality: ${input.nationality}`,
-    `Country: ${input.country}`,
-    `Highest Qualification: ${input.highestQualification}`,
-    `Desired Level: ${input.desiredLevel}`,
-    `Area of Study: ${input.areaOfStudy}`,
-    `Preferred Mode: ${input.preferredMode}`,
-    `Destination: ${input.preferredDestination}`,
-    `Start: ${input.preferredStartMonth}`,
-    `Education Funding: ${input.educationFunding}`,
-    ...(input.educationFunding === "sponsor" ? [
-      `Sponsor Name: ${input.sponsorName}`,
-      `Funding Status: ${input.sponsorStatus}`,
-    ] : []),
-    ...(input.educationFunding === "scholarship" ? [
-      `Scholarship Name: ${input.scholarshipName}`,
-      `Funding Status: ${input.scholarshipStatus}`,
-      input.scholarshipCoverage ? `Covers: ${input.scholarshipCoverage}` : "",
-    ] : []),
-    ...(input.educationFunding === "mixed" ? [
-      `Funding Sources: ${input.mixedFundingSources}`,
-      `Already Confirmed: ${input.mixedFundingConfirmedAmount}`,
-      `Still Dependent on Approval: ${input.mixedFundingRemaining}`,
-    ] : []),
-    input.referredToWSA === "yes"
-      ? `Referred to WSA: Yes — ${input.referredByWhom || "—"}`
-      : input.referredToWSA
-        ? `Referred to WSA: ${input.referredToWSA}`
-        : "",
-    `Recommended Counsellor: ${result.recommendedCounsellorLabel}`,
-    result.reusedExistingPerson ? `\n(Matched an existing Pipedrive Person by email/phone — updated rather than duplicated.)` : "",
-    ``,
-    `Pipedrive Lead ID: ${result.leadId}`,
-  ];
-}
-
-/**
- * Calls createStudentLead with the shared failure handling both
- * contact.submitStudent and portal.submitApplication need: log safely,
- * durably preserve the full submission for retry, alert staff, and return a
- * friendly error rather than letting the mutation throw.
- */
-async function attemptCreateStudentLead(
-  data: Parameters<typeof createStudentLead>[0]
-): Promise<{ ok: true; result: Awaited<ReturnType<typeof createStudentLead>> } | { ok: false; error: string }> {
-  try {
-    const result = await createStudentLead(data);
-    return { ok: true, result };
-  } catch (error) {
-    console.error(
-      `[Pipedrive] Sign-up failed to save for ${safeSubmissionSummary(data)}:`,
-      error instanceof Error ? error.message : String(error)
-    );
-
-    await recordFailedSubmission({
-      formType: "student-signup",
-      email: data.email,
-      payload: data,
-      errorMessage: error instanceof Error ? error.message : String(error),
-    });
-
-    notifyStaff({
-      title: `Sign-up FAILED to save: ${data.firstName} ${data.lastName}`,
-      content: [
-        `A student sign-up could not be saved to Pipedrive and needs manual follow-up.`,
-        ``,
-        `Name: ${data.firstName} ${data.lastName}`,
-        `Email: ${data.email}`,
-        `Phone: ${data.phone}`,
-        `Desired Level: ${data.desiredLevel}`,
-        ``,
-        `The full submission has been preserved for retry (see failed_submissions table if the database is connected; otherwise check server logs for the timestamp above).`,
-      ].join("\n"),
-    }).catch(err => console.error("[Notification] Failed to send failure alert:", err));
-
-    return {
-      ok: false,
-      error: "We couldn't save your sign-up just now. Please try again in a few minutes, or contact us directly. Your details have not been lost.",
-    };
-  }
 }
 export const appRouter = router({
     // if you need to use socket.io, read and register route in server/_core/index.ts, all api should start with '/api/' so that the gateway can route correctly
@@ -296,11 +166,45 @@ export const appRouter = router({
           googleSub = verified.sub;
         }
 
-        const attempt = await attemptCreateStudentLead(effectiveInput);
-        if (!attempt.ok) {
-          return { success: false as const, error: attempt.error };
+        let result: Awaited<ReturnType<typeof createStudentLead>>;
+        try {
+          result = await createStudentLead(effectiveInput);
+        } catch (error) {
+          // Safe log only — no token, no passport number, no full payload.
+          console.error(
+            `[Pipedrive] Sign-up failed to save for ${safeSubmissionSummary(effectiveInput)}:`,
+            error instanceof Error ? error.message : String(error)
+          );
+
+          // Preserve the full submission durably so it isn't silently lost.
+          await recordFailedSubmission({
+            formType: "student-signup",
+            email: effectiveInput.email,
+            payload: effectiveInput,
+            errorMessage: error instanceof Error ? error.message : String(error),
+          });
+
+          // Alert staff that a submission failed to save — separate from the
+          // normal success notification, and never awaited-and-swallowed.
+          notifyStaff({
+            title: `Sign-up FAILED to save: ${effectiveInput.firstName} ${effectiveInput.lastName}`,
+            content: [
+              `A student sign-up could not be saved to Pipedrive and needs manual follow-up.`,
+              ``,
+              `Name: ${effectiveInput.firstName} ${effectiveInput.lastName}`,
+              `Email: ${effectiveInput.email}`,
+              `Phone: ${effectiveInput.phone}`,
+              `Desired Level: ${effectiveInput.desiredLevel}`,
+              ``,
+              `The full submission has been preserved for retry (see failed_submissions table if the database is connected; otherwise check server logs for the timestamp above).`,
+            ].join("\n"),
+          }).catch(err => console.error("[Notification] Failed to send failure alert:", err));
+
+          return {
+            success: false as const,
+            error: "We couldn't save your sign-up just now. Please try again in a few minutes, or contact us directly. Your details have not been lost.",
+          };
         }
-        const result = attempt.result;
 
         // Create the portal account and email the applicant their one-time
         // setup link directly. Best-effort: the sign-up itself already
@@ -359,7 +263,46 @@ export const appRouter = router({
         // about who Pipedrive has actually assigned as the Lead's owner.
         notifyStaff({
           title: `New Student Enquiry (Rec: ${result.recommendedCounsellorLabel}): ${effectiveInput.firstName} ${effectiveInput.lastName} - ${effectiveInput.desiredLevel}`,
-          content: buildEnquiryNotificationLines(effectiveInput, result).filter(Boolean).join("\n"),
+          content: [
+            `Name: ${effectiveInput.firstName} ${effectiveInput.lastName}`,
+            `Email: ${effectiveInput.email}`,
+            effectiveInput.phone ? `Phone: ${effectiveInput.phone}` : "",
+            `Gender: ${effectiveInput.gender}`,
+            `Date of Birth: ${effectiveInput.dateOfBirth}`,
+            effectiveInput.passportNumber ? `Passport Number: ${effectiveInput.passportNumber}` : "",
+            `Nationality: ${effectiveInput.nationality}`,
+            `Country: ${effectiveInput.country}`,
+            `Highest Qualification: ${effectiveInput.highestQualification}`,
+            `Desired Level: ${effectiveInput.desiredLevel}`,
+            `Area of Study: ${effectiveInput.areaOfStudy}`,
+            `Preferred Mode: ${effectiveInput.preferredMode}`,
+            `Destination: ${effectiveInput.preferredDestination}`,
+            `Start: ${effectiveInput.preferredStartMonth}`,
+            `Education Funding: ${effectiveInput.educationFunding}`,
+            ...(effectiveInput.educationFunding === "sponsor" ? [
+              `Sponsor Name: ${effectiveInput.sponsorName}`,
+              `Funding Status: ${effectiveInput.sponsorStatus}`,
+            ] : []),
+            ...(effectiveInput.educationFunding === "scholarship" ? [
+              `Scholarship Name: ${effectiveInput.scholarshipName}`,
+              `Funding Status: ${effectiveInput.scholarshipStatus}`,
+              effectiveInput.scholarshipCoverage ? `Covers: ${effectiveInput.scholarshipCoverage}` : "",
+            ] : []),
+            ...(effectiveInput.educationFunding === "mixed" ? [
+              `Funding Sources: ${effectiveInput.mixedFundingSources}`,
+              `Already Confirmed: ${effectiveInput.mixedFundingConfirmedAmount}`,
+              `Still Dependent on Approval: ${effectiveInput.mixedFundingRemaining}`,
+            ] : []),
+            effectiveInput.referredToWSA === "yes"
+              ? `Referred to WSA: Yes — ${effectiveInput.referredByWhom || "—"}`
+              : effectiveInput.referredToWSA
+                ? `Referred to WSA: ${effectiveInput.referredToWSA}`
+                : "",
+            `Recommended Counsellor: ${result.recommendedCounsellorLabel}`,
+            result.reusedExistingPerson ? `\n(Matched an existing Pipedrive Person by email/phone — updated rather than duplicated.)` : "",
+            ``,
+            `Pipedrive Lead ID: ${result.leadId}`,
+          ].filter(Boolean).join("\n"),
         }).catch(err => console.error("[Notification] Failed to send staff notification:", err));
 
         // Confirm to the applicant — best-effort, logged rather than swallowed.
@@ -448,15 +391,13 @@ export const appRouter = router({
     // a raw Pipedrive object. "unavailable" covers the database being down
     // or the account not resolving at all, which must never fall back to
     // any ungated portal content. "no_application" is a distinct, narrower
-    // case: a real, authenticated portal account (light email signup or
-    // Google sign-in — see portal.signup/findOrCreateGoogleUser) that has
-    // no linked Pipedrive record yet — not an outage, so it gets its own
-    // status, with an in-portal path to complete it (portal.submitApplication
-    // below), rather than being folded into "unavailable". A Pipedrive read
-    // failure after successful auth is different again (progress.state
-    // "pipedrive_unavailable") that still returns the student's name, since
-    // that comes from the portal database, not Pipedrive. See
-    // server/portal-resolver.ts for the resolution logic.
+    // case: a real, authenticated portal account (e.g. Google sign-in)
+    // that has no linked Pipedrive record yet — not an outage, so it gets
+    // its own status rather than being folded into "unavailable". A
+    // Pipedrive read failure after successful auth is different again
+    // (progress.state "pipedrive_unavailable") that still returns the
+    // student's name, since that comes from the portal database, not
+    // Pipedrive. See server/portal-resolver.ts for the resolution logic.
     dashboard: publicProcedure
       .input(z.object({ token: z.string() }))
       .query(async ({ input }) => {
@@ -478,118 +419,6 @@ export const appRouter = router({
           name: portalUser.firstName,
           progress,
         };
-      }),
-
-    // Light entry point: name + email only, no application fields. Creates
-    // a portal account with no Pipedrive link yet (exactly the same shape
-    // findOrCreateGoogleUser already produces for Google sign-in) and emails
-    // a one-time link to set a password — reusing sendPortalSetupEmail's
-    // copy, which already reads correctly whether this is truly their first
-    // account or a re-request. Deliberately does not reveal whether the
-    // email already had an account (same anti-enumeration posture as
-    // requestPasswordReset): the response is identical either way, and an
-    // already-linked account is never touched (createPortalUser's own
-    // guard — see server/portal-auth.ts).
-    signup: publicProcedure
-      .input(z.object({ firstName: z.string().min(1), lastName: z.string().min(1), email: z.string().email(), ...turnstileField }))
-      .mutation(async ({ input, ctx }) => {
-        await requireTurnstile(input.turnstileToken, ctx.req.ip);
-
-        try {
-          const result = await createPortalUser({ email: input.email, firstName: input.firstName, lastName: input.lastName });
-          const setupLink = `${ENV.publicSiteUrl}/portal/set-password?token=${result.token}&email=${encodeURIComponent(input.email)}`;
-          const emailSent = await sendPortalSetupEmail(input.email, input.firstName, setupLink);
-
-          if (!emailSent) {
-            console.error(`[Portal] Light-signup setup email failed to send for ${input.email}`);
-            notifyStaff({
-              title: `Portal signup email FAILED to send: ${input.firstName} ${input.lastName}`,
-              content: [
-                `A light portal signup was created but the setup email could not be delivered.`,
-                `Name: ${input.firstName} ${input.lastName}`,
-                `Email: ${input.email}`,
-                `They will need the setup link resent manually.`,
-              ].join("\n"),
-            }).catch(err => console.error("[Notification] Failed to send portal-signup-email-failure alert:", err));
-          }
-        } catch (e) {
-          console.error(`[Portal] Light signup failed for ${input.email}:`, e instanceof Error ? e.message : String(e));
-          return { success: false as const, error: "We couldn't create your account just now. Please try again in a few minutes." };
-        }
-
-        return { success: true as const };
-      }),
-
-    // In-portal "complete your application" — the counterpart to
-    // contact.submitStudent for a student who already has a light portal
-    // account. Identity (name/email) comes from the verified session token
-    // alone, never re-collected; no honeypot or Google-prefill handling,
-    // since an authenticated request needs neither. Refuses outright if the
-    // account is already linked, so this can only ever create one Lead per
-    // account — the guard against a duplicate Pipedrive application via
-    // this path. On success the account is linked directly by id
-    // (linkPortalUserToPipedrive), not by an email match, and no further
-    // setup email or activation step is sent: the student is already
-    // signed in and portal.dashboard now resolves them normally.
-    submitApplication: publicProcedure
-      .input(portalApplicationSchema)
-      .mutation(async ({ input, ctx }) => {
-        const payload = await verifyPortalToken(input.token);
-        if (!payload) {
-          return { success: false as const, error: "Your session has expired. Please sign in again." };
-        }
-
-        const portalUser = await getPortalUserById(payload.portalUserId);
-        if (!portalUser) {
-          return { success: false as const, error: "We couldn't find your account. Please sign in again." };
-        }
-        if (portalUser.pipedrivePersonId) {
-          return { success: false as const, error: "You already have an application on file." };
-        }
-
-        await requireTurnstile(input.turnstileToken, ctx.req.ip);
-
-        const applicationData = { ...input, firstName: payload.firstName, lastName: payload.lastName, email: payload.email };
-
-        const attempt = await attemptCreateStudentLead(applicationData);
-        if (!attempt.ok) {
-          return { success: false as const, error: attempt.error };
-        }
-        const result = attempt.result;
-
-        try {
-          await linkPortalUserToPipedrive(payload.portalUserId, {
-            pipedrivePersonId: result.personId,
-            pipedriveObjectType: "lead",
-            pipedriveObjectId: result.leadId,
-          });
-        } catch (e) {
-          console.error(
-            `[Portal] Application saved to Pipedrive but failed to link portal account for ${safeSubmissionSummary(applicationData)}:`,
-            e instanceof Error ? e.message : String(e)
-          );
-          notifyStaff({
-            title: `Portal application-linking FAILED: ${applicationData.firstName} ${applicationData.lastName}`,
-            content: [
-              `The student's application was saved successfully to Pipedrive, but their portal account could not be linked to it.`,
-              `Name: ${applicationData.firstName} ${applicationData.lastName}`,
-              `Email: ${applicationData.email}`,
-              `Pipedrive Lead ID: ${result.leadId}`,
-              `They will need their portal account linked manually.`,
-            ].join("\n"),
-          }).catch(err => console.error("[Notification] Failed to send application-link-failure alert:", err));
-        }
-
-        notifyStaff({
-          title: `New Student Enquiry (Rec: ${result.recommendedCounsellorLabel}): ${applicationData.firstName} ${applicationData.lastName} - ${applicationData.desiredLevel}`,
-          content: buildEnquiryNotificationLines(applicationData, result).filter(Boolean).join("\n"),
-        }).catch(err => console.error("[Notification] Failed to send staff notification:", err));
-
-        sendApplicantConfirmation(applicationData.email, applicationData.firstName).catch(err =>
-          console.error("[Notification] Failed to send applicant confirmation:", err)
-        );
-
-        return { success: true as const };
       }),
   }),
 
