@@ -77,13 +77,13 @@ const PF = {
   preferredStartMonth: "3c131beee887a4391db98adf659bf03b67c2d576",
   preferredDestination: "1f3f30e974eaf7b88d1cd95b43efffc129abd71c",
   educationFunding: "147e0f451a4bd38bc35d7c1fe8c8631fee212160",
-  // Formerly "Promotional Code" — a field the website never actually used
-  // for anything beyond capture-and-forward. Relabelled in Pipedrive
-  // (Settings -> Custom Fields -> Person) to "Funding Source" and repointed
-  // here to carry the sponsor/scholarship/mixed-funding explanation
-  // instead. Same field key, so no new Pipedrive schema and no data loss;
-  // only the label and what's written to it going forward have changed.
-  fundingSource: "7243d4c977d88d238d62f109f4e8c9a323a7f23a",
+  // Dedicated Person field created 2026-08-27 to carry a condensed summary
+  // of the sponsor/scholarship/mixed-funding answer. Deliberately separate
+  // from the old, now-unused "Promotional Code" field (key
+  // 7243d4c977d88d238d62f109f4e8c9a323a7f23a) — that field is left
+  // completely untouched, not renamed or repurposed, and isn't referenced
+  // anywhere in this codebase.
+  fundingSource: "ccc2c853c22101435d6059306fcb644e2bf0a284",
   referredBy: "a08cf6343f3d302fdf15306c24d01e004ab47724",
   recommendedCounsellor: "91cce905e99d4d7ad6a8e2b4db41b89f8a5a72cf",
   gdprConsent: "507b7011ec6784002524c02f940ef8610059cd1e",
