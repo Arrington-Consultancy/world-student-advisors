@@ -1,0 +1,120 @@
+name: Create WSA demo portal account (one-time, controlled)
+
+# Manual-only. Creates the single approved WSA demo/test portal account —
+# see scripts/create-demo-portal-account.mjs for the full design. Runs
+# directly against Pipedrive and the production database via the API,
+# never through the public /contact form, so none of the real applicant
+# notification/confirmation/setup emails fire.
+#
+# Requires a repository secret DEMO_PORTAL_PASSWORD (the demo account's
+# password, chosen by whoever adds the secret — never typed into this
+# workflow, never logged, never stored anywhere except its bcrypt hash in
+# portal_users.passwordHash).
+#
+# dry_run defaults to true: prints exactly what would be created/changed
+# without writing anything. Re-run with dry_run set to false to actually
+# write, only after reviewing the dry-run output.
+#
+# Uses the MySQL service's public TCP proxy for the database connection
+# (the same pattern provision-portal-database.yml uses) since the app
+# service's own DATABASE_URL points at Railway's private-network-only
+# hostname, unreachable from this GitHub-hosted runner.
+on:
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "true = print what would happen, write nothing. false = actually create/update the demo account."
+        required: true
+        default: "true"
+      service_name:
+        description: "Railway app service name"
+        required: true
+        default: "world-student-advisors"
+      environment_name:
+        description: "Railway environment name"
+        required: true
+        default: "production"
+      database_service_name:
+        description: "Railway MySQL service name"
+        required: true
+        default: "MySQL"
+
+jobs:
+  create-demo-account:
+    runs-on: ubuntu-latest
+    env:
+      APP_SERVICE_NAME: ${{ github.event.inputs.service_name }}
+      APP_ENV_NAME: ${{ github.event.inputs.environment_name }}
+      DB_SERVICE_NAME: ${{ github.event.inputs.database_service_name }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Install Railway CLI
+        run: npm install -g @railway/cli
+
+      - name: Confirm the demo password secret is set (value never printed)
+        run: |
+          if [ -z "${{ secrets.DEMO_PORTAL_PASSWORD }}" ]; then
+            echo "Repository secret DEMO_PORTAL_PASSWORD is not set. Add it before running this workflow (Settings -> Secrets and variables -> Actions)."
+            exit 1
+          fi
+          echo "DEMO_PORTAL_PASSWORD is set."
+
+      - name: Discover the MySQL service's public-URL variable NAME (key only, value never printed)
+        id: discover
+        env:
+          RAILWAY_TOKEN: ${{ secrets.githubactionsprod }}
+        run: |
+          KEYS=$(railway variables --service "$DB_SERVICE_NAME" --environment "$APP_ENV_NAME" --json | jq -r 'keys[]')
+          PUBLIC_KEY=$(echo "$KEYS" | grep -i -E '^(MYSQL_PUBLIC_URL|DATABASE_PUBLIC_URL)$' | head -n1)
+          if [ -z "$PUBLIC_KEY" ]; then
+            echo "No public-URL-shaped variable found on $DB_SERVICE_NAME. Stopping — not guessing further."
+            exit 1
+          fi
+          echo "Using public URL variable: $PUBLIC_KEY"
+          echo "public_key=$PUBLIC_KEY" >> "$GITHUB_OUTPUT"
+
+      - name: Set a temporary public-reachable database URL on the app service
+        env:
+          RAILWAY_TOKEN: ${{ secrets.githubactionsprod }}
+          PUBLIC_KEY: ${{ steps.discover.outputs.public_key }}
+        run: |
+          REF=$(printf '\044{{%s.%s}}' "$DB_SERVICE_NAME" "$PUBLIC_KEY")
+          railway variables \
+            --service "$APP_SERVICE_NAME" \
+            --environment "$APP_ENV_NAME" \
+            --set "DEMO_SCRIPT_DATABASE_URL=${REF}"
+
+      - name: Run demo account setup
+        # DRY_RUN and DEMO_PORTAL_PASSWORD are ordinary env vars on this step,
+        # inherited as-is through `railway run` and `sh -c` to the script —
+        # deliberately not spliced into the command string, so a password
+        # containing shell-special characters can never break the quoting or
+        # leak into argv.
+        env:
+          RAILWAY_TOKEN: ${{ secrets.githubactionsprod }}
+          DRY_RUN: ${{ github.event.inputs.dry_run }}
+          DEMO_PORTAL_PASSWORD: ${{ secrets.DEMO_PORTAL_PASSWORD }}
+        run: |
+          railway run --service "$APP_SERVICE_NAME" --environment "$APP_ENV_NAME" -- \
+            sh -c 'DATABASE_URL="$DEMO_SCRIPT_DATABASE_URL" node scripts/create-demo-portal-account.mjs'
+
+      - name: Remove the temporary database URL variable
+        if: always()
+        env:
+          RAILWAY_TOKEN: ${{ secrets.githubactionsprod }}
+        run: |
+          railway variables \
+            --service "$APP_SERVICE_NAME" \
+            --environment "$APP_ENV_NAME" \
+            --set "DEMO_SCRIPT_DATABASE_URL="

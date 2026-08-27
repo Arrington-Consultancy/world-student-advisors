@@ -29,6 +29,15 @@ import { authenticateStaffPortal, verifyStaffPortalToken, isStaffPortalLoginRate
 /** Shared by every Turnstile-protected mutation's input schema. */
 const turnstileField = { turnstileToken: z.string().min(1, "Verification required") };
 
+/**
+ * The one WSA demo/test portal account, created directly (not via the
+ * public application flow) for showing the Student Portal and AI tools to
+ * staff, partners, or other visitors without touching real applicant data.
+ * Used only by interviewCoach.finishSession to skip the real-student staff
+ * notification for this one account — see the comment there.
+ */
+const DEMO_PORTAL_EMAIL = "portal-demo@worldstudentadvisors.com";
+
 const studentSignupSchema = z.object({
   firstName: z.string().min(1),
   middleName: z.string().optional().default(""),
@@ -492,7 +501,12 @@ export const appRouter = router({
     // gates progression to a live mock interview with a WSA Student Counsellor.
     // Also emails the results to a fixed, smaller list (Tim, Eldah, Tom —
     // see interviewCoachNotifyEmails in env.ts) on every completed session,
-    // not just passes.
+    // not just passes — except the one WSA demo/test portal account
+    // (DEMO_PORTAL_EMAIL below), which never reaches a real applicant so
+    // the notification would be noise, not signal. Deliberately a single
+    // hardcoded literal, not a "contains demo/test" or name-based check:
+    // a genuine applicant must never be able to suppress their own
+    // notification just by choosing what they type into the email field.
     finishSession: publicProcedure
       .input(
         z.object({
@@ -515,19 +529,21 @@ export const appRouter = router({
         const scores = input.results.map(r => r.score);
         const summary = summariseSession(scores);
 
-        notifyInterviewCoachResult({
-          title: `Interview Coach completed: ${input.email} - ${TYPE_LABELS[input.interviewType]}`,
-          content: [
-            `Email: ${input.email}`,
-            `Interview Type: ${TYPE_LABELS[input.interviewType]}`,
-            input.courseOrSubject ? `Course/Subject: ${input.courseOrSubject}` : "",
-            `Average Score: ${summary.averageScore}%`,
-            `Result: ${summary.passed ? "PASSED — ready for live mock interview" : "Below pass mark (85%)"}`,
-            ``,
-            `Per-question scores:`,
-            ...input.results.map((r, i) => `${i + 1}. [${r.score}%] ${r.question}`),
-          ].filter(Boolean).join("\n"),
-        }).catch(err => console.error("[Notification] Failed to send Interview Coach result email:", err));
+        if (input.email.toLowerCase() !== DEMO_PORTAL_EMAIL) {
+          notifyInterviewCoachResult({
+            title: `Interview Coach completed: ${input.email} - ${TYPE_LABELS[input.interviewType]}`,
+            content: [
+              `Email: ${input.email}`,
+              `Interview Type: ${TYPE_LABELS[input.interviewType]}`,
+              input.courseOrSubject ? `Course/Subject: ${input.courseOrSubject}` : "",
+              `Average Score: ${summary.averageScore}%`,
+              `Result: ${summary.passed ? "PASSED — ready for live mock interview" : "Below pass mark (85%)"}`,
+              ``,
+              `Per-question scores:`,
+              ...input.results.map((r, i) => `${i + 1}. [${r.score}%] ${r.question}`),
+            ].filter(Boolean).join("\n"),
+          }).catch(err => console.error("[Notification] Failed to send Interview Coach result email:", err));
+        }
 
         return { success: true as const, summary };
       }),
