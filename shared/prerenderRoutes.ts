@@ -10,9 +10,10 @@
  *    /our-global-education-partners) already 301 to one of the routes below
  *    before ever reaching the SPA (shared/seo.ts's CANONICAL_PATHS) — there
  *    is nothing to prerender separately.
- *  - Everything under /portal and /staff-portal (Portal, PortalResources,
- *    PortalLibrary, StaffPortal, PortalLogin, PortalSetPassword,
- *    PortalResetPassword) is authenticated or an auth-flow page. Their
+ *  - Everything under /portal and /staff-portal (Portal, PortalApply,
+ *    PortalResources, PortalLibrary, StaffPortal, PortalLogin,
+ *    PortalSetPassword, PortalResetPassword) is authenticated or an
+ *    auth-flow page. Their
  *    real content only ever renders after a server-verified session token,
  *    which never exists at build time — prerendering them would only ever
  *    produce the same login/blank gate they already show today, so they're

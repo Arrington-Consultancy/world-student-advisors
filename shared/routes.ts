@@ -50,6 +50,7 @@ export const VALID_CLIENT_ROUTES = [
   "/portal/resources",
   "/portal/library",
   "/portal/interview-coach",
+  "/portal/apply",
   "/portal",
   "/WebUKVisa",
   "/DDVavita",

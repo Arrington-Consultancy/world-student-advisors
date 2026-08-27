@@ -11,19 +11,24 @@ const PORTAL_TOKEN_EXPIRY = "7d";
 const SIGNUP_PREFILL_EXPIRY = "15m";
 
 /**
- * Create a portal user record after registration form submission.
- * Called from the registration flow after Pipedrive record is created.
+ * Create (or find) a portal user record. Pipedrive fields are optional:
+ * light signup (email-only, or Google) calls this with none, since portal
+ * access no longer requires an application first — see
+ * server/routers.ts's portal.signup and findOrCreateGoogleUser below. The
+ * full application flow (portal.submitApplication, and the public /contact
+ * form's contact.submitStudent) calls it with a real Person/Lead once one
+ * exists.
  */
 export async function createPortalUser(data: {
   email: string;
   firstName: string;
   lastName: string;
-  pipedrivePersonId: number;
+  pipedrivePersonId?: number;
   /** "lead" for everything created going forward — see the doc comment on
    * drizzle/schema.ts's portalUsers.pipedriveObjectType. Write-once audit
    * trail only; live portal resolution never reads this back. */
-  pipedriveObjectType: "lead" | "deal";
-  pipedriveObjectId: string;
+  pipedriveObjectType?: "lead" | "deal";
+  pipedriveObjectId?: string;
   /** When the student signed up via Google, link their sub so they can use Google portal login immediately. */
   googleSub?: string;
 }) {
@@ -37,14 +42,15 @@ export async function createPortalUser(data: {
     if (data.googleSub && !existing[0].googleSub) {
       await db.update(portalUsers).set({ googleSub: data.googleSub }).where(eq(portalUsers.id, existing[0].id));
     }
-    // Repair a previously Pipedrive-less account (e.g. one created by
-    // "Sign in with Google" on the portal login page before ever applying —
-    // see findOrCreateGoogleUser) now that a genuine application has
-    // produced a real Person/Lead. Only fills a gap, never overwrites an
-    // already-linked account: pipedrivePersonId is the durable anchor every
-    // live Pipedrive read is keyed on (see drizzle/schema.ts), and a second,
-    // possibly-wrong submission must not silently reassign it.
-    if (!existing[0].pipedrivePersonId) {
+    // Repair a previously Pipedrive-less account (e.g. one created by light
+    // signup or "Sign in with Google" before an application existed — see
+    // findOrCreateGoogleUser) now that a genuine application has produced a
+    // real Person/Lead. Only fills a gap, and only when this call actually
+    // carries one: never overwrites an already-linked account, and a light
+    // signup call (no pipedrivePersonId at all) must not touch it either.
+    // pipedrivePersonId is the durable anchor every live Pipedrive read is
+    // keyed on (see drizzle/schema.ts).
+    if (!existing[0].pipedrivePersonId && data.pipedrivePersonId) {
       await db
         .update(portalUsers)
         .set({
@@ -59,14 +65,17 @@ export async function createPortalUser(data: {
     return { userId: existing[0].id, token, isExisting: true };
   }
 
-  // Create new portal user (no password yet - they'll set it via the link)
+  // Create new portal user (no password yet - they'll set it via the link).
+  // pipedrivePersonId/pipedriveObjectType/pipedriveObjectId are simply
+  // omitted for a light signup with none yet — the column is nullable
+  // exactly for this case.
   const result = await db.insert(portalUsers).values({
     email: data.email.toLowerCase(),
     firstName: data.firstName,
     lastName: data.lastName,
-    pipedrivePersonId: data.pipedrivePersonId,
-    pipedriveObjectType: data.pipedriveObjectType,
-    pipedriveObjectId: data.pipedriveObjectId,
+    ...(data.pipedrivePersonId ? { pipedrivePersonId: data.pipedrivePersonId } : {}),
+    ...(data.pipedriveObjectType ? { pipedriveObjectType: data.pipedriveObjectType } : {}),
+    ...(data.pipedriveObjectId ? { pipedriveObjectId: data.pipedriveObjectId } : {}),
     ...(data.googleSub ? { googleSub: data.googleSub } : {}),
   });
 
@@ -285,6 +294,31 @@ export async function getPortalUserById(
   if (!user.length || !user[0].isActive) return null;
 
   return { firstName: user[0].firstName, pipedrivePersonId: user[0].pipedrivePersonId };
+}
+
+/**
+ * Attaches a Pipedrive Person/Lead to a specific, already-known portal
+ * account (by id, not an email match) — used by portal.submitApplication,
+ * where the account is the authenticated caller themselves rather than
+ * something to look up. Callers must already have confirmed the account
+ * has no existing pipedrivePersonId (see portal.submitApplication's own
+ * guard); this never checks or overwrites, it only writes.
+ */
+export async function linkPortalUserToPipedrive(
+  userId: number,
+  data: { pipedrivePersonId: number; pipedriveObjectType: "lead" | "deal"; pipedriveObjectId: string }
+): Promise<void> {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+
+  await db
+    .update(portalUsers)
+    .set({
+      pipedrivePersonId: data.pipedrivePersonId,
+      pipedriveObjectType: data.pipedriveObjectType,
+      pipedriveObjectId: data.pipedriveObjectId,
+    })
+    .where(eq(portalUsers.id, userId));
 }
 
 /**

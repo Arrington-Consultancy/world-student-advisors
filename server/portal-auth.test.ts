@@ -8,7 +8,7 @@ import { describe, expect, it, vi, beforeEach } from "vitest";
 vi.mock("./db", () => ({ getDb: vi.fn() }));
 
 const { getDb } = await import("./db");
-const { createPortalUser } = await import("./portal-auth");
+const { createPortalUser, linkPortalUserToPipedrive } = await import("./portal-auth");
 
 const mockedGetDb = vi.mocked(getDb);
 
@@ -142,5 +142,76 @@ describe("createPortalUser — pipedrivePersonId repair on an existing account",
     });
     // The repair path is for existing rows only — nothing to repair here.
     expect(updateSets.find(s => "pipedrivePersonId" in s)).toBeUndefined();
+  });
+});
+
+describe("createPortalUser — light signup (no Pipedrive fields at all)", () => {
+  it("creates a brand-new account with no pipedrivePersonId/objectType/objectId set", async () => {
+    const { db, insertValues } = makeFakeDb([]);
+    mockedGetDb.mockResolvedValue(db as any);
+
+    const result = await createPortalUser({
+      email: "light.signup@example.com",
+      firstName: "Light",
+      lastName: "Signup",
+    });
+
+    expect(result.isExisting).toBe(false);
+    expect(insertValues[0]).toMatchObject({ email: "light.signup@example.com", firstName: "Light", lastName: "Signup" });
+    expect(insertValues[0]).not.toHaveProperty("pipedrivePersonId");
+    expect(insertValues[0]).not.toHaveProperty("pipedriveObjectType");
+    expect(insertValues[0]).not.toHaveProperty("pipedriveObjectId");
+  });
+
+  it("a light-signup call for an already-linked account never touches its existing link", async () => {
+    const { db, updateSets } = makeFakeDb([
+      { id: 21, email: "already-applied@example.com", googleSub: null, pipedrivePersonId: 4242 },
+    ]);
+    mockedGetDb.mockResolvedValue(db as any);
+
+    const result = await createPortalUser({
+      email: "already-applied@example.com",
+      firstName: "Already",
+      lastName: "Applied",
+    });
+
+    // Re-request-style call (e.g. they used "Create a free account" again,
+    // or forgot they already have one) — still just reissues a token.
+    expect(result.isExisting).toBe(true);
+    expect(updateSets.find(s => "pipedrivePersonId" in s)).toBeUndefined();
+  });
+
+  it("a light-signup call for an existing but still-unlinked account leaves it unlinked (nothing to repair yet)", async () => {
+    const { db, updateSets } = makeFakeDb([
+      { id: 22, email: "google-only@example.com", googleSub: "sub-abc", pipedrivePersonId: null },
+    ]);
+    mockedGetDb.mockResolvedValue(db as any);
+
+    await createPortalUser({
+      email: "google-only@example.com",
+      firstName: "Google",
+      lastName: "Only",
+    });
+
+    expect(updateSets.find(s => "pipedrivePersonId" in s)).toBeUndefined();
+  });
+});
+
+describe("linkPortalUserToPipedrive", () => {
+  it("updates the exact account by id with the given Person/Lead", async () => {
+    const { db, updateSets } = makeFakeDb([]);
+    mockedGetDb.mockResolvedValue(db as any);
+
+    await linkPortalUserToPipedrive(55, {
+      pipedrivePersonId: 8371,
+      pipedriveObjectType: "lead",
+      pipedriveObjectId: "58877ff0-a229-11f1-a4a0-1756967adcc3",
+    });
+
+    expect(updateSets).toContainEqual({
+      pipedrivePersonId: 8371,
+      pipedriveObjectType: "lead",
+      pipedriveObjectId: "58877ff0-a229-11f1-a4a0-1756967adcc3",
+    });
   });
 });
