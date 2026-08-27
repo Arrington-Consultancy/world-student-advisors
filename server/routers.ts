@@ -285,7 +285,7 @@ export const appRouter = router({
             ] : []),
             ...(effectiveInput.educationFunding === "scholarship" ? [
               `Scholarship Name: ${effectiveInput.scholarshipName}`,
-              `Funding Status: ${effectiveInput.scholarshipStatus}`,
+              `Scholarship Status: ${effectiveInput.scholarshipStatus}`,
               effectiveInput.scholarshipCoverage ? `Covers: ${effectiveInput.scholarshipCoverage}` : "",
             ] : []),
             ...(effectiveInput.educationFunding === "mixed" ? [
