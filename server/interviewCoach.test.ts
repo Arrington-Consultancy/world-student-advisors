@@ -432,6 +432,22 @@ describe("marking fairness — substance over polish", () => {
     expect(systemMessage).toMatch(/a short, complete answer is not a weakness/i);
   });
 
+  it("instructs the model not to penalise preparation, but to treat formulaic/rehearsed answers lacking personal substance as a weakness, without inferring memorisation from fluency alone", async () => {
+    const { assessAnswer } = await import("./interviewCoach");
+    mockedInvokeLLM.mockResolvedValueOnce(
+      llmJsonResponse({ needsFollowUp: false, followUpQuestion: "", score: 90, strengths: [], weaknesses: [], missingInformation: [], researchHomework: [] })
+    );
+
+    await assessAnswer({ interviewType: "cas", question: "Why have you chosen this university?", answer: "It has a great reputation and excellent facilities." });
+
+    const call = mockedInvokeLLM.mock.calls[0][0];
+    const systemMessage = call.messages.find((m) => m.role === "system")?.content ?? "";
+    expect(systemMessage).toMatch(/preparation and practice are not weaknesses/i);
+    expect(systemMessage).toMatch(/do not penalise a student for giving a well-prepared answer/i);
+    expect(systemMessage).toMatch(/sounds formulaic or rehearsed but lacks specific personal reasoning/i);
+    expect(systemMessage).toMatch(/do not claim that an answer is memorised merely because it is fluent or well structured/i);
+  });
+
   it("no question-generation call site invents replacement questions — question content only ever originates from selectSessionQuestions (bank), never a free-form LLM generation prompt", async () => {
     const { getSessionQuestions } = await import("./interviewCoach");
     // With no course/university supplied, this must resolve purely from the
