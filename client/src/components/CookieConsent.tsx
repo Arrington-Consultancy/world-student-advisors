@@ -6,6 +6,7 @@
  */
 import { useEffect, useState } from "react";
 import { Link } from "wouter";
+import { loadGoogleAdsTag } from "@/lib/googleAdsTag";
 
 const CONSENT_KEY = "wsa-cookie-consent";
 
@@ -24,6 +25,11 @@ export default function CookieConsent() {
   const [visible, setVisible] = useState(false);
 
   useEffect(() => {
+    // A returning visitor who already accepted needs the tag loaded on this
+    // page view too — their earlier consent doesn't re-fire the banner.
+    if (getCookieConsent() === "accepted") {
+      loadGoogleAdsTag();
+    }
     // Show only if no prior choice has been recorded
     if (getCookieConsent() === null) {
       const t = setTimeout(() => setVisible(true), 800);
@@ -38,6 +44,9 @@ export default function CookieConsent() {
       /* storage unavailable — banner will reappear next visit */
     }
     setVisible(false);
+    if (value === "accepted") {
+      loadGoogleAdsTag();
+    }
     // Notify listeners (e.g. analytics loader) that consent state changed
     window.dispatchEvent(new CustomEvent("wsa-consent-change", { detail: value }));
   };
