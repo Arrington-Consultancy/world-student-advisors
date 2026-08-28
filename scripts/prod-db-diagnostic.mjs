@@ -56,6 +56,23 @@ try {
   const hasGoogleSub = portalUserColumns.some((row) => row.Field === "google_sub");
   console.log(`\nportal_users.google_sub exists (0003's schema effect): ${hasGoogleSub}`);
 
+  // Verifies the just-created demo account only — a hardcoded literal, not a
+  // parameter, so this can never be repurposed to look up a real applicant's
+  // row. Prints only the fields relevant to confirming the approved demo
+  // design (no broadened suppression pattern, no extra Pipedrive linkage).
+  const DEMO_EMAIL = "portal-demo@worldstudentadvisors.com";
+  const [demoRows] = await db.execute(
+    sql`SELECT id, email, firstName, lastName, pipedrivePersonId, pipedriveObjectType, pipedriveObjectId, isActive FROM portal_users WHERE email = ${DEMO_EMAIL}`
+  );
+  console.log(`\nDemo account row (${DEMO_EMAIL}):`);
+  if (demoRows.length === 0) {
+    console.log("  Not found.");
+  } else {
+    for (const row of demoRows) {
+      console.log(`  ${JSON.stringify(row)}`);
+    }
+  }
+
   const migrationsTable = tableNames.find((name) => name.toLowerCase().includes("drizzle_migrations"));
   if (migrationsTable) {
     console.log(`\nFound drizzle-kit bookkeeping table: ${migrationsTable}`);
