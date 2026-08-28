@@ -372,7 +372,7 @@ export default function InterviewCoach() {
                   </span>
                 </div>
                 <div className="mb-6 text-xs text-gray-500 leading-relaxed">
-                  Your answers are sent to our AI provider to generate a score and feedback for this session only — the full text of your answers isn't kept afterwards. We do keep a short record of each completed session (which type of interview, your score, and when) linked to your Student Portal account, and your Student Counsellor can see that summary. This tool doesn't create or update your Pipedrive application record.
+                  Your answers are sent to our AI provider to generate a score and feedback for this session only — the full text of your answers isn't kept afterwards. We keep a short completion record (interview type, your score, pass/fail, and the date) linked to your Student Portal account. When you finish a session, a summary — your score and each question's score, but not your answer text — is also emailed to the WSA team. This tool doesn't create or update your Pipedrive application record.
                 </div>
                 <h2 className="text-lg font-semibold text-wsa-navy mb-4">Choose your interview type</h2>
                 <div className="grid sm:grid-cols-2 gap-3 mb-6">
