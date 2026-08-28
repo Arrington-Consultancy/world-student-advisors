@@ -33,7 +33,20 @@ try {
     console.log(`  ${name}`);
   }
 
-  console.log(`\ninterview_coach_sessions exists: ${tableNames.includes("interview_coach_sessions")}`);
+  const hasInterviewCoachSessions = tableNames.includes("interview_coach_sessions");
+  console.log(`\ninterview_coach_sessions exists: ${hasInterviewCoachSessions}`);
+  if (hasInterviewCoachSessions) {
+    const [icsColumns] = await db.execute(sql`SHOW COLUMNS FROM interview_coach_sessions`);
+    console.log("\ninterview_coach_sessions columns:");
+    for (const row of icsColumns) {
+      console.log(`  ${row.Field} | type=${row.Type} | null=${row.Null} | key=${row.Key} | default=${row.Default} | extra=${row.Extra}`);
+    }
+    const [icsIndexes] = await db.execute(sql`SHOW INDEX FROM interview_coach_sessions`);
+    console.log("\ninterview_coach_sessions indexes:");
+    for (const row of icsIndexes) {
+      console.log(`  key_name=${row.Key_name} | column=${row.Column_name} | unique=${row.Non_unique === 0} | seq=${row.Seq_in_index}`);
+    }
+  }
 
   const [portalUserColumns] = await db.execute(sql`SHOW COLUMNS FROM portal_users`);
   console.log("\nportal_users columns:");
