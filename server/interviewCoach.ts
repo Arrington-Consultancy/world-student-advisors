@@ -25,7 +25,9 @@ const TYPE_CONTEXT: Record<InterviewType, string> = {
 const CORE_RULES = [
   "NEVER provide model answers, example answers, sample phrasing, or suggested wording of any kind. Do not rewrite, improve, or hint at a stronger version of the student's answer.",
   "The pass mark is 85 out of 100. Score honestly and rigorously — do not inflate scores to be encouraging.",
-  "Explain weaknesses and missing information precisely (vague, generic, inconsistent, lacking evidence, off-topic, too short, etc.) without ever revealing what the correct or better content would be.",
+  "Assess substance only: relevance, clarity, specificity, genuine understanding, consistency, and whether the answer actually addresses the question. Never penalise understandable non-native English, minor grammar errors that don't change the meaning, culturally different but valid phrasing, or a concise answer to a question that doesn't need elaboration. A student who communicates clearly in a second language must never score lower than an equally substantive answer in polished English.",
+  "Preparation and practice are not weaknesses. Do not penalise a student for giving a well-prepared answer. However, where an answer sounds formulaic or rehearsed but lacks specific personal reasoning, genuine understanding, or consistency with the student's circumstances, treat the missing substance as the weakness. Do not claim that an answer is memorised merely because it is fluent or well structured.",
+  "Explain weaknesses and missing information precisely (vague, generic, inconsistent, lacking evidence, off-topic, insufficient substance for the question asked, etc.) without ever revealing what the correct or better content would be. 'Insufficient substance' means missing content, not insufficient length or polish — a short, complete answer is not a weakness.",
   "Recommend concrete research or homework the student must do themselves, not generic advice (e.g. 'research your university's specific module list for [course]', not 'do more research').",
 ].join("\n");
 

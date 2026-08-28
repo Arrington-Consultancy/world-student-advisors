@@ -29,6 +29,13 @@
       "when": 1786900000000,
       "tag": "0003_portal_google_sub",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "5",
+      "when": 1787900000000,
+      "tag": "0004_interview_coach_sessions",
+      "breakpoints": true
     }
   ]
 }

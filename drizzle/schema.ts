@@ -120,3 +120,26 @@ export const failedSubmissions = mysqlTable("failed_submissions", {
 
 export type FailedSubmission = typeof failedSubmissions.$inferSelect;
 export type InsertFailedSubmission = typeof failedSubmissions.$inferInsert;
+
+/**
+ * Minimal completion record for an Interview Readiness Coach practice
+ * session — the deliberately narrow persistence model from the Interview
+ * Coach repositioning design report (27 Aug 2026). Written once, on
+ * finishSession, for an authenticated portal user only. No answer
+ * transcripts, no free-text of any kind — full answers remain exactly as
+ * before: processed only in-memory / by the AI provider for that one
+ * request, never stored. portalUserId is not a hard foreign key
+ * (consistent with this schema's existing style — see portalUsers above,
+ * which itself has none either) but always refers to portal_users.id.
+ */
+export const interviewCoachSessions = mysqlTable("interview_coach_sessions", {
+  id: int("id").autoincrement().primaryKey(),
+  portalUserId: int("portalUserId").notNull(),
+  interviewType: mysqlEnum("interviewType", ["cas", "ukvi", "university", "course"]).notNull(),
+  averageScore: int("averageScore").notNull(),
+  passed: int("passed").notNull(),
+  completedAt: timestamp("completedAt").defaultNow().notNull(),
+});
+
+export type InterviewCoachSession = typeof interviewCoachSessions.$inferSelect;
+export type InsertInterviewCoachSession = typeof interviewCoachSessions.$inferInsert;

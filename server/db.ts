@@ -1,5 +1,5 @@
 import { drizzle } from "drizzle-orm/mysql2";
-import { failedSubmissions } from "../drizzle/schema";
+import { failedSubmissions, interviewCoachSessions } from "../drizzle/schema";
 
 let _db: ReturnType<typeof drizzle> | null = null;
 
@@ -43,6 +43,38 @@ export async function recordFailedSubmission(data: {
     });
   } catch (error) {
     console.error("[Database] Failed to persist failed submission:", error);
+  }
+}
+
+/**
+ * Best-effort completion record for an Interview Readiness Coach session —
+ * the minimal persistence model from the Interview Coach repositioning
+ * design report. Never throws and never blocks the response to the
+ * student: a failed write here should not turn a completed practice
+ * session into an error for the applicant. If no database is configured,
+ * this only logs a warning.
+ */
+export async function recordInterviewCoachSession(data: {
+  portalUserId: number;
+  interviewType: "cas" | "ukvi" | "university" | "course";
+  averageScore: number;
+  passed: boolean;
+}): Promise<void> {
+  const db = await getDb();
+  if (!db) {
+    console.warn("[Database] Cannot persist Interview Coach session: database not available");
+    return;
+  }
+
+  try {
+    await db.insert(interviewCoachSessions).values({
+      portalUserId: data.portalUserId,
+      interviewType: data.interviewType,
+      averageScore: data.averageScore,
+      passed: data.passed ? 1 : 0,
+    });
+  } catch (error) {
+    console.error("[Database] Failed to persist Interview Coach session:", error);
   }
 }
 

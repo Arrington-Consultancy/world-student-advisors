@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -17,6 +17,7 @@ import {
   RefreshCw,
   ShieldCheck,
   MessageCircleQuestion,
+  LogIn,
 } from "lucide-react";
 
 type InterviewType = "cas" | "ukvi" | "university" | "course";
@@ -27,6 +28,10 @@ const INTERVIEW_TYPES: { id: InterviewType; label: string; description: string }
   { id: "university", label: "University Interview Preparation", description: "General admissions interview" },
   { id: "course", label: "Course-Specific Interview Preparation", description: "Subject-focused academic interview" },
 ];
+
+function isInterviewType(value: string | null): value is InterviewType {
+  return value === "cas" || value === "ukvi" || value === "university" || value === "course";
+}
 
 type Stage = "setup" | "answering" | "followup" | "assessing" | "question-result" | "summary";
 
@@ -41,7 +46,7 @@ interface QuestionResult {
 
 export default function InterviewCoach() {
   const [stage, setStage] = useState<Stage>("setup");
-  const [email, setEmail] = useState("");
+  const [portalToken, setPortalToken] = useState<string | null>(null);
   const [interviewType, setInterviewType] = useState<InterviewType>("cas");
   const [courseOrSubject, setCourseOrSubject] = useState("");
   const [questions, setQuestions] = useState<string[]>([]);
@@ -61,7 +66,18 @@ export default function InterviewCoach() {
   const submitMutation = trpc.interviewCoach.submitAnswer.useMutation();
   const finishMutation = trpc.interviewCoach.finishSession.useMutation();
 
-  const isValidEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
+  // Applicant tool: reading the same portal_token Portal.tsx stores, so
+  // signing in once covers both. Not a hard redirect — an unauthenticated
+  // visitor still sees what the four tools are and why they're useful
+  // (below), just not the practice session itself. A ?mode= query param
+  // lets the portal dashboard link straight into a specific mode.
+  useEffect(() => {
+    setPortalToken(localStorage.getItem("portal_token"));
+    const requestedMode = new URLSearchParams(window.location.search).get("mode");
+    if (isInterviewType(requestedMode)) {
+      setInterviewType(requestedMode);
+    }
+  }, []);
 
   // Every protected call consumes the current token and immediately forces
   // a fresh one for whatever comes next — a token is never reused across
@@ -72,8 +88,8 @@ export default function InterviewCoach() {
   };
 
   const startSession = () => {
-    if (!isValidEmail) {
-      setErrorMsg("Please enter a valid email address to begin.");
+    if (!portalToken) {
+      setErrorMsg("Please sign in to your Student Portal account to begin.");
       return;
     }
     if (!turnstileToken) {
@@ -84,7 +100,7 @@ export default function InterviewCoach() {
     const token = turnstileToken;
     consumeTurnstileToken();
     startMutation.mutate(
-      { interviewType, courseOrSubject: courseOrSubject.trim() || undefined, count: 5, turnstileToken: token },
+      { token: portalToken, interviewType, courseOrSubject: courseOrSubject.trim() || undefined, count: 5, turnstileToken: token },
       {
         onSuccess: (data) => {
           if (data.success && data.questions.length > 0) {
@@ -128,6 +144,7 @@ export default function InterviewCoach() {
     consumeTurnstileToken();
     submitMutation.mutate(
       {
+        token: portalToken ?? "",
         interviewType,
         courseOrSubject: courseOrSubject.trim() || undefined,
         question: questions[currentIndex],
@@ -168,6 +185,7 @@ export default function InterviewCoach() {
     consumeTurnstileToken();
     submitMutation.mutate(
       {
+        token: portalToken ?? "",
         interviewType,
         courseOrSubject: courseOrSubject.trim() || undefined,
         question: questions[currentIndex],
@@ -213,7 +231,7 @@ export default function InterviewCoach() {
     consumeTurnstileToken();
     finishMutation.mutate(
       {
-        email,
+        token: portalToken ?? "",
         interviewType,
         courseOrSubject: courseOrSubject.trim() || undefined,
         results: results.map((r) => ({ question: r.question, score: r.score })),
@@ -239,7 +257,6 @@ export default function InterviewCoach() {
 
   const reset = () => {
     setStage("setup");
-    setEmail("");
     setQuestions([]);
     setCurrentIndex(0);
     setAnswer("");
@@ -254,6 +271,59 @@ export default function InterviewCoach() {
 
   const isBusy = startMutation.isPending || submitMutation.isPending || finishMutation.isPending;
 
+  // Public preview: anyone can see what the four tools are and why they're
+  // useful, but using one requires a valid, active Student Portal account.
+  // Deliberately no "have we checked localStorage yet" gate before this:
+  // this page is build-time server-rendered for prerendering
+  // (scripts/prerender.ts, via react-dom/server), and useEffect never runs
+  // during that SSR pass — no portal_token can ever be read then. Waiting
+  // for a check-complete flag would prerender a blank page instead of this
+  // marketing content, defeating the whole point of making the four tools
+  // publicly discoverable. An already-authenticated visitor sees this for
+  // one client-side render before the effect above finds their real token
+  // and swaps to the practice UI below — the same brief hydration flash
+  // Portal.tsx already accepts for its own auth check.
+  if (!portalToken) {
+    return (
+      <div className="min-h-screen bg-wsa-warm-white pt-32 pb-20 lg:pt-40 lg:pb-28">
+        <div className="container max-w-3xl">
+          <p className="mb-5 text-sm font-medium tracking-[0.2em] uppercase text-wsa-red">Interview Readiness Coach</p>
+          <h1 className="mb-5 text-4xl font-semibold leading-[1.08] text-wsa-navy md:text-5xl">
+            AI-powered practice for the interview you're actually facing.
+          </h1>
+          <p className="mb-8 max-w-2xl text-lg leading-8 text-gray-600">
+            WSA applicants get structured AI feedback before the real interview — one question at a time, marked honestly, never a rehearsed script to memorise.
+          </p>
+          <div className="grid sm:grid-cols-2 gap-3 mb-8">
+            {INTERVIEW_TYPES.map((t) => (
+              <div key={t.id} className="p-4 rounded-md border border-gray-200 bg-white">
+                <p className="font-semibold text-wsa-navy text-sm">{t.label}</p>
+                <p className="text-xs text-gray-500 mt-1">{t.description}</p>
+              </div>
+            ))}
+          </div>
+          <div className="bg-white shadow-[0_18px_60px_rgba(15,23,42,0.06)] border border-border/70 rounded-lg p-6 mb-8">
+            <p className="text-sm text-gray-600 leading-relaxed">
+              These tools use AI to generate practice questions and assess your answers — they don't replace official visa or admissions guidance, and they don't guarantee any outcome. Available to WSA applicants through the Student Portal once your application is in.
+            </p>
+          </div>
+          <div className="flex flex-wrap gap-3">
+            <Link href="/portal/login">
+              <Button className="bg-wsa-red hover:bg-wsa-red/90 text-white">
+                <LogIn className="w-4 h-4 mr-1.5" /> Sign in to your Student Portal
+              </Button>
+            </Link>
+            <Link href="/contact">
+              <Button variant="outline" className="border-wsa-navy/20 text-wsa-navy hover:border-wsa-red hover:text-wsa-red">
+                Apply now to get started
+              </Button>
+            </Link>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-wsa-warm-white pt-32 pb-20 lg:pt-40 lg:pb-28">
       <div className="container">
@@ -261,19 +331,17 @@ export default function InterviewCoach() {
           <ArrowLeft className="w-4 h-4 mr-1" /> Back to Portal
         </Link>
 
-        <div className="mb-8 grid gap-6 lg:grid-cols-[1fr_auto] lg:items-end">
-          <div>
-            <p className="mb-5 text-sm font-medium tracking-[0.2em] uppercase text-wsa-red">Interview Readiness Coach</p>
-            <h1 className="mb-5 text-4xl font-semibold leading-[1.08] text-wsa-navy md:text-5xl">
-              Practise before your live mock interview.
-            </h1>
-            <p className="max-w-2xl text-lg leading-8 text-gray-600">
-              Prepare for CAS, UKVI, university and course interviews with honest feedback that supports your WSA counsellor sessions.
-            </p>
-          </div>
-          <Link href="/contact">
-            <Button className="bg-wsa-red hover:bg-wsa-red/90 text-white">Apply Now</Button>
-          </Link>
+        {/* No "Apply Now" here: reaching this render at all already means
+            portalToken is set (see the gate above) — an authenticated
+            applicant, not a prospect. */}
+        <div className="mb-8">
+          <p className="mb-5 text-sm font-medium tracking-[0.2em] uppercase text-wsa-red">Interview Readiness Coach</p>
+          <h1 className="mb-5 text-4xl font-semibold leading-[1.08] text-wsa-navy md:text-5xl">
+            Practise before your live mock interview.
+          </h1>
+          <p className="max-w-2xl text-lg leading-8 text-gray-600">
+            Prepare for CAS, UKVI, university and course interviews with honest feedback that supports your WSA counsellor sessions.
+          </p>
         </div>
 
         <div className="bg-white shadow-[0_18px_60px_rgba(15,23,42,0.08)] border border-border/70 overflow-hidden">
@@ -303,16 +371,9 @@ export default function InterviewCoach() {
                     The coach asks one question at a time and marks honestly against a <strong>pass mark of 85%</strong>. If an answer is vague or too short, it will ask a follow-up before scoring. It will <strong>never give you model answers</strong>, because interviewers can spot rehearsed scripts. This prepares you for a live mock interview with your Student Counsellor. It doesn't replace one.
                   </span>
                 </div>
-                <label className="block text-sm font-medium text-wsa-navy mb-1.5">
-                  Your email address *
-                </label>
-                <input
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="you@example.com"
-                  className="w-full px-4 py-3 border border-gray-200 rounded-lg text-sm mb-6 focus:outline-none focus:ring-2 focus:ring-wsa-red/20 focus:border-wsa-red"
-                />
+                <div className="mb-6 text-xs text-gray-500 leading-relaxed">
+                  Your answers are sent to our AI provider to generate a score and feedback for this session only — the full text of your answers isn't kept afterwards. We keep a short completion record (interview type, your score, pass/fail, and the date) linked to your Student Portal account. When you finish a session, a summary — your score and each question's score, but not your answer text — is also emailed to the WSA team. This tool doesn't create or update your Pipedrive application record.
+                </div>
                 <h2 className="text-lg font-semibold text-wsa-navy mb-4">Choose your interview type</h2>
                 <div className="grid sm:grid-cols-2 gap-3 mb-6">
                   {INTERVIEW_TYPES.map((t) => (
@@ -342,7 +403,7 @@ export default function InterviewCoach() {
                 />
                 <Button
                   onClick={startSession}
-                  disabled={startMutation.isPending || !isValidEmail || !turnstileToken}
+                  disabled={startMutation.isPending || !turnstileToken}
                   className="bg-wsa-red hover:bg-wsa-red/90 text-white px-8 py-3 h-auto"
                 >
                   {startMutation.isPending ? (
