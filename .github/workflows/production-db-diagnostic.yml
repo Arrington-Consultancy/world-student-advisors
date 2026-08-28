@@ -1,10 +1,12 @@
 name: Production DB read-only diagnostic
 
-# Manual-only. Runs a single hardcoded read-only query
-# (scripts/prod-db-diagnostic.mjs: SHOW COLUMNS FROM portal_users)
-# against the REAL production Railway service, using the same
-# connection method server/db.ts uses. Prints column metadata only —
-# never row data, never DATABASE_URL or any secret value.
+# Manual-only, read-only. Runs scripts/prod-db-diagnostic.mjs against the
+# REAL production database via the MySQL service's public-proxy URL
+# (MYSQL_PUBLIC_URL) — DATABASE_URL, which server/db.ts and the app itself
+# use, is Railway's private internal hostname and unreachable from a
+# GitHub-hosted runner. Never writes anything. Prints table/column metadata
+# and drizzle-kit's own migration-bookkeeping rows (hash + timestamp, not
+# personal data) — never student/applicant row data, never any secret value.
 #
 # Auth: githubactionsprod is a Railway Project Token scoped to the
 # real production project/environment (distinct from RAILWAY_TOKEN,
@@ -14,10 +16,10 @@ name: Production DB read-only diagnostic
 on:
   workflow_dispatch:
     inputs:
-      service_name:
-        description: "Railway service name"
+      database_service_name:
+        description: "Railway MySQL service name (running the script against this service, not the app service, injects the public-proxy URL — DATABASE_URL's private hostname is unreachable from this runner)"
         required: true
-        default: "world-student-advisors"
+        default: "MySQL"
       environment_name:
         description: "Railway environment name"
         required: true
@@ -56,4 +58,4 @@ jobs:
         env:
           RAILWAY_TOKEN: ${{ secrets.githubactionsprod }}
         run: |
-          railway run --service "${{ github.event.inputs.service_name }}" --environment "${{ github.event.inputs.environment_name }}" -- node scripts/prod-db-diagnostic.mjs
+          railway run --service "${{ github.event.inputs.database_service_name }}" --environment "${{ github.event.inputs.environment_name }}" -- node scripts/prod-db-diagnostic.mjs
