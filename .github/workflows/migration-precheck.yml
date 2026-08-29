@@ -1,0 +1,48 @@
+name: Migration 0005 read-only pre-check
+
+# Manual-only. Runs scripts/migration-precheck.mjs — strictly read-only
+# (SHOW TABLES + SELECT from drizzle's own __drizzle_migrations bookkeeping
+# table; no DDL, no writes, no business-table row data) — against the real
+# production Railway service, using the same connection method server/db.ts
+# uses. Purpose: establish exactly which migrations are applied and which
+# are pending BEFORE migration 0005 (staff_users + workforce_audit_events)
+# is separately authorised. Never prints DATABASE_URL or any secret value.
+#
+# Auth: githubactionsprod — the same production-scoped Railway Project
+# Token production-db-diagnostic.yml already uses.
+on:
+  workflow_dispatch:
+    inputs:
+      service_name:
+        description: "Railway service name"
+        required: true
+        default: "world-student-advisors"
+      environment_name:
+        description: "Railway environment name"
+        required: true
+        default: "production"
+
+jobs:
+  precheck:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Install Railway CLI
+        run: npm install -g @railway/cli
+
+      - name: Run read-only migration pre-check against production
+        env:
+          RAILWAY_TOKEN: ${{ secrets.githubactionsprod }}
+        run: |
+          railway run --service "${{ github.event.inputs.service_name }}" --environment "${{ github.event.inputs.environment_name }}" -- node scripts/migration-precheck.mjs
