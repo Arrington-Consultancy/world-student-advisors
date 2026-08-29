@@ -25,9 +25,11 @@ import {
 import { resolvePortalDashboard } from "./portal-resolver";
 import { getSessionQuestions, assessAnswer, summariseSession, TYPE_LABELS } from "./interviewCoach";
 import { requireTurnstile } from "./_core/turnstile";
-import { authenticateStaffPortal, verifyStaffPortalToken, isStaffPortalLoginRateLimited, requireStaffPortalAuth } from "./staffPortalAuth";
+import { authenticateStaffPortal, verifyStaffPortalToken, isStaffPortalLoginRateLimited } from "./staffPortalAuth";
 import { isMicrosoftSsoConfigured, buildMicrosoftSignInRequest, completeMicrosoftSignInFromCallback } from "./staffIdentityAuth";
-import { listWorkers } from "./workforce/registry";
+import { resolveStaffSession } from "./staffSession";
+import { recordAuditEvent } from "./workforce/audit";
+import { listWorkers, getWorker } from "./workforce/registry";
 import { evaluateStaffPortalExecutionPermission } from "./workforce/permissions";
 import { routeStaffRequest } from "./workforce/router";
 
@@ -510,7 +512,9 @@ export const appRouter = router({
 
   // The WSA AI Workforce platform: read-only visibility of the controlled
   // worker estate and the deterministic receptionist/router. Every
-  // procedure requires a valid Staff Portal session. Nothing here can
+  // procedure resolves a staff session server-side (resolveStaffSession —
+  // Entra individual identity or the legacy shared-password path, always
+  // structurally distinguished) before doing anything. Nothing here can
   // change a worker's status, permissions or scope — the registry is a
   // server-only constant (server/workforce/registry.ts), sourced from
   // controlled WSA SharePoint evidence, not from anything a staff member
@@ -519,8 +523,12 @@ export const appRouter = router({
     listWorkers: publicProcedure
       .input(z.object({ token: z.string() }))
       .query(async ({ input }) => {
-        await requireStaffPortalAuth(input.token);
+        const session = await resolveStaffSession(input.token);
         return {
+          session: {
+            authMethod: session.authMethod,
+            displayName: session.authMethod === "entra_sso" ? session.displayName : null,
+          },
           workers: listWorkers().map(w => ({
             id: w.id,
             canonicalName: w.canonicalName,
@@ -540,8 +548,28 @@ export const appRouter = router({
     route: publicProcedure
       .input(z.object({ token: z.string(), request: z.string().min(1).max(500) }))
       .query(async ({ input }) => {
-        await requireStaffPortalAuth(input.token);
-        return routeStaffRequest(input.request);
+        const session = await resolveStaffSession(input.token);
+        const result = routeStaffRequest(input.request);
+        // Routing is a meaningful action, so it is audited with the
+        // resolved principal — but deliberately WITHOUT the request's free
+        // text, which staff may phrase around a named student. Only the
+        // routing outcome is recorded (data minimisation per the QA
+        // Records Access & Data Minimisation Standard).
+        const auditedWorkerId = result.responsibleWorkerId ?? "staff_receptionist";
+        recordAuditEvent({
+          staffUserId: session.staffUserId,
+          authMethod: session.authMethod,
+          workerId: auditedWorkerId,
+          workerSpecificationVersion: getWorker(auditedWorkerId).specificationVersion,
+          requestedCapability: "receptionist:route",
+          permissionDecision: "allowed",
+          permissionReason: result.matched
+            ? `Routed to ${result.responsibleWorkerName} (${result.availability}).`
+            : "No worker matched; escalated to the authorised human process.",
+          success: true,
+          errorCategory: "none",
+        });
+        return result;
       }),
   }),
 

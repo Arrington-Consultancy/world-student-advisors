@@ -119,6 +119,65 @@ export async function persistAuditEventDurably(event: AuditEvent): Promise<void>
   }
 }
 
+/**
+ * ARCHITECTURAL SEAM — material writes vs. informational events.
+ *
+ * recordAuditEvent above is deliberately best-effort: an informational
+ * event (a routing decision, a denied permission check) must never block
+ * the caller. That posture is NOT acceptable for a future material
+ * business write (SharePoint record update, CRM change, external send):
+ * the system must never reach "the business record changed but the
+ * required audit trail silently failed."
+ *
+ * This function is the enforcement point for that future path. It awaits
+ * durable persistence and reports honestly whether the audit record is
+ * actually stored. The contract for any future material connector write
+ * is:
+ *
+ *   permission check → business write → recordMaterialAuditEvent →
+ *   if durablyStored is false, surface a controlled warning to staff and
+ *   route to the failure handling in Universal Worker Instructions §6
+ *   (honest report + copyable handoff) — never a silent success.
+ *
+ * Whether a failed audit write should also block the business write
+ * itself (write-ahead auditing) is a governance decision to take when
+ * material writes are first authorised — nothing is authorised to make
+ * material writes today, so no caller exists yet.
+ */
+export async function recordMaterialAuditEvent(event: Omit<AuditEvent, "timestamp">): Promise<{ durablyStored: boolean }> {
+  const fullEvent: AuditEvent = {
+    ...event,
+    timestamp: new Date().toISOString(),
+    permissionReason: redact(event.permissionReason) ?? "",
+    targetResourceId: redact(event.targetResourceId),
+  };
+  auditLog.push(fullEvent);
+  try {
+    const db = await getDb();
+    if (!db) return { durablyStored: false };
+    await db.insert(workforceAuditEvents).values({
+      staffUserId: fullEvent.staffUserId,
+      authMethod: fullEvent.authMethod,
+      workerId: fullEvent.workerId,
+      workerSpecificationVersion: fullEvent.workerSpecificationVersion,
+      caseId: fullEvent.caseId,
+      requestedCapability: fullEvent.requestedCapability,
+      permissionDecision: fullEvent.permissionDecision,
+      permissionReason: fullEvent.permissionReason,
+      connector: fullEvent.connector,
+      connectorOperation: fullEvent.connectorOperation,
+      success: fullEvent.success === null ? null : fullEvent.success ? 1 : 0,
+      targetResourceId: fullEvent.targetResourceId,
+      handoffToWorkerId: fullEvent.handoffToWorkerId,
+      errorCategory: fullEvent.errorCategory,
+    });
+    return { durablyStored: true };
+  } catch (error) {
+    console.warn("[Workforce audit] MATERIAL event failed durable persistence — caller must surface this:", error);
+    return { durablyStored: false };
+  }
+}
+
 /** Read-only view of the in-process audit log. Test/inspection use only. */
 export function getAuditLog(): readonly AuditEvent[] {
   return auditLog;

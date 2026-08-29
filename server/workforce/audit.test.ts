@@ -4,7 +4,7 @@ const mockDb = { insert: vi.fn() };
 const mockGetDb = vi.fn(async () => mockDb as any);
 vi.mock("../db", () => ({ getDb: mockGetDb }));
 
-const { recordAuditEvent, getAuditLog, clearAuditLog, persistAuditEventDurably } = await import("./audit");
+const { recordAuditEvent, getAuditLog, clearAuditLog, persistAuditEventDurably, recordMaterialAuditEvent } = await import("./audit");
 
 beforeEach(() => {
   clearAuditLog();
@@ -62,6 +62,35 @@ describe("durable audit persistence", () => {
     await new Promise(resolve => setTimeout(resolve, 0));
     expect(mockDb.insert).toHaveBeenCalledTimes(1);
   });
+});
+
+describe("recordMaterialAuditEvent — the future material-write contract reports durable storage honestly", () => {
+  it("reports durablyStored: true only when the database write actually succeeds", async () => {
+    const result = await persistMaterial();
+    expect(result.durablyStored).toBe(true);
+  });
+
+  it("reports durablyStored: false when no database is configured — never a fake confirmation", async () => {
+    mockGetDb.mockResolvedValue(null as any);
+    const result = await persistMaterial();
+    expect(result.durablyStored).toBe(false);
+  });
+
+  it("reports durablyStored: false on a database error, still without throwing", async () => {
+    mockDb.insert.mockReturnValue({ values: vi.fn().mockRejectedValue(new Error("connection reset")) });
+    const result = await persistMaterial();
+    expect(result.durablyStored).toBe(false);
+  });
+
+  it("always keeps the in-process record even when durable storage fails", async () => {
+    mockGetDb.mockResolvedValue(null as any);
+    await persistMaterial();
+    expect(getAuditLog()).toHaveLength(1);
+  });
+
+  async function persistMaterial() {
+    return recordMaterialAuditEvent({ ...baseEvent, requestedCapability: "sharepoint:update", success: true, errorCategory: "none" });
+  }
 });
 
 describe("audit framework", () => {
