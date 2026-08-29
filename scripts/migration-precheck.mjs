@@ -76,7 +76,10 @@ try {
   console.log(`  staff_users exists:              ${tableNames.includes("staff_users")}`);
   console.log(`  workforce_audit_events exists:   ${tableNames.includes("workforce_audit_events")}`);
 } catch (error) {
+  // Print the message and the underlying driver error CODE only (e.g.
+  // ENOTFOUND, ETIMEDOUT) — never the connection string or hostname.
   console.error("Query failed:", error.message);
+  if (error.cause?.code) console.error("Underlying error code:", error.cause.code);
   process.exit(1);
 }
 
