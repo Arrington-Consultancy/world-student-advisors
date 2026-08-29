@@ -143,3 +143,65 @@ export const interviewCoachSessions = mysqlTable("interview_coach_sessions", {
 
 export type InterviewCoachSession = typeof interviewCoachSessions.$inferSelect;
 export type InsertInterviewCoachSession = typeof interviewCoachSessions.$inferInsert;
+
+/**
+ * Individual Staff Portal identity — Stage 3 of the WSA AI Workforce
+ * platform. Distinct from portalUsers (students) and from the pre-existing
+ * shared Staff Portal password (staffPortalAuth.ts), which this table
+ * exists to retire: WSA's own Digital Workspace Programme master plan
+ * ("Use Microsoft security rather than separate passwords") is the
+ * controlled evidence for using Microsoft Entra ID rather than a second
+ * username/password system. entraObjectId is Entra's stable per-user
+ * identifier (`oid` claim) — never the mutable email/UPN — so a later
+ * email/name change in Microsoft 365 doesn't orphan the record.
+ */
+export const staffUsers = mysqlTable("staff_users", {
+  id: int("id").autoincrement().primaryKey(),
+  entraObjectId: varchar("entraObjectId", { length: 64 }).notNull().unique(),
+  email: varchar("email", { length: 320 }).notNull().unique(),
+  displayName: varchar("displayName", { length: 200 }).notNull(),
+  /** Deactivating here (not deleting) revokes access while preserving audit history's staffUserId references. */
+  isActive: int("isActive").default(1).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+  lastLoginAt: timestamp("lastLoginAt"),
+});
+
+export type StaffUser = typeof staffUsers.$inferSelect;
+export type InsertStaffUser = typeof staffUsers.$inferInsert;
+
+/**
+ * Durable audit record for the WSA AI Workforce platform — the persisted
+ * counterpart to server/workforce/audit.ts's in-process log, which does
+ * not survive a server restart or Railway redeploy. staffUserId is
+ * nullable because a legacy shared-password session (see
+ * staffPortalAuth.ts) carries no individual identity to attribute the
+ * event to; authMethod records which kind of session produced the event
+ * so that distinction is never lost or assumed away when reading the log
+ * back. No table here stores a password, token, API key or secret value,
+ * and workforce/audit.ts's redaction runs before any free-text field
+ * reaches this table.
+ */
+export const workforceAuditEvents = mysqlTable("workforce_audit_events", {
+  id: int("id").autoincrement().primaryKey(),
+  /** Null for a shared-password session — never a guessed or default staff identity. */
+  staffUserId: int("staffUserId"),
+  authMethod: mysqlEnum("authMethod", ["entra_sso", "shared_password"]).notNull(),
+  workerId: varchar("workerId", { length: 40 }).notNull(),
+  workerSpecificationVersion: varchar("workerSpecificationVersion", { length: 60 }).notNull(),
+  caseId: varchar("caseId", { length: 60 }),
+  requestedCapability: varchar("requestedCapability", { length: 80 }).notNull(),
+  permissionDecision: mysqlEnum("permissionDecision", ["allowed", "denied"]).notNull(),
+  permissionReason: text("permissionReason").notNull(),
+  connector: varchar("connector", { length: 20 }),
+  connectorOperation: varchar("connectorOperation", { length: 20 }),
+  /** Tri-state: NULL = no attempt was made (e.g. denied before reaching a connector), 0 = attempted and failed, 1 = succeeded. */
+  success: int("success"),
+  targetResourceId: varchar("targetResourceId", { length: 255 }),
+  handoffToWorkerId: varchar("handoffToWorkerId", { length: 40 }),
+  errorCategory: varchar("errorCategory", { length: 30 }).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type WorkforceAuditEvent = typeof workforceAuditEvents.$inferSelect;
+export type InsertWorkforceAuditEvent = typeof workforceAuditEvents.$inferInsert;

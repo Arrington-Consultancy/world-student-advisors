@@ -5,13 +5,17 @@
  * audit trail is meaningful from day one rather than only once connectors
  * go live.
  *
- * Deliberately in-process only for this build pass: no database migration
- * has been requested or approved, and Mandatory Material Write-Back
- * (Universal Worker Instructions v1.0) governs *worker* output, not this
- * platform's own audit storage. Persisting this durably is a follow-up
- * that needs its own migration, reviewed like any other production schema
- * change.
+ * Every event is kept in-process (fast, always available, used by this
+ * module's own tests) and — best-effort — persisted to the
+ * workforce_audit_events table (drizzle/0005_staff_identity_and_audit.sql,
+ * not yet applied to any real database) so the record survives a server
+ * restart or Railway redeploy, which the in-process log alone cannot.
+ * Durable persistence never blocks or fails the caller's actual work: if
+ * the database is unavailable, the in-process record still exists and a
+ * warning is logged.
  */
+import { getDb } from "../db";
+import { workforceAuditEvents } from "../../drizzle/schema";
 import type { ConnectorName, ConnectorOperation, WorkerId } from "./types";
 
 export type ErrorCategory =
@@ -22,10 +26,14 @@ export type ErrorCategory =
   | "validation_error"
   | "none";
 
+/** Which authentication path produced the session this event belongs to. Never lost or defaulted away — see server/staffRBAC.ts. */
+export type AuditAuthMethod = "entra_sso" | "shared_password";
+
 export interface AuditEvent {
   timestamp: string;
-  /** Staff identity from the verified Staff Portal session — never client-supplied. */
-  staffIdentity: string;
+  /** The resolved staff_users.id for an entra_sso session; null for a shared-password session, which carries no individual identity. Never client-supplied. */
+  staffUserId: number | null;
+  authMethod: AuditAuthMethod;
   workerId: WorkerId;
   workerSpecificationVersion: string;
   caseId?: string;
@@ -57,17 +65,57 @@ function redact(value: string | undefined): string | undefined {
 
 const auditLog: AuditEvent[] = [];
 
-/** Records one audit event. Never throws — a logging failure must not block the caller's actual work. */
+/**
+ * Records one audit event: always in-process, and best-effort to durable
+ * storage. Never throws and never awaited by the caller for the durable
+ * write specifically — a logging failure, of either kind, must not block
+ * or fail the caller's actual work.
+ */
 export function recordAuditEvent(event: Omit<AuditEvent, "timestamp">): void {
+  let fullEvent: AuditEvent;
   try {
-    auditLog.push({
+    fullEvent = {
       ...event,
       timestamp: new Date().toISOString(),
       permissionReason: redact(event.permissionReason) ?? "",
       targetResourceId: redact(event.targetResourceId),
-    });
+    };
+    auditLog.push(fullEvent);
   } catch {
     // Auditing must never take down the caller's actual work.
+    return;
+  }
+  void persistAuditEventDurably(fullEvent);
+}
+
+/**
+ * Best-effort durable write. Swallows every failure (no database
+ * configured, connection error, schema mismatch) after logging a warning
+ * — the in-process record above is never lost even when this is. Exported
+ * for tests; not part of this module's normal call surface otherwise.
+ */
+export async function persistAuditEventDurably(event: AuditEvent): Promise<void> {
+  try {
+    const db = await getDb();
+    if (!db) return;
+    await db.insert(workforceAuditEvents).values({
+      staffUserId: event.staffUserId,
+      authMethod: event.authMethod,
+      workerId: event.workerId,
+      workerSpecificationVersion: event.workerSpecificationVersion,
+      caseId: event.caseId,
+      requestedCapability: event.requestedCapability,
+      permissionDecision: event.permissionDecision,
+      permissionReason: event.permissionReason,
+      connector: event.connector,
+      connectorOperation: event.connectorOperation,
+      success: event.success === null ? null : event.success ? 1 : 0,
+      targetResourceId: event.targetResourceId,
+      handoffToWorkerId: event.handoffToWorkerId,
+      errorCategory: event.errorCategory,
+    });
+  } catch (error) {
+    console.warn("[Workforce audit] Durable persistence failed — event remains in the in-process log only:", error);
   }
 }
 

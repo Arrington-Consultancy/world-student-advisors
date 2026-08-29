@@ -26,6 +26,7 @@ import { resolvePortalDashboard } from "./portal-resolver";
 import { getSessionQuestions, assessAnswer, summariseSession, TYPE_LABELS } from "./interviewCoach";
 import { requireTurnstile } from "./_core/turnstile";
 import { authenticateStaffPortal, verifyStaffPortalToken, isStaffPortalLoginRateLimited, requireStaffPortalAuth } from "./staffPortalAuth";
+import { isMicrosoftSsoConfigured, buildMicrosoftSignInRequest, completeMicrosoftSignInFromCallback } from "./staffIdentityAuth";
 import { listWorkers } from "./workforce/registry";
 import { evaluateStaffPortalExecutionPermission } from "./workforce/permissions";
 import { routeStaffRequest } from "./workforce/router";
@@ -481,6 +482,29 @@ export const appRouter = router({
       .query(async ({ input }) => {
         const authenticated = await verifyStaffPortalToken(input.token);
         return { authenticated };
+      }),
+
+    // Stage 3: individual staff identity via Microsoft Entra ID, alongside
+    // (not yet replacing) the shared-password login above — see
+    // server/staffIdentityAuth.ts. microsoftSsoStatus lets the client show
+    // an honest "not yet configured" state rather than a broken button
+    // when STAFF_SSO_* env vars aren't set.
+    microsoftSsoStatus: publicProcedure.query(() => ({ configured: isMicrosoftSsoConfigured() })),
+
+    microsoftLoginUrl: publicProcedure.mutation(async () => {
+      return buildMicrosoftSignInRequest();
+    }),
+
+    microsoftCallback: publicProcedure
+      .input(z.object({ code: z.string().min(1), state: z.string().min(1) }))
+      .mutation(async ({ input }) => {
+        try {
+          const token = await completeMicrosoftSignInFromCallback(input.code, input.state);
+          return { success: true as const, token };
+        } catch (err) {
+          const message = err instanceof Error ? err.message : "Microsoft sign-in failed.";
+          return { success: false as const, error: message };
+        }
       }),
   }),
 

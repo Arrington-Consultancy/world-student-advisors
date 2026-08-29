@@ -40,6 +40,42 @@ export default function StaffPortal() {
   }, []);
 
   const meQuery = trpc.staffPortal.me.useQuery({ token: token ?? "" }, { enabled: !!token });
+  const ssoStatusQuery = trpc.staffPortal.microsoftSsoStatus.useQuery();
+
+  const microsoftLoginUrlMutation = trpc.staffPortal.microsoftLoginUrl.useMutation({
+    onSuccess: data => {
+      window.location.href = data.authorizeUrl;
+    },
+  });
+
+  const microsoftCallbackMutation = trpc.staffPortal.microsoftCallback.useMutation({
+    onSuccess: data => {
+      if (data.success) {
+        localStorage.setItem(STORAGE_KEY, data.token);
+        setToken(data.token);
+      } else {
+        setError(data.error);
+      }
+    },
+    onError: () => setError("Microsoft sign-in failed. Please try again."),
+  });
+
+  // Completes the Entra ID redirect: Microsoft returns here with ?code&state
+  // in the query string. Handled once, then the params are stripped from
+  // the URL so a page refresh doesn't try to replay a spent auth code.
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const code = params.get("code");
+    const state = params.get("state");
+    if (code && state) {
+      microsoftCallbackMutation.mutate({ code, state });
+      const url = new URL(window.location.href);
+      url.searchParams.delete("code");
+      url.searchParams.delete("state");
+      window.history.replaceState({}, "", url.toString());
+    }
+    // Runs once on mount only — this reads the initial redirect, not live state.
+  }, []);
 
   useEffect(() => {
     if (meQuery.data && !meQuery.data.authenticated) {
@@ -77,10 +113,10 @@ export default function StaffPortal() {
   const authenticated = !!token && meQuery.data?.authenticated === true;
   const checkingSession = !!token && meQuery.isLoading;
 
-  if (checkingSession) {
+  if (checkingSession || microsoftCallbackMutation.isPending) {
     return (
       <Shell>
-        <p className="text-center text-gray-500">Checking session…</p>
+        <p className="text-center text-gray-500">{microsoftCallbackMutation.isPending ? "Completing Microsoft sign-in…" : "Checking session…"}</p>
       </Shell>
     );
   }
@@ -88,6 +124,8 @@ export default function StaffPortal() {
   if (authenticated) {
     return <WorkforceHome token={token as string} onLogout={handleLogout} />;
   }
+
+  const ssoConfigured = ssoStatusQuery.data?.configured === true;
 
   return (
     <Shell>
@@ -98,7 +136,32 @@ export default function StaffPortal() {
         <h1 className="text-2xl font-bold text-wsa-navy mb-2">Staff Portal</h1>
         <p className="text-gray-600 text-sm">Internal WSA staff only.</p>
       </div>
-      <form onSubmit={handleSubmit} className="bg-white border border-border/70 p-6 space-y-4">
+
+      <div className="bg-white border border-border/70 p-6 space-y-4">
+        <Button
+          type="button"
+          variant="outline"
+          disabled={!ssoConfigured || microsoftLoginUrlMutation.isPending}
+          onClick={() => microsoftLoginUrlMutation.mutate()}
+          className="w-full border-wsa-navy/20 text-wsa-navy"
+        >
+          {microsoftLoginUrlMutation.isPending ? "Redirecting…" : "Sign in with Microsoft"}
+        </Button>
+        {!ssoConfigured && (
+          <p className="text-xs text-gray-400 text-center">Microsoft sign-in is not yet configured — use your password below.</p>
+        )}
+        {microsoftCallbackMutation.isError || (microsoftCallbackMutation.data && !microsoftCallbackMutation.data.success) ? (
+          <p className="text-sm text-red-600 text-center">{error}</p>
+        ) : null}
+
+        <div className="flex items-center gap-3 text-xs text-gray-400">
+          <span className="h-px flex-1 bg-border" />
+          or
+          <span className="h-px flex-1 bg-border" />
+        </div>
+      </div>
+
+      <form onSubmit={handleSubmit} className="bg-white border border-border/70 p-6 space-y-4 mt-4">
         <div className="relative">
           <Input
             type={showPassword ? "text" : "password"}

@@ -32,3 +32,28 @@ describe("staffRBAC — authentication and authorisation are separate", () => {
     expect(result.reason).toMatch(/no controlled wsa staff-role mapping/i);
   });
 });
+
+describe("staffRBAC — shared-password sessions are permanently barred beyond the baseline", () => {
+  it("a shared-password session gets the same baseline access as any authenticated session", () => {
+    const principal = { authenticated: true, authMethod: "shared_password" as const };
+    expect(evaluateStaffCapability(principal, "staff_portal_access").allowed).toBe(true);
+    expect(evaluateStaffCapability(principal, "view_workforce_status").allowed).toBe(true);
+  });
+
+  it("a shared-password session is denied every other capability, not as pendingGovernance but as a permanent structural bar", () => {
+    const principal = { authenticated: true, authMethod: "shared_password" as const };
+    for (const capability of ["view_student_data", "connector_write", "approval_authority", "admin"] as const) {
+      const result = evaluateStaffCapability(principal, capability);
+      expect(result.allowed).toBe(false);
+      expect(result.pendingGovernance).toBe(false);
+      expect(result.reason).toMatch(/no individual identity/i);
+    }
+  });
+
+  it("an entra_sso session with no approved role mapping yet is still pendingGovernance, not permanently barred", () => {
+    const principal = { authenticated: true, authMethod: "entra_sso" as const, staffUserId: 1, email: "staff@worldstudentadvisors.com", displayName: "Staff Member" };
+    const result = evaluateStaffCapability(principal, "admin");
+    expect(result.allowed).toBe(false);
+    expect(result.pendingGovernance).toBe(true);
+  });
+});

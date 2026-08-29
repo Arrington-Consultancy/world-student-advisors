@@ -38,7 +38,7 @@ describe("SharePoint connector — honest current state", () => {
   });
 
   it("search/read/write all fail honestly for any worker today, without ever claiming success", async () => {
-    const base = { workerId: "james" as const, resourceScope: "application/case-1", staffIdentity: "staff-1" };
+    const base = { workerId: "james" as const, resourceScope: "application/case-1", staffUserId: 1, authMethod: "entra_sso" };
     const searchResult = await searchSharePoint(base);
     const readResult = await readSharePointRecord(base);
     const writeResult = await writeSharePointHandoff(base);
@@ -72,7 +72,7 @@ describe("Google Drive connector — honest current state and folder isolation",
   });
 
   it("search/read fail honestly for any worker today", async () => {
-    const base = { workerId: "ethan" as const, resourceScope: "wsa-seo-evidence/search-console.csv", staffIdentity: "staff-1" };
+    const base = { workerId: "ethan" as const, resourceScope: "wsa-seo-evidence/search-console.csv", staffUserId: 1, authMethod: "entra_sso" };
     const searchResult = await searchGoogleDrive(base);
     const readResult = await readGoogleDriveFile(base);
     expect(searchResult.success).toBe(false);
