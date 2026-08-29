@@ -10,7 +10,7 @@
  * here rather than duplicated per connector.
  */
 import { evaluateConnectorPermission } from "../permissions";
-import { recordAuditEvent } from "../audit";
+import { recordAuditEvent, type AuditAuthMethod } from "../audit";
 import { getWorker } from "../registry";
 import type { ConnectorName, ConnectorOperation, ConnectorState, WorkerId } from "../types";
 import type { PermissionDecision } from "../permissions";
@@ -22,8 +22,9 @@ export interface ConnectorActionRequest {
   /** Opaque description of what's being targeted — a path, folder name, record type. Never full document content. */
   resourceScope: string;
   caseId?: string;
-  /** From the verified Staff Portal session — never client-supplied. */
-  staffIdentity: string;
+  /** From the verified staff session — never client-supplied. Null for a shared-password session, which carries no individual identity. */
+  staffUserId: number | null;
+  authMethod: AuditAuthMethod;
 }
 
 export interface ConnectorActionResult {
@@ -63,7 +64,8 @@ export async function runConnectorAction(
 
   if (!permission.allowed) {
     recordAuditEvent({
-      staffIdentity: request.staffIdentity,
+      staffUserId: request.staffUserId,
+      authMethod: request.authMethod,
       workerId: request.workerId,
       workerSpecificationVersion: worker.specificationVersion,
       caseId: request.caseId,
@@ -83,7 +85,8 @@ export async function runConnectorAction(
   if (state !== "operational") {
     const message = describeUnavailableState(request.connector, state);
     recordAuditEvent({
-      staffIdentity: request.staffIdentity,
+      staffUserId: request.staffUserId,
+      authMethod: request.authMethod,
       workerId: request.workerId,
       workerSpecificationVersion: worker.specificationVersion,
       caseId: request.caseId,
@@ -107,7 +110,8 @@ export async function runConnectorAction(
   const attemptResult = await attemptOnceWithRetry(attempt, request);
 
   recordAuditEvent({
-    staffIdentity: request.staffIdentity,
+    staffUserId: request.staffUserId,
+    authMethod: request.authMethod,
     workerId: request.workerId,
     workerSpecificationVersion: worker.specificationVersion,
     caseId: request.caseId,

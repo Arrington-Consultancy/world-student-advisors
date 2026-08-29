@@ -11,7 +11,8 @@ const baseRequest = {
   connector: "sharepoint" as const,
   operation: "read" as const,
   resourceScope: "enquiry/12345",
-  staffIdentity: "staff-session-1",
+  staffUserId: 1,
+  authMethod: "entra_sso",
 };
 
 describe("runConnectorAction — permission gate", () => {

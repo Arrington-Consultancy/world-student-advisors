@@ -41,6 +41,20 @@ export const ENV = {
   microsoftClientId: process.env.MICROSOFT_CLIENT_ID ?? "",
   microsoftClientSecret: process.env.MICROSOFT_CLIENT_SECRET ?? "",
   microsoftSendAsMailbox: process.env.MICROSOFT_SEND_AS_MAILBOX ?? "tim.hunt@worldstudentadvisors.com",
+  /**
+   * Deliberately distinct from microsoftTenantId/ClientId/ClientSecret
+   * above, which were granted only the Mail.Send application permission —
+   * interactive staff sign-in is a different trust boundary (a delegated,
+   * user-facing OIDC flow) and should prove its own configuration rather
+   * than silently reuse mail-sending credentials. May point at the same
+   * Entra app registration if WSA IT decides to reuse it, or a distinct
+   * one — that choice belongs to WSA, not this codebase.
+   */
+  staffSsoTenantId: process.env.STAFF_SSO_TENANT_ID ?? "",
+  staffSsoClientId: process.env.STAFF_SSO_CLIENT_ID ?? "",
+  /** Server-only. Never send this to the client, log it, or include it in any response. */
+  staffSsoClientSecret: process.env.STAFF_SSO_CLIENT_SECRET ?? "",
+  staffSsoRedirectUri: process.env.STAFF_SSO_REDIRECT_URI ?? "",
   /** Safe to expose to the client — served via system.turnstileSiteKey. */
   turnstileSiteKey: process.env.TURNSTILE_SITE_KEY ?? "",
   /** Server-only. Never send this to the client, log it, or include it in any response. */

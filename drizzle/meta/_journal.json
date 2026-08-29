@@ -36,6 +36,13 @@
       "when": 1787900000000,
       "tag": "0004_interview_coach_sessions",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "5",
+      "when": 1788019600000,
+      "tag": "0005_staff_identity_and_audit",
+      "breakpoints": true
     }
   ]
 }
