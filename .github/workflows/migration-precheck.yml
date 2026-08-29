@@ -1,30 +1,45 @@
 name: Migration 0005 read-only pre-check
 
 # Manual-only. Runs scripts/migration-precheck.mjs — strictly read-only
-# (SHOW TABLES + SELECT from drizzle's own __drizzle_migrations bookkeeping
-# table; no DDL, no writes, no business-table row data) — against the real
-# production Railway service, using the same connection method server/db.ts
-# uses. Purpose: establish exactly which migrations are applied and which
-# are pending BEFORE migration 0005 (staff_users + workforce_audit_events)
-# is separately authorised. Never prints DATABASE_URL or any secret value.
+# against the DATABASE (SHOW TABLES + SELECT from drizzle's own
+# __drizzle_migrations bookkeeping table; no DDL, no writes, no
+# business-table row data) — against the real production Railway MySQL.
+#
+# Connection method: the app service's DATABASE_URL references the MySQL
+# service's PRIVATE URL (mysql.railway.internal), which is unreachable from
+# GitHub-hosted runners (confirmed ENOTFOUND on a prior run — see
+# provision-portal-database.yml, whose proven public-proxy dance this
+# mirrors exactly): discover the public-URL variable NAME on the MySQL
+# service (key only, value never printed), set a temporary
+# PRECHECK_DATABASE_URL reference on the app service (reference syntax
+# only — the actual connection string is never read or printed), run the
+# read-only script against it, then remove the temporary variable.
 #
 # Auth: githubactionsprod — the same production-scoped Railway Project
-# Token production-db-diagnostic.yml already uses.
+# Token production-db-diagnostic.yml and provision-portal-database.yml use.
 on:
   workflow_dispatch:
     inputs:
       service_name:
-        description: "Railway service name"
+        description: "Railway app service name"
         required: true
         default: "world-student-advisors"
       environment_name:
         description: "Railway environment name"
         required: true
         default: "production"
+      database_service_name:
+        description: "Railway MySQL service name"
+        required: true
+        default: "MySQL"
 
 jobs:
   precheck:
     runs-on: ubuntu-latest
+    env:
+      APP_SERVICE_NAME: ${{ github.event.inputs.service_name }}
+      APP_ENV_NAME: ${{ github.event.inputs.environment_name }}
+      DB_SERVICE_NAME: ${{ github.event.inputs.database_service_name }}
     steps:
       - uses: actions/checkout@v4
 
@@ -41,8 +56,46 @@ jobs:
       - name: Install Railway CLI
         run: npm install -g @railway/cli
 
+      - name: Discover the MySQL service's public-URL variable NAME (key only, value never printed)
+        id: discover
+        env:
+          RAILWAY_TOKEN: ${{ secrets.githubactionsprod }}
+        run: |
+          KEYS=$(railway variables --service "$DB_SERVICE_NAME" --environment "$APP_ENV_NAME" --json | jq -r 'keys[]')
+          echo "Variable names found on $DB_SERVICE_NAME (names only):"
+          echo "$KEYS"
+          PUBLIC_KEY=$(echo "$KEYS" | grep -i -E '^(MYSQL_PUBLIC_URL|DATABASE_PUBLIC_URL)$' | head -n1)
+          if [ -z "$PUBLIC_KEY" ]; then
+            echo "No public-URL-shaped variable found on $DB_SERVICE_NAME. Stopping — not guessing further."
+            exit 1
+          fi
+          echo "Using public URL variable: $PUBLIC_KEY"
+          echo "public_key=$PUBLIC_KEY" >> "$GITHUB_OUTPUT"
+
+      - name: Set a temporary public-reachable pre-check URL on the app service
+        env:
+          RAILWAY_TOKEN: ${{ secrets.githubactionsprod }}
+          PUBLIC_KEY: ${{ steps.discover.outputs.public_key }}
+        run: |
+          REF=$(printf '\044{{%s.%s}}' "$DB_SERVICE_NAME" "$PUBLIC_KEY")
+          railway variables \
+            --service "$APP_SERVICE_NAME" \
+            --environment "$APP_ENV_NAME" \
+            --set "PRECHECK_DATABASE_URL=${REF}"
+
       - name: Run read-only migration pre-check against production
         env:
           RAILWAY_TOKEN: ${{ secrets.githubactionsprod }}
         run: |
-          railway run --service "${{ github.event.inputs.service_name }}" --environment "${{ github.event.inputs.environment_name }}" -- node scripts/migration-precheck.mjs
+          railway run --service "$APP_SERVICE_NAME" --environment "$APP_ENV_NAME" -- \
+            sh -c 'DATABASE_URL="$PRECHECK_DATABASE_URL" node scripts/migration-precheck.mjs'
+
+      - name: Remove the temporary pre-check URL variable
+        if: always()
+        env:
+          RAILWAY_TOKEN: ${{ secrets.githubactionsprod }}
+        run: |
+          railway variables \
+            --service "$APP_SERVICE_NAME" \
+            --environment "$APP_ENV_NAME" \
+            --set "PRECHECK_DATABASE_URL="
