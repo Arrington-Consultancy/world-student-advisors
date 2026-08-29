@@ -1,0 +1,100 @@
+name: Staff identity acceptance test (read-only)
+
+# Manual-only. The server-verifiable portion of the production Entra
+# identity acceptance test, plus a read-only snapshot of the Stage 3
+# identity tables. Non-destructive throughout: read-only queries, one
+# deliberately-invalid callback attempt, and deliberately-forged tokens
+# that production must REJECT. Never prints secrets; the interactive
+# Microsoft sign-in itself is a human step performed by an authorised
+# staff member in a browser — this workflow verifies everything around it
+# and, on a re-run after that sign-in, the resulting staff_users row and
+# audit attribution.
+#
+# Auth: githubactionsprod (DB snapshot step only, via the proven
+# public-proxy dance). The HTTP acceptance step needs no credentials.
+on:
+  workflow_dispatch:
+    inputs:
+      service_name:
+        description: "Railway app service name"
+        required: true
+        default: "world-student-advisors"
+      environment_name:
+        description: "Railway environment name"
+        required: true
+        default: "production"
+      database_service_name:
+        description: "Railway MySQL service name"
+        required: true
+        default: "MySQL"
+
+jobs:
+  acceptance:
+    runs-on: ubuntu-latest
+    env:
+      APP_SERVICE_NAME: ${{ github.event.inputs.service_name }}
+      APP_ENV_NAME: ${{ github.event.inputs.environment_name }}
+      DB_SERVICE_NAME: ${{ github.event.inputs.database_service_name }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: HTTP acceptance checks against live production (no credentials)
+        run: node scripts/identity-acceptance.mjs
+
+      - name: Install Railway CLI
+        if: always()
+        run: npm install -g @railway/cli
+
+      - name: Discover the MySQL service's public-URL variable NAME (key only, value never printed)
+        if: always()
+        id: discover
+        env:
+          RAILWAY_TOKEN: ${{ secrets.githubactionsprod }}
+        run: |
+          KEYS=$(railway variables --service "$DB_SERVICE_NAME" --environment "$APP_ENV_NAME" --json | jq -r 'keys[]')
+          PUBLIC_KEY=$(echo "$KEYS" | grep -i -E '^(MYSQL_PUBLIC_URL|DATABASE_PUBLIC_URL)$' | head -n1)
+          if [ -z "$PUBLIC_KEY" ]; then
+            echo "No public-URL-shaped variable found on $DB_SERVICE_NAME. Stopping — not guessing further."
+            exit 1
+          fi
+          echo "public_key=$PUBLIC_KEY" >> "$GITHUB_OUTPUT"
+
+      - name: Set a temporary public-reachable snapshot URL on the app service
+        if: always()
+        env:
+          RAILWAY_TOKEN: ${{ secrets.githubactionsprod }}
+          PUBLIC_KEY: ${{ steps.discover.outputs.public_key }}
+        run: |
+          REF=$(printf '\044{{%s.%s}}' "$DB_SERVICE_NAME" "$PUBLIC_KEY")
+          railway variables \
+            --service "$APP_SERVICE_NAME" \
+            --environment "$APP_ENV_NAME" \
+            --set "SNAPSHOT_DATABASE_URL=${REF}"
+
+      - name: Read-only snapshot of staff_users and workforce_audit_events
+        if: always()
+        env:
+          RAILWAY_TOKEN: ${{ secrets.githubactionsprod }}
+        run: |
+          railway run --service "$APP_SERVICE_NAME" --environment "$APP_ENV_NAME" -- \
+            sh -c 'DATABASE_URL="$SNAPSHOT_DATABASE_URL" node scripts/staff-identity-snapshot.mjs'
+
+      - name: Remove the temporary snapshot URL variable
+        if: always()
+        env:
+          RAILWAY_TOKEN: ${{ secrets.githubactionsprod }}
+        run: |
+          railway variables \
+            --service "$APP_SERVICE_NAME" \
+            --environment "$APP_ENV_NAME" \
+            --set "SNAPSHOT_DATABASE_URL="
