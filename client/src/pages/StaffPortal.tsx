@@ -3,6 +3,9 @@ import { Lock, LogOut, Eye, EyeOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { trpc } from "@/lib/trpc";
+import { WorkerCard, type WorkforceWorker } from "@/components/workforce/WorkerCard";
+import { WorkerWorkspace } from "@/components/workforce/WorkerWorkspace";
+import { Receptionist } from "@/components/workforce/Receptionist";
 
 const STORAGE_KEY = "staff_portal_token";
 
@@ -83,30 +86,7 @@ export default function StaffPortal() {
   }
 
   if (authenticated) {
-    return (
-      <div className="min-h-screen bg-wsa-warm-white pt-32 pb-20 lg:pt-40 lg:pb-28">
-        <main className="container max-w-2xl">
-          <p className="mb-5 text-sm font-medium tracking-[0.2em] uppercase text-wsa-red">Staff Portal</p>
-          <div className="flex items-start justify-between gap-6 mb-8">
-            <h1 className="text-3xl md:text-4xl font-semibold text-wsa-navy leading-[1.1]">Staff area</h1>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleLogout}
-              className="border-wsa-navy/20 text-wsa-navy hover:border-wsa-red hover:text-wsa-red shrink-0"
-            >
-              <LogOut className="w-4 h-4 mr-1" /> Sign out
-            </Button>
-          </div>
-          <div className="bg-white border border-border/70 p-8">
-            <p className="text-gray-600 leading-relaxed">
-              The university application portal directory is not built yet. It will live here once the list of
-              portals is available.
-            </p>
-          </div>
-        </main>
-      </div>
-    );
+    return <WorkforceHome token={token as string} onLogout={handleLogout} />;
   }
 
   return (
@@ -148,5 +128,61 @@ export default function StaffPortal() {
         </Button>
       </form>
     </Shell>
+  );
+}
+
+/**
+ * The real WSA AI Workforce home, replacing the Stage 1 placeholder. Every
+ * worker's status shown here is what server/workforce/registry.ts
+ * actually reports — this component has no local notion of who is
+ * "ready"; it only renders what workforce.listWorkers returns.
+ */
+function WorkforceHome({ token, onLogout }: { token: string; onLogout: () => void }) {
+  const [openWorker, setOpenWorker] = useState<WorkforceWorker | null>(null);
+  const workersQuery = trpc.workforce.listWorkers.useQuery({ token });
+
+  return (
+    <div className="min-h-screen bg-wsa-warm-white pt-32 pb-20 lg:pt-40 lg:pb-28">
+      <main className="container max-w-5xl">
+        <div className="flex items-start justify-between gap-6 mb-6">
+          <div>
+            <p className="mb-2 text-sm font-medium tracking-[0.2em] uppercase text-wsa-red">Staff Portal</p>
+            <h1 className="text-3xl md:text-4xl font-semibold text-wsa-navy leading-[1.1]">WSA AI Workforce</h1>
+          </div>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={onLogout}
+            className="border-wsa-navy/20 text-wsa-navy hover:border-wsa-red hover:text-wsa-red shrink-0"
+          >
+            <LogOut className="w-4 h-4 mr-1" /> Sign out
+          </Button>
+        </div>
+
+        <p className="mb-8 max-w-2xl text-sm text-gray-600">
+          Sophie is the only worker currently approved at the specification level, and her Staff Portal deployment
+          channel is still undecided. Every other worker below is in design and not yet approved for live case work
+          — the estate is currently awaiting independent Governance &amp; Assurance review before any further
+          approval.
+        </p>
+
+        <div className="mb-8">
+          <Receptionist token={token} />
+        </div>
+
+        {workersQuery.isLoading && <p className="text-sm text-gray-500">Loading the worker estate…</p>}
+        {workersQuery.error && <p className="text-sm text-red-600">Could not load the worker estate.</p>}
+
+        {workersQuery.data && (
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {workersQuery.data.workers.map(worker => (
+              <WorkerCard key={worker.id} worker={worker} onOpen={setOpenWorker} />
+            ))}
+          </div>
+        )}
+
+        <WorkerWorkspace worker={openWorker} open={openWorker !== null} onOpenChange={open => !open && setOpenWorker(null)} />
+      </main>
+    </div>
   );
 }
