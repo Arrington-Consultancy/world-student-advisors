@@ -55,6 +55,22 @@ jobs:
         if: always()
         run: npm install -g @railway/cli
 
+      # Diagnostic for a configured=false result above: are the STAFF_SSO_*
+      # variables actually present on the APP service in this environment?
+      # Prints variable NAMES only (jq keys) — values are never read,
+      # rendered or printed.
+      - name: App-service variable NAMES check (names only, values never printed)
+        if: always()
+        env:
+          RAILWAY_TOKEN: ${{ secrets.githubactionsprod }}
+        run: |
+          KEYS=$(railway variables --service "$APP_SERVICE_NAME" --environment "$APP_ENV_NAME" --json | jq -r 'keys[]')
+          echo "Variable names on $APP_SERVICE_NAME ($APP_ENV_NAME):"
+          echo "$KEYS"
+          echo "---"
+          echo "STAFF_SSO_-prefixed names present:"
+          echo "$KEYS" | grep -c '^STAFF_SSO_' || echo "0 — the STAFF_SSO_* variables are NOT on this service/environment"
+
       - name: Discover the MySQL service's public-URL variable NAME (key only, value never printed)
         if: always()
         id: discover
