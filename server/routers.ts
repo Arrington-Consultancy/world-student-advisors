@@ -25,7 +25,10 @@ import {
 import { resolvePortalDashboard } from "./portal-resolver";
 import { getSessionQuestions, assessAnswer, summariseSession, TYPE_LABELS } from "./interviewCoach";
 import { requireTurnstile } from "./_core/turnstile";
-import { authenticateStaffPortal, verifyStaffPortalToken, isStaffPortalLoginRateLimited } from "./staffPortalAuth";
+import { authenticateStaffPortal, verifyStaffPortalToken, isStaffPortalLoginRateLimited, requireStaffPortalAuth } from "./staffPortalAuth";
+import { listWorkers } from "./workforce/registry";
+import { evaluateStaffPortalExecutionPermission } from "./workforce/permissions";
+import { routeStaffRequest } from "./workforce/router";
 
 /** Shared by every Turnstile-protected mutation's input schema. */
 const turnstileField = { turnstileToken: z.string().min(1, "Verification required") };
@@ -478,6 +481,43 @@ export const appRouter = router({
       .query(async ({ input }) => {
         const authenticated = await verifyStaffPortalToken(input.token);
         return { authenticated };
+      }),
+  }),
+
+  // The WSA AI Workforce platform: read-only visibility of the controlled
+  // worker estate and the deterministic receptionist/router. Every
+  // procedure requires a valid Staff Portal session. Nothing here can
+  // change a worker's status, permissions or scope — the registry is a
+  // server-only constant (server/workforce/registry.ts), sourced from
+  // controlled WSA SharePoint evidence, not from anything a staff member
+  // or the client can submit.
+  workforce: router({
+    listWorkers: publicProcedure
+      .input(z.object({ token: z.string() }))
+      .query(async ({ input }) => {
+        await requireStaffPortalAuth(input.token);
+        return {
+          workers: listWorkers().map(w => ({
+            id: w.id,
+            canonicalName: w.canonicalName,
+            roleTitle: w.roleTitle,
+            specificationVersion: w.specificationVersion,
+            specificationStatus: w.specificationStatus,
+            staffPortalExecutionStatus: w.staffPortalExecutionStatus,
+            currentNextControl: w.currentNextControl,
+            materialBlockers: w.materialBlockers,
+            personality: w.personality,
+            connectorIntent: w.connectorIntent,
+            canOpenForLiveExecution: evaluateStaffPortalExecutionPermission(w.id).allowed,
+          })),
+        };
+      }),
+
+    route: publicProcedure
+      .input(z.object({ token: z.string(), request: z.string().min(1).max(500) }))
+      .query(async ({ input }) => {
+        await requireStaffPortalAuth(input.token);
+        return routeStaffRequest(input.request);
       }),
   }),
 
