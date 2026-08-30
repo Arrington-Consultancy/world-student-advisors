@@ -69,7 +69,41 @@ const STATUS_LABEL: Readonly<Record<IntegrationState, string>> = Object.freeze({
  * than redacts: a placeholder naming a channel is itself a disclosure of
  * what WSA runs and who is excluded from it.
  */
-export function buildCommunicationsView(profile: StaffAccessProfile, now: Date = new Date()): CommunicationsView {
+export function buildCommunicationsView(profile: StaffAccessProfile | null, now: Date = new Date()): CommunicationsView {
+  // A shared-password session carries no individual identity, so no access
+  // profile exists and nothing scope-gated may be resolved for it. That
+  // must not mean an empty screen: the publicly visible WSA channels are
+  // public to the entire internet, so an authenticated staff member may
+  // see them and open them. Everything else is withheld, and every action
+  // beyond opening the link is refused for want of an identity to check.
+  if (profile === null) {
+    const publicChannels = WSA_CHANNELS.filter(c => c.contentIsPublic);
+    return {
+      channels: publicChannels.map(channel => ({
+        id: channel.id,
+        name: channel.name,
+        kind: channel.kind,
+        icon: channel.icon,
+        accountIdentity: channel.accountIdentity,
+        externalUrl: channel.externalUrl,
+        integration: channel.integration,
+        statusLabel: STATUS_LABEL[channel.integration],
+        evidence: channel.evidence,
+        actions: channel.actions.map(action => ({
+          label: action.label,
+          permission: action.permission,
+          allowed: action.permission === "read" && action.availableToday,
+          blockedReason: action.permission === "read" && action.availableToday
+            ? null
+            : "Sign in with your Microsoft account. A shared-password session carries no individual identity, so no permission can be checked for it.",
+        })),
+        visible: true,
+      })),
+      withheldCount: WSA_CHANNELS.length - publicChannels.length,
+      checkedAndNotFound: CHANNELS_CHECKED_AND_NOT_FOUND,
+    };
+  }
+
   const channels: ResolvedChannel[] = [];
   let withheldCount = 0;
 

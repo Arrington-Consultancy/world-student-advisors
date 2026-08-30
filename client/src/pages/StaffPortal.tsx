@@ -3,6 +3,7 @@ import { Lock, LogOut, Eye, EyeOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { trpc } from "@/lib/trpc";
+import { CommunicationsPanel } from "@/components/staff/CommunicationsPanel";
 import { WorkerCard, type WorkforceWorker } from "@/components/workforce/WorkerCard";
 import { WorkerWorkspace } from "@/components/workforce/WorkerWorkspace";
 import { Receptionist } from "@/components/workforce/Receptionist";
@@ -228,6 +229,8 @@ function WorkforceHome({ token, onLogout }: { token: string; onLogout: () => voi
           — the estate is currently awaiting independent Governance &amp; Assurance review before any further
           approval.
         </p>
+
+        <CommunicationsPanel token={token} />
 
         <div className="mb-8">
           <Receptionist token={token} />
