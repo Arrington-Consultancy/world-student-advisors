@@ -60,11 +60,36 @@ export type StaffPortalExecutionStatus =
   | "available_routing_only"
   | "not_applicable";
 
+/**
+ * The exact text a worker carries when the controlled record records no
+ * CRM decision for it.
+ *
+ * WSA_Worker_Personality_Connector_Access_Matrix_v0.2 has SharePoint and
+ * Google Drive columns only, and its own authority note says it "does not
+ * itself grant a Microsoft, Google, portal, CRM, advertising or government
+ * permission". So no worker has an evidenced Pipedrive scope, and the
+ * permission engine treats this sentinel as a hard denial rather than as a
+ * missing field to be filled in with a sensible guess.
+ *
+ * This is deliberately a shared constant rather than free text: the
+ * permission engine compares against it by identity, so a worker cannot be
+ * granted CRM access by someone rewording its intent line.
+ */
+export const NO_CONTROLLED_CRM_DECISION =
+  "No controlled CRM decision. The Worker Personality and Connector Access Matrix v0.2 defines SharePoint and Google Drive only and expressly does not grant a CRM permission.";
+
 export interface ConnectorIntent {
   /** Paraphrased from the Access Matrix's SharePoint column. Intent, not granted access. */
   sharePoint: string;
   /** Paraphrased from the Access Matrix's Google Drive column. Intent, not granted access. */
   googleDrive: string;
+  /**
+   * Intent for the Pipedrive CRM. Required so a new worker cannot be added
+   * without the question being answered. Until the controlled Access
+   * Matrix gains a CRM column, every worker carries
+   * NO_CONTROLLED_CRM_DECISION and is denied.
+   */
+  pipedrive: string;
   /** The Access Matrix's stated hard boundary for this worker. */
   hardBoundary: string;
 }
@@ -119,7 +144,7 @@ export interface WorkerRegistryEntry {
 }
 
 /** Connector identifiers the permission engine and connector abstractions share. */
-export type ConnectorName = "sharepoint" | "google_drive";
+export type ConnectorName = "sharepoint" | "google_drive" | "pipedrive";
 
 /** Coarse-grained connector operations the permission engine reasons about. */
 export type ConnectorOperation = "search" | "read" | "create" | "update" | "delete" | "external_send";

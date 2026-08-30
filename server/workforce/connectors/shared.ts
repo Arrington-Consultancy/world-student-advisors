@@ -1,5 +1,6 @@
 /**
- * Shared connector-action plumbing for SharePoint and Google Drive.
+ * Shared connector-action plumbing for SharePoint, Google Drive and
+ * Pipedrive.
  *
  * The contract from WSA_Universal_Worker_Instructions_v1.0_APPROVED.docx
  * section 6 ("Connector truthfulness") governs everything here: a worker
@@ -202,8 +203,15 @@ async function attemptOnceWithRetry(
   }
 }
 
+/** Display names, exhaustive over ConnectorName so adding a connector cannot silently inherit another's name in staff-facing text. */
+const CONNECTOR_DISPLAY_NAME: Readonly<Record<ConnectorName, string>> = Object.freeze({
+  sharepoint: "SharePoint",
+  google_drive: "Google Drive",
+  pipedrive: "Pipedrive",
+});
+
 function describeUnavailableState(connector: ConnectorName, state: ConnectorState): string {
-  const name = connector === "sharepoint" ? "SharePoint" : "Google Drive";
+  const name = CONNECTOR_DISPLAY_NAME[connector];
   switch (state) {
     case "unconfigured":
       return `${name} connector is not configured — no credentials exist for this environment yet. Nothing was read or written.`;
