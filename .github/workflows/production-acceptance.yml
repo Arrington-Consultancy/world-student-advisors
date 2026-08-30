@@ -1,0 +1,110 @@
+name: Production acceptance suite (read-only)
+
+# Manual-only, READ-ONLY. Production acceptance for the WSA Staff AI
+# operating system.
+#
+# Runs the REAL shipped modules against the REAL production database — the
+# same server/access and server/operating code the deployed process runs,
+# resolving the same staff rows — so a mismatch between the code and
+# production data surfaces here rather than in front of a staff member.
+#
+# Positive and negative cases across: schema alignment, identity
+# resolution, authorised access, every consequential action, unheld scopes,
+# all seven sensitive overlays, case scope, search omission, export
+# filtering, AI-context filtering, worker isolation, connector denial,
+# collaboration, quality gate, humanisation guard, escalation routing,
+# timeline and deadline bands, Manager Attention, the consequential-action
+# boundary, and the clause-3 enquiry tables.
+#
+# It writes NOTHING. Audit and enquiry row counts are taken before and
+# after and asserted identical, so the suite proves it did not pollute the
+# record it is checking. It mints no token and invents no identity.
+#
+# Exits non-zero if any check fails.
+#
+# Auth: githubactionsprod — the same production-scoped Railway Project
+# Token the other production workflows use.
+on:
+  workflow_dispatch:
+    inputs:
+      service_name:
+        description: "Railway app service name"
+        required: true
+        default: "world-student-advisors"
+      environment_name:
+        description: "Railway environment name"
+        required: true
+        default: "production"
+      database_service_name:
+        description: "Railway MySQL service name"
+        required: true
+        default: "MySQL"
+
+jobs:
+  acceptance:
+    runs-on: ubuntu-latest
+    env:
+      APP_SERVICE_NAME: ${{ github.event.inputs.service_name }}
+      APP_ENV_NAME: ${{ github.event.inputs.environment_name }}
+      DB_SERVICE_NAME: ${{ github.event.inputs.database_service_name }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Install Railway CLI
+        run: npm install -g @railway/cli
+
+      - name: Discover the MySQL service's public-URL variable NAME (key only, value never printed)
+        id: discover
+        env:
+          RAILWAY_TOKEN: ${{ secrets.githubactionsprod }}
+        run: |
+          KEYS=$(railway variables --service "$DB_SERVICE_NAME" --environment "$APP_ENV_NAME" --json | jq -r 'keys[]')
+          PUBLIC_KEY=$(echo "$KEYS" | grep -i -E '^(MYSQL_PUBLIC_URL|DATABASE_PUBLIC_URL)$' | head -n1)
+          if [ -z "$PUBLIC_KEY" ]; then
+            echo "No public-URL-shaped variable found on $DB_SERVICE_NAME. Stopping — not guessing further."
+            exit 1
+          fi
+          echo "Using public URL variable: $PUBLIC_KEY"
+          echo "public_key=$PUBLIC_KEY" >> "$GITHUB_OUTPUT"
+
+      - name: Set a temporary public-reachable URL on the app service
+        env:
+          RAILWAY_TOKEN: ${{ secrets.githubactionsprod }}
+          PUBLIC_KEY: ${{ steps.discover.outputs.public_key }}
+        run: |
+          REF=$(printf '\044{{%s.%s}}' "$DB_SERVICE_NAME" "$PUBLIC_KEY")
+          railway variables \
+            --service "$APP_SERVICE_NAME" \
+            --environment "$APP_ENV_NAME" \
+            --set "ACCEPTANCE_DATABASE_URL=${REF}" \
+            --skip-deploys
+
+      - name: Run the production acceptance suite
+        timeout-minutes: 10
+        env:
+          RAILWAY_TOKEN: ${{ secrets.githubactionsprod }}
+        run: |
+          railway run --service "$APP_SERVICE_NAME" --environment "$APP_ENV_NAME" -- \
+            sh -c 'DATABASE_URL="$ACCEPTANCE_DATABASE_URL" pnpm exec tsx scripts/production-acceptance.ts'
+
+      - name: Remove the temporary variable
+        if: always()
+        timeout-minutes: 10
+        env:
+          RAILWAY_TOKEN: ${{ secrets.githubactionsprod }}
+        run: |
+          railway variables \
+            --service "$APP_SERVICE_NAME" \
+            --environment "$APP_ENV_NAME" \
+            --set "ACCEPTANCE_DATABASE_URL=" \
+            --skip-deploys
