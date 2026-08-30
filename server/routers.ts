@@ -36,6 +36,13 @@ import { recordAuditEvent } from "./workforce/audit";
 import { listWorkers, getWorker } from "./workforce/registry";
 import { evaluateStaffPortalExecutionPermission } from "./workforce/permissions";
 import { routeStaffRequest } from "./workforce/router";
+import {
+  SOCIAL_BRAIN_RECORDS,
+  DESIGNED_TO_REMEMBER,
+  HELD_ELSEWHERE,
+  MEMORY_HORIZON,
+  CONTROL_PACK_STATUS,
+} from "./social/socialBrain";
 
 /** Shared by every Turnstile-protected mutation's input schema. */
 const turnstileField = { turnstileToken: z.string().min(1, "Verification required") };
@@ -682,12 +689,18 @@ export const appRouter = router({
      * The Social Brain: what WSA's social memory would hold, and what it
      * actually holds today.
      *
-     * The registers come from Nia's Social Brain Supporting Control Pack
-     * v0.1. Every count is zero because the Pack is a design, not a
-     * populated store — no post, spend figure or performance record has
-     * been loaded into it. Reporting the structure with honest zeroes is
-     * the useful thing here: it shows what will be remembered, and it does
-     * not let anybody believe six years of history is already in there.
+     * The registers are §8 of Nia's working draft, transcribed in
+     * server/social/socialBrain.ts. Not the Supporting Control Pack: that
+     * document is named by the QC Review but has never been written, and
+     * this endpoint used to print its filename to staff who could not open
+     * it.
+     *
+     * Every count is zero because the design exists and the store does
+     * not. Reporting the structure with honest zeroes shows what will be
+     * remembered without letting anybody believe six years of history is
+     * already in there. What she is designed to remember, and what belongs
+     * to another worker, ship alongside it — spend is Alex's, and a page
+     * that stayed quiet about that would invite the assumption it is hers.
      */
     socialBrain: publicProcedure
       .input(z.object({ token: z.string() }))
@@ -695,24 +708,23 @@ export const appRouter = router({
         await resolveStaffSession(input.token);
         return {
           ownerWorkerId: "nia" as const,
-          controlPack: "WSA_Nia_Social_Brain_Supporting_Control_Pack_v0.1_WORKING_DRAFT.docx",
-          registers: [
-            { id: "content_ledger", name: "Master Social Content Ledger", holds: "Every post: account, exact publication time, hook, call to action, evidence used, and what it was adapted from.", recorded: 0 },
-            { id: "asset_register", name: "Asset & Version Register", holds: "Every image and video, each version, and what was later made from it.", recorded: 0 },
-            { id: "video_timecode", name: "Video Timecode & Retention Register", holds: "What happens at 0-1s, 1-3s, 3-5s and onward, with real retention data where the platform provides it.", recorded: 0 },
-            { id: "africa_intelligence", name: "Africa Market Intelligence Profile", holds: "Country by country. Nigeria is not Ghana, Ghana is not Kenya, and Africa is never one audience.", recorded: 0 },
-            { id: "slop_review", name: "AI-Slop & Human Voice Review", holds: "Generic hooks, empty superlatives, formulaic rhythms, corporate filler, fake certainty, and posts that could have been written for 500 other agents.", recorded: 0 },
-            { id: "editorial_calendar", name: "Editorial Calendar", holds: "One editorial programme, adapted by audience and platform.", recorded: 0 },
-            { id: "performance", name: "Performance & Experiment Register", holds: "What was tried, what happened, and what was learned. Trust and lead quality rather than vanity volume.", recorded: 0 },
-            { id: "community", name: "Community Insight Register", holds: "Comments, recurring questions, affordability concerns and what audiences actually ask.", recorded: 0 },
-            { id: "readiness", name: "Publication Readiness", holds: "Whether a post is cleared to go out, and who cleared it.", recorded: 0 },
-          ],
-          /** Stated rather than implied: the store is empty. */
-          populated: false,
-          emptyNote:
-            "The Social Brain is designed and not yet populated. No post, spend figure or performance record has been " +
-            "loaded, so nothing can be recalled from it yet. Six years of history would have to be imported before " +
-            "anybody could ask what a 2020 post did.",
+          source: CONTROL_PACK_STATUS.source,
+          controlPackNote: CONTROL_PACK_STATUS.note,
+          registers: SOCIAL_BRAIN_RECORDS.map(r => ({
+            id: r.id,
+            name: r.name,
+            holds: r.purpose,
+            recorded: r.recorded,
+          })),
+          remembers: DESIGNED_TO_REMEMBER.map(c => ({
+            question: c.question,
+            answer: c.answer,
+            sections: c.sections.join(" · "),
+          })),
+          elsewhere: HELD_ELSEWHERE.map(e => ({ subject: e.subject, owner: e.owner, why: e.why })),
+          populated: MEMORY_HORIZON.populated,
+          emptyNote: MEMORY_HORIZON.actualState,
+          toPopulate: MEMORY_HORIZON.toChangeThat,
         };
       }),
 
