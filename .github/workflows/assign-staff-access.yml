@@ -1,0 +1,165 @@
+name: Record a controlled staff access assignment
+
+# Manual-only, SEPARATELY AUTHORISED. Records ONE access assignment
+# against an EXISTING staff_users row, per the WSA Staff Portal Access
+# Control Standard v1.0 (APPROVED), and writes the §9 audit trail.
+#
+# Defaults to a DRY RUN. Nothing is written unless `apply` is set to true,
+# so the normal use is: run it, read exactly what it would write, then run
+# it again with apply.
+#
+# What this cannot do, by construction (see scripts/assign-staff-access.mjs):
+#   - create a staff account (the row must already exist from a genuine
+#     Microsoft Entra sign-in);
+#   - grant credential_admin, delete_destructive, financial_action,
+#     access_admin, external_send or submit — consequential permissions are
+#     separate, deliberate decisions and this script refuses them outright;
+#   - change an assignment that already exists;
+#   - write any value that is not on the standard's approved lists.
+#
+# Requires migration 0007 to have been applied first
+# (.github/workflows/apply-migration-0007.yml).
+#
+# Auth: githubactionsprod — the same production-scoped Railway Project
+# Token the other production workflows use.
+on:
+  workflow_dispatch:
+    inputs:
+      email:
+        description: "Staff email — the existing staff_users row to assign"
+        required: true
+      level:
+        description: "Base access level (1-5)"
+        required: true
+      functional_scopes:
+        description: "Functional scopes, comma-separated (e.g. executive)"
+        required: true
+      case_scope:
+        description: "organisation | team | assigned_caseload | own_applicants"
+        required: true
+      action_permissions:
+        description: "Action permissions, comma-separated. Consequential ones are refused."
+        required: true
+        default: "read"
+      sensitive_overlays:
+        description: "Sensitive overlays, comma-separated (optional)"
+        required: false
+        default: ""
+      team_id:
+        description: "Team id (required when case_scope is team)"
+        required: false
+        default: ""
+      authority:
+        description: "Controlled approval reference this assignment is made under"
+        required: true
+      reason:
+        description: "Why this assignment"
+        required: true
+      apply:
+        description: "Set to true to actually write. Anything else is a dry run."
+        required: true
+        default: "false"
+      service_name:
+        description: "Railway app service name"
+        required: true
+        default: "world-student-advisors"
+      environment_name:
+        description: "Railway environment name"
+        required: true
+        default: "production"
+      database_service_name:
+        description: "Railway MySQL service name"
+        required: true
+        default: "MySQL"
+
+jobs:
+  assign:
+    runs-on: ubuntu-latest
+    # Main only: an assignment must be made by reviewed, merged code.
+    if: github.ref == 'refs/heads/main'
+    env:
+      APP_SERVICE_NAME: ${{ github.event.inputs.service_name }}
+      APP_ENV_NAME: ${{ github.event.inputs.environment_name }}
+      DB_SERVICE_NAME: ${{ github.event.inputs.database_service_name }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Install Railway CLI
+        run: npm install -g @railway/cli
+
+      - name: Discover the MySQL service's public-URL variable NAME (key only, value never printed)
+        id: discover
+        env:
+          RAILWAY_TOKEN: ${{ secrets.githubactionsprod }}
+        run: |
+          KEYS=$(railway variables --service "$DB_SERVICE_NAME" --environment "$APP_ENV_NAME" --json | jq -r 'keys[]')
+          PUBLIC_KEY=$(echo "$KEYS" | grep -i -E '^(MYSQL_PUBLIC_URL|DATABASE_PUBLIC_URL)$' | head -n1)
+          if [ -z "$PUBLIC_KEY" ]; then
+            echo "No public-URL-shaped variable found on $DB_SERVICE_NAME. Stopping — not guessing further."
+            exit 1
+          fi
+          echo "Using public URL variable: $PUBLIC_KEY"
+          echo "public_key=$PUBLIC_KEY" >> "$GITHUB_OUTPUT"
+
+      - name: Set a temporary public-reachable URL on the app service
+        env:
+          RAILWAY_TOKEN: ${{ secrets.githubactionsprod }}
+          PUBLIC_KEY: ${{ steps.discover.outputs.public_key }}
+        run: |
+          REF=$(printf '\044{{%s.%s}}' "$DB_SERVICE_NAME" "$PUBLIC_KEY")
+          railway variables \
+            --service "$APP_SERVICE_NAME" \
+            --environment "$APP_ENV_NAME" \
+            --set "ASSIGNMENT_DATABASE_URL=${REF}" \
+            --skip-deploys
+
+      - name: Record the assignment
+        env:
+          RAILWAY_TOKEN: ${{ secrets.githubactionsprod }}
+          IN_EMAIL: ${{ github.event.inputs.email }}
+          IN_LEVEL: ${{ github.event.inputs.level }}
+          IN_SCOPES: ${{ github.event.inputs.functional_scopes }}
+          IN_CASE_SCOPE: ${{ github.event.inputs.case_scope }}
+          IN_ACTIONS: ${{ github.event.inputs.action_permissions }}
+          IN_OVERLAYS: ${{ github.event.inputs.sensitive_overlays }}
+          IN_TEAM: ${{ github.event.inputs.team_id }}
+          IN_AUTHORITY: ${{ github.event.inputs.authority }}
+          IN_REASON: ${{ github.event.inputs.reason }}
+          IN_APPLY: ${{ github.event.inputs.apply }}
+        run: |
+          APPLY_FLAG=""
+          if [ "$IN_APPLY" = "true" ]; then APPLY_FLAG="--apply"; fi
+          OPTIONAL=""
+          if [ -n "$IN_OVERLAYS" ]; then OPTIONAL="$OPTIONAL --overlays $IN_OVERLAYS"; fi
+          if [ -n "$IN_TEAM" ]; then OPTIONAL="$OPTIONAL --team $IN_TEAM"; fi
+          railway run --service "$APP_SERVICE_NAME" --environment "$APP_ENV_NAME" -- \
+            sh -c "DATABASE_URL=\"\$ASSIGNMENT_DATABASE_URL\" node scripts/assign-staff-access.mjs \
+              --email '$IN_EMAIL' \
+              --level '$IN_LEVEL' \
+              --scopes '$IN_SCOPES' \
+              --case-scope '$IN_CASE_SCOPE' \
+              --actions '$IN_ACTIONS' \
+              --authority '$IN_AUTHORITY' \
+              --reason '$IN_REASON' \
+              $OPTIONAL $APPLY_FLAG"
+
+      - name: Remove the temporary variable
+        if: always()
+        env:
+          RAILWAY_TOKEN: ${{ secrets.githubactionsprod }}
+        run: |
+          railway variables \
+            --service "$APP_SERVICE_NAME" \
+            --environment "$APP_ENV_NAME" \
+            --set "ASSIGNMENT_DATABASE_URL=" \
+            --skip-deploys
