@@ -10,6 +10,8 @@
  * here rather than duplicated per connector.
  */
 import { evaluateConnectorPermission } from "../permissions";
+import { checkAccessForStaffUser } from "../../access/enforcement";
+import { WORKER_FUNCTIONAL_SCOPE, CONNECTOR_OPERATION_ACTION } from "../../access/workerScope";
 import { recordAuditEvent, type AuditAuthMethod } from "../audit";
 import { getWorker } from "../registry";
 import type { ConnectorName, ConnectorOperation, ConnectorState, WorkerId } from "../types";
@@ -43,21 +45,44 @@ export type ConnectorStateCheck = () => ConnectorState;
 export type ConnectorAttempt = (request: ConnectorActionRequest) => Promise<{ success: boolean; message: string }>;
 
 /**
+ * The signed-in staff member's own access check (Access Control Standard
+ * §1, §4, §6). Separate from the worker gate above and neither substitutes
+ * for the other: a worker being authorised for a connector must never let
+ * it fetch something the person asking may not see.
+ *
+ * The scope and action are derived from the worker and the operation
+ * (access/workerScope.ts), never from the request — resourceScope is audit
+ * text and is not consulted here.
+ */
+export type StaffAccessCheck = (request: ConnectorActionRequest) => Promise<PermissionDecision>;
+
+const checkStaffAccessForConnectorAction: StaffAccessCheck = async request => {
+  const outcome = await checkAccessForStaffUser(request.staffUserId, {
+    action: CONNECTOR_OPERATION_ACTION[request.operation],
+    functionalScope: WORKER_FUNCTIONAL_SCOPE[request.workerId],
+  });
+  return { allowed: outcome.allowed, reason: outcome.reason };
+};
+
+/**
  * Runs one connector action through: permission check (deny by default) →
  * configuration/state check → attempt → retry-once-on-failure → honest
  * report. Every step is audit-logged, whether or not it ever reaches a
  * live system.
  *
- * `evaluatePermission` defaults to the real, registry-backed permission
- * engine and is only ever overridden in tests that need to exercise the
- * state/retry machinery in isolation — no production code path supplies a
- * different one, so this cannot become a way to bypass the real gate.
+ * `evaluatePermission` and `checkStaffAccess` default to the real,
+ * registry-backed permission engine and the real staff access gate. They
+ * are only ever overridden in tests that need to exercise the state/retry
+ * machinery in isolation — no production code path supplies a different
+ * one, so neither can become a way to bypass the real gates. A test below
+ * asserts the defaults deny.
  */
 export async function runConnectorAction(
   request: ConnectorActionRequest,
   getState: ConnectorStateCheck,
   attempt: ConnectorAttempt,
   evaluatePermission: (req: ConnectorActionRequest) => PermissionDecision = evaluateConnectorPermission,
+  checkStaffAccess: StaffAccessCheck = checkStaffAccessForConnectorAction,
 ): Promise<ConnectorActionResult> {
   const worker = getWorker(request.workerId);
   const permission = evaluatePermission(request);
@@ -79,6 +104,31 @@ export async function runConnectorAction(
       errorCategory: "permission_denied",
     });
     return { success: false, connectorState: "unconfigured", message: permission.reason };
+  }
+
+  // The staff member's own access, checked in addition to the worker's.
+  // Deliberately after the worker gate: that gate is a platform-level fact
+  // ("this worker may not touch connectors at all") true whoever is asking,
+  // and reporting it first avoids telling someone their own permissions are
+  // wrong when nothing is open to anyone. Both must pass regardless.
+  const staffAccess = await checkStaffAccess(request);
+  if (!staffAccess.allowed) {
+    recordAuditEvent({
+      staffUserId: request.staffUserId,
+      authMethod: request.authMethod,
+      workerId: request.workerId,
+      workerSpecificationVersion: worker.specificationVersion,
+      caseId: request.caseId,
+      requestedCapability: `${request.connector}:${request.operation}`,
+      permissionDecision: "denied",
+      permissionReason: staffAccess.reason,
+      connector: request.connector,
+      connectorOperation: request.operation,
+      success: null,
+      targetResourceId: request.resourceScope,
+      errorCategory: "permission_denied",
+    });
+    return { success: false, connectorState: "unconfigured", message: staffAccess.reason };
   }
 
   const state = getState();
