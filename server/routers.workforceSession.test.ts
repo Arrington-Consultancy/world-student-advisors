@@ -171,3 +171,46 @@ describe("routing audit events carry the resolved principal", () => {
     expect(event.permissionReason).toMatch(/no worker matched/i);
   });
 });
+
+/**
+ * staffPortal.me must recognise BOTH session types. It previously called
+ * verifyStaffPortalToken (shared-password only), so a genuine Entra session
+ * was reported unauthenticated: the client stored the valid token, asked
+ * `me` about it, was told "not authenticated", discarded the session and
+ * bounced the user back to the sign-in page after a successful Microsoft
+ * sign-in. The workforce endpoints were unaffected (they already used
+ * resolveStaffSession), which is exactly why the earlier tests missed this —
+ * they never asserted a SUCCESSFUL Entra session through `me`.
+ */
+describe("staffPortal.me recognises both session types", () => {
+  it("reports an Entra session as authenticated and names the principal", async () => {
+    mockStaffUserLookup([activeStaffUser]);
+    const token = await mintStaffIdentityToken(activeStaffUser as any);
+    const result = await makeCaller().staffPortal.me({ token });
+    expect(result.authenticated).toBe(true);
+    expect(result.authMethod).toBe("entra_sso");
+    expect(result.displayName).toBe("Named Staff");
+  });
+
+  it("reports a shared-password session as authenticated with no individual name", async () => {
+    const caller = makeCaller();
+    const token = await getSharedPasswordToken(caller);
+    const result = await caller.staffPortal.me({ token });
+    expect(result.authenticated).toBe(true);
+    expect(result.authMethod).toBe("shared_password");
+    expect(result.displayName).toBeNull();
+  });
+
+  it("reports a deactivated staff member's still-signed token as unauthenticated", async () => {
+    mockStaffUserLookup([{ ...activeStaffUser, isActive: 0 }]);
+    const token = await mintStaffIdentityToken(activeStaffUser as any);
+    const result = await makeCaller().staffPortal.me({ token });
+    expect(result.authenticated).toBe(false);
+  });
+
+  it("reports a garbage token as unauthenticated rather than throwing", async () => {
+    const result = await makeCaller().staffPortal.me({ token: "garbage" });
+    expect(result.authenticated).toBe(false);
+    expect(result.authMethod).toBeNull();
+  });
+});
