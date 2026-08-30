@@ -34,6 +34,7 @@ export interface ResolvedChannel {
   id: ChannelId;
   name: string;
   kind: string;
+  group: string;
   icon: string;
   accountIdentity: string;
   externalUrl: string | null;
@@ -83,6 +84,7 @@ export function buildCommunicationsView(profile: StaffAccessProfile | null, now:
         id: channel.id,
         name: channel.name,
         kind: channel.kind,
+        group: channel.group,
         icon: channel.icon,
         accountIdentity: channel.accountIdentity,
         externalUrl: channel.externalUrl,
@@ -168,6 +170,7 @@ export function buildCommunicationsView(profile: StaffAccessProfile | null, now:
       id: channel.id,
       name: channel.name,
       kind: channel.kind,
+      group: channel.group,
       icon: channel.icon,
       accountIdentity: channel.accountIdentity,
       externalUrl: channel.externalUrl,
