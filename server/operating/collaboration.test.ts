@@ -236,3 +236,73 @@ describe("§17 uncertainty is stated, never invented away", () => {
     expect(r.uncertainties.join(" ")).toMatch(/records its position as unproven/);
   });
 });
+
+describe("§8 — the lead must actually contribute, not merely be named", () => {
+  // Found by the production acceptance suite (run 33332247032), not by the
+  // original unit tests: every one of those named james as lead AND had
+  // james contribute, so the gap was invisible.
+  it("refuses a set where the named lead made no contribution at all", () => {
+    const r = combineContributions({
+      caseId: "c1",
+      leadWorkerId: "james",
+      contributions: [
+        { workerId: "priya", position: "Visa route is viable.", confidence: "certain", evidenceQuality: "verified", functionalScope: "visa_compliance" },
+      ],
+    });
+    expect(r.outcome).toBe("invalid");
+    expect(r.recommendation).toBeNull();
+  });
+
+  it("does not attribute another specialist's position to an absent lead", () => {
+    const r = combineContributions({
+      caseId: "c1",
+      leadWorkerId: "james",
+      contributions: [
+        { workerId: "priya", position: "Visa route is viable.", confidence: "certain", evidenceQuality: "verified", functionalScope: "visa_compliance" },
+      ],
+    });
+    expect(r.recommendation).toBeNull();
+    expect(JSON.stringify(r)).not.toContain("Visa route is viable.");
+  });
+
+  it("asks for a human where the lead contributed but was rejected for crossing a lane", () => {
+    const r = combineContributions({
+      caseId: "c1",
+      leadWorkerId: "james",
+      contributions: [
+        { workerId: "james", position: "p", confidence: "certain", evidenceQuality: "verified", functionalScope: "visa_compliance" },
+        { workerId: "priya", position: "q", confidence: "certain", evidenceQuality: "verified", functionalScope: "visa_compliance" },
+      ],
+    });
+    expect(r.outcome).toBe("human_check_required");
+    expect(r.recommendation).toBeNull();
+    expect(r.humanCheckReason).toContain("rejected");
+  });
+
+  it("asks for a human where the lead contributed but could not answer", () => {
+    const r = combineContributions({
+      caseId: "c1",
+      leadWorkerId: "james",
+      contributions: [
+        { workerId: "james", position: "", confidence: "unproven", evidenceQuality: "insufficient", functionalScope: "admissions", cannotAnswer: true },
+        { workerId: "priya", position: "q", confidence: "certain", evidenceQuality: "verified", functionalScope: "visa_compliance" },
+      ],
+    });
+    expect(r.outcome).toBe("human_check_required");
+    expect(r.recommendation).toBeNull();
+    expect(r.humanCheckReason).toContain("could not answer");
+  });
+
+  it("still produces a recommendation when the lead genuinely contributed", () => {
+    const r = combineContributions({
+      caseId: "c1",
+      leadWorkerId: "james",
+      contributions: [
+        { workerId: "james", position: "Application is ready.", confidence: "certain", evidenceQuality: "verified", functionalScope: "admissions" },
+        { workerId: "priya", position: "Visa route is viable.", confidence: "certain", evidenceQuality: "verified", functionalScope: "visa_compliance" },
+      ],
+    });
+    expect(r.outcome).toBe("recommendation");
+    expect(r.recommendation).not.toBeNull();
+  });
+});
