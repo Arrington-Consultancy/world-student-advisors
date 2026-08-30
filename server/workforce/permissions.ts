@@ -13,6 +13,7 @@
  */
 import { getWorker } from "./registry";
 import { WORKER_CRM_SCOPE, NO_CRM_COLUMN_IN_ACCESS_MATRIX, type CrmScope } from "./crmScope";
+import { connectorScopeGrants, NO_CONNECTOR_GRANT } from "./connectorScope";
 import { NO_CONTROLLED_CRM_DECISION } from "./types";
 import type { ConnectorName, ConnectorOperation, WorkerRegistryEntry, WorkerId } from "./types";
 
@@ -57,6 +58,17 @@ export function evaluateConnectorPermission(request: ConnectorPermissionRequest)
   if (request.connector === "pipedrive") {
     const crmDenial = denyUnlessCrmGranted(worker, request.operation);
     if (crmDenial) return crmDenial;
+  }
+
+  // The controlled record's per-connector grant. Checked for everything
+  // except the CRM, which has its own stricter double gate above. A worker
+  // with no grant is refused here regardless of the flags below, so
+  // provisioning a credential can never quietly widen who may use it.
+  if (request.connector !== "pipedrive" && !connectorScopeGrants(request.workerId, request.connector, request.operation)) {
+    return {
+      allowed: false,
+      reason: `${worker.canonicalName} has no ${request.connector}:${request.operation} scope. ${NO_CONNECTOR_GRANT}`,
+    };
   }
 
   if (!worker.connectorUseAuthorised) {

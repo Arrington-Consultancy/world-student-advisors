@@ -113,6 +113,55 @@ function channelAccountScope(connector: ConnectorName, resourceId: string): Scop
   return { withinWsaScope: false, reason: `"${account}" is not an allowlisted WSA ${connector} account.` };
 }
 
+
+/**
+ * Ring-fenced material: denied everywhere, to every worker, whatever any
+ * allowlist says.
+ *
+ * Tom Arrington's instruction, 30 August 2026, and it is the right one.
+ * WSA's SharePoint holds password spreadsheets in plain sight — at least
+ * four copies, including two under 07_MARKETING_IMAGES, which is a folder
+ * a records-control worker would have every ordinary reason to be reading.
+ * So "Maya may read the WSA site" and "Maya may read WSA's passwords" were
+ * one permission, and they must not be.
+ *
+ * This is a denylist rather than a narrower allowlist because the copies
+ * are scattered and more will appear: a rule that has to be updated every
+ * time somebody saves a spreadsheet somewhere new is a rule that fails
+ * quietly. Deny beats allow, and it is checked before the allowlists, so
+ * no future connector or widened scope can reach past it.
+ *
+ * Broad on purpose. A false positive costs a worker one document it could
+ * have asked a human for. A false negative puts WSA's live credentials
+ * into an AI context window.
+ */
+const RING_FENCED_PATTERNS: readonly RegExp[] = Object.freeze([
+  /passwords?/i,
+  /credential/i,
+  /\bsecrets?\b/i,
+  /\bapi[\s._-]?keys?\b/i,
+  /\btokens?\b/i,
+  /\blogins?\b/i,
+  /\bpin\b/i,
+  /recovery[\s._-]?codes?/i,
+  /two[\s._-]?(step|factor)/i,
+  /\b2fa\b/i,
+  /\bmfa\b/i,
+]);
+
+/**
+ * True when the resource is ring-fenced. Matched against the whole path,
+ * so a password file is caught by its folder as well as its filename —
+ * "Password/January.xlsx" is as blocked as "Passwords January 2026.xlsx".
+ */
+export function isRingFenced(resourceId: string): boolean {
+  return RING_FENCED_PATTERNS.some(pattern => pattern.test(resourceId));
+}
+
+export const RING_FENCE_REASON =
+  "Ring-fenced. Credential material is denied to every worker on every connector, whatever else is allowlisted. " +
+  "If this document is genuinely needed, a human must retrieve it.";
+
 /**
  * The one entry point. Total over ConnectorName by the type, so a
  * connector added without a WSA boundary will not compile rather than
@@ -121,6 +170,11 @@ function channelAccountScope(connector: ConnectorName, resourceId: string): Scop
 export function evaluateWsaScope(connector: ConnectorName, resourceId: string): ScopeDecision {
   if (!resourceId || resourceId.trim() === "") {
     return { withinWsaScope: false, reason: "No resource was named, so WSA scope cannot be established." };
+  }
+
+  // Checked before every allowlist, so no scope however wide can reach it.
+  if (isRingFenced(resourceId)) {
+    return { withinWsaScope: false, reason: RING_FENCE_REASON };
   }
 
   switch (connector) {
