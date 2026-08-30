@@ -29,6 +29,7 @@ import { authenticateStaffPortal, verifyStaffPortalToken, isStaffPortalLoginRate
 import { isMicrosoftSsoConfigured, buildMicrosoftSignInRequest, completeMicrosoftSignInFromCallback } from "./staffIdentityAuth";
 import { resolveStaffSession } from "./staffSession";
 import { resolveStaffAccessProfile } from "./access/identity";
+import { buildCommunicationsView } from "./communications/access";
 import { ACCESS_LEVEL_NAMES } from "./access/accessControl";
 import { recordAuditEvent } from "./workforce/audit";
 import { listWorkers, getWorker } from "./workforce/registry";
@@ -642,6 +643,38 @@ export const appRouter = router({
           errorCategory: "none",
         });
         return result;
+      }),
+
+    /**
+     * The WSA Communications area: where WSA is publicly present, and what
+     * this particular staff member may do with each channel.
+     *
+     * Every channel is a verified WSA-owned account transcribed from
+     * primary evidence (server/communications/channels.ts) — nothing is
+     * inferred from a platform's existence or a plausible handle.
+     *
+     * Read-only and side-effect free. It returns a description of
+     * capability, never a capability: nothing downstream reads this
+     * response back as authority, and every real action would re-resolve
+     * the profile server-side. The permission decision is made here rather
+     * than in the client, so a hidden button is not what stops anyone.
+     */
+    communications: publicProcedure
+      .input(z.object({ token: z.string() }))
+      .query(async ({ input }) => {
+        const session = await resolveStaffSession(input.token);
+        const staffUserId = session.authMethod === "entra_sso" ? session.staffUserId : null;
+        const resolution = await resolveStaffAccessProfile(staffUserId);
+        const view = buildCommunicationsView(resolution.resolved ? resolution.profile : null);
+        return {
+          ...view,
+          // Stated plainly so a staff member understands why they are
+          // seeing a reduced view, rather than meeting silent refusals.
+          identityResolved: resolution.resolved,
+          identityNote: resolution.resolved
+            ? null
+            : "You are signed in without an individual identity, so only WSA's public channels are shown and no action can be authorised. Sign in with your Microsoft account for the full view.",
+        };
       }),
   }),
 
