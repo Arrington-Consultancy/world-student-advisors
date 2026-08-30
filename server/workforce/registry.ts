@@ -18,6 +18,7 @@
  * credentials.
  */
 import type { WorkerId, WorkerRegistryEntry } from "./types";
+import { NO_CONTROLLED_CRM_DECISION } from "./types";
 
 const SHAREPOINT_SITE = "https://worldstudentadvisors123.sharepoint.com/sites/WSASharePoint/Shared Documents";
 const APPROVED_STANDARDS = `${SHAREPOINT_SITE}/01_ADMIN_&_GOVERNANCE/AI_Operating_System/02_Approved_Standards`;
@@ -70,6 +71,7 @@ const REGISTRY_LIST: WorkerRegistryEntry[] = [
     connectorIntent: {
       sharePoint: "Broad read of WSA governance and worker controls; controlled governance write-back.",
       googleDrive: "Read only when legacy/migration evidence is materially relevant.",
+      pipedrive: NO_CONTROLLED_CRM_DECISION,
       hardBoundary: "No case decisions or silent production permissions.",
     },
     evidencedHandoffs: [],
@@ -95,6 +97,7 @@ const REGISTRY_LIST: WorkerRegistryEntry[] = [
     connectorIntent: {
       sharePoint: "Relevant enquiry/triage records; designated triage write-back.",
       googleDrive: "None by default.",
+      pipedrive: NO_CONTROLLED_CRM_DECISION,
       hardBoundary: "No suitability, admissions or visa advice.",
     },
     evidencedHandoffs: ["daniel"],
@@ -120,6 +123,7 @@ const REGISTRY_LIST: WorkerRegistryEntry[] = [
     connectorIntent: {
       sharePoint: "Discovery profile inputs and designated discovery output.",
       googleDrive: "None by default.",
+      pipedrive: NO_CONTROLLED_CRM_DECISION,
       hardBoundary: "No research conclusions or recommendations.",
     },
     evidencedHandoffs: ["amelia"],
@@ -145,6 +149,7 @@ const REGISTRY_LIST: WorkerRegistryEntry[] = [
     connectorIntent: {
       sharePoint: "Approved discovery/research records; research-pack write-back.",
       googleDrive: "None by default.",
+      pipedrive: NO_CONTROLLED_CRM_DECISION,
       hardBoundary: "No suitability ranking or application decision.",
     },
     evidencedHandoffs: ["oliver"],
@@ -169,6 +174,7 @@ const REGISTRY_LIST: WorkerRegistryEntry[] = [
     connectorIntent: {
       sharePoint: "QC-passed discovery and research packs; suitability output.",
       googleDrive: "None by default.",
+      pipedrive: NO_CONTROLLED_CRM_DECISION,
       hardBoundary: "No final student decision, application or visa advice.",
     },
     evidencedHandoffs: ["james"],
@@ -194,6 +200,7 @@ const REGISTRY_LIST: WorkerRegistryEntry[] = [
     connectorIntent: {
       sharePoint: "Application evidence, admissions records and authorised application outputs.",
       googleDrive: "None by default.",
+      pipedrive: NO_CONTROLLED_CRM_DECISION,
       hardBoundary: "No unsupported submission or portal action.",
     },
     evidencedHandoffs: [],
@@ -223,6 +230,7 @@ const REGISTRY_LIST: WorkerRegistryEntry[] = [
     connectorIntent: {
       sharePoint: "Minimum necessary visa/compliance case evidence within verified authority.",
       googleDrive: "None by default.",
+      pipedrive: NO_CONTROLLED_CRM_DECISION,
       hardBoundary: "Regulated advice/submission remains authority-gated.",
     },
     evidencedHandoffs: [],
@@ -247,6 +255,7 @@ const REGISTRY_LIST: WorkerRegistryEntry[] = [
     connectorIntent: {
       sharePoint: "Funding profile, verified scholarship evidence and funding-gap outputs.",
       googleDrive: "None by default.",
+      pipedrive: NO_CONTROLLED_CRM_DECISION,
       hardBoundary: "No investment advice, visa financial-evidence advice or unsupported scholarship action.",
     },
     evidencedHandoffs: [],
@@ -271,6 +280,7 @@ const REGISTRY_LIST: WorkerRegistryEntry[] = [
     connectorIntent: {
       sharePoint: "Minimum necessary pre-arrival/student-success records.",
       googleDrive: "None by default.",
+      pipedrive: NO_CONTROLLED_CRM_DECISION,
       hardBoundary: "Safeguarding, payments and consequential actions remain gated.",
     },
     evidencedHandoffs: [],
@@ -296,6 +306,7 @@ const REGISTRY_LIST: WorkerRegistryEntry[] = [
     connectorIntent: {
       sharePoint: "Read access to records needed for authorised audit; controlled QA findings write-back.",
       googleDrive: "None by default.",
+      pipedrive: NO_CONTROLLED_CRM_DECISION,
       hardBoundary: "No rewriting the case simply because she disagrees with style.",
     },
     evidencedHandoffs: [],
@@ -324,6 +335,7 @@ const REGISTRY_LIST: WorkerRegistryEntry[] = [
     connectorIntent: {
       sharePoint: "Website/SEO governance and approved performance evidence.",
       googleDrive: "Read access where current website/Search Console legacy evidence is stored; no student-case data.",
+      pipedrive: NO_CONTROLLED_CRM_DECISION,
       hardBoundary: "Implementation and high-risk website actions require designated authority.",
     },
     evidencedHandoffs: [],
@@ -349,6 +361,7 @@ const REGISTRY_LIST: WorkerRegistryEntry[] = [
     connectorIntent: {
       sharePoint: "Records-control scope across authorised SharePoint locations.",
       googleDrive: "Read/migration access only when moving or reconciling authorised legacy records.",
+      pipedrive: NO_CONTROLLED_CRM_DECISION,
       hardBoundary: "No blind retries, destructive action or retention decision without authority.",
     },
     evidencedHandoffs: [],
@@ -374,6 +387,7 @@ const REGISTRY_LIST: WorkerRegistryEntry[] = [
     connectorIntent: {
       sharePoint: "Paid-media governance, approved measurement evidence and authorised campaign records.",
       googleDrive: "Read access to relevant legacy marketing/website evidence only.",
+      pipedrive: NO_CONTROLLED_CRM_DECISION,
       hardBoundary: "No live ad/account changes until live authority is granted and tested.",
     },
     evidencedHandoffs: [],
@@ -399,6 +413,7 @@ const REGISTRY_LIST: WorkerRegistryEntry[] = [
     connectorIntent: {
       sharePoint: "Read across controlled governance evidence; write authorised assurance records.",
       googleDrive: "Read only when required to audit a claim dependent on Drive evidence.",
+      pipedrive: NO_CONTROLLED_CRM_DECISION,
       hardBoundary: "Cannot approve its own authority or become the builder.",
     },
     evidencedHandoffs: [],
@@ -423,6 +438,7 @@ const REGISTRY_LIST: WorkerRegistryEntry[] = [
     connectorIntent: {
       sharePoint: "Current Worker Register, minimum routing metadata and authorised routing record.",
       googleDrive: "None by default.",
+      pipedrive: NO_CONTROLLED_CRM_DECISION,
       hardBoundary: "Routes only. Does not become a substantive adviser or silently transmit consequential actions.",
     },
     evidencedHandoffs: [],

@@ -12,7 +12,9 @@
  * registry, which callers cannot construct or mutate.
  */
 import { getWorker } from "./registry";
-import type { ConnectorName, ConnectorOperation, WorkerId } from "./types";
+import { WORKER_CRM_SCOPE, NO_CRM_COLUMN_IN_ACCESS_MATRIX, type CrmScope } from "./crmScope";
+import { NO_CONTROLLED_CRM_DECISION } from "./types";
+import type { ConnectorName, ConnectorOperation, WorkerRegistryEntry, WorkerId } from "./types";
 
 const WRITE_OPERATIONS: ReadonlySet<ConnectorOperation> = new Set<ConnectorOperation>([
   "create",
@@ -35,14 +37,27 @@ export interface PermissionDecision {
 }
 
 /**
- * Whether a worker may touch a connector at all, and — if the operation is
- * a write — whether writes are separately authorised. Both gates must be
- * open. Currently closed for every worker (see registry.ts): no live
+ * Whether a worker may touch a connector at all, whether the CRM
+ * specifically is open to it, and — if the operation is a write — whether
+ * writes are separately authorised. Every applicable gate must be open.
+ * Currently closed for every worker (see registry.ts): no live connector
  * credentials exist yet, so this always denies until that changes, however
  * the request is phrased.
  */
 export function evaluateConnectorPermission(request: ConnectorPermissionRequest): PermissionDecision {
   const worker = getWorker(request.workerId);
+
+  // Checked before the general connector gate on purpose. Both are true
+  // today, but they are not equally durable: the general gate opens as
+  // soon as credentials are provisioned and tested, whereas the CRM gate
+  // cannot be opened by any deployment step at all — it needs a change to
+  // a controlled document. Reporting the CRM reason first tells the caller
+  // what is actually blocking them, and keeps telling the truth after the
+  // general gate opens.
+  if (request.connector === "pipedrive") {
+    const crmDenial = denyUnlessCrmGranted(worker, request.operation);
+    if (crmDenial) return crmDenial;
+  }
 
   if (!worker.connectorUseAuthorised) {
     return {
@@ -59,6 +74,58 @@ export function evaluateConnectorPermission(request: ConnectorPermissionRequest)
   }
 
   return { allowed: true, reason: `${worker.canonicalName} is authorised for ${request.connector}:${request.operation}.` };
+}
+
+/**
+ * The CRM gate: a worker reaches Pipedrive only if the controlled record
+ * grants it, in two independent places that must agree.
+ *
+ * 1. Its registry entry's connectorIntent.pipedrive must no longer carry
+ *    NO_CONTROLLED_CRM_DECISION — compared by identity against the shared
+ *    constant, so a worker cannot be let through by rewording its intent
+ *    line into something that reads like a grant.
+ * 2. WORKER_CRM_SCOPE must hold a scope for it that covers this exact
+ *    operation — so a grant is per-operation, and read access never
+ *    implies the ability to write to a student's CRM record.
+ *
+ * Requiring both means neither editing a free-text field nor adding a row
+ * to one map is enough on its own. Returns null only when the worker is
+ * genuinely granted; a decision object otherwise.
+ *
+ * `scopes` defaults to the real controlled record and is only ever passed
+ * in by tests, which need to exercise what a granted worker would look
+ * like without fabricating one in the registry. No production call site
+ * supplies it, so it cannot become a bypass; the tests below assert the
+ * default denies everyone.
+ */
+export function denyUnlessCrmGranted(
+  worker: WorkerRegistryEntry,
+  operation: ConnectorOperation,
+  scopes: Readonly<Record<WorkerId, CrmScope | null>> = WORKER_CRM_SCOPE,
+): PermissionDecision | null {
+  if (worker.connectorIntent.pipedrive === NO_CONTROLLED_CRM_DECISION) {
+    return {
+      allowed: false,
+      reason: `${worker.canonicalName} has no controlled CRM decision on record. ${NO_CRM_COLUMN_IN_ACCESS_MATRIX}`,
+    };
+  }
+
+  const scope = scopes[worker.id];
+  if (!scope) {
+    return {
+      allowed: false,
+      reason: `${worker.canonicalName} has no evidenced Pipedrive scope. ${NO_CRM_COLUMN_IN_ACCESS_MATRIX}`,
+    };
+  }
+
+  if (!scope.operations.has(operation)) {
+    return {
+      allowed: false,
+      reason: `${worker.canonicalName}'s Pipedrive scope (${scope.evidence}) does not cover ${operation}.`,
+    };
+  }
+
+  return null;
 }
 
 /** Whether a worker may be opened as a live AI chat in the Staff Portal right now. */

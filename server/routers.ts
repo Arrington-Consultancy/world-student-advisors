@@ -28,6 +28,8 @@ import { requireTurnstile } from "./_core/turnstile";
 import { authenticateStaffPortal, verifyStaffPortalToken, isStaffPortalLoginRateLimited } from "./staffPortalAuth";
 import { isMicrosoftSsoConfigured, buildMicrosoftSignInRequest, completeMicrosoftSignInFromCallback } from "./staffIdentityAuth";
 import { resolveStaffSession } from "./staffSession";
+import { resolveStaffAccessProfile } from "./access/identity";
+import { ACCESS_LEVEL_NAMES } from "./access/accessControl";
 import { recordAuditEvent } from "./workforce/audit";
 import { listWorkers, getWorker } from "./workforce/registry";
 import { evaluateStaffPortalExecutionPermission } from "./workforce/permissions";
@@ -501,6 +503,59 @@ export const appRouter = router({
         } catch {
           return { authenticated: false as const, authMethod: null, displayName: null };
         }
+      }),
+
+    // The caller's OWN access assignment, and only their own. There is no
+    // parameter for whose access to report: the staff id comes from the
+    // verified session, so this cannot be turned into a way to enumerate
+    // colleagues' permissions.
+    //
+    // Read-only and side-effect free. It exists so the Access Control
+    // Standard's §11 gate testing ("one account per level, allowed and
+    // forbidden actions") can be carried out against what the server
+    // actually resolved, rather than against what a UI happens to render —
+    // and so a staff member can be told plainly that they hold no
+    // assignment yet, instead of meeting unexplained refusals.
+    //
+    // Returns a description, never a capability: nothing downstream reads
+    // this response back as authority. Every real decision re-resolves the
+    // profile server-side.
+    myAccess: publicProcedure
+      .input(z.object({ token: z.string() }))
+      .query(async ({ input }) => {
+        const session = await resolveStaffSession(input.token);
+        const staffUserId = session.authMethod === "entra_sso" ? session.staffUserId : null;
+        const resolution = await resolveStaffAccessProfile(staffUserId);
+
+        if (!resolution.resolved) {
+          return {
+            assigned: false as const,
+            reason: resolution.reason,
+            detail: resolution.detail,
+          };
+        }
+
+        const profile = resolution.profile;
+        return {
+          assigned: true as const,
+          baseAccessLevel: profile.baseAccessLevel,
+          accessLevelName: ACCESS_LEVEL_NAMES[profile.baseAccessLevel],
+          functionalScopes: [...profile.functionalScopes],
+          caseScope: profile.caseScope,
+          actionPermissions: [...profile.actionPermissions],
+          sensitiveOverlays: [...profile.sensitiveOverlays],
+          status: profile.status,
+          teamId: profile.teamId,
+          // Live elevations, described without restating anything secret.
+          temporaryGrants: profile.temporaryGrants.map(g => ({
+            reason: g.reason,
+            grantedAt: g.grantedAt,
+            expiresAt: g.expiresAt,
+          })),
+          // Surfaced rather than swallowed: a stored value that is not on
+          // the approved list was dropped, and somebody needs to know.
+          droppedGrantValues: [...resolution.droppedGrantValues],
+        };
       }),
 
     // Stage 3: individual staff identity via Microsoft Entra ID, alongside
