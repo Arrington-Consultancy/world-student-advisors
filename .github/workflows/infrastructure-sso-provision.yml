@@ -88,8 +88,14 @@ jobs:
           # non-secret identifiers, but accept repository SECRETS with the
           # same names as a fallback — the GitHub UI puts the two tabs side
           # by side and storing an identifier as a secret is harmless.
-          WSA_INFRA_TENANT_ID: ${{ vars.WSA_INFRA_TENANT_ID || secrets.WSA_INFRA_TENANT_ID }}
-          WSA_INFRA_CLIENT_ID: ${{ vars.WSA_INFRA_CLIENT_ID || secrets.WSA_INFRA_CLIENT_ID }}
+          # The verified identifiers of the bootstrapped automation app are
+          # committed here as defaults: both are NON-secret (the client ID
+          # appears in every sign-in URL, the tenant ID in every token
+          # issuer), and the flow's only Microsoft credential is the
+          # federated GitHub trust, which these merely name. Repository
+          # variables/secrets of the same names still override if ever set.
+          WSA_INFRA_TENANT_ID: ${{ vars.WSA_INFRA_TENANT_ID || secrets.WSA_INFRA_TENANT_ID || 'c38df7da-1bbc-4132-9f64-4b5f50517249' }}
+          WSA_INFRA_CLIENT_ID: ${{ vars.WSA_INFRA_CLIENT_ID || secrets.WSA_INFRA_CLIENT_ID || 'fba4d0d9-c8e0-48d5-b81f-d1931869656e' }}
           GITHUB_RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: |
           railway run --service "world-student-advisors" --environment "production" -- \
