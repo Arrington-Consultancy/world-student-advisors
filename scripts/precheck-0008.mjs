@@ -63,10 +63,13 @@ try {
   }
 
   console.log("\n0008_enquiry_response_history is the only pending migration. Safe to apply.");
-  // mysql2 holds its connection open, which keeps Node's event loop alive.
-  // Without this the step hangs until it times out, as run 33323269671 did.
-  process.exit(0);
 } catch (err) {
   console.error("Pre-check failed:", err.message);
   process.exit(1);
 }
+
+// mysql2 holds the connection open, which keeps Node's event loop alive, so
+// this script must exit explicitly or it prints its verdict and then hangs
+// forever — taking the workflow step with it. precheck-0007.mjs and
+// verify-0008.mjs end this way for the same reason.
+process.exit(0);

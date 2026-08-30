@@ -11,6 +11,8 @@ name: Record a controlled staff access assignment
 # What this cannot do, by construction (see scripts/assign-staff-access.mjs):
 #   - create a staff account (the row must already exist from a genuine
 #     Microsoft Entra sign-in);
+#   - assign access to whoever happens to occupy an id: the run must state
+#     the display name it expects on that row, and a mismatch stops it;
 #   - grant credential_admin, delete_destructive, financial_action,
 #     access_admin, external_send or submit — consequential permissions are
 #     separate, deliberate decisions and this script refuses them outright;
@@ -25,8 +27,11 @@ name: Record a controlled staff access assignment
 on:
   workflow_dispatch:
     inputs:
-      email:
-        description: "Staff email — the existing staff_users row to assign"
+      staff_user_id:
+        description: "staff_users.id of the existing row to assign"
+        required: true
+      expect_display_name:
+        description: "The displayName you believe that row carries. A mismatch stops the run."
         required: true
       level:
         description: "Base access level (1-5)"
@@ -124,37 +129,31 @@ jobs:
             --skip-deploys
 
       - name: Record the assignment
+        timeout-minutes: 10
         env:
           RAILWAY_TOKEN: ${{ secrets.githubactionsprod }}
-          IN_EMAIL: ${{ github.event.inputs.email }}
-          IN_LEVEL: ${{ github.event.inputs.level }}
-          IN_SCOPES: ${{ github.event.inputs.functional_scopes }}
-          IN_CASE_SCOPE: ${{ github.event.inputs.case_scope }}
-          IN_ACTIONS: ${{ github.event.inputs.action_permissions }}
-          IN_OVERLAYS: ${{ github.event.inputs.sensitive_overlays }}
-          IN_TEAM: ${{ github.event.inputs.team_id }}
-          IN_AUTHORITY: ${{ github.event.inputs.authority }}
-          IN_REASON: ${{ github.event.inputs.reason }}
-          IN_APPLY: ${{ github.event.inputs.apply }}
+          # Passed as environment variables, never interpolated into a shell
+          # string. An apostrophe in a reason or authority reference would
+          # otherwise break the quoting, and a quote plus a semicolon would
+          # be executed. assign-staff-access.mjs reads these directly.
+          WSA_ASSIGN_STAFF_USER_ID: ${{ github.event.inputs.staff_user_id }}
+          WSA_ASSIGN_EXPECT_DISPLAY_NAME: ${{ github.event.inputs.expect_display_name }}
+          WSA_ASSIGN_LEVEL: ${{ github.event.inputs.level }}
+          WSA_ASSIGN_SCOPES: ${{ github.event.inputs.functional_scopes }}
+          WSA_ASSIGN_CASE_SCOPE: ${{ github.event.inputs.case_scope }}
+          WSA_ASSIGN_ACTIONS: ${{ github.event.inputs.action_permissions }}
+          WSA_ASSIGN_OVERLAYS: ${{ github.event.inputs.sensitive_overlays }}
+          WSA_ASSIGN_TEAM: ${{ github.event.inputs.team_id }}
+          WSA_ASSIGN_AUTHORITY: ${{ github.event.inputs.authority }}
+          WSA_ASSIGN_REASON: ${{ github.event.inputs.reason }}
+          WSA_ASSIGN_APPLY: ${{ github.event.inputs.apply }}
         run: |
-          APPLY_FLAG=""
-          if [ "$IN_APPLY" = "true" ]; then APPLY_FLAG="--apply"; fi
-          OPTIONAL=""
-          if [ -n "$IN_OVERLAYS" ]; then OPTIONAL="$OPTIONAL --overlays $IN_OVERLAYS"; fi
-          if [ -n "$IN_TEAM" ]; then OPTIONAL="$OPTIONAL --team $IN_TEAM"; fi
           railway run --service "$APP_SERVICE_NAME" --environment "$APP_ENV_NAME" -- \
-            sh -c "DATABASE_URL=\"\$ASSIGNMENT_DATABASE_URL\" node scripts/assign-staff-access.mjs \
-              --email '$IN_EMAIL' \
-              --level '$IN_LEVEL' \
-              --scopes '$IN_SCOPES' \
-              --case-scope '$IN_CASE_SCOPE' \
-              --actions '$IN_ACTIONS' \
-              --authority '$IN_AUTHORITY' \
-              --reason '$IN_REASON' \
-              $OPTIONAL $APPLY_FLAG"
+            sh -c 'DATABASE_URL="$ASSIGNMENT_DATABASE_URL" node scripts/assign-staff-access.mjs'
 
       - name: Remove the temporary variable
         if: always()
+        timeout-minutes: 10
         env:
           RAILWAY_TOKEN: ${{ secrets.githubactionsprod }}
         run: |

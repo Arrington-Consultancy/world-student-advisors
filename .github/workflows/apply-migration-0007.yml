@@ -97,6 +97,7 @@ jobs:
             --set "MIGRATION_DATABASE_URL=${REF}"
 
       - name: Confirm 0007 is the only pending migration (read-only; stops rather than guessing)
+        timeout-minutes: 10
         env:
           RAILWAY_TOKEN: ${{ secrets.githubactionsprod }}
         run: |
@@ -104,6 +105,7 @@ jobs:
             sh -c 'DATABASE_URL="$MIGRATION_DATABASE_URL" node scripts/precheck-0007.mjs'
 
       - name: Apply migration 0007 (drizzle-kit migrate)
+        timeout-minutes: 10
         env:
           RAILWAY_TOKEN: ${{ secrets.githubactionsprod }}
         run: |
@@ -111,6 +113,7 @@ jobs:
             sh -c 'DATABASE_URL="$MIGRATION_DATABASE_URL" pnpm exec drizzle-kit migrate'
 
       - name: Read-only post-migration verification
+        timeout-minutes: 10
         env:
           RAILWAY_TOKEN: ${{ secrets.githubactionsprod }}
         run: |
