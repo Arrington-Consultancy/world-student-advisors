@@ -57,6 +57,13 @@
       "when": 1788040000000,
       "tag": "0007_staff_access_control",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "5",
+      "when": 1788120000000,
+      "tag": "0008_enquiry_response_history",
+      "breakpoints": true
     }
   ]
 }

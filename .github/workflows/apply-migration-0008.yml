@@ -1,0 +1,148 @@
+name: Apply migration 0008 (enquiry and response history)
+
+# Manual-only, one-time, SEPARATELY AUTHORISED step (authorisation limited
+# to migration 0008). Mirrors the proven method of apply-migration-0007.yml:
+#   1. Discovers the MySQL service's public-URL variable NAME (key only,
+#      value never printed).
+#   2. Sets a temporary MIGRATION_DATABASE_URL reference on the app service
+#      (reference syntax only — the connection string is never read or
+#      printed).
+#   3. Re-checks, read-only, that 0008 is the ONLY pending migration, and
+#      stops rather than applying anything unexpected.
+#   4. Runs `drizzle-kit migrate` (NOT db:push/generate), applying exactly
+#      the reviewed, hand-authored 0008 SQL: CREATE TABLE staff_enquiries
+#      and staff_enquiry_contributions, plus four indexes. Purely additive
+#      — it contains no ALTER, DROP, DELETE, TRUNCATE or RENAME, so it
+#      touches no table that already exists and no existing row.
+#   5. Runs scripts/verify-0008.mjs — read-only post-verification: the
+#      migration count; every expected column on both new tables with its
+#      nullability asserted and a default forbidden anywhere but createdAt;
+#      no unexpected columns; both tables empty; all four indexes present;
+#      every pre-existing table still present; and the one recorded staff
+#      access assignment and its two live grants unchanged.
+#   6. Runs the migrator a SECOND time and re-verifies, proving the
+#      migration is idempotent: drizzle-kit tracks by hash, so a repeat run
+#      must apply nothing and leave the verification identical.
+#   7. Removes the temporary variable (always).
+#
+# The new tables record enquiry and response history (operating-model
+# clause 3). They grant nothing: no column here confers authority, no
+# staff permission changes, and no worker or connector is activated.
+#
+# No destructive rollback exists or may be created for these tables.
+#
+# Auth: githubactionsprod — the same production-scoped Railway Project
+# Token the other production workflows use.
+on:
+  workflow_dispatch:
+    inputs:
+      service_name:
+        description: "Railway app service name"
+        required: true
+        default: "world-student-advisors"
+      environment_name:
+        description: "Railway environment name"
+        required: true
+        default: "production"
+      database_service_name:
+        description: "Railway MySQL service name"
+        required: true
+        default: "MySQL"
+
+jobs:
+  migrate:
+    runs-on: ubuntu-latest
+    env:
+      APP_SERVICE_NAME: ${{ github.event.inputs.service_name }}
+      APP_ENV_NAME: ${{ github.event.inputs.environment_name }}
+      DB_SERVICE_NAME: ${{ github.event.inputs.database_service_name }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Install Railway CLI
+        run: npm install -g @railway/cli
+
+      - name: Discover the MySQL service's public-URL variable NAME (key only, value never printed)
+        id: discover
+        env:
+          RAILWAY_TOKEN: ${{ secrets.githubactionsprod }}
+        run: |
+          KEYS=$(railway variables --service "$DB_SERVICE_NAME" --environment "$APP_ENV_NAME" --json | jq -r 'keys[]')
+          PUBLIC_KEY=$(echo "$KEYS" | grep -i -E '^(MYSQL_PUBLIC_URL|DATABASE_PUBLIC_URL)$' | head -n1)
+          if [ -z "$PUBLIC_KEY" ]; then
+            echo "No public-URL-shaped variable found on $DB_SERVICE_NAME. Stopping — not guessing further."
+            exit 1
+          fi
+          echo "Using public URL variable: $PUBLIC_KEY"
+          echo "public_key=$PUBLIC_KEY" >> "$GITHUB_OUTPUT"
+
+      - name: Set a temporary public-reachable migration URL on the app service
+        env:
+          RAILWAY_TOKEN: ${{ secrets.githubactionsprod }}
+          PUBLIC_KEY: ${{ steps.discover.outputs.public_key }}
+        run: |
+          REF=$(printf '\044{{%s.%s}}' "$DB_SERVICE_NAME" "$PUBLIC_KEY")
+          railway variables \
+            --service "$APP_SERVICE_NAME" \
+            --environment "$APP_ENV_NAME" \
+            --set "MIGRATION_DATABASE_URL=${REF}"
+
+      - name: Confirm 0008 is the only pending migration (read-only; stops rather than guessing)
+        timeout-minutes: 10
+        env:
+          RAILWAY_TOKEN: ${{ secrets.githubactionsprod }}
+        run: |
+          railway run --service "$APP_SERVICE_NAME" --environment "$APP_ENV_NAME" -- \
+            sh -c 'DATABASE_URL="$MIGRATION_DATABASE_URL" node scripts/precheck-0008.mjs'
+
+      - name: Apply migration 0008 (drizzle-kit migrate)
+        timeout-minutes: 10
+        env:
+          RAILWAY_TOKEN: ${{ secrets.githubactionsprod }}
+        run: |
+          railway run --service "$APP_SERVICE_NAME" --environment "$APP_ENV_NAME" -- \
+            sh -c 'DATABASE_URL="$MIGRATION_DATABASE_URL" pnpm exec drizzle-kit migrate'
+
+      - name: Read-only post-migration verification
+        timeout-minutes: 10
+        env:
+          RAILWAY_TOKEN: ${{ secrets.githubactionsprod }}
+        run: |
+          railway run --service "$APP_SERVICE_NAME" --environment "$APP_ENV_NAME" -- \
+            sh -c 'DATABASE_URL="$MIGRATION_DATABASE_URL" node scripts/verify-0008.mjs'
+
+      - name: Re-run the migrator to prove it is idempotent (applies nothing the second time)
+        timeout-minutes: 10
+        env:
+          RAILWAY_TOKEN: ${{ secrets.githubactionsprod }}
+        run: |
+          railway run --service "$APP_SERVICE_NAME" --environment "$APP_ENV_NAME" -- \
+            sh -c 'DATABASE_URL="$MIGRATION_DATABASE_URL" pnpm exec drizzle-kit migrate'
+
+      - name: Verify again — the second migrate run changed nothing
+        timeout-minutes: 10
+        env:
+          RAILWAY_TOKEN: ${{ secrets.githubactionsprod }}
+        run: |
+          railway run --service "$APP_SERVICE_NAME" --environment "$APP_ENV_NAME" -- \
+            sh -c 'DATABASE_URL="$MIGRATION_DATABASE_URL" node scripts/verify-0008.mjs'
+
+      - name: Remove the temporary migration URL variable
+        if: always()
+        env:
+          RAILWAY_TOKEN: ${{ secrets.githubactionsprod }}
+        run: |
+          railway variables \
+            --service "$APP_SERVICE_NAME" \
+            --environment "$APP_ENV_NAME" \
+            --set "MIGRATION_DATABASE_URL="
