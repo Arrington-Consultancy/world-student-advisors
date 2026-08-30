@@ -91,6 +91,32 @@ describe("Entra application idempotency", () => {
     );
   });
 
+  it("prefers the pinned stable client ID over display-name matching", () => {
+    const pinned = managedApp({ appId: "pinned-app-id" });
+    const impostor = managedApp({ id: "obj-2", appId: "other-app-id" });
+    // With a pin, duplicates by name are no longer ambiguous — the ID decides.
+    expect(selectManagedApplication([impostor, pinned], "pinned-app-id")).toEqual({
+      decision: "manage",
+      application: pinned,
+    });
+  });
+
+  it("stops when the pinned ID and the controlled name disagree", () => {
+    const renamed = managedApp({ appId: "pinned-app-id", displayName: "Renamed App" });
+    expect(() => selectManagedApplication([renamed], "pinned-app-id")).toThrow(/disagree/);
+  });
+
+  it("never silently adopts a name-alike app when the pinned app is missing", () => {
+    const nameAlike = managedApp({ appId: "other-app-id" });
+    expect(() => selectManagedApplication([nameAlike], "pinned-app-id")).toThrow(
+      /Refusing to adopt/,
+    );
+  });
+
+  it("recreates legitimately when the pinned app is gone and nothing name-alike exists", () => {
+    expect(selectManagedApplication([], "pinned-app-id")).toEqual({ decision: "create" });
+  });
+
   it("declares a single-tenant app with only the three OIDC sign-in scopes", () => {
     const payload = buildApplicationCreatePayload() as {
       displayName: string;

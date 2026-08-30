@@ -140,13 +140,45 @@ export interface GraphApplication {
  * Idempotent selection of the managed application from the set of
  * applications the automation can see (with Application.ReadWrite.OwnedBy,
  * Graph already limits that set to owned applications).
- *  - none present  → create (the caller may create exactly this app)
- *  - exactly one   → manage it
- *  - more than one → ambiguity; STOP rather than guess or duplicate
+ *
+ * Stable-identifier pinning: after the first run, the created app's
+ * client ID is persisted as STAFF_SSO_CLIENT_ID on the authorised Railway
+ * service; later runs pass it back here as pinnedAppId so repeated
+ * operation never depends on display-name matching alone.
+ *  - pinned ID found            → manage that app; if its display name has
+ *                                 drifted from the controlled name, STOP
+ *                                 (identifier and name disagree; never guess)
+ *  - pinned ID absent BUT a
+ *    name-alike app exists      → STOP; never silently adopt an app that is
+ *                                 not the pinned one
+ *  - no pin (first run):
+ *      none present             → create (the caller may create exactly this app)
+ *      exactly one              → manage it
+ *      more than one            → ambiguity; STOP rather than guess or duplicate
  */
 export function selectManagedApplication(
   applications: readonly GraphApplication[],
+  pinnedAppId?: string,
 ): { decision: "create" } | { decision: "manage"; application: GraphApplication } {
+  if (pinnedAppId) {
+    const pinned = applications.find(app => app.appId === pinnedAppId);
+    if (pinned) {
+      if (pinned.displayName !== MANAGED_SSO_APP_DISPLAY_NAME) {
+        throw new AutomationAuthorityError(
+          `Pinned application ${pinnedAppId.slice(0, 8)}… no longer carries the controlled name "${MANAGED_SSO_APP_DISPLAY_NAME}". Identifier and name disagree; stopping.`,
+        );
+      }
+      return { decision: "manage", application: pinned };
+    }
+    const nameAlikes = applications.filter(app => app.displayName === MANAGED_SSO_APP_DISPLAY_NAME);
+    if (nameAlikes.length > 0) {
+      throw new AutomationAuthorityError(
+        `Pinned application ${pinnedAppId.slice(0, 8)}… is not among the owned applications, but ${nameAlikes.length} name-alike app(s) exist. Refusing to adopt an unpinned application; resolve manually.`,
+      );
+    }
+    // Pinned app gone and nothing name-alike: legitimate recreation.
+    return { decision: "create" };
+  }
   const matches = applications.filter(app => app.displayName === MANAGED_SSO_APP_DISPLAY_NAME);
   if (matches.length === 0) return { decision: "create" };
   if (matches.length === 1) return { decision: "manage", application: matches[0] };

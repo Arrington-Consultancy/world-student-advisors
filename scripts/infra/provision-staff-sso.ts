@@ -187,12 +187,28 @@ async function main(): Promise<void> {
   console.log("Federated Microsoft Graph token obtained (no stored secret used).");
 
   // 3 ── find or create the owned SSO application (idempotent, ambiguity stops).
+  // Stable-ID pinning: a previous run persisted the app's client ID as
+  // STAFF_SSO_CLIENT_ID on the authorised service; read it back (a
+  // non-secret identifier, kept in memory, printed only as a prefix) so
+  // repeated operation never rests on display-name matching alone.
+  const preexisting = await railwayRequest<{ variables: Record<string, string> }>(
+    `query variables($projectId: String!, $environmentId: String!, $serviceId: String, $unrendered: Boolean) {
+  variables(projectId: $projectId, environmentId: $environmentId, serviceId: $serviceId, unrendered: $unrendered)
+}`,
+    { ...RAILWAY_TARGET, unrendered: true },
+  );
+  const pinnedAppId = preexisting.variables?.STAFF_SSO_CLIENT_ID || undefined;
+  console.log(
+    pinnedAppId
+      ? `Pinned application client ID found on the service (prefix ${pinnedAppId.slice(0, 8)}…).`
+      : "No pinned application client ID on the service yet (first run).",
+  );
   const listed = await graphRequest<{ value: GraphApplication[] }>(
     graphToken,
     "GET",
     "/applications?$select=id,appId,displayName,signInAudience,web,passwordCredentials&$top=999",
   );
-  const selection = selectManagedApplication(listed.value);
+  const selection = selectManagedApplication(listed.value, pinnedAppId);
   let app: GraphApplication;
   if (selection.decision === "create") {
     await recordAudit({
@@ -255,25 +271,17 @@ async function main(): Promise<void> {
   // Instruct the Actions runner to mask the value everywhere, as defence in
   // depth: the runner consumes this workflow command; it is not echoed.
   console.log(`::add-mask::${added.secretText}`);
-  const refreshed = await graphRequest<GraphApplication>(
-    graphToken,
-    "GET",
-    `/applications/${app.id}?$select=id,appId,passwordCredentials`,
-  );
-  for (const keyId of selectPasswordsToPrune(refreshed.passwordCredentials ?? [], added.keyId)) {
-    await graphRequest(graphToken, "POST", `/applications/${app.id}/removePassword`, { keyId });
-  }
   await recordAudit({
     action: "entra_secret_rotate",
     phase: "result",
     targetSystem: "microsoft_entra",
-    targetResource: `new credential keyId prefix ${added.keyId.slice(0, 8)}…; automation-named older credentials pruned`,
+    targetResource: `new credential keyId prefix ${added.keyId.slice(0, 8)}…; older automation credentials pruned only after deployment SUCCESS`,
     permissionDecision: "allowed",
-    permissionReason: "Credential rotated on the owned application.",
+    permissionReason: "Replacement credential created on the owned application.",
     success: 1,
     errorCategory: "none",
   });
-  console.log("Client secret rotated (value masked; never logged or stored outside Railway).");
+  console.log("Replacement client secret created (value masked; never logged or stored outside Railway).");
 
   // 5 ── write the four variables to the exact authorised Railway service.
   const variableNames = ["STAFF_SSO_TENANT_ID", "STAFF_SSO_CLIENT_ID", "STAFF_SSO_CLIENT_SECRET", "STAFF_SSO_REDIRECT_URI"];
@@ -364,9 +372,39 @@ async function main(): Promise<void> {
     deploymentId: deploymentOutcome.deploymentId ?? null,
   });
   if (deploymentOutcome.state !== "success") {
-    fail(`Production deployment after the variable write did not reach SUCCESS (${deploymentOutcome.state}).`);
+    fail(
+      `Production deployment after the variable write did not reach SUCCESS (${deploymentOutcome.state}). ` +
+        "No credential has been pruned: the previous secret remains valid on both the application and Railway.",
+    );
   }
   console.log(`Production deployment SUCCESS (id ${deploymentOutcome.deploymentId}).`);
+
+  // Only now — with the new secret proven live in production — prune older
+  // credentials, and only those this automation itself created. A failed
+  // Railway write or deployment can therefore never leave the application
+  // stripped of its one usable credential.
+  const refreshed = await graphRequest<GraphApplication>(
+    graphToken,
+    "GET",
+    `/applications/${app.id}?$select=id,appId,passwordCredentials`,
+  );
+  const pruned = selectPasswordsToPrune(refreshed.passwordCredentials ?? [], added.keyId);
+  for (const keyId of pruned) {
+    await graphRequest(graphToken, "POST", `/applications/${app.id}/removePassword`, { keyId });
+  }
+  if (pruned.length > 0) {
+    await recordAudit({
+      action: "entra_secret_prune",
+      phase: "result",
+      targetSystem: "microsoft_entra",
+      targetResource: `${pruned.length} automation-named credential(s) removed after deployment SUCCESS`,
+      permissionDecision: "allowed",
+      permissionReason: "Superseded automation-created credentials pruned; human-created credentials untouched.",
+      success: 1,
+      errorCategory: "none",
+    });
+  }
+  console.log(`Pruned ${pruned.length} superseded automation-named credential(s).`);
 
   // 7 ── existing identity acceptance checks against live production.
   const acceptance = spawnSync("node", ["scripts/identity-acceptance.mjs"], { stdio: "inherit" });
