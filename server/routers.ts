@@ -679,6 +679,44 @@ export const appRouter = router({
       }),
 
     /**
+     * The Social Brain: what WSA's social memory would hold, and what it
+     * actually holds today.
+     *
+     * The registers come from Nia's Social Brain Supporting Control Pack
+     * v0.1. Every count is zero because the Pack is a design, not a
+     * populated store — no post, spend figure or performance record has
+     * been loaded into it. Reporting the structure with honest zeroes is
+     * the useful thing here: it shows what will be remembered, and it does
+     * not let anybody believe six years of history is already in there.
+     */
+    socialBrain: publicProcedure
+      .input(z.object({ token: z.string() }))
+      .query(async ({ input }) => {
+        await resolveStaffSession(input.token);
+        return {
+          ownerWorkerId: "nia" as const,
+          controlPack: "WSA_Nia_Social_Brain_Supporting_Control_Pack_v0.1_WORKING_DRAFT.docx",
+          registers: [
+            { id: "content_ledger", name: "Master Social Content Ledger", holds: "Every post: account, exact publication time, hook, call to action, evidence used, and what it was adapted from.", recorded: 0 },
+            { id: "asset_register", name: "Asset & Version Register", holds: "Every image and video, each version, and what was later made from it.", recorded: 0 },
+            { id: "video_timecode", name: "Video Timecode & Retention Register", holds: "What happens at 0-1s, 1-3s, 3-5s and onward, with real retention data where the platform provides it.", recorded: 0 },
+            { id: "africa_intelligence", name: "Africa Market Intelligence Profile", holds: "Country by country. Nigeria is not Ghana, Ghana is not Kenya, and Africa is never one audience.", recorded: 0 },
+            { id: "slop_review", name: "AI-Slop & Human Voice Review", holds: "Generic hooks, empty superlatives, formulaic rhythms, corporate filler, fake certainty, and posts that could have been written for 500 other agents.", recorded: 0 },
+            { id: "editorial_calendar", name: "Editorial Calendar", holds: "One editorial programme, adapted by audience and platform.", recorded: 0 },
+            { id: "performance", name: "Performance & Experiment Register", holds: "What was tried, what happened, and what was learned. Trust and lead quality rather than vanity volume.", recorded: 0 },
+            { id: "community", name: "Community Insight Register", holds: "Comments, recurring questions, affordability concerns and what audiences actually ask.", recorded: 0 },
+            { id: "readiness", name: "Publication Readiness", holds: "Whether a post is cleared to go out, and who cleared it.", recorded: 0 },
+          ],
+          /** Stated rather than implied: the store is empty. */
+          populated: false,
+          emptyNote:
+            "The Social Brain is designed and not yet populated. No post, spend figure or performance record has been " +
+            "loaded, so nothing can be recalled from it yet. Six years of history would have to be imported before " +
+            "anybody could ask what a 2020 post did.",
+        };
+      }),
+
+    /**
      * Content check: does this read like a machine wrote it?
      *
      * Runs the same quality gate that governs anything a worker would

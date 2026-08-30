@@ -6,6 +6,7 @@ import { trpc } from "@/lib/trpc";
 import { ChannelsPanel } from "@/components/staff/ChannelsPanel";
 import { TeamPanel } from "@/components/staff/TeamPanel";
 import { ContentCheckPanel } from "@/components/staff/ContentCheckPanel";
+import { SocialMediaPanel } from "@/components/staff/SocialMediaPanel";
 import { Receptionist } from "@/components/workforce/Receptionist";
 
 const STORAGE_KEY = "staff_portal_token";
@@ -201,10 +202,11 @@ export default function StaffPortal() {
  * actually reports — this component has no local notion of who is
  * "ready"; it only renders what workforce.listWorkers returns.
  */
-type StaffTab = "reception" | "channels" | "team" | "content";
+type StaffTab = "reception" | "social" | "channels" | "team" | "content";
 
 const TABS: { id: StaffTab; label: string }[] = [
   { id: "reception", label: "Reception" },
+  { id: "social", label: "Social media" },
   { id: "channels", label: "Channels" },
   { id: "team", label: "The AI team" },
   { id: "content", label: "Content check" },
@@ -269,6 +271,7 @@ function WorkforceHome({ token, onLogout }: { token: string; onLogout: () => voi
           </div>
         )}
 
+        {tab === "social" && <SocialMediaPanel token={token} />}
         {tab === "channels" && <ChannelsPanel token={token} />}
         {tab === "team" && <TeamPanel token={token} />}
         {tab === "content" && <ContentCheckPanel token={token} />}
