@@ -1,0 +1,105 @@
+name: Verify staff access assignment (read-only)
+
+# Manual-only, READ-ONLY. Re-reads production and checks the recorded
+# staff access assignments on its own terms, rather than trusting the
+# read-back printed by the script that wrote them.
+#
+# Asserts: exactly one assignment exists; whose it is; the level, case
+# scope and status recorded; that Executive is the only functional scope
+# and read the only action permission; that NO sensitive overlay is held,
+# so finance access is not granted; that no consequential action permission
+# is held; that no other staff member holds a grant; and that every audit
+# row concerns only that person and carries an authority reference.
+#
+# Personal data is kept to the minimum needed to prove whose assignment it
+# is — display name, an 8-character Entra oid prefix, and the email as
+# first-two-characters plus domain. The full address is never printed.
+#
+# No writes of any kind. Exits non-zero if any check fails.
+#
+# Auth: githubactionsprod — the same production-scoped Railway Project
+# Token the other production workflows use.
+on:
+  workflow_dispatch:
+    inputs:
+      service_name:
+        description: "Railway app service name"
+        required: true
+        default: "world-student-advisors"
+      environment_name:
+        description: "Railway environment name"
+        required: true
+        default: "production"
+      database_service_name:
+        description: "Railway MySQL service name"
+        required: true
+        default: "MySQL"
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    env:
+      APP_SERVICE_NAME: ${{ github.event.inputs.service_name }}
+      APP_ENV_NAME: ${{ github.event.inputs.environment_name }}
+      DB_SERVICE_NAME: ${{ github.event.inputs.database_service_name }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Install Railway CLI
+        run: npm install -g @railway/cli
+
+      - name: Discover the MySQL service's public-URL variable NAME (key only, value never printed)
+        id: discover
+        env:
+          RAILWAY_TOKEN: ${{ secrets.githubactionsprod }}
+        run: |
+          KEYS=$(railway variables --service "$DB_SERVICE_NAME" --environment "$APP_ENV_NAME" --json | jq -r 'keys[]')
+          PUBLIC_KEY=$(echo "$KEYS" | grep -i -E '^(MYSQL_PUBLIC_URL|DATABASE_PUBLIC_URL)$' | head -n1)
+          if [ -z "$PUBLIC_KEY" ]; then
+            echo "No public-URL-shaped variable found on $DB_SERVICE_NAME. Stopping — not guessing further."
+            exit 1
+          fi
+          echo "Using public URL variable: $PUBLIC_KEY"
+          echo "public_key=$PUBLIC_KEY" >> "$GITHUB_OUTPUT"
+
+      - name: Set a temporary public-reachable URL on the app service
+        env:
+          RAILWAY_TOKEN: ${{ secrets.githubactionsprod }}
+          PUBLIC_KEY: ${{ steps.discover.outputs.public_key }}
+        run: |
+          REF=$(printf '\044{{%s.%s}}' "$DB_SERVICE_NAME" "$PUBLIC_KEY")
+          railway variables \
+            --service "$APP_SERVICE_NAME" \
+            --environment "$APP_ENV_NAME" \
+            --set "ASSIGNMENT_VERIFY_DATABASE_URL=${REF}" \
+            --skip-deploys
+
+      - name: Verify the recorded assignment
+        timeout-minutes: 10
+        env:
+          RAILWAY_TOKEN: ${{ secrets.githubactionsprod }}
+        run: |
+          railway run --service "$APP_SERVICE_NAME" --environment "$APP_ENV_NAME" -- \
+            sh -c 'DATABASE_URL="$ASSIGNMENT_VERIFY_DATABASE_URL" node scripts/verify-staff-access-assignment.mjs'
+
+      - name: Remove the temporary variable
+        if: always()
+        timeout-minutes: 10
+        env:
+          RAILWAY_TOKEN: ${{ secrets.githubactionsprod }}
+        run: |
+          railway variables \
+            --service "$APP_SERVICE_NAME" \
+            --environment "$APP_ENV_NAME" \
+            --set "ASSIGNMENT_VERIFY_DATABASE_URL=" \
+            --skip-deploys

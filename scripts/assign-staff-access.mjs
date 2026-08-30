@@ -241,3 +241,10 @@ try {
   console.error("Assignment failed:", err.message);
   process.exit(1);
 }
+
+// mysql2 holds the connection open, which keeps Node's event loop alive.
+// Without this the apply path completes every write, prints its read-back
+// and then hangs until the step times out — reporting a failure for a
+// change that actually succeeded, which is the worst way for a controlled
+// write to end. The dry-run path already exits explicitly above.
+process.exit(0);
