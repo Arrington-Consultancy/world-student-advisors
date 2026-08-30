@@ -3,9 +3,9 @@ import { Lock, LogOut, Eye, EyeOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { trpc } from "@/lib/trpc";
-import { CommunicationsPanel } from "@/components/staff/CommunicationsPanel";
-import { WorkerCard, type WorkforceWorker } from "@/components/workforce/WorkerCard";
-import { WorkerWorkspace } from "@/components/workforce/WorkerWorkspace";
+import { ChannelsPanel } from "@/components/staff/ChannelsPanel";
+import { TeamPanel } from "@/components/staff/TeamPanel";
+import { ContentCheckPanel } from "@/components/staff/ContentCheckPanel";
 import { Receptionist } from "@/components/workforce/Receptionist";
 
 const STORAGE_KEY = "staff_portal_token";
@@ -201,53 +201,77 @@ export default function StaffPortal() {
  * actually reports — this component has no local notion of who is
  * "ready"; it only renders what workforce.listWorkers returns.
  */
+type StaffTab = "reception" | "channels" | "team" | "content";
+
+const TABS: { id: StaffTab; label: string }[] = [
+  { id: "reception", label: "Reception" },
+  { id: "channels", label: "Channels" },
+  { id: "team", label: "The AI team" },
+  { id: "content", label: "Content check" },
+];
+
+/**
+ * The Staff Portal.
+ *
+ * Reception is the front door and the landing tab, because that is how
+ * staff are meant to use this: describe what you need, get pointed at
+ * whoever owns it. Everything else is a place you go deliberately, so
+ * everything else is a tab rather than another wall of boxes on the way
+ * past.
+ */
 function WorkforceHome({ token, onLogout }: { token: string; onLogout: () => void }) {
-  const [openWorker, setOpenWorker] = useState<WorkforceWorker | null>(null);
-  const workersQuery = trpc.workforce.listWorkers.useQuery({ token });
+  const [tab, setTab] = useState<StaffTab>("reception");
 
   return (
     <div className="min-h-screen bg-wsa-warm-white pt-32 pb-20 lg:pt-40 lg:pb-28">
       <main className="container max-w-5xl">
-        <div className="flex items-start justify-between gap-6 mb-6">
+        <div className="mb-6 flex items-start justify-between gap-6">
           <div>
-            <p className="mb-2 text-sm font-medium tracking-[0.2em] uppercase text-wsa-red">Staff Portal</p>
-            <h1 className="text-3xl md:text-4xl font-semibold text-wsa-navy leading-[1.1]">WSA AI Workforce</h1>
+            <p className="mb-1 text-xs font-medium uppercase tracking-[0.2em] text-wsa-red">Staff Portal</p>
+            <h1 className="text-3xl font-semibold leading-tight text-wsa-navy md:text-4xl">World Student Advisors</h1>
           </div>
           <Button
             variant="outline"
             size="sm"
             onClick={onLogout}
-            className="border-wsa-navy/20 text-wsa-navy hover:border-wsa-red hover:text-wsa-red shrink-0"
+            className="shrink-0 border-wsa-navy/20 text-wsa-navy hover:border-wsa-red hover:text-wsa-red"
           >
-            <LogOut className="w-4 h-4 mr-1" /> Sign out
+            <LogOut className="mr-1 h-4 w-4" /> Sign out
           </Button>
         </div>
 
-        <p className="mb-8 max-w-2xl text-sm text-gray-600">
-          Sophie is the only worker currently approved at the specification level, and her Staff Portal deployment
-          channel is still undecided. Every other worker below is in design and not yet approved for live case work
-          — the estate is currently awaiting independent Governance &amp; Assurance review before any further
-          approval.
-        </p>
+        <nav className="mb-8 flex gap-1 border-b border-wsa-navy/10" aria-label="Staff Portal sections">
+          {TABS.map(t => (
+            <button
+              key={t.id}
+              type="button"
+              onClick={() => setTab(t.id)}
+              aria-current={tab === t.id ? "page" : undefined}
+              className={`-mb-px border-b-2 px-4 py-2.5 text-sm font-medium transition-colors ${
+                tab === t.id
+                  ? "border-wsa-red text-wsa-red"
+                  : "border-transparent text-gray-500 hover:text-wsa-navy"
+              }`}
+            >
+              {t.label}
+            </button>
+          ))}
+        </nav>
 
-        <CommunicationsPanel token={token} />
-
-        <div className="mb-8">
-          <Receptionist token={token} />
-        </div>
-
-        {workersQuery.isLoading && <p className="text-sm text-gray-500">Loading the worker estate…</p>}
-        {workersQuery.error && <p className="text-sm text-red-600">Could not load the worker estate.</p>}
-
-        {workersQuery.data && (
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {workersQuery.data.workers.map(worker => (
-              <WorkerCard key={worker.id} worker={worker} onOpen={setOpenWorker} />
-            ))}
+        {tab === "reception" && (
+          <div>
+            <h2 className="mb-1 text-2xl font-semibold text-wsa-navy">How can we help?</h2>
+            <p className="mb-6 max-w-2xl text-sm text-gray-600">
+              Describe what you need in plain language. Reception identifies who owns that kind of work, tells you
+              whether they are available, and gives you a safe next step. It never answers for a specialist itself.
+            </p>
+            <Receptionist token={token} />
           </div>
         )}
 
-        <WorkerWorkspace worker={openWorker} open={openWorker !== null} onOpenChange={open => !open && setOpenWorker(null)} />
+        {tab === "channels" && <ChannelsPanel token={token} />}
+        {tab === "team" && <TeamPanel token={token} />}
+        {tab === "content" && <ContentCheckPanel token={token} />}
       </main>
     </div>
   );

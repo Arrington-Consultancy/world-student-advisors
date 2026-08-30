@@ -34,9 +34,28 @@ export type ChannelId =
   | "youtube"
   | "whatsapp"
   | "events_webinars"
-  | "student_support_library";
+  | "student_support_library"
+  | "sharepoint"
+  | "pipedrive";
 
-export type ChannelKind = "website" | "email" | "social" | "messaging" | "media" | "events";
+export type ChannelKind = "website" | "email" | "social" | "messaging" | "media" | "events" | "system";
+
+/**
+ * How the Staff Portal groups a channel.
+ *
+ * Separate from ChannelKind because the two answer different questions.
+ * Kind is what the channel IS; group is where a member of staff would go
+ * looking for it. YouTube is a media channel by kind, but somebody after
+ * "our social accounts" expects to find it beside Facebook and LinkedIn,
+ * so that is where it sits.
+ */
+export type ChannelGroup =
+  /** Public-facing accounts WSA posts to. */
+  | "social"
+  /** Systems staff log into to do the work. */
+  | "system"
+  /** WSA's own web surfaces. */
+  | "web";
 
 /**
  * How WSA reaches this channel from the Staff Portal today.
@@ -75,6 +94,7 @@ export interface WsaChannel {
   id: ChannelId;
   name: string;
   kind: ChannelKind;
+  group: ChannelGroup;
   /** Emoji used as the recognisable icon. Deliberately not a remote asset. */
   icon: string;
   /** The account or destination identity, exactly as WSA holds it. */
@@ -123,6 +143,7 @@ export const WSA_CHANNELS: readonly WsaChannel[] = Object.freeze([
     id: "website",
     name: "WSA Website",
     kind: "website",
+    group: "web",
     icon: "🌐",
     accountIdentity: "worldstudentadvisors.com and 13 further WSA-owned domains",
     externalUrl: "https://www.worldstudentadvisors.com",
@@ -137,6 +158,7 @@ export const WSA_CHANNELS: readonly WsaChannel[] = Object.freeze([
     id: "wsa_email",
     name: "WSA Email",
     kind: "email",
+    group: "system",
     icon: "✉️",
     accountIdentity: "Microsoft 365 tenant: UK head office, Kenya, Nigeria, Ghana and Cameroon office mailboxes",
     externalUrl: null,
@@ -158,6 +180,7 @@ export const WSA_CHANNELS: readonly WsaChannel[] = Object.freeze([
     id: "linkedin",
     name: "LinkedIn",
     kind: "social",
+    group: "social",
     icon: "💼",
     accountIdentity: "World Student Advisors company page",
     externalUrl: "https://www.linkedin.com/company/world-student-advisors/",
@@ -172,6 +195,7 @@ export const WSA_CHANNELS: readonly WsaChannel[] = Object.freeze([
     id: "facebook_main",
     name: "Facebook",
     kind: "social",
+    group: "social",
     icon: "📘",
     accountIdentity: "World Student Advisors Student Support Centre",
     externalUrl: "https://www.facebook.com/WorldStudentAdvisorsStudentSupportCentre",
@@ -186,6 +210,7 @@ export const WSA_CHANNELS: readonly WsaChannel[] = Object.freeze([
     id: "facebook_friendship_society",
     name: "International Friendship Society",
     kind: "social",
+    group: "social",
     icon: "🤝",
     accountIdentity: "International Friendship Society, the WSA alumni network page on Facebook",
     externalUrl: "https://www.facebook.com/share/19KTePKnay/",
@@ -200,6 +225,7 @@ export const WSA_CHANNELS: readonly WsaChannel[] = Object.freeze([
     id: "instagram",
     name: "Instagram",
     kind: "social",
+    group: "social",
     icon: "📸",
     accountIdentity: "@worldstudentadv",
     externalUrl: "https://www.instagram.com/worldstudentadv/",
@@ -214,6 +240,7 @@ export const WSA_CHANNELS: readonly WsaChannel[] = Object.freeze([
     id: "youtube",
     name: "YouTube",
     kind: "media",
+    group: "social",
     icon: "▶️",
     accountIdentity: "@WorldStudentAdvisors",
     externalUrl: "https://www.youtube.com/@WorldStudentAdvisors",
@@ -228,6 +255,7 @@ export const WSA_CHANNELS: readonly WsaChannel[] = Object.freeze([
     id: "whatsapp",
     name: "WhatsApp",
     kind: "messaging",
+    group: "system",
     icon: "💬",
     accountIdentity: "Public WSA contact number, plus per-office numbers on the Contact page",
     externalUrl: "https://wa.me/447914797830",
@@ -249,6 +277,7 @@ export const WSA_CHANNELS: readonly WsaChannel[] = Object.freeze([
     id: "events_webinars",
     name: "Events and Webinars",
     kind: "events",
+    group: "web",
     icon: "🎟️",
     accountIdentity: "WSA website /events, with sessions published through YouTube and WhatsApp",
     externalUrl: "https://www.worldstudentadvisors.com/events",
@@ -263,6 +292,7 @@ export const WSA_CHANNELS: readonly WsaChannel[] = Object.freeze([
     id: "student_support_library",
     name: "Student Support Library",
     kind: "media",
+    group: "web",
     icon: "📚",
     accountIdentity: "WSA website /student-support-library",
     externalUrl: "https://www.worldstudentadvisors.com/student-support-library",
@@ -272,6 +302,49 @@ export const WSA_CHANNELS: readonly WsaChannel[] = Object.freeze([
     sensitiveOverlay: null,
     evidence: "client/src/pages/StudentSupportLibrary.tsx, the WSA media and resource library.",
     actions: externalOnlyActions(),
+  },
+  {
+    id: "sharepoint",
+    name: "SharePoint",
+    kind: "system",
+    group: "system",
+    contentIsPublic: false,
+    icon: "🗂️",
+    accountIdentity: "WSA SharePoint site — the controlled records library",
+    externalUrl: "https://worldstudentadvisors123.sharepoint.com/sites/WSASharePoint",
+    integration: "connector_unconfigured",
+    functionalScope: "records_control",
+    sensitiveOverlay: null,
+    evidence:
+      "The WSA governance library, verified in use: the Core Operating System, Worker Register, " +
+      "Access Matrix and Change Log all live here.",
+    actions: [
+      { permission: "read", label: "Open SharePoint", availableToday: true },
+      { permission: "read", label: "Worker search across records", availableToday: false },
+      { permission: "update", label: "Worker record updates", availableToday: false },
+      { permission: "delete_destructive", label: "Delete a record", availableToday: false },
+    ],
+  },
+  {
+    id: "pipedrive",
+    name: "Pipedrive",
+    kind: "system",
+    group: "system",
+    contentIsPublic: false,
+    icon: "📇",
+    accountIdentity: "WSA CRM — student enquiries, leads and counsellor allocation",
+    externalUrl: "https://app.pipedrive.com",
+    integration: "authorisation_required",
+    functionalScope: "enquiry_triage",
+    sensitiveOverlay: null,
+    evidence:
+      "The public sign-up form writes a Person, a Lead and a pinned Note here for every enquiry. " +
+      "The Access Matrix has no CRM column, so no worker holds a Pipedrive scope.",
+    actions: [
+      { permission: "read", label: "Open Pipedrive", availableToday: true },
+      { permission: "read", label: "Worker read of student records", availableToday: false },
+      { permission: "update", label: "Worker updates to a record", availableToday: false },
+    ],
   },
 ]);
 

@@ -111,7 +111,8 @@ describe("seeing a channel is never authority over it", () => {
     const view = buildCommunicationsView(narrow, NOW);
     const payload = JSON.stringify(view);
 
-    expect(view.withheldCount).toBe(2);
+    // Four non-public channels: email, WhatsApp, SharePoint and Pipedrive.
+    expect(view.withheldCount).toBe(4);
 
     // Withheld channels are counted, never surfaced. Asserted on ids and
     // on details unique to those channels rather than on the bare word
@@ -122,6 +123,7 @@ describe("seeing a channel is never authority over it", () => {
     expect(ids).not.toContain("whatsapp");
     expect(payload).not.toContain("Microsoft 365 tenant");
     expect(payload).not.toContain("wa.me");
+    expect(payload).not.toContain("app.pipedrive.com");
 
     // The public ones are still there, including the alumni page.
     expect(view.channels.map(c => c.id)).toContain("facebook_friendship_society");
@@ -134,5 +136,31 @@ describe("seeing a channel is never authority over it", () => {
     expect(linkedin).toBeDefined();
     expect(linkedin?.externalUrl).toBe("https://www.linkedin.com/company/world-student-advisors/");
     expect(linkedin?.actions.find(a => a.label === "View the channel")?.allowed).toBe(true);
+  });
+});
+
+
+describe("channels are grouped the way staff would look for them", () => {
+  it("YouTube sits with the social accounts, not off in media on its own", () => {
+    expect(getChannel("youtube").group).toBe("social");
+    for (const id of ["linkedin", "facebook_main", "instagram"] as const) {
+      expect(getChannel(id).group).toBe("social");
+    }
+  });
+
+  it("the systems staff log into are their own group, away from social", () => {
+    for (const id of ["sharepoint", "pipedrive", "wsa_email"] as const) {
+      expect(getChannel(id).group).toBe("system");
+    }
+  });
+
+  it("SharePoint and Pipedrive carry real, verified destinations", () => {
+    expect(getChannel("sharepoint").externalUrl).toContain("worldstudentadvisors123.sharepoint.com");
+    expect(getChannel("pipedrive").externalUrl).toContain("pipedrive.com");
+  });
+
+  it("neither is claimed as connected", () => {
+    expect(getChannel("sharepoint").integration).toBe("connector_unconfigured");
+    expect(getChannel("pipedrive").integration).toBe("authorisation_required");
   });
 });

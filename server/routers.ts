@@ -30,6 +30,7 @@ import { isMicrosoftSsoConfigured, buildMicrosoftSignInRequest, completeMicrosof
 import { resolveStaffSession } from "./staffSession";
 import { resolveStaffAccessProfile } from "./access/identity";
 import { buildCommunicationsView } from "./communications/access";
+import { runQualityCheck } from "./operating/qualityCheck";
 import { ACCESS_LEVEL_NAMES } from "./access/accessControl";
 import { recordAuditEvent } from "./workforce/audit";
 import { listWorkers, getWorker } from "./workforce/registry";
@@ -674,6 +675,38 @@ export const appRouter = router({
           identityNote: resolution.resolved
             ? null
             : "You are signed in without an individual identity, so only WSA's public channels are shown and no action can be authorised. Sign in with your Microsoft account for the full view.",
+        };
+      }),
+
+    /**
+     * Content check: does this read like a machine wrote it?
+     *
+     * Runs the same quality gate that governs anything a worker would
+     * release (server/operating/qualityCheck.ts), so staff drafting by
+     * hand are held to the standard the workers will be. No model call —
+     * the checks are deterministic patterns, which is why it can be blunt
+     * about an em dash without ever being wrong about one.
+     *
+     * permissionChecked is true because a staff member checking their own
+     * prose is not retrieving anybody's record; there is nothing to
+     * authorise beyond the session already resolved above.
+     */
+    contentCheck: publicProcedure
+      .input(z.object({ token: z.string(), text: z.string().min(1).max(20000) }))
+      .mutation(async ({ input }) => {
+        await resolveStaffSession(input.token);
+        const result = runQualityCheck({
+          text: input.text,
+          permissionChecked: true,
+          hasUnresolvedDisagreement: false,
+          disagreementVisibleInText: false,
+          workerBoundaryBreaches: [],
+          evidenceInsufficient: false,
+        });
+        return {
+          passed: result.passed,
+          findings: result.findings.map(f => ({ code: f.code, severity: f.severity, detail: f.detail })),
+          blockingCount: result.blocking.length,
         };
       }),
   }),
