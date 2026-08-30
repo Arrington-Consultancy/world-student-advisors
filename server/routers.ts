@@ -479,11 +479,28 @@ export const appRouter = router({
         return { success: true as const, token };
       }),
 
+    // Recognises BOTH session types via resolveStaffSession: an Entra
+    // individual-identity token and the legacy shared-password token.
+    // This previously called verifyStaffPortalToken, which only understands
+    // the shared-password token — so a genuine, fully-verified Entra
+    // session was reported unauthenticated here and the client discarded
+    // it, bouncing the user straight back to the sign-in page after a
+    // successful Microsoft sign-in. resolveStaffSession throws
+    // UNAUTHORIZED for an invalid token; this endpoint reports that as a
+    // boolean rather than an error, keeping the client contract unchanged.
     me: publicProcedure
       .input(z.object({ token: z.string() }))
       .query(async ({ input }) => {
-        const authenticated = await verifyStaffPortalToken(input.token);
-        return { authenticated };
+        try {
+          const session = await resolveStaffSession(input.token);
+          return {
+            authenticated: true as const,
+            authMethod: session.authMethod,
+            displayName: session.authMethod === "entra_sso" ? session.displayName : null,
+          };
+        } catch {
+          return { authenticated: false as const, authMethod: null, displayName: null };
+        }
       }),
 
     // Stage 3: individual staff identity via Microsoft Entra ID, alongside
