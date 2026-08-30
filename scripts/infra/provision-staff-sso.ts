@@ -114,6 +114,38 @@ async function graphRequest<T>(
   return (await response.json()) as T;
 }
 
+/**
+ * Ensures a service principal exists for the owned application, idempotently
+ * and regardless of whether the application was just created or already
+ * existed. Handles Microsoft Graph's documented eventual-consistency delay
+ * between an application object being created and becoming visible to
+ * POST /servicePrincipals (surfaces as Authorization_RequestDenied, "the
+ * backing application ... must [be] in the local tenant") with a bounded
+ * retry. A 409 (already exists) is treated as success, not an error.
+ */
+async function ensureServicePrincipal(graphToken: string, appId: string): Promise<void> {
+  const existing = await graphRequest<{ value: unknown[] }>(
+    graphToken,
+    "GET",
+    `/servicePrincipals?$filter=${encodeURIComponent(`appId eq '${appId}'`)}&$select=id`,
+  );
+  if (existing.value.length > 0) return;
+
+  let lastError: unknown;
+  for (let attempt = 1; attempt <= 5; attempt += 1) {
+    try {
+      await graphRequest(graphToken, "POST", "/servicePrincipals", { appId });
+      return;
+    } catch (error) {
+      const message = String((error as Error)?.message ?? error);
+      if (message.includes("HTTP 409")) return; // created by a concurrent/prior attempt
+      lastError = error;
+      if (attempt < 5) await new Promise(resolve => setTimeout(resolve, attempt * 3000));
+    }
+  }
+  throw lastError;
+}
+
 async function railwayRequest<T>(query: string, variables: Record<string, unknown>): Promise<T> {
   const response = await fetch(RAILWAY_GRAPHQL_ENDPOINT, {
     method: "POST",
@@ -232,9 +264,7 @@ async function main(): Promise<void> {
       success: 1,
       errorCategory: "none",
     });
-    // A service principal is required for sign-in in the tenant.
-    await graphRequest(graphToken, "POST", "/servicePrincipals", { appId: app.appId });
-    console.log(`Created owned application (appId prefix ${app.appId.slice(0, 8)}…) and its service principal.`);
+    console.log(`Created owned application (appId prefix ${app.appId.slice(0, 8)}…).`);
   } else {
     app = selection.application;
     console.log(`Managing existing owned application (appId prefix ${app.appId.slice(0, 8)}…).`);
@@ -244,6 +274,13 @@ async function main(): Promise<void> {
       console.log("Added the production redirect URI (existing entries preserved).");
     }
   }
+
+  // A service principal is required for sign-in in the tenant. Idempotent
+  // and retried regardless of path: covers both a fresh app (Graph's
+  // create-then-read replication delay) and an app from an earlier run
+  // that created the application object but failed before this step.
+  await ensureServicePrincipal(graphToken, app.appId);
+  console.log("Service principal present for the application.");
 
   // 4 ── rotate the client secret. Value: memory → mask → Railway API only.
   await recordAudit({
