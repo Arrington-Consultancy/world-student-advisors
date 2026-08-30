@@ -48,6 +48,8 @@ export const WORKER_FUNCTIONAL_SCOPE: Readonly<Record<WorkerId, FunctionalScope>
   maya: "records_control",
   /** "Paid Media & Google Ads" */
   alex: "paid_media",
+  /** "Social Media & Content Intelligence" */
+  nia: "social_media",
   /** "AI-system governance assurance" */
   wsa_governance_assurance: "governance",
   /** "Front-door routing" — the receptionist routes rather than holding case material. */

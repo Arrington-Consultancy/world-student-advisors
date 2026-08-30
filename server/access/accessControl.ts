@@ -50,6 +50,15 @@ export const FUNCTIONAL_SCOPES = [
   "pre_arrival_student_success",
   "quality_assurance",
   "marketing_seo",
+  /**
+   * Organic social. Deliberately separate from marketing_seo rather than
+   * folded into it: Worker Register v0.42 draws the boundary explicitly —
+   * Nia owns organic social, Ethan owns SEO — and this list is what the
+   * collaboration layer uses to reject an out-of-lane contribution. Give
+   * them one shared scope and each could contribute in the other's lane,
+   * which is the boundary the Register exists to hold.
+   */
+  "social_media",
   "paid_media",
   "records_control",
   "governance",

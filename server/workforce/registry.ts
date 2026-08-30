@@ -3,7 +3,7 @@
  *
  * This is a server-only constant, never exposed for client mutation. Every
  * field is sourced from controlled WSA SharePoint evidence inspected
- * 29 August 2026 (WSA_AI_Worker_Register_v0.39.docx,
+ * 29 August 2026 (WSA_AI_Worker_Register_v0.39.docx, with Nia added from v0.42 on 30 August 2026,
  * WSA_Worker_Personality_Connector_Access_Matrix_v0.2.docx). Ordinary Staff
  * Portal users cannot edit worker scope, prompts or status — the only way
  * this registry changes is a code change reviewed the same way any other
@@ -22,6 +22,7 @@ import { NO_CONTROLLED_CRM_DECISION } from "./types";
 
 const SHAREPOINT_SITE = "https://worldstudentadvisors123.sharepoint.com/sites/WSASharePoint/Shared Documents";
 const APPROVED_STANDARDS = `${SHAREPOINT_SITE}/01_ADMIN_&_GOVERNANCE/AI_Operating_System/02_Approved_Standards`;
+const WORKING_DRAFTS = `${SHAREPOINT_SITE}/01_ADMIN_&_GOVERNANCE/AI_Operating_System/01_Working_Drafts`;
 
 const TOM_ARRINGTON = "Tom Arrington (WSA policy owner and approval authority)";
 
@@ -393,6 +394,61 @@ const REGISTRY_LIST: WorkerRegistryEntry[] = [
     evidencedHandoffs: [],
     escalationRoute: TOM_ARRINGTON,
     controlledBriefReference: `${SHAREPOINT_SITE}/01_ADMIN_&_GOVERNANCE/AI_Operating_System/01_Working_Drafts/`,
+  }),
+
+  /**
+   * Transcribed from WSA_AI_Worker_Register_v0.42.docx, read 30 August 2026.
+   *
+   * The Register records her verbatim as "WORKING DRAFT - QC PASSED - NOT
+   * APPROVED - NO LIVE PUBLISHING AUTHORITY", with NIA-G01 to NIA-G07
+   * unresolved. Her next control is to resolve those, confirm social
+   * account ownership and the relationship to the human social team, then
+   * independent Governance & Assurance review before activation.
+   *
+   * Her AI-content control is deliberately described as a quality and
+   * AI-slop suspicion gate, not a claim of scientific AI-authorship
+   * detection. That distinction is the Register's own and matters: a tool
+   * that claimed to detect AI authorship would be confidently wrong about
+   * real people's writing, whereas one that flags slop is right about the
+   * thing it actually measures.
+   */
+  entry({
+    id: "nia",
+    canonicalName: "Nia",
+    roleTitle: "Social Media & Content Intelligence",
+    specificationVersion: "v0.1 + Social Brain Control Pack v0.1",
+    specificationStatus: "not_approved",
+    staffPortalExecutionStatus: "prohibited",
+    currentNextControl:
+      "Resolve NIA-G01 to NIA-G07, confirm social account/platform ownership and human-team relationship, " +
+      "then independent Governance & Assurance review before activation.",
+    materialBlockers: [
+      "NIA-G01 to NIA-G07 open — account-level draft, schedule, publish, edit, delete and reply authority undecided",
+      "Social account/platform ownership not yet confirmed",
+      "Relationship to the human social team not yet defined",
+      "Independent Governance & Assurance review pending",
+    ],
+    personality: {
+      summary:
+        "Editorially sharp and evidence-led. Dry and playful where it makes content better, never at a student's expense.",
+      whatFor:
+        "Organic social content: creating it, improving it, and holding it to a standard. Country-by-country African " +
+        "market intelligence rather than one flattened audience. Persistent memory of every post, platform and video timeline.",
+      whatNotFor:
+        "No SEO (Ethan), no paid media (Alex), no education research or suitability (Amelia, Oliver), no scholarship " +
+        "or funding assessment (Harper), no visa or compliance advice (Priya). She may use their approved evidence; " +
+        "she may not invent a fact because a post needs one.",
+    },
+    connectorIntent: {
+      sharePoint: "The WSA Social Brain: content ledger, asset and version register, video timecode and retention register.",
+      googleDrive: "None by default.",
+      pipedrive: NO_CONTROLLED_CRM_DECISION,
+      hardBoundary:
+        "No live publishing authority. No account-level action on any platform until NIA-G01 to NIA-G07 are resolved.",
+    },
+    evidencedHandoffs: [],
+    escalationRoute: TOM_ARRINGTON,
+    controlledBriefReference: `${WORKING_DRAFTS}/WSA_Nia_Social_Media_Content_Intelligence_Specialist_v0.1_WORKING_DRAFT.docx`,
   }),
 
   entry({

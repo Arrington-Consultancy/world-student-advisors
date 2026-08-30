@@ -5,7 +5,7 @@ type Worker = RouterOutputs["workforce"]["listWorkers"]["workers"][number];
 /**
  * Who owns this area.
  *
- * The Worker Register's organic-growth specialist heads the Channels page,
+ * Nia, WSA's Social Media & Content Intelligence specialist, heads the Channels page,
  * because a page about WSA's public presence should say who is responsible
  * for it rather than presenting the accounts as ownerless.
  *
@@ -19,7 +19,7 @@ type Worker = RouterOutputs["workforce"]["listWorkers"]["workers"][number];
  * There is deliberately no placeholder face: an invented likeness for a
  * worker WSA has not designed yet would be worse than a monogram.
  */
-const OWNER_ID = "ethan";
+const OWNER_ID = "nia";
 
 export function ChannelOwner({ token }: { token: string }) {
   const query = trpc.workforce.listWorkers.useQuery({ token });
@@ -54,7 +54,7 @@ export function ChannelOwner({ token }: { token: string }) {
         </div>
         <p className="mt-1 text-sm text-gray-700">{owner.personality.summary}</p>
         <p className="mt-1 text-xs text-gray-500">
-          Owns WSA's organic presence once approved. Nobody is working these accounts on WSA's behalf today.
+          Owns WSA's organic social once approved. Nobody is working these accounts on WSA's behalf today.
         </p>
       </div>
     </section>

@@ -1,0 +1,114 @@
+import { describe, expect, it } from "vitest";
+import { getWorker, listWorkers } from "./registry";
+import { evaluateConnectorPermission, evaluateStaffPortalExecutionPermission } from "./permissions";
+import { connectorScopeGrants } from "./connectorScope";
+import { WORKER_CRM_SCOPE } from "./crmScope";
+import { WORKER_FUNCTIONAL_SCOPE } from "../access/workerScope";
+import { routeStaffRequest } from "./router";
+import type { ConnectorName, ConnectorOperation } from "./types";
+
+/**
+ * Nia is transcribed from WSA_AI_Worker_Register_v0.42.docx, read from the
+ * governance library on 30 August 2026. These assert the transcription
+ * matches the record, and that the record's own restrictions are real
+ * rather than decorative.
+ */
+describe("Nia is transcribed exactly as the Register records her", () => {
+  it("carries the Register's name, function and version", () => {
+    const nia = getWorker("nia");
+    expect(nia.canonicalName).toBe("Nia");
+    expect(nia.roleTitle).toBe("Social Media & Content Intelligence");
+    expect(nia.specificationVersion).toBe("v0.1 + Social Brain Control Pack v0.1");
+  });
+
+  it("is NOT APPROVED, as the Register says", () => {
+    expect(getWorker("nia").specificationStatus).toBe("not_approved");
+  });
+
+  it("has NO LIVE PUBLISHING AUTHORITY — no connector grant on any social channel", () => {
+    for (const c of ["linkedin", "facebook", "youtube", "whatsapp", "sharepoint", "google_drive"] as ConnectorName[]) {
+      for (const op of ["search", "read", "create", "update", "delete", "external_send"] as ConnectorOperation[]) {
+        expect(connectorScopeGrants("nia", c, op)).toBe(false);
+        expect(evaluateConnectorPermission({ workerId: "nia", connector: c, operation: op, resourceScope: "x" }).allowed).toBe(false);
+      }
+    }
+  });
+
+  it("cannot publish even though publishing is what she is for", () => {
+    const decision = evaluateConnectorPermission({
+      workerId: "nia", connector: "instagram" as ConnectorName, operation: "external_send", resourceScope: "worldstudentadv",
+    });
+    expect(decision.allowed).toBe(false);
+  });
+
+  it("holds no CRM scope", () => {
+    expect(WORKER_CRM_SCOPE.nia).toBeNull();
+  });
+
+  it("cannot be opened for live execution", () => {
+    expect(evaluateStaffPortalExecutionPermission("nia").allowed).toBe(false);
+    expect(getWorker("nia").staffPortalExecutionAuthorised).toBe(false);
+  });
+
+  it("records the NIA-G01 to NIA-G07 blockers rather than glossing them", () => {
+    const blockers = getWorker("nia").materialBlockers.join(" ");
+    expect(blockers).toContain("NIA-G01");
+    expect(blockers).toContain("NIA-G07");
+    expect(blockers).toContain("Governance & Assurance");
+  });
+});
+
+describe("Nia's lane is genuinely separate from her neighbours'", () => {
+  it("has her own functional scope, not Ethan's", () => {
+    expect(WORKER_FUNCTIONAL_SCOPE.nia).toBe("social_media");
+    expect(WORKER_FUNCTIONAL_SCOPE.ethan).toBe("marketing_seo");
+    expect(WORKER_FUNCTIONAL_SCOPE.nia).not.toBe(WORKER_FUNCTIONAL_SCOPE.ethan);
+  });
+
+  it("no two of the marketing workers share a scope", () => {
+    const scopes = [WORKER_FUNCTIONAL_SCOPE.nia, WORKER_FUNCTIONAL_SCOPE.ethan, WORKER_FUNCTIONAL_SCOPE.alex];
+    expect(new Set(scopes).size).toBe(3);
+  });
+
+  it("her brief names what she must not do, by owner", () => {
+    const notFor = getWorker("nia").personality.whatNotFor;
+    for (const neighbour of ["Ethan", "Alex", "Amelia", "Oliver", "Harper", "Priya"]) {
+      expect(notFor).toContain(neighbour);
+    }
+  });
+
+  it("she may use others' evidence but not invent facts", () => {
+    expect(getWorker("nia").personality.whatNotFor).toContain("may not invent a fact");
+  });
+});
+
+describe("Reception routes social work to Nia and nothing else to her", () => {
+  it("routes a social content request to Nia", () => {
+    const r = routeStaffRequest("draft an instagram post about our Nigeria results");
+    expect(r.responsibleWorkerId).toBe("nia");
+  });
+
+  it("does not take SEO from Ethan", () => {
+    expect(routeStaffRequest("how is our SEO doing").responsibleWorkerId).toBe("ethan");
+  });
+
+  it("does not take visa work", () => {
+    expect(routeStaffRequest("check this student's visa evidence").responsibleWorkerId).toBe("priya");
+  });
+
+  it("reports her honestly as unavailable rather than offering her", () => {
+    const r = routeStaffRequest("write a linkedin post");
+    expect(r.responsibleWorkerId).toBe("nia");
+    expect(r.availability).not.toBe("available");
+  });
+});
+
+describe("the estate is still fully closed", () => {
+  it("no worker, Nia included, is executable or connector-authorised", () => {
+    for (const w of listWorkers()) {
+      expect(w.staffPortalExecutionAuthorised).toBe(false);
+      expect(w.connectorUseAuthorised).toBe(false);
+    }
+    expect(listWorkers()).toHaveLength(16);
+  });
+});

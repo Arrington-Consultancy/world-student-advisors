@@ -55,6 +55,7 @@ export const WORKER_CRM_SCOPE: Readonly<Record<WorkerId, CrmScope | null>> = Obj
   ethan: null,
   maya: null,
   alex: null,
+  nia: null,
   wsa_governance_assurance: null,
   staff_receptionist: null,
 });

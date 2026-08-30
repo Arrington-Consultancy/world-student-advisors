@@ -54,6 +54,14 @@ export const WORKER_CONNECTOR_SCOPE: Readonly<Record<WorkerId, ConnectorGrant>> 
    */
   maya: Object.freeze({ sharepoint: READ_ONLY, google_drive: READ_ONLY }),
   alex: {},
+  /**
+   * Nia owns organic social, but Worker Register v0.42 records her as
+   * NOT APPROVED with NO LIVE PUBLISHING AUTHORITY, and NIA-G01 to
+   * NIA-G07 are unresolved — including which accounts she may draft for,
+   * schedule, publish, edit, delete or reply on. Until those are decided
+   * she holds nothing, which is the whole point of recording them as open.
+   */
+  nia: {},
   wsa_governance_assurance: {},
   staff_receptionist: {},
 });
