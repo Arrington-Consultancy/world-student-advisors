@@ -26,6 +26,7 @@ export type WorkerId =
   | "ethan"
   | "maya"
   | "alex"
+  | "nia"
   | "wsa_governance_assurance"
   | "staff_receptionist";
 

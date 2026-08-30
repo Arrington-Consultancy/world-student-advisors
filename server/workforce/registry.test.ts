@@ -18,6 +18,8 @@ const EXPECTED_IDS: WorkerId[] = [
   "alex",
   "wsa_governance_assurance",
   "staff_receptionist",
+  // Added from WSA_AI_Worker_Register_v0.42.docx, read 30 August 2026.
+  "nia",
 ];
 
 describe("worker registry integrity", () => {

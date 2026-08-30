@@ -32,6 +32,7 @@ const ROUTING_DOMAINS: RoutingDomain[] = [
   { workerId: "olivia", keywords: ["pre-arrival", "pre arrival", "arrival", "orientation", "student success", "settling in", "transition"] },
   { workerId: "grace", keywords: ["audit", "quality assurance", "qa", "case review", "quality control", "case audit"] },
   { workerId: "ethan", keywords: ["seo", "organic search", "search console", "website traffic", "organic growth"] },
+  { workerId: "nia", keywords: ["social", "social media", "instagram", "facebook", "linkedin", "youtube", "post", "posts", "content", "caption", "reel", "video content", "organic"] },
   { workerId: "alex", keywords: ["paid media", "google ads", "advertising", "ppc", "ad campaign", "conversion tracking"] },
   { workerId: "maya", keywords: ["sharepoint", "records control", "file structure", "document control", "records management"] },
 ];
