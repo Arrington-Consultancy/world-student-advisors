@@ -67,3 +67,9 @@ try {
   console.error("Pre-check failed:", err.message);
   process.exit(1);
 }
+
+// mysql2 holds the connection open, which keeps Node's event loop alive, so
+// this script must exit explicitly or it prints its verdict and then hangs
+// forever — taking the workflow step with it. verify-0006.mjs and
+// verify-0007.mjs already end this way for the same reason.
+process.exit(0);
