@@ -1,16 +1,29 @@
-import { describe, expect, it, vi, beforeEach } from "vitest";
+import { describe, expect, it, vi, beforeEach, afterEach } from "vitest";
 import { runConnectorAction } from "./shared";
 import { clearAuditLog, getAuditLog } from "../audit";
 
+const ORIGINAL_ENV = { ...process.env };
+
 beforeEach(() => {
   clearAuditLog();
+  // The chokepoint checks the WSA boundary as well as the two permission
+  // gates: a worker may only ever reach WSA's own material, decided from
+  // server-controlled allowlists. These tests are about the state, attempt
+  // and retry machinery that sits AFTER every gate, so the boundary is
+  // satisfied here rather than bypassed — there is deliberately no way to
+  // override it, unlike the permission gates below.
+  process.env.SHAREPOINT_GRAPH_SITE_ID = "wsa-site";
+});
+
+afterEach(() => {
+  process.env = { ...ORIGINAL_ENV };
 });
 
 const baseRequest = {
   workerId: "sophie" as const,
   connector: "sharepoint" as const,
   operation: "read" as const,
-  resourceScope: "enquiry/12345",
+  resourceScope: "wsa-site/enquiry/12345",
   staffUserId: 1,
   authMethod: "entra_sso",
 };
@@ -41,6 +54,52 @@ describe("runConnectorAction — connector state honesty (permission override fo
   // server/access/enforcement.test.ts, and the tests below are about the
   // state/attempt/retry machinery that sits after both gates.
   const allowStaffOverride = async () => ({ allowed: true, reason: "test override — staff access gate is tested separately" });
+
+  // These four are the only tests that can reach the WSA boundary at all.
+  // Every worker is denied at the worker gate today, so in every other
+  // test the boundary is never consulted — which means without these, the
+  // check could be deleted from the chokepoint and the suite would still
+  // pass. It was, during development, and it did.
+  it("denies a resource outside the WSA boundary even when BOTH permission gates allow it", async () => {
+    const getState = vi.fn().mockReturnValue("operational");
+    const attempt = vi.fn().mockResolvedValue({ success: true, message: "would have worked" });
+    const result = await runConnectorAction(
+      { ...baseRequest, resourceScope: "arrington-site/Clients/confidential.docx" },
+      getState, attempt, allowOverride, allowStaffOverride,
+    );
+    expect(result.success).toBe(false);
+    expect(result.message).toContain("Arrington");
+  });
+
+  it("does not even check the connector's state for an out-of-scope resource", async () => {
+    const getState = vi.fn().mockReturnValue("operational");
+    const attempt = vi.fn();
+    await runConnectorAction(
+      { ...baseRequest, resourceScope: "arrington-site/anything" },
+      getState, attempt, allowOverride, allowStaffOverride,
+    );
+    expect(getState).not.toHaveBeenCalled();
+    expect(attempt).not.toHaveBeenCalled();
+  });
+
+  it("audits an out-of-scope refusal as a permission denial with the resource named", async () => {
+    await runConnectorAction(
+      { ...baseRequest, resourceScope: "arrington-site/anything" },
+      vi.fn().mockReturnValue("operational"), vi.fn(), allowOverride, allowStaffOverride,
+    );
+    const [event] = getAuditLog();
+    expect(event.permissionDecision).toBe("denied");
+    expect(event.errorCategory).toBe("permission_denied");
+    expect(event.targetResourceId).toBe("arrington-site/anything");
+  });
+
+  it("allows a resource inside the WSA boundary through to the attempt", async () => {
+    const getState = vi.fn().mockReturnValue("operational");
+    const attempt = vi.fn().mockResolvedValue({ success: true, message: "done" });
+    const result = await runConnectorAction(baseRequest, getState, attempt, allowOverride, allowStaffOverride);
+    expect(result.success).toBe(true);
+    expect(attempt).toHaveBeenCalled();
+  });
 
   it("never claims success when the connector is unconfigured", async () => {
     const getState = vi.fn().mockReturnValue("unconfigured");

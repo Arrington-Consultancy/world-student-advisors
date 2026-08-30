@@ -15,6 +15,7 @@ import { checkAccessForStaffUser } from "../../access/enforcement";
 import { WORKER_FUNCTIONAL_SCOPE, CONNECTOR_OPERATION_ACTION } from "../../access/workerScope";
 import { recordAuditEvent, type AuditAuthMethod } from "../audit";
 import { getWorker } from "../registry";
+import { evaluateWsaScope } from "../wsaScope";
 import type { ConnectorName, ConnectorOperation, ConnectorState, WorkerId } from "../types";
 import type { PermissionDecision } from "../permissions";
 
@@ -132,6 +133,34 @@ export async function runConnectorAction(
     return { success: false, connectorState: "unconfigured", message: staffAccess.reason };
   }
 
+  // The WSA boundary. Both gates above answer "may this person, through
+  // this worker, do this kind of thing" — neither answers "is the thing
+  // being reached actually WSA's". Every connector here points at a system
+  // WSA shares with something else: the Microsoft tenant also holds
+  // Arrington Consultancy work, a Google account also holds personal and
+  // Scott-project folders, a CRM holds far more than students. So this is
+  // checked separately, from server-controlled allowlists, and it is
+  // checked at the chokepoint so no connector can be added that forgets it.
+  const wsaScope = evaluateWsaScope(request.connector, request.resourceScope);
+  if (!wsaScope.withinWsaScope) {
+    recordAuditEvent({
+      staffUserId: request.staffUserId,
+      authMethod: request.authMethod,
+      workerId: request.workerId,
+      workerSpecificationVersion: worker.specificationVersion,
+      caseId: request.caseId,
+      requestedCapability: `${request.connector}:${request.operation}`,
+      permissionDecision: "denied",
+      permissionReason: wsaScope.reason,
+      connector: request.connector,
+      connectorOperation: request.operation,
+      success: null,
+      targetResourceId: request.resourceScope,
+      errorCategory: "permission_denied",
+    });
+    return { success: false, connectorState: "unconfigured", message: wsaScope.reason };
+  }
+
   const state = getState();
   if (state !== "operational") {
     const message = describeUnavailableState(request.connector, state);
@@ -208,6 +237,10 @@ const CONNECTOR_DISPLAY_NAME: Readonly<Record<ConnectorName, string>> = Object.f
   sharepoint: "SharePoint",
   google_drive: "Google Drive",
   pipedrive: "Pipedrive",
+  linkedin: "LinkedIn",
+  facebook: "Facebook",
+  youtube: "YouTube",
+  whatsapp: "WhatsApp",
 });
 
 function describeUnavailableState(connector: ConnectorName, state: ConnectorState): string {
