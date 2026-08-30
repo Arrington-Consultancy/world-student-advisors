@@ -84,8 +84,12 @@ jobs:
         env:
           RAILWAY_TOKEN: ${{ secrets.githubactionsprod }}
           RAILWAY_PROJECT_TOKEN: ${{ secrets.githubactionsprod }}
-          WSA_INFRA_TENANT_ID: ${{ vars.WSA_INFRA_TENANT_ID }}
-          WSA_INFRA_CLIENT_ID: ${{ vars.WSA_INFRA_CLIENT_ID }}
+          # Repository VARIABLES are the documented home for these two
+          # non-secret identifiers, but accept repository SECRETS with the
+          # same names as a fallback — the GitHub UI puts the two tabs side
+          # by side and storing an identifier as a secret is harmless.
+          WSA_INFRA_TENANT_ID: ${{ vars.WSA_INFRA_TENANT_ID || secrets.WSA_INFRA_TENANT_ID }}
+          WSA_INFRA_CLIENT_ID: ${{ vars.WSA_INFRA_CLIENT_ID || secrets.WSA_INFRA_CLIENT_ID }}
           GITHUB_RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: |
           railway run --service "world-student-advisors" --environment "production" -- \
