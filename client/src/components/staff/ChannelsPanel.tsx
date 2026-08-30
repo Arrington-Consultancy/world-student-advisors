@@ -1,6 +1,8 @@
 import { useState } from "react";
 import { ExternalLink, ChevronDown, ChevronRight, Lock, Check } from "lucide-react";
 import { trpc, type RouterOutputs } from "@/lib/trpc";
+import { BrandIcon } from "./BrandIcon";
+import { ChannelOwner } from "./ChannelOwner";
 
 /**
  * WSA's channels, grouped the way somebody actually looks for them:
@@ -39,7 +41,7 @@ function ChannelCard({ channel }: { channel: Channel }) {
   return (
     <div className="rounded-lg border border-wsa-navy/10 bg-white transition-shadow hover:shadow-sm">
       <div className="flex items-start gap-3 p-4">
-        <span aria-hidden className="text-2xl leading-none">{channel.icon}</span>
+        <BrandIcon channelId={channel.id} className="h-7 w-7 shrink-0" />
         <div className="min-w-0 flex-1">
           <h4 className="font-semibold text-wsa-navy">{channel.name}</h4>
           <p className="truncate text-xs text-gray-500" title={channel.accountIdentity}>
@@ -100,6 +102,8 @@ export function ChannelsPanel({ token }: { token: string }) {
 
   return (
     <div>
+      <ChannelOwner token={token} />
+
       {!identityResolved && identityNote && (
         <p className="mb-6 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
           {identityNote}
