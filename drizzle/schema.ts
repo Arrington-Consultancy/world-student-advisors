@@ -364,3 +364,116 @@ export const staffAccessChanges = mysqlTable("staff_access_changes", {
 
 export type StaffAccessChange = typeof staffAccessChanges.$inferSelect;
 export type InsertStaffAccessChange = typeof staffAccessChanges.$inferInsert;
+
+/**
+ * Clause 3 — enquiry and response history.
+ *
+ * One row per meaningful enquiry: a staff request that produced a
+ * recommendation, a referral or an outcome. Deliberately NOT one row per
+ * chat message. The approved operating model asks for a record of
+ * interactions and outcomes, not a transcript, and treating every casual
+ * token as a permanent case record would turn a governance record into a
+ * surveillance log and bury the material decisions in noise.
+ *
+ * The raw request text is deliberately absent. server/routers.ts's
+ * receptionist audit already excludes it, on the reasoning that staff
+ * routinely phrase a request around a named student, so storing the
+ * verbatim prompt would place identifiable student material into a table
+ * whose scope is the enquiry rather than the case. requestSummary carries
+ * the controlled, minimised statement of what was asked; that existing
+ * decision is preserved here rather than quietly reversed.
+ *
+ * functionalScope and sensitiveOverlay exist so a row can be filtered by
+ * the same access model as any other record (Access Control Standard §4,
+ * §7) rather than being readable by anyone who can reach the table.
+ *
+ * Grants nothing. No column here confers authority, and approvalState
+ * records what a human decided rather than substituting for the decision.
+ */
+export const staffEnquiries = mysqlTable("staff_enquiries", {
+  id: int("id").autoincrement().primaryKey(),
+  /** Null for a shared-password session, which carries no individual identity — never a guessed staff identity. */
+  staffUserId: int("staffUserId"),
+  authMethod: mysqlEnum("authMethod", ["entra_sso", "shared_password"]).notNull(),
+  /** Present only where the enquiry genuinely concerns a case; null for general questions. */
+  caseId: varchar("caseId", { length: 60 }),
+  /** Controlled, minimised statement of what was asked. Never the verbatim prompt. */
+  requestSummary: varchar("requestSummary", { length: 500 }).notNull(),
+  /** The functional scope the enquiry sat in, so the row can be access-filtered like any other record. */
+  functionalScope: varchar("functionalScope", { length: 40 }).notNull(),
+  /** Set only where the subject genuinely falls under a sensitive overlay, so restricted material stays in its own scope. */
+  sensitiveOverlay: varchar("sensitiveOverlay", { length: 40 }),
+  /** Null where a single worker answered — set only for a genuinely collaborative enquiry. */
+  leadWorkerId: varchar("leadWorkerId", { length: 40 }),
+  outcome: mysqlEnum("outcome", [
+    "recommendation",
+    "recommendation_with_unresolved_disagreement",
+    "human_check_required",
+    "invalid",
+    "no_recommendation",
+  ]).notNull(),
+  /** The recommendation or final response as released. Null where none was released. */
+  finalResponse: text("finalResponse"),
+  /** Tri-state: NULL = no quality check ran, 0 = failed with blocking findings, 1 = passed. */
+  qualityCheckPassed: int("qualityCheckPassed"),
+  /**
+   * Clause 13/14's consequential-action boundary, recorded rather than
+   * assumed. "prepared_for_approval" is the resting state of a
+   * consequential action: prepared in full, not executed.
+   */
+  approvalState: mysqlEnum("approvalState", [
+    "not_required",
+    "prepared_for_approval",
+    "approved",
+    "rejected",
+    "executed",
+  ]).notNull(),
+  approvedByStaffUserId: int("approvedByStaffUserId"),
+  approvedAt: timestamp("approvedAt"),
+  /** What was actually done, where anything was. Null while nothing has been. */
+  actionTaken: varchar("actionTaken", { length: 200 }),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt"),
+});
+
+export type StaffEnquiry = typeof staffEnquiries.$inferSelect;
+export type InsertStaffEnquiry = typeof staffEnquiries.$inferInsert;
+
+/**
+ * Clauses 7, 8 and 9 — which workers contributed to an enquiry, what each
+ * said, and where they disagreed.
+ *
+ * Separate from staff_enquiries because an enquiry has many contributions
+ * and because a disagreement must remain visible as its own recorded fact
+ * rather than being flattened into the final response. confidence and
+ * evidenceQuality are stored separately for the same reason they are
+ * separate in server/operating/collaboration.ts: a confident position on
+ * weak evidence must stay legible as exactly that.
+ *
+ * Rows are never deleted. A contribution that was later disagreed with or
+ * set aside stays readable, so the record shows how a recommendation was
+ * reached and not only what it concluded.
+ */
+export const staffEnquiryContributions = mysqlTable("staff_enquiry_contributions", {
+  id: int("id").autoincrement().primaryKey(),
+  enquiryId: int("enquiryId").notNull(),
+  workerId: varchar("workerId", { length: 40 }).notNull(),
+  workerSpecificationVersion: varchar("workerSpecificationVersion", { length: 60 }).notNull(),
+  /** 1 for the single lead on a collaborative enquiry, 0 otherwise. Never more than one per enquiry. */
+  isLead: int("isLead").notNull(),
+  /** The contributor's own functional scope at the time — the basis on which an out-of-lane contribution is rejected. */
+  functionalScope: varchar("functionalScope", { length: 40 }).notNull(),
+  position: text("position"),
+  confidence: mysqlEnum("confidence", ["certain", "likely", "unproven"]).notNull(),
+  evidenceQuality: mysqlEnum("evidenceQuality", ["verified", "partial", "insufficient"]).notNull(),
+  /** Set where this contributor explicitly disagreed with another named contributor. */
+  disagreedWithWorkerId: varchar("disagreedWithWorkerId", { length: 40 }),
+  /** 1 where the worker declined to answer rather than guessing. */
+  cannotAnswer: int("cannotAnswer").notNull(),
+  /** Controlled reference to the evidence relied on — a document name or record id, never its contents. */
+  evidenceReference: varchar("evidenceReference", { length: 255 }),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type StaffEnquiryContribution = typeof staffEnquiryContributions.$inferSelect;
+export type InsertStaffEnquiryContribution = typeof staffEnquiryContributions.$inferInsert;
