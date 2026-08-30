@@ -3,20 +3,24 @@ import { trpc, type RouterOutputs } from "@/lib/trpc";
 
 type Worker = RouterOutputs["workforce"]["listWorkers"]["workers"][number];
 type Register = RouterOutputs["workforce"]["socialBrain"]["registers"][number];
+type Remembered = RouterOutputs["workforce"]["socialBrain"]["remembers"][number];
+type Elsewhere = RouterOutputs["workforce"]["socialBrain"]["elsewhere"][number];
 
 /**
  * WSA Social Media.
  *
- * The owner sits at the top, then the Social Brain: the registers that
- * hold WSA's social memory.
+ * The owner sits at the top, then what she is designed to remember, then
+ * the Social Brain registers themselves, then what belongs to somebody
+ * else.
  *
- * Every count is zero, and the page says so in plain words rather than
- * showing an empty grid and letting somebody assume the data is loading.
- * That honesty is the whole point of the page. A social memory that
- * claimed to recall a 2020 post, when nothing has been imported, would
- * produce a confident answer with nothing behind it — and a confident
- * wrong answer about what worked is worse than no answer, because
- * somebody would act on it.
+ * The last of those matters as much as the first. Staff will reasonably
+ * expect a social memory to know what was spent; her controlled record
+ * gives spend to Alex, so the page says so by name instead of leaving a
+ * gap that reads like an oversight. And every count is zero, stated in
+ * plain words rather than shown as an empty grid somebody would take for
+ * a loading state — a memory that produced a confident answer about a
+ * 2020 post, with nothing imported behind it, would be worse than one
+ * that admits it cannot.
  */
 export function SocialMediaPanel({ token }: { token: string }) {
   const brain = trpc.workforce.socialBrain.useQuery({ token });
@@ -70,15 +74,29 @@ export function SocialMediaPanel({ token }: { token: string }) {
         </section>
       )}
 
-      <div className="mb-4 flex items-baseline justify-between gap-4">
+      <section className="mb-8">
+        <h3 className="mb-3 text-lg font-semibold text-wsa-navy">What she is built to remember</h3>
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          {brain.data.remembers.map((c: Remembered) => (
+            <div key={c.question} className="rounded-lg border border-wsa-navy/10 bg-white p-4">
+              <h4 className="font-semibold text-wsa-navy">{c.question}</h4>
+              <p className="mt-1 text-sm text-gray-600">{c.answer}</p>
+              <p className="mt-2 text-xs text-gray-400">{c.sections}</p>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      <div className="mb-4 flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
         <h3 className="text-lg font-semibold text-wsa-navy">The Social Brain</h3>
-        <span className="text-xs text-gray-400">{brain.data.controlPack}</span>
+        <span className="text-xs text-gray-400">{brain.data.source}</span>
       </div>
 
       {!brain.data.populated && (
-        <p className="mb-5 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
-          {brain.data.emptyNote}
-        </p>
+        <div className="mb-5 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
+          <p>{brain.data.emptyNote}</p>
+          <p className="mt-1 text-xs text-amber-800">{brain.data.toPopulate}</p>
+        </div>
       )}
 
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
@@ -97,9 +115,28 @@ export function SocialMediaPanel({ token }: { token: string }) {
 
       <p className="mt-5 flex items-start gap-2 text-xs text-gray-400">
         <Database className="mt-0.5 h-3 w-3 shrink-0" aria-hidden />
-        These registers are the design from the Social Brain Control Pack. Importing WSA's existing social history
-        is a separate piece of work, and until it happens nothing here can be recalled.
+        {brain.data.controlPackNote}
       </p>
+
+      <section className="mt-8 border-t border-wsa-navy/10 pt-6">
+        <h3 className="mb-1 text-lg font-semibold text-wsa-navy">Not hers to answer</h3>
+        <p className="mb-3 text-sm text-gray-600">
+          Ask her these and she will point you at the right person rather than guess.
+        </p>
+        <ul className="space-y-3">
+          {brain.data.elsewhere.map((e: Elsewhere) => (
+            <li key={e.subject} className="rounded-lg border border-wsa-navy/10 bg-gray-50 p-4">
+              <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+                <span className="font-medium text-wsa-navy">{e.subject}</span>
+                <span className="rounded-full border border-gray-200 bg-white px-2 py-0.5 text-xs text-gray-600">
+                  {e.owner}
+                </span>
+              </div>
+              <p className="mt-1 text-sm text-gray-600">{e.why}</p>
+            </li>
+          ))}
+        </ul>
+      </section>
     </div>
   );
 }
