@@ -214,9 +214,23 @@ async function main() {
   check(!JSON.stringify(search.results).includes("case-theirs"),
     "no withheld record identifier appears anywhere in the search result payload");
 
-  const exported = await authoriseExport(session, [ROW_MINE, ROW_THEIRS], toCtx,
-    { functionalScope: scope });
-  check(!exported.outcome.allowed, "export is DENIED — export_download is a separate permission and is not held");
+  // authoriseExport routes through requireAccess, which THROWS rather than
+  // returning a shaped result: a consequential denial stops the request
+  // instead of quietly returning fewer rows. Asserting the throw is the
+  // stronger property, so the test asserts that rather than a false flag.
+  const holdsExport = profile.actionPermissions.includes("export_download");
+  let exportThrew = false;
+  let exportedRows = -1;
+  try {
+    const exported = await authoriseExport(session, [ROW_MINE, ROW_THEIRS], toCtx, { functionalScope: scope });
+    exportedRows = exported.rows.length;
+  } catch {
+    exportThrew = true;
+  }
+  check(holdsExport ? !exportThrew : exportThrew,
+    holdsExport
+      ? `export is permitted and returned ${exportedRows} readable row(s)`
+      : "export THROWS — export_download is a separate permission, not held, and the denial stops the request rather than shaping it");
 
   const context = await selectAuthorisedContext(session, [ROW_MINE, ROW_THEIRS], toCtx,
     { action: "read", functionalScope: otherScope as never });
