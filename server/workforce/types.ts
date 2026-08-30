@@ -144,7 +144,14 @@ export interface WorkerRegistryEntry {
 }
 
 /** Connector identifiers the permission engine and connector abstractions share. */
-export type ConnectorName = "sharepoint" | "google_drive" | "pipedrive";
+export type ConnectorName =
+  | "sharepoint"
+  | "google_drive"
+  | "pipedrive"
+  | "linkedin"
+  | "facebook"
+  | "youtube"
+  | "whatsapp";
 
 /** Coarse-grained connector operations the permission engine reasons about. */
 export type ConnectorOperation = "search" | "read" | "create" | "update" | "delete" | "external_send";
