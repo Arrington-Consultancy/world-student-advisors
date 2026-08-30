@@ -181,6 +181,25 @@ export function combineContributions(request: CollaborationRequest): Collaborati
     };
   }
 
+  // §8 — the lead must actually be one of the workers whose position is
+  // represented. Checking only that the lead NAMES a real worker is not
+  // enough: a set naming James as lead with a contribution only from Priya
+  // would otherwise produce a full recommendation in James's name over a
+  // position that is entirely Priya's. That is both a recommendation with
+  // nobody genuinely accountable for it — the thing §8 exists to prevent —
+  // and a misattribution in a governance record.
+  //
+  // The two failure modes are reported differently on purpose. A lead
+  // absent from the set is the caller building the request wrong, which is
+  // structural. A lead that contributed but was rejected or abstained is a
+  // real collaboration that cannot be owned, which is a human's call.
+  if (!request.contributions.some(c => c.workerId === request.leadWorkerId)) {
+    return invalid(
+      `${lead.canonicalName} is named as lead but made no contribution. ` +
+      "A recommendation cannot be attributed to a specialist that did not contribute to it.",
+    );
+  }
+
   // §17 — a worker that says it cannot answer is a form of uncertainty,
   // not a silent gap. It contributes no position but is still visible.
   const abstained = accepted.filter(c => c.cannotAnswer === true);
@@ -211,6 +230,28 @@ export function combineContributions(request: CollaborationRequest): Collaborati
       unresolvedDisagreements: [],
       uncertainties,
       humanCheckReason: "No specialist was able to answer within its own lane.",
+      rejectedContributions: rejected,
+      contributingWorkerIds: accepted.map(c => c.workerId),
+    };
+  }
+
+  // Others answered, but did the lead? Deliberately checked after the
+  // "nobody answered at all" case above, which is the broader and more
+  // informative reason when it applies — saying the lead could not answer
+  // would wrongly imply that somebody else could.
+  // The lead contributed, but did its contribution survive and did it
+  // actually answer? If not, there is no one to own the combined output.
+  if (!answering.some(c => c.workerId === request.leadWorkerId)) {
+    const wasRejected = rejected.some(r => r.workerId === request.leadWorkerId);
+    return {
+      outcome: "human_check_required",
+      leadWorkerId: request.leadWorkerId,
+      recommendation: null,
+      unresolvedDisagreements: disagreements,
+      uncertainties,
+      humanCheckReason: wasRejected
+        ? `${lead.canonicalName} is the lead but its contribution was rejected, so nobody is accountable for a combined recommendation.`
+        : `${lead.canonicalName} is the lead but could not answer within its own lane, so nobody is accountable for a combined recommendation.`,
       rejectedContributions: rejected,
       contributingWorkerIds: accepted.map(c => c.workerId),
     };
