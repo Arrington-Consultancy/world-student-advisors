@@ -205,3 +205,40 @@ export const workforceAuditEvents = mysqlTable("workforce_audit_events", {
 
 export type WorkforceAuditEvent = typeof workforceAuditEvents.$inferSelect;
 export type InsertWorkforceAuditEvent = typeof workforceAuditEvents.$inferInsert;
+
+/**
+ * Durable audit record for WSA Infrastructure Automation, the controlled
+ * plumbing identity that provisions Entra applications it owns and writes
+ * authorised Railway variables (see server/infrastructure/automation.ts
+ * and WSA-Infrastructure-Automation-Bootstrap.md). Deliberately separate
+ * from workforce_audit_events: infrastructure actions are not worker
+ * actions and must never be able to masquerade as one. Two-phase rows
+ * (intent then result) let a reader detect a run that started a material
+ * write and never durably recorded its outcome. No secret value is ever
+ * stored here; targetResource carries names and identifiers only, and
+ * the writer validates that before insert.
+ */
+export const infrastructureAuditEvents = mysqlTable("infrastructure_audit_events", {
+  id: int("id").autoincrement().primaryKey(),
+  automationIdentity: varchar("automationIdentity", { length: 60 }).notNull(),
+  /** GitHub Actions run URL (or equivalent) so every row is traceable to one execution. */
+  runReference: varchar("runReference", { length: 200 }).notNull(),
+  action: varchar("action", { length: 60 }).notNull(),
+  /** intent = recorded before the action is attempted; result = recorded after. */
+  phase: mysqlEnum("phase", ["intent", "result"]).notNull(),
+  targetSystem: mysqlEnum("targetSystem", ["microsoft_entra", "railway", "staff_portal"]).notNull(),
+  /** Names and identifier prefixes only — never a secret value. */
+  targetResource: varchar("targetResource", { length: 255 }).notNull(),
+  permissionDecision: mysqlEnum("permissionDecision", ["allowed", "denied"]).notNull(),
+  permissionReason: text("permissionReason").notNull(),
+  /** Tri-state: NULL = not attempted (intent rows, or denied before attempt), 0 = failed, 1 = succeeded. */
+  success: int("success"),
+  errorCategory: varchar("errorCategory", { length: 40 }).notNull(),
+  deploymentId: varchar("deploymentId", { length: 64 }),
+  /** The controlled human approval this run acted under (chat/bootstrap reference), where one applied. */
+  humanApprovalReference: varchar("humanApprovalReference", { length: 200 }),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type InfrastructureAuditEvent = typeof infrastructureAuditEvents.$inferSelect;
+export type InsertInfrastructureAuditEvent = typeof infrastructureAuditEvents.$inferInsert;
