@@ -1,0 +1,128 @@
+name: Apply migration 0007 (staff access control)
+
+# Manual-only, one-time, SEPARATELY AUTHORISED step (authorisation limited
+# to migration 0007). Mirrors apply-migration-0005.yml and -0006.yml's
+# proven method exactly:
+#   1. Discovers the MySQL service's public-URL variable NAME (key only,
+#      value never printed).
+#   2. Sets a temporary MIGRATION_DATABASE_URL reference on the app service
+#      (reference syntax only — the connection string is never read or
+#      printed).
+#   3. Re-checks, read-only, that 0007 is the ONLY pending migration, and
+#      stops rather than applying anything unexpected.
+#   4. Runs `drizzle-kit migrate` (NOT db:push/generate), applying exactly
+#      the reviewed, hand-authored 0007 SQL: seven nullable columns added
+#      to staff_users, plus CREATE TABLE staff_access_grants and
+#      staff_access_changes. Purely additive. Every added column is
+#      nullable with no default, so no existing staff row gains an access
+#      assignment — the migration cannot grant anybody anything.
+#   5. Runs scripts/verify-0007.mjs — read-only post-verification: full
+#      migration history; SHOW CREATE TABLE for staff_users with each new
+#      column asserted nullable and default-free; SHOW CREATE TABLE and
+#      row counts (expected 0) for both new tables; a count-only check
+#      that no staff row was given an assignment; and the full table list
+#      with pre-existing tables asserted present.
+#   6. Removes the temporary variable (always).
+#
+# No destructive rollback exists or may be created for these tables.
+#
+# This workflow does NOT assign anyone's access. Recording the first
+# controlled human assignment is a separate, separately authorised step
+# (scripts/assign-staff-access.mjs).
+#
+# Auth: githubactionsprod — the same production-scoped Railway Project
+# Token the other production workflows use.
+on:
+  workflow_dispatch:
+    inputs:
+      service_name:
+        description: "Railway app service name"
+        required: true
+        default: "world-student-advisors"
+      environment_name:
+        description: "Railway environment name"
+        required: true
+        default: "production"
+      database_service_name:
+        description: "Railway MySQL service name"
+        required: true
+        default: "MySQL"
+
+jobs:
+  migrate:
+    runs-on: ubuntu-latest
+    env:
+      APP_SERVICE_NAME: ${{ github.event.inputs.service_name }}
+      APP_ENV_NAME: ${{ github.event.inputs.environment_name }}
+      DB_SERVICE_NAME: ${{ github.event.inputs.database_service_name }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Install Railway CLI
+        run: npm install -g @railway/cli
+
+      - name: Discover the MySQL service's public-URL variable NAME (key only, value never printed)
+        id: discover
+        env:
+          RAILWAY_TOKEN: ${{ secrets.githubactionsprod }}
+        run: |
+          KEYS=$(railway variables --service "$DB_SERVICE_NAME" --environment "$APP_ENV_NAME" --json | jq -r 'keys[]')
+          PUBLIC_KEY=$(echo "$KEYS" | grep -i -E '^(MYSQL_PUBLIC_URL|DATABASE_PUBLIC_URL)$' | head -n1)
+          if [ -z "$PUBLIC_KEY" ]; then
+            echo "No public-URL-shaped variable found on $DB_SERVICE_NAME. Stopping — not guessing further."
+            exit 1
+          fi
+          echo "Using public URL variable: $PUBLIC_KEY"
+          echo "public_key=$PUBLIC_KEY" >> "$GITHUB_OUTPUT"
+
+      - name: Set a temporary public-reachable migration URL on the app service
+        env:
+          RAILWAY_TOKEN: ${{ secrets.githubactionsprod }}
+          PUBLIC_KEY: ${{ steps.discover.outputs.public_key }}
+        run: |
+          REF=$(printf '\044{{%s.%s}}' "$DB_SERVICE_NAME" "$PUBLIC_KEY")
+          railway variables \
+            --service "$APP_SERVICE_NAME" \
+            --environment "$APP_ENV_NAME" \
+            --set "MIGRATION_DATABASE_URL=${REF}"
+
+      - name: Confirm 0007 is the only pending migration (read-only; stops rather than guessing)
+        env:
+          RAILWAY_TOKEN: ${{ secrets.githubactionsprod }}
+        run: |
+          railway run --service "$APP_SERVICE_NAME" --environment "$APP_ENV_NAME" -- \
+            sh -c 'DATABASE_URL="$MIGRATION_DATABASE_URL" node scripts/precheck-0007.mjs'
+
+      - name: Apply migration 0007 (drizzle-kit migrate)
+        env:
+          RAILWAY_TOKEN: ${{ secrets.githubactionsprod }}
+        run: |
+          railway run --service "$APP_SERVICE_NAME" --environment "$APP_ENV_NAME" -- \
+            sh -c 'DATABASE_URL="$MIGRATION_DATABASE_URL" pnpm exec drizzle-kit migrate'
+
+      - name: Read-only post-migration verification
+        env:
+          RAILWAY_TOKEN: ${{ secrets.githubactionsprod }}
+        run: |
+          railway run --service "$APP_SERVICE_NAME" --environment "$APP_ENV_NAME" -- \
+            sh -c 'DATABASE_URL="$MIGRATION_DATABASE_URL" node scripts/verify-0007.mjs'
+
+      - name: Remove the temporary migration URL variable
+        if: always()
+        env:
+          RAILWAY_TOKEN: ${{ secrets.githubactionsprod }}
+        run: |
+          railway variables \
+            --service "$APP_SERVICE_NAME" \
+            --environment "$APP_ENV_NAME" \
+            --set "MIGRATION_DATABASE_URL="
