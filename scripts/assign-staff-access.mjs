@@ -65,11 +65,21 @@ const SENSITIVE_OVERLAYS = [
   "complaints_legal", "credentials_security", "records_destructive",
 ];
 
+// Values come from the environment first, then the command line.
+//
+// The environment path exists because the workflow must not build a shell
+// command out of them: a reason or authority reference containing an
+// apostrophe breaks the quoting, and one containing a quote plus a
+// semicolon would be executed. Reading them here means nothing a caller
+// supplies is ever parsed by a shell.
 function arg(name) {
+  const envName = `WSA_ASSIGN_${name.toUpperCase().replace(/-/g, "_")}`;
+  const fromEnv = process.env[envName];
+  if (fromEnv !== undefined && fromEnv !== "") return fromEnv;
   const i = process.argv.indexOf(`--${name}`);
   return i === -1 ? null : process.argv[i + 1];
 }
-const APPLY = process.argv.includes("--apply");
+const APPLY = process.env.WSA_ASSIGN_APPLY === "true" || process.argv.includes("--apply");
 
 function fail(message) {
   console.error(`STOPPING: ${message}`);
