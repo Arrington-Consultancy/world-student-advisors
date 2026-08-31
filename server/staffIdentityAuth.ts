@@ -35,7 +35,7 @@ export function isMicrosoftSsoConfigured(): boolean {
 /** Builds the Microsoft authorize URL. state and nonce must be generated and stored (e.g. in a short-lived cookie) by the caller and checked on return. */
 export function buildMicrosoftAuthorizeUrl(state: string, nonce: string): string {
   if (!isMicrosoftSsoConfigured()) {
-    throw new Error("Microsoft SSO is not configured — STAFF_SSO_TENANT_ID/CLIENT_ID/CLIENT_SECRET/REDIRECT_URI are not all set.");
+    throw new Error("Microsoft SSO is not configured. STAFF_SSO_TENANT_ID, CLIENT_ID, CLIENT_SECRET and REDIRECT_URI are not all set.");
   }
   const params = new URLSearchParams({
     client_id: ENV.staffSsoClientId,
@@ -103,7 +103,7 @@ export async function verifyMicrosoftIdToken(
   });
 
   if (payload.nonce !== expectedNonce) {
-    throw new Error("Nonce mismatch on Microsoft sign-in — possible replay, rejecting.");
+    throw new Error("Nonce mismatch on Microsoft sign-in. Possible replay, rejecting.");
   }
   const oid = payload.oid;
   if (typeof oid !== "string" || !oid) {
@@ -125,7 +125,7 @@ export async function verifyMicrosoftIdToken(
 /** Finds or creates the staff_users row for these verified claims, and stamps lastLoginAt. Never trusts anything except the already-verified claims. */
 export async function upsertStaffUserFromClaims(claims: VerifiedMicrosoftClaims): Promise<StaffUser> {
   const db = await getDb();
-  if (!db) throw new Error("Database not available — cannot resolve staff identity.");
+  if (!db) throw new Error("Database not available, so staff identity cannot be resolved.");
 
   const existing = await db.select().from(staffUsers).where(eq(staffUsers.entraObjectId, claims.oid)).limit(1);
   if (existing.length > 0) {
@@ -243,7 +243,7 @@ export async function requireActiveStaffIdentity(token: string): Promise<{ staff
   }
   const db = await getDb();
   if (!db) {
-    throw new Error("Staff identity could not be verified — database unavailable.");
+    throw new Error("Staff identity could not be verified because the database is unavailable.");
   }
   const rows = await db.select().from(staffUsers).where(eq(staffUsers.id, payload.staffUserId)).limit(1);
   const staffUser = rows[0];

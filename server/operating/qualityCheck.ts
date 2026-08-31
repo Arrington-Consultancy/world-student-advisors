@@ -83,6 +83,17 @@ export interface QualityCheckResult {
  * So the word alone is not the finding. Each occurrence is read in
  * context, and only an unnegated one counts.
  */
+/**
+ * The em dash, written by code point.
+ *
+ * Deliberately not the literal character. A scanner looking for em dashes
+ * in shipped copy would otherwise have to carve out an exception for the
+ * detector that finds them, and an exception list is the thing that lets
+ * a real one hide. With no literal in the source, the scan needs no
+ * exceptions and cannot be weakened by growing one.
+ */
+const EM_DASH = /\u2014/;
+
 const NEGATED_BEFORE = /\b(no|not|never|without|cannot|can'?t|doesn'?t|don'?t|didn'?t|won'?t|nor)\b[^.;!?]{0,60}$/i;
 const NAMING_THE_RULE_AFTER = /^\s*(language|wording|claims?|phrasing)\b/i;
 
@@ -196,7 +207,7 @@ export function runQualityCheck(input: QualityCheckInput): QualityCheckResult {
   }
 
   // §11 writing standard. Em dashes are a binding universal rule.
-  if (/—/.test(text)) {
+  if (EM_DASH.test(text)) {
     findings.push({ code: "em_dash", severity: "blocking", detail: "Output contains an em dash, which is prohibited universally." });
   }
   // Prose punctuation only. A CSS custom property (--sidebar-width) or a
@@ -351,7 +362,7 @@ export function acceptHumanisation(checkedText: string, humanisedText: string): 
   }
 
   // A humanisation pass must not reintroduce a prohibited construction.
-  if (/—/.test(humanisedText)) {
+  if (EM_DASH.test(humanisedText)) {
     return {
       accepted: false,
       text: checkedText,

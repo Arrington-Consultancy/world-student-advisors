@@ -64,7 +64,7 @@ export type GraphMailPayload = {
 export async function sendGraphMail(payload: GraphMailPayload): Promise<boolean> {
   if (!isConfigured()) {
     console.warn(
-      "[GraphMail] MICROSOFT_TENANT_ID/MICROSOFT_CLIENT_ID/MICROSOFT_CLIENT_SECRET not set — skipping email:",
+      "[GraphMail] MICROSOFT_TENANT_ID/MICROSOFT_CLIENT_ID/MICROSOFT_CLIENT_SECRET not set, skipping email:",
       payload.subject
     );
     return false;

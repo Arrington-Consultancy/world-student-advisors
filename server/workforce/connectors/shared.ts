@@ -183,7 +183,7 @@ export async function runConnectorAction(
       success: false,
       connectorState: state,
       message,
-      copyableHandoff: { intendedDestination: request.resourceScope, preservedWork: "Not attempted — connector not available. Nothing was sent or written." },
+      copyableHandoff: { intendedDestination: request.resourceScope, preservedWork: "Not attempted. The connector is not available, and nothing was sent or written." },
     };
   }
 
@@ -247,7 +247,7 @@ function describeUnavailableState(connector: ConnectorName, state: ConnectorStat
   const name = CONNECTOR_DISPLAY_NAME[connector];
   switch (state) {
     case "unconfigured":
-      return `${name} connector is not configured — no credentials exist for this environment yet. Nothing was read or written.`;
+      return `${name} connector is not configured. No credentials exist for this environment yet, and nothing was read or written.`;
     case "permission_missing":
       return `${name} credentials exist but lack the required permission for this action. Nothing was read or written.`;
     case "unavailable":

@@ -115,7 +115,7 @@ export async function persistAuditEventDurably(event: AuditEvent): Promise<void>
       errorCategory: event.errorCategory,
     });
   } catch (error) {
-    console.warn("[Workforce audit] Durable persistence failed — event remains in the in-process log only:", error);
+    console.warn("[Workforce audit] Durable persistence failed, so the event remains in the in-process log only:", error);
   }
 }
 
@@ -173,7 +173,7 @@ export async function recordMaterialAuditEvent(event: Omit<AuditEvent, "timestam
     });
     return { durablyStored: true };
   } catch (error) {
-    console.warn("[Workforce audit] MATERIAL event failed durable persistence — caller must surface this:", error);
+    console.warn("[Workforce audit] MATERIAL event failed durable persistence, and the caller must surface this:", error);
     return { durablyStored: false };
   }
 }

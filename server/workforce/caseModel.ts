@@ -75,7 +75,7 @@ export function evaluateHandoff(fromWorkerId: WorkerId, toWorkerId: WorkerId, pr
 /** Produces the staff-facing view of a stage — status/blocker language a colleague could act on without private chat history. */
 export function describeCaseStage(stage: CaseStage): string {
   const owner = getWorker(stage.owningWorkerId).canonicalName;
-  const base = `${stage.currentStage} — owned by ${owner}, status: ${stage.status}.`;
+  const base = `${stage.currentStage}, owned by ${owner}, status: ${stage.status}.`;
   if (stage.status === "blocked" && stage.blockedReason) return `${base} Blocked: ${stage.blockedReason}. Next: ${stage.nextControlledAction}`;
   return `${base} Next: ${stage.nextControlledAction}`;
 }
