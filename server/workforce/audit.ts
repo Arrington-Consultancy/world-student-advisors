@@ -27,7 +27,14 @@ export type ErrorCategory =
   | "none";
 
 /** Which authentication path produced the session this event belongs to. Never lost or defaulted away — see server/staffRBAC.ts. */
-export type AuditAuthMethod = "entra_sso" | "shared_password";
+/**
+ * shared_executive is the break-glass route. It is a distinct value rather
+ * than being folded into entra_sso because the audit trail must say
+ * honestly what kind of session acted: a shared credential identifies
+ * nobody, and an audit line implying a named person when none was
+ * established would be worse than no line at all.
+ */
+export type AuditAuthMethod = "entra_sso" | "shared_executive" | "shared_password";
 
 export interface AuditEvent {
   timestamp: string;
