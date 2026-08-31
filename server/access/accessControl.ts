@@ -375,7 +375,7 @@ function evaluateCaseAccess(
       return deny("case_scope", "Restricted scope reaches only applicants explicitly assigned to this staff member.");
     }
     default:
-      return deny("unknown_value", "Unrecognised case scope — failing closed.");
+      return deny("unknown_value", "Unrecognised case scope. Failing closed.");
   }
 }
 
@@ -401,10 +401,10 @@ export function evaluateAccess(
 
   // Unknown enum values deny before anything else is considered (§9).
   if (!(ACTION_PERMISSIONS as readonly string[]).includes(request.action)) {
-    return deny("unknown_value", "Unrecognised action — failing closed.");
+    return deny("unknown_value", "Unrecognised action. Failing closed.");
   }
   if (!(FUNCTIONAL_SCOPES as readonly string[]).includes(request.functionalScope)) {
-    return deny("unknown_value", "Unrecognised functional scope — failing closed.");
+    return deny("unknown_value", "Unrecognised functional scope. Failing closed.");
   }
 
   const effective = resolveEffectiveAccess(profile, now);
@@ -428,7 +428,7 @@ export function evaluateAccess(
   if (request.businessDataClass !== undefined) {
     const minLevel = BUSINESS_DATA_MIN_LEVEL[request.businessDataClass];
     if (minLevel === undefined) {
-      return deny("unknown_value", `Unrecognised business data class "${request.businessDataClass}" — failing closed.`);
+      return deny("unknown_value", `Unrecognised business data class "${request.businessDataClass}". Failing closed.`);
     }
     if (effective.baseAccessLevel > minLevel) {
       return deny(
@@ -448,7 +448,7 @@ export function evaluateAccess(
   // §7 overlays — necessary in addition to everything above, never sufficient.
   if (request.sensitiveCategory !== undefined) {
     if (!(SENSITIVE_OVERLAYS as readonly string[]).includes(request.sensitiveCategory)) {
-      return deny("unknown_value", "Unrecognised sensitive category — failing closed.");
+      return deny("unknown_value", "Unrecognised sensitive category. Failing closed.");
     }
     if (!effective.sensitiveOverlays.has(request.sensitiveCategory)) {
       return deny(

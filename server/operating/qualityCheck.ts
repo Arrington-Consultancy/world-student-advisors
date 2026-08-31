@@ -71,8 +71,40 @@ export interface QualityCheckResult {
  * post-study work rights or immigration outcomes. This is a
  * student-protection control, so it is blocking rather than advisory.
  */
+/**
+ * A negated guarantee is the opposite of the prohibited claim.
+ *
+ * "WSA does not guarantee admission" is the sentence §6 wants written, so
+ * blocking it would push a writer to delete their own disclaimer to get
+ * past the gate. That is the one failure mode a student-protection
+ * control must not have. The same applies to naming the rule: a page that
+ * explains it looks for guarantee language is not making a guarantee.
+ *
+ * So the word alone is not the finding. Each occurrence is read in
+ * context, and only an unnegated one counts.
+ */
+const NEGATED_BEFORE = /\b(no|not|never|without|cannot|can'?t|doesn'?t|don'?t|didn'?t|won'?t|nor)\b[^.;!?]{0,60}$/i;
+const NAMING_THE_RULE_AFTER = /^\s*(language|wording|claims?|phrasing)\b/i;
+
+export function statesAnUnnegatedGuarantee(text: string): boolean {
+  const word = /\bguarantee(s|d|ing)?\b/gi;
+  for (let m = word.exec(text); m !== null; m = word.exec(text)) {
+    const before = text.slice(Math.max(0, m.index - 80), m.index);
+    const after = text.slice(m.index + m[0].length);
+    if (NEGATED_BEFORE.test(before)) continue;
+    if (NAMING_THE_RULE_AFTER.test(after)) continue;
+    return true;
+  }
+  return false;
+}
+
+/** Matches only where an unnegated guarantee is actually stated. */
+const GUARANTEE_WORD = {
+  test: (text: string) => statesAnUnnegatedGuarantee(text),
+} as unknown as RegExp;
+
 const GUARANTEE_PATTERNS: readonly { re: RegExp; what: string }[] = [
-  { re: /\bguarantee(s|d|ing)?\b/i, what: "guarantee" },
+  { re: GUARANTEE_WORD, what: "guarantee" },
   { re: /\b100%\s*(success|approval|acceptance)/i, what: "a 100% success claim" },
   { re: /\bwill definitely (be )?(get|receive|be granted|be accepted|be approved)/i, what: "a definite-outcome claim" },
   { re: /\bcertain to (be )?(accepted|approved|granted)/i, what: "a certainty-of-outcome claim" },
@@ -167,7 +199,13 @@ export function runQualityCheck(input: QualityCheckInput): QualityCheckResult {
   if (/—/.test(text)) {
     findings.push({ code: "em_dash", severity: "blocking", detail: "Output contains an em dash, which is prohibited universally." });
   }
-  if (/\S\s--\s\S|\S--\S/.test(text)) {
+  // Prose punctuation only. A CSS custom property (--sidebar-width) or a
+  // command flag (--coverage) is not a writer reaching for a dash, and
+  // flagging those trains people to ignore the finding when it is real.
+  // Prose brackets the pair symmetrically, either tight (word--word) or
+  // spaced on both sides; a flag or a variable never does, because it
+  // always has a space, quote or bracket on the left and none on the right.
+  if (/[A-Za-z0-9]--[A-Za-z0-9]|[A-Za-z0-9] -- [A-Za-z0-9]/.test(text)) {
     findings.push({ code: "double_hyphen", severity: "advisory", detail: "Double hyphen used as prose punctuation." });
   }
   for (const { re, what } of CORPORATE_AI_PATTERNS) {

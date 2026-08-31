@@ -292,7 +292,7 @@ export default function InterviewCoach() {
             AI-powered practice for the interview you're actually facing.
           </h1>
           <p className="mb-8 max-w-2xl text-lg leading-8 text-gray-600">
-            WSA applicants get structured AI feedback before the real interview — one question at a time, marked honestly, never a rehearsed script to memorise.
+            WSA applicants get structured AI feedback before the real interview. One question at a time, marked honestly, never a rehearsed script to memorise.
           </p>
           <div className="grid sm:grid-cols-2 gap-3 mb-8">
             {INTERVIEW_TYPES.map((t) => (
@@ -304,7 +304,7 @@ export default function InterviewCoach() {
           </div>
           <div className="bg-white shadow-[0_18px_60px_rgba(15,23,42,0.06)] border border-border/70 rounded-lg p-6 mb-8">
             <p className="text-sm text-gray-600 leading-relaxed">
-              These tools use AI to generate practice questions and assess your answers — they don't replace official visa or admissions guidance, and they don't guarantee any outcome. Available to WSA applicants through the Student Portal once your application is in.
+              These tools use AI to generate practice questions and assess your answers. They don't replace official visa or admissions guidance, and they don't guarantee any outcome. Available to WSA applicants through the Student Portal once your application is in.
             </p>
           </div>
           <div className="flex flex-wrap gap-3">
@@ -372,7 +372,7 @@ export default function InterviewCoach() {
                   </span>
                 </div>
                 <div className="mb-6 text-xs text-gray-500 leading-relaxed">
-                  Your answers are sent to our AI provider to generate a score and feedback for this session only — the full text of your answers isn't kept afterwards. We keep a short completion record (interview type, your score, pass/fail, and the date) linked to your Student Portal account. When you finish a session, a summary — your score and each question's score, but not your answer text — is also emailed to the WSA team. This tool doesn't create or update your Pipedrive application record.
+                  Your answers are sent to our AI provider to generate a score and feedback for this session only. The full text of your answers isn't kept afterwards. We keep a short completion record (interview type, your score, pass/fail, and the date) linked to your Student Portal account. When you finish a session, a summary is also emailed, covering your score and each question's score but not your answer text, to the WSA team. This tool doesn't create or update your Pipedrive application record.
                 </div>
                 <h2 className="text-lg font-semibold text-wsa-navy mb-4">Choose your interview type</h2>
                 <div className="grid sm:grid-cols-2 gap-3 mb-6">

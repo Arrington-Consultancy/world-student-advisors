@@ -134,7 +134,7 @@ export function SocialMediaPanel({ token }: { token: string }) {
             {brain.data.unreconciled.map((u: Unreconciled) => (
               <li key={u.brief + u.pack} className="text-xs text-amber-900">
                 <span className="font-medium">{u.brief}</span> vs <span className="font-medium">{u.pack}</span>
-                <span className="text-amber-800"> — {u.note}</span>
+                <span className="text-amber-800">. {u.note}</span>
               </li>
             ))}
           </ul>

@@ -73,7 +73,7 @@ export function routeStaffRequest(requestText: string): RoutingResult {
       matched: false,
       availability: "not_available_for_live_case_work",
       status: "No controlled worker could be confidently identified for this request.",
-      safeNextAction: "Escalate to the current authorised human process — do not guess an owner or attempt this as a general-purpose assistant.",
+      safeNextAction: "Escalate to the current authorised human process. Do not guess an owner or attempt this as a general-purpose assistant.",
     };
   }
 

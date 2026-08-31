@@ -259,18 +259,18 @@ export interface Elsewhere {
 export const HELD_ELSEWHERE: readonly Elsewhere[] = Object.freeze([
   {
     subject: "Advertising spend, paid performance and cost per result",
-    owner: "Alex — Paid Media",
+    owner: "Alex, Paid Media",
     why:
       "Alex owns paid strategy, spend and paid measurement; a boost request routes to him rather than running on organic authority (brief §14, test NIA-T11). Nia may record that a post was boosted as a confounder on the organic result (Control Pack §7), but she holds no spend figure and is not the source of truth for paid.",
   },
   {
     subject: "Website and organic search performance",
-    owner: "Ethan — SEO",
+    owner: "Ethan, SEO",
     why: "Ethan owns organic search and website SEO. They exchange content intelligence; neither absorbs the other (brief §14).",
   },
   {
     subject: "A student's own case, raised in comments or DMs",
-    owner: "Sophie — Enquiry & Triage",
+    owner: "Sophie, Enquiry and Triage",
     why: "Student-specific questions leave the public thread and route to the enquiry process. Nia does not run a case in public (brief §14, §20, test NIA-T10).",
   },
   {
@@ -280,12 +280,12 @@ export const HELD_ELSEWHERE: readonly Elsewhere[] = Object.freeze([
   },
   {
     subject: "Scholarship eligibility and funding gaps",
-    owner: "Harper — Funding",
+    owner: "Harper, Funding",
     why: "Nia may communicate approved funding facts. An unsupported scholarship claim is blocked and routed to Harper (brief §14, test NIA-T05).",
   },
   {
     subject: "Visa and immigration guidance",
-    owner: "Priya — Visa & Compliance",
+    owner: "Priya, Visa and Compliance",
     why: "Nia may publish verified factual guidance already approved for publication. She gives no immigration strategy, and an unsupported visa claim is blocked and routed (brief §14, test NIA-T04).",
   },
 ]);

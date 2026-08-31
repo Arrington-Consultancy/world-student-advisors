@@ -24,10 +24,10 @@ const TYPE_CONTEXT: Record<InterviewType, string> = {
 /** Shared rules every prompt in this file must carry — never relax these. */
 const CORE_RULES = [
   "NEVER provide model answers, example answers, sample phrasing, or suggested wording of any kind. Do not rewrite, improve, or hint at a stronger version of the student's answer.",
-  "The pass mark is 85 out of 100. Score honestly and rigorously — do not inflate scores to be encouraging.",
+  "The pass mark is 85 out of 100. Score honestly and rigorously. Do not inflate scores to be encouraging.",
   "Assess substance only: relevance, clarity, specificity, genuine understanding, consistency, and whether the answer actually addresses the question. Never penalise understandable non-native English, minor grammar errors that don't change the meaning, culturally different but valid phrasing, or a concise answer to a question that doesn't need elaboration. A student who communicates clearly in a second language must never score lower than an equally substantive answer in polished English.",
   "Preparation and practice are not weaknesses. Do not penalise a student for giving a well-prepared answer. However, where an answer sounds formulaic or rehearsed but lacks specific personal reasoning, genuine understanding, or consistency with the student's circumstances, treat the missing substance as the weakness. Do not claim that an answer is memorised merely because it is fluent or well structured.",
-  "Explain weaknesses and missing information precisely (vague, generic, inconsistent, lacking evidence, off-topic, insufficient substance for the question asked, etc.) without ever revealing what the correct or better content would be. 'Insufficient substance' means missing content, not insufficient length or polish — a short, complete answer is not a weakness.",
+  "Explain weaknesses and missing information precisely (vague, generic, inconsistent, lacking evidence, off-topic, insufficient substance for the question asked, etc.) without ever revealing what the correct or better content would be. 'Insufficient substance' means missing content, not insufficient length or polish. A short, complete answer is not a weakness.",
   "Recommend concrete research or homework the student must do themselves, not generic advice (e.g. 'research your university's specific module list for [course]', not 'do more research').",
 ].join("\n");
 
@@ -119,12 +119,12 @@ export async function personaliseQuestions(
         content: [
           `You are lightly personalising a fixed, already-approved set of ${TYPE_CONTEXT[interviewType]} questions for one student. You are wordsmithing them, never replacing, removing, adding, or reordering them, and never inventing new questions.`,
           "",
-          "STRICT RULES — never break these:",
+          "STRICT RULES, never break these:",
           CORE_RULES,
           "5. Return exactly the same number of questions, in the same order, one personalised rewrite per input question.",
           "6. Do not change a question's meaning, topic, or category. Only reference the supplied course/university detail where it fits naturally (e.g. replace 'this course' with the actual course name). If a question has nothing natural to personalise, return it unchanged.",
           "7. Do not invent facts about the course, university, or student beyond exactly what is supplied below.",
-          "8. Never answer any of the questions yourself — only reword the question text.",
+          "8. Never answer any of the questions yourself. Only reword the question text.",
           "Output JSON only.",
         ].join("\n"),
       },
@@ -216,7 +216,7 @@ export interface AnswerAssessment {
 
 const EMPTY_ANSWER_ASSESSMENT = (): AnswerAssessment => ({
   needsFollowUp: true,
-  followUpQuestion: "You didn't answer that one — try again in your own words, even a short attempt.",
+  followUpQuestion: "You didn't answer that one. Try again in your own words, even a short attempt.",
   score: 0,
   strengths: [],
   weaknesses: [],
@@ -258,14 +258,14 @@ export async function assessAnswer(params: {
   ].filter(Boolean).join("\n");
 
   const attemptRule = isSecondAttempt
-    ? "This is the student's SECOND attempt at this question (a follow-up has already been asked and answered). You must score it now — do not ask another follow-up under any circumstances, even if it is still weak. Reflect any remaining gaps honestly in weaknesses and missingInformation instead."
-    : "This is the student's FIRST attempt at this question. If the answer is vague, incomplete, contradictory, or too short to assess properly, do not score it yet — instead set needsFollowUp to true and ask one focused, intelligent follow-up question that targets exactly what's missing or unclear, without revealing the information you're asking for. Only score it now if it is already a substantive, assessable answer.";
+    ? "This is the student's SECOND attempt at this question (a follow-up has already been asked and answered). You must score it now. Do not ask another follow-up under any circumstances, even if it is still weak. Reflect any remaining gaps honestly in weaknesses and missingInformation instead."
+    : "This is the student's FIRST attempt at this question. If the answer is vague, incomplete, contradictory, or too short to assess properly, do not score it yet. Instead set needsFollowUp to true and ask one focused, intelligent follow-up question that targets exactly what's missing or unclear, without revealing the information you're asking for. Only score it now if it is already a substantive, assessable answer.";
 
   const response = await invokeLLM({
     messages: [
       {
         role: "system",
-        content: `You are a strict but supportive UK ${TYPE_CONTEXT[interviewType]} assessor for international students, coaching a practice interview one question at a time.\n\nSTRICT RULES — never break these:\n${CORE_RULES}\n\n${attemptRule}\n\nWhen needsFollowUp is true, leave score at 0 and strengths/weaknesses/missingInformation/researchHomework as empty arrays — they are not used yet. When needsFollowUp is false, leave followUpQuestion as an empty string. Output JSON only.`,
+        content: `You are a strict but supportive UK ${TYPE_CONTEXT[interviewType]} assessor for international students, coaching a practice interview one question at a time.\n\nSTRICT RULES, never break these:\n${CORE_RULES}\n\n${attemptRule}\n\nWhen needsFollowUp is true, leave score at 0 and strengths/weaknesses/missingInformation/researchHomework as empty arrays, which are not used yet. When needsFollowUp is false, leave followUpQuestion as an empty string. Output JSON only.`,
       },
       {
         role: "user",
@@ -292,7 +292,7 @@ export async function assessAnswer(params: {
             missingInformation: {
               type: "array",
               items: { type: "string" },
-              description: "Specific facts, details, or context the student did not know or state — the gaps themselves, not advice.",
+              description: "Specific facts, details, or context the student did not know or state: the gaps themselves, not advice.",
             },
             researchHomework: {
               type: "array",

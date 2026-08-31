@@ -21,12 +21,12 @@ const isNonEmptyString = (value: unknown): value is string =>
  */
 export async function notifyStaff(payload: NotificationPayload): Promise<boolean> {
   if (!isNonEmptyString(payload.title) || !isNonEmptyString(payload.content)) {
-    console.warn("[Notification] Missing title or content — skipping.");
+    console.warn("[Notification] Missing title or content, skipping.");
     return false;
   }
 
   if (ENV.staffNotifyEmails.length === 0) {
-    console.warn("[Notification] STAFF_NOTIFY_EMAILS is empty — skipping staff notification:", payload.title);
+    console.warn("[Notification] STAFF_NOTIFY_EMAILS is empty, skipping staff notification:", payload.title);
     return false;
   }
 
@@ -44,12 +44,12 @@ export async function notifyStaff(payload: NotificationPayload): Promise<boolean
  */
 export async function notifyInterviewCoachResult(payload: NotificationPayload): Promise<boolean> {
   if (!isNonEmptyString(payload.title) || !isNonEmptyString(payload.content)) {
-    console.warn("[Notification] Missing title or content — skipping.");
+    console.warn("[Notification] Missing title or content, skipping.");
     return false;
   }
 
   if (ENV.interviewCoachNotifyEmails.length === 0) {
-    console.warn("[Notification] INTERVIEW_COACH_NOTIFY_EMAILS is empty — skipping:", payload.title);
+    console.warn("[Notification] INTERVIEW_COACH_NOTIFY_EMAILS is empty, skipping:", payload.title);
     return false;
   }
 
@@ -68,7 +68,7 @@ export async function notifyInterviewCoachResult(payload: NotificationPayload): 
  */
 export async function sendApplicantConfirmation(to: string, firstName: string): Promise<boolean> {
   if (!isNonEmptyString(to)) {
-    console.warn("[Notification] Cannot send applicant confirmation — missing address.");
+    console.warn("[Notification] Cannot send applicant confirmation, missing address.");
     return false;
   }
 
@@ -97,7 +97,7 @@ export async function sendApplicantConfirmation(to: string, firstName: string): 
  */
 export async function sendPortalSetupEmail(to: string, firstName: string, setupLink: string): Promise<boolean> {
   if (!isNonEmptyString(to)) {
-    console.warn("[Notification] Cannot send portal setup email — missing address.");
+    console.warn("[Notification] Cannot send portal setup email, missing address.");
     return false;
   }
 
@@ -133,7 +133,7 @@ export async function sendPortalSetupEmail(to: string, firstName: string, setupL
  */
 export async function sendPasswordResetEmail(to: string, firstName: string, resetLink: string): Promise<boolean> {
   if (!isNonEmptyString(to)) {
-    console.warn("[Notification] Cannot send password reset email — missing address.");
+    console.warn("[Notification] Cannot send password reset email, missing address.");
     return false;
   }
 
@@ -149,7 +149,7 @@ export async function sendPasswordResetEmail(to: string, firstName: string, rese
       ``,
       `This link expires in 24 hours.`,
       ``,
-      `If you didn't request this, you can safely ignore this email — your password won't change.`,
+      `If you didn't request this, you can safely ignore this email and your password won't change.`,
       ``,
       `WorldStudentAdvisors`,
     ].join("\n"),

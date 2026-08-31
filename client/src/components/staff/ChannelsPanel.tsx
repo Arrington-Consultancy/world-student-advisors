@@ -128,7 +128,7 @@ export function ChannelsPanel({ token }: { token: string }) {
       <div className="border-t border-wsa-navy/10 pt-4 text-xs text-gray-400">
         {withheldCount > 0 && (
           <p className="mb-1">
-            {withheldCount} channel{withheldCount === 1 ? "" : "s"} not shown — their content is not public and you do
+            {withheldCount} channel{withheldCount === 1 ? "" : "s"} not shown. Their content is not public and you do
             not hold the scope.
           </p>
         )}

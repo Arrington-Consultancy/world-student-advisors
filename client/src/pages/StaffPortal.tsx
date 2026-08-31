@@ -150,7 +150,7 @@ export default function StaffPortal() {
           {microsoftLoginUrlMutation.isPending ? "Redirecting…" : "Sign in with Microsoft"}
         </Button>
         {!ssoConfigured && (
-          <p className="text-xs text-gray-400 text-center">Microsoft sign-in is not yet configured — use your password below.</p>
+          <p className="text-xs text-gray-400 text-center">Microsoft sign-in is not yet configured. Use your password below.</p>
         )}
         {microsoftCallbackMutation.isError || (microsoftCallbackMutation.data && !microsoftCallbackMutation.data.success) ? (
           <p className="text-sm text-red-600 text-center">{error}</p>
