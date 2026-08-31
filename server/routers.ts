@@ -37,6 +37,7 @@ import { listWorkers, getWorker } from "./workforce/registry";
 import { evaluateStaffPortalExecutionPermission } from "./workforce/permissions";
 import { routeStaffRequestAssisted } from "./workforce/router";
 import { executeWorker } from "./execution/execute";
+import { orchestrateCaseRequest } from "./execution/orchestrate";
 import type { WorkerId } from "./workforce/types";
 import {
   SOCIAL_BRAIN_RECORDS,
@@ -704,6 +705,74 @@ export const appRouter = router({
           reason: result.reason,
           workerName: result.workerName,
           briefReference: result.briefReference,
+        };
+      }),
+
+    /**
+     * "What needs doing next for this student?"
+     *
+     * One question, several specialists, one answer. The orchestrator
+     * decides the lead from the case's own recorded owner, asks each
+     * available specialist in its own isolated context, and names every
+     * specialist that could not contribute rather than covering the gap.
+     *
+     * Candidate specialists come from the router, server-side. The client
+     * does not choose who is consulted, because a client that could name
+     * the workers could name one whose remit it wanted borrowed.
+     */
+    caseReview: publicProcedure
+      .input(
+        z.object({
+          token: z.string(),
+          request: z.string().min(1).max(4000),
+          caseId: z.string().min(1).max(120),
+          studentId: z.string().min(1).max(120),
+        }),
+      )
+      .mutation(async ({ input }) => {
+        const session = await resolveStaffSession(input.token);
+        const routed = await routeStaffRequestAssisted(input.request);
+
+        // Sophie owns enquiry and triage and is the standing entry point,
+        // so she is always a candidate. Anyone the router identified
+        // joins her.
+        const candidates: WorkerId[] = ["sophie"];
+        if (routed.responsibleWorkerId && routed.responsibleWorkerId !== "sophie") {
+          candidates.push(routed.responsibleWorkerId as WorkerId);
+        }
+
+        const result = await orchestrateCaseRequest({
+          staffUserId: session.staffUserId,
+          requestText: input.request,
+          caseId: input.caseId,
+          studentId: input.studentId,
+          // No connector is configured, so no case record can be read
+          // from a source of truth. Passing none is the honest position:
+          // the orchestrator then reports that there is no record rather
+          // than working from an invented one.
+          availableCases: [],
+          candidateWorkerIds: candidates,
+        });
+
+        recordAuditEvent({
+          staffUserId: session.staffUserId,
+          authMethod: session.authMethod,
+          workerId: result.leadWorkerId ?? "staff_receptionist",
+          workerSpecificationVersion: getWorker(result.leadWorkerId ?? "staff_receptionist").specificationVersion,
+          requestedCapability: "workforce:case_review",
+          permissionDecision: result.outcome === "answered" ? "allowed" : "denied",
+          permissionReason: result.reason,
+          success: result.outcome === "answered",
+          errorCategory: result.outcome === "answered" ? "none" : "permission_denied",
+        });
+
+        return {
+          outcome: result.outcome,
+          leadWorkerName: result.leadWorkerName,
+          visibleText: result.visibleText,
+          reason: result.reason,
+          contributingWorkerIds: result.contributingWorkerIds,
+          gaps: result.gaps.map(g => ({ workerName: g.workerName, reason: g.reason })),
         };
       }),
 

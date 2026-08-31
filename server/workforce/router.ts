@@ -45,7 +45,7 @@ const ROUTING_DOMAINS: RoutingDomain[] = [
       "research", "course", "courses available", "what course", "which course", "programme", "program",
       "module", "curriculum", "syllabus", "english course", "english language", "foundation year",
       "pre-masters", "pathway", "study option", "what do we offer", "university information",
-      "institution information", "entry profile", "subject",
+      "institution information", "entry profile", "entry requirement", "subject", "tuition fee", "ranking",
     ],
   },
   {
@@ -54,7 +54,16 @@ const ROUTING_DOMAINS: RoutingDomain[] = [
   },
   {
     workerId: "james",
-    keywords: ["admission", "application", "apply", "submit", "submission", "deadline", "entry requirement", "offer letter", "conditional offer", "ucas"],
+    // "entry requirement" moved to Amelia. A published entry requirement
+    // is a researched fact about a course; James owns the application
+    // measured against it, which is what these phrases describe. The
+    // acceptance sweep caught this: "research entry requirements for this
+    // course" was reaching admissions.
+    keywords: [
+      "admission", "admissions requirement", "application", "application requirement", "application deadline", "apply", "submit",
+      "submission", "deadline", "meets the entry requirement", "offer letter", "conditional offer", "ucas",
+      "supporting document", "personal statement", "reference letter",
+    ],
   },
   {
     workerId: "priya",
