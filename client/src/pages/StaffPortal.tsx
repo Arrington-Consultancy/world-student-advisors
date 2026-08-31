@@ -8,6 +8,7 @@ import { TeamPanel } from "@/components/staff/TeamPanel";
 import { ContentCheckPanel } from "@/components/staff/ContentCheckPanel";
 import { SocialMediaPanel } from "@/components/staff/SocialMediaPanel";
 import { Receptionist } from "@/components/workforce/Receptionist";
+import { AccessBanner } from "@/components/workforce/AccessBanner";
 
 const STORAGE_KEY = "staff_portal_token";
 
@@ -241,6 +242,8 @@ function WorkforceHome({ token, onLogout }: { token: string; onLogout: () => voi
             <LogOut className="mr-1 h-4 w-4" /> Sign out
           </Button>
         </div>
+
+        <AccessBanner token={token} />
 
         <nav className="mb-8 flex gap-1 border-b border-wsa-navy/10" aria-label="Staff Portal sections">
           {TABS.map(t => (
