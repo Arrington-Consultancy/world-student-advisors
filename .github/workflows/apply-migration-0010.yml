@@ -1,0 +1,145 @@
+name: Apply migration 0010 (worker conversation turns)
+
+# Manual-only, one-time, SEPARATELY AUTHORISED step (authorisation limited
+# to migration 0010). Mirrors the proven method of apply-migration-0009.yml:
+# discover the MySQL public-URL variable NAME, set MIGRATION_DATABASE_URL as
+# a Railway reference (the connection string is never read or printed), run
+# a read-only pre-check, apply with `drizzle-kit migrate`, verify, run the
+# migrator a second time to prove idempotence, verify again, and always
+# clear the temporary variable.
+#
+# 0010 is purely additive. It creates one new table,
+# worker_conversation_turns, and two indexes on it. It alters no existing
+# table, drops nothing, and writes no rows. Every existing query keeps
+# working because nothing they read has changed.
+#
+# What it enables is conversation memory for a worker. Before it, every
+# message to a worker was a first message: answering a worker's own
+# follow-up produced "this message doesn't contain a clear request",
+# correctly, because in isolation it did not.
+#
+# The table is where the transcript lives BECAUSE it must not live in the
+# browser. A client-supplied history would mean the server accepting, as
+# fact, a claim about what a worker previously said, and a forged prior
+# answer is an effective way to walk a worker outside its brief. The client
+# holds an opaque id; the server rebuilds the thread from turns it wrote.
+#
+# Rollback would be DROP TABLE, which is destructive and is deliberately
+# not provided. An unused empty table costs nothing.
+#
+# Auth: githubactionsprod — the same production-scoped Railway Project
+# Token the other production workflows use. No credential is read, printed
+# or handled by a person at any point.
+on:
+  workflow_dispatch:
+    inputs:
+      service_name:
+        description: "Railway app service name"
+        required: true
+        default: "world-student-advisors"
+      environment_name:
+        description: "Railway environment name"
+        required: true
+        default: "production"
+      database_service_name:
+        description: "Railway MySQL service name"
+        required: true
+        default: "MySQL"
+
+jobs:
+  migrate:
+    runs-on: ubuntu-latest
+    env:
+      APP_SERVICE_NAME: ${{ github.event.inputs.service_name }}
+      APP_ENV_NAME: ${{ github.event.inputs.environment_name }}
+      DB_SERVICE_NAME: ${{ github.event.inputs.database_service_name }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Install Railway CLI
+        run: npm install -g @railway/cli
+
+      - name: Discover the MySQL service's public-URL variable NAME (key only, value never printed)
+        id: discover
+        env:
+          RAILWAY_TOKEN: ${{ secrets.githubactionsprod }}
+        run: |
+          KEYS=$(railway variables --service "$DB_SERVICE_NAME" --environment "$APP_ENV_NAME" --json | jq -r 'keys[]')
+          PUBLIC_KEY=$(echo "$KEYS" | grep -i -E '^(MYSQL_PUBLIC_URL|DATABASE_PUBLIC_URL)$' | head -n1)
+          if [ -z "$PUBLIC_KEY" ]; then
+            echo "No public-URL-shaped variable found on $DB_SERVICE_NAME. Stopping — not guessing further."
+            exit 1
+          fi
+          echo "Using public URL variable: $PUBLIC_KEY"
+          echo "public_key=$PUBLIC_KEY" >> "$GITHUB_OUTPUT"
+
+      - name: Set a temporary public-reachable migration URL on the app service
+        env:
+          RAILWAY_TOKEN: ${{ secrets.githubactionsprod }}
+          PUBLIC_KEY: ${{ steps.discover.outputs.public_key }}
+        run: |
+          REF=$(printf '\044{{%s.%s}}' "$DB_SERVICE_NAME" "$PUBLIC_KEY")
+          railway variables \
+            --service "$APP_SERVICE_NAME" \
+            --environment "$APP_ENV_NAME" \
+            --set "MIGRATION_DATABASE_URL=${REF}"
+
+      - name: Confirm 0010 is the only pending migration (read-only; stops rather than guessing)
+        timeout-minutes: 10
+        env:
+          RAILWAY_TOKEN: ${{ secrets.githubactionsprod }}
+        run: |
+          railway run --service "$APP_SERVICE_NAME" --environment "$APP_ENV_NAME" -- \
+            sh -c 'DATABASE_URL="$MIGRATION_DATABASE_URL" node scripts/precheck-0010.mjs'
+
+      - name: Apply migration 0010 (drizzle-kit migrate)
+        timeout-minutes: 10
+        env:
+          RAILWAY_TOKEN: ${{ secrets.githubactionsprod }}
+        run: |
+          railway run --service "$APP_SERVICE_NAME" --environment "$APP_ENV_NAME" -- \
+            sh -c 'DATABASE_URL="$MIGRATION_DATABASE_URL" pnpm exec drizzle-kit migrate'
+
+      - name: Read-only post-migration verification
+        timeout-minutes: 10
+        env:
+          RAILWAY_TOKEN: ${{ secrets.githubactionsprod }}
+        run: |
+          railway run --service "$APP_SERVICE_NAME" --environment "$APP_ENV_NAME" -- \
+            sh -c 'DATABASE_URL="$MIGRATION_DATABASE_URL" node scripts/verify-0010.mjs'
+
+      - name: Re-run the migrator to prove it is idempotent (applies nothing the second time)
+        timeout-minutes: 10
+        env:
+          RAILWAY_TOKEN: ${{ secrets.githubactionsprod }}
+        run: |
+          railway run --service "$APP_SERVICE_NAME" --environment "$APP_ENV_NAME" -- \
+            sh -c 'DATABASE_URL="$MIGRATION_DATABASE_URL" pnpm exec drizzle-kit migrate'
+
+      - name: Verify again — the second migrate run changed nothing
+        timeout-minutes: 10
+        env:
+          RAILWAY_TOKEN: ${{ secrets.githubactionsprod }}
+        run: |
+          railway run --service "$APP_SERVICE_NAME" --environment "$APP_ENV_NAME" -- \
+            sh -c 'DATABASE_URL="$MIGRATION_DATABASE_URL" node scripts/verify-0010.mjs'
+
+      - name: Remove the temporary migration URL variable
+        if: always()
+        env:
+          RAILWAY_TOKEN: ${{ secrets.githubactionsprod }}
+        run: |
+          railway variables \
+            --service "$APP_SERVICE_NAME" \
+            --environment "$APP_ENV_NAME" \
+            --set "MIGRATION_DATABASE_URL="

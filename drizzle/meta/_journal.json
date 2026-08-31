@@ -71,6 +71,13 @@
       "when": 1788200000000,
       "tag": "0009_executive_access_audit",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "5",
+      "when": 1788300000000,
+      "tag": "0010_worker_conversation_turns",
+      "breakpoints": true
     }
   ]
 }

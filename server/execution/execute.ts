@@ -53,6 +53,13 @@ export interface ExecutionRequest {
   availableCases?: CaseData[];
   availableUpstreamOutputs?: UpstreamOutput[];
   contributions?: readonly ContributorInput[];
+  /**
+   * Prior turns of this conversation, oldest first, read from the store by
+   * the caller. Never supplied by a browser: see execution/conversation.ts
+   * for why a client-posted transcript would be a way to forge what a
+   * worker previously said.
+   */
+  history?: readonly { role: "staff" | "worker"; content: string }[];
 }
 
 export interface ExecutionResult {
@@ -135,9 +142,20 @@ export async function executeWorker(request: ExecutionRequest): Promise<Executio
   //    governance says nothing about which model runs it.
   let modelText: string;
   try {
+    // Prior turns go in as real messages between the system prompt and the
+    // new one, never appended into the system text. A staff member's typed
+    // words are user content; the moment they are concatenated into system
+    // text they read as instructions to the model, and a worker whose
+    // brief can be edited by whoever types into it is not governed at all.
+    const priorMessages = (request.history ?? []).map(turn => ({
+      role: turn.role === "staff" ? ("user" as const) : ("assistant" as const),
+      content: turn.content,
+    }));
+
     const response = await invokeLLM({
       messages: [
         { role: "system", content: system },
+        ...priorMessages,
         { role: "user", content: user },
       ],
       maxTokens: 2048,

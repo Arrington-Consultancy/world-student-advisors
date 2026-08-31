@@ -52,6 +52,7 @@ import { listWorkers, getWorker } from "./workforce/registry";
 import { evaluateStaffPortalExecutionPermission } from "./workforce/permissions";
 import { routeStaffRequestAssisted } from "./workforce/router";
 import { executeWorker } from "./execution/execute";
+import { readConversation, recordExchange } from "./execution/conversation";
 import { orchestrateCaseRequest } from "./execution/orchestrate";
 import type { WorkerId } from "./workforce/types";
 import {
@@ -826,6 +827,14 @@ export const appRouter = router({
           token: z.string(),
           workerId: z.string(),
           request: z.string().min(1).max(4000),
+          /**
+           * An opaque id from a previous answer, to continue that thread.
+           * This is the ONLY thing the client may say about the past. The
+           * transcript itself is read server-side from turns the server
+           * wrote, because a browser-supplied history would let anyone
+           * invent what a worker previously said and steer it with that.
+           */
+          conversationId: z.string().max(64).optional(),
         }),
       )
       .mutation(async ({ input }) => {
@@ -843,10 +852,16 @@ export const appRouter = router({
           };
         }
 
+        // Ownership is enforced inside readConversation: an id belonging
+        // to another staff member, or to another worker, yields an empty
+        // history rather than someone else's thread.
+        const history = await readConversation(input.conversationId, session.staffUserId, workerId);
+
         const result = await executeWorker({
           staffUserId: session.staffUserId,
           workerId,
           requestText: input.request,
+          history,
         });
 
         recordAuditEvent({
@@ -861,12 +876,27 @@ export const appRouter = router({
           errorCategory: result.outcome === "answered" ? "none" : "permission_denied",
         });
 
+        // Only an answered exchange becomes memory. A refusal is not the
+        // worker's position on anything, and Priya's withheld text must
+        // never return one turn later as something she already said.
+        let conversationId = input.conversationId ?? null;
+        if (result.outcome === "answered" && result.visibleText) {
+          conversationId = await recordExchange({
+            conversationId: input.conversationId,
+            staffUserId: session.staffUserId,
+            workerId,
+            staffMessage: input.request,
+            workerReply: result.visibleText,
+          });
+        }
+
         return {
           outcome: result.outcome,
           visibleText: result.visibleText,
           reason: result.reason,
           workerName: result.workerName,
           briefReference: result.briefReference,
+          conversationId,
         };
       }),
 
