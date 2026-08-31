@@ -4,6 +4,7 @@ import { trpc, type RouterOutputs } from "@/lib/trpc";
 type Worker = RouterOutputs["workforce"]["listWorkers"]["workers"][number];
 type Register = RouterOutputs["workforce"]["socialBrain"]["registers"][number];
 type Remembered = RouterOutputs["workforce"]["socialBrain"]["remembers"][number];
+type Unreconciled = RouterOutputs["workforce"]["socialBrain"]["unreconciled"][number];
 type Elsewhere = RouterOutputs["workforce"]["socialBrain"]["elsewhere"][number];
 
 /**
@@ -81,7 +82,7 @@ export function SocialMediaPanel({ token }: { token: string }) {
             <div key={c.question} className="rounded-lg border border-wsa-navy/10 bg-white p-4">
               <h4 className="font-semibold text-wsa-navy">{c.question}</h4>
               <p className="mt-1 text-sm text-gray-600">{c.answer}</p>
-              <p className="mt-2 text-xs text-gray-400">{c.sections}</p>
+              <p className="mt-2 text-xs text-gray-400">{c.sources}</p>
             </div>
           ))}
         </div>
@@ -103,7 +104,10 @@ export function SocialMediaPanel({ token }: { token: string }) {
         {brain.data.registers.map((r: Register) => (
           <div key={r.id} className="rounded-lg border border-wsa-navy/10 bg-white p-4">
             <div className="mb-1 flex items-baseline justify-between gap-3">
-              <h4 className="font-semibold text-wsa-navy">{r.name}</h4>
+              <h4 className="font-semibold text-wsa-navy">
+                <span className="mr-1.5 text-xs font-normal text-gray-400">§{r.section}</span>
+                {r.name}
+              </h4>
               <span className="shrink-0 text-xs text-gray-400">
                 {r.recorded === 0 ? "nothing recorded" : `${r.recorded} recorded`}
               </span>
@@ -115,8 +119,27 @@ export function SocialMediaPanel({ token }: { token: string }) {
 
       <p className="mt-5 flex items-start gap-2 text-xs text-gray-400">
         <Database className="mt-0.5 h-3 w-3 shrink-0" aria-hidden />
-        {brain.data.controlPackNote}
+        {brain.data.authorityNote}
       </p>
+
+      {brain.data.unreconciled.length > 0 && (
+        <section className="mt-6 rounded-lg border border-amber-200 bg-amber-50/60 p-4">
+          <h4 className="text-sm font-semibold text-amber-900">
+            Where the Control Pack and her brief do not agree
+          </h4>
+          <p className="mt-1 text-xs text-amber-800">
+            Two controlled records, two lists. Reconciling them is a records decision, not something this page settles.
+          </p>
+          <ul className="mt-2 space-y-1.5">
+            {brain.data.unreconciled.map((u: Unreconciled) => (
+              <li key={u.brief + u.pack} className="text-xs text-amber-900">
+                <span className="font-medium">{u.brief}</span> vs <span className="font-medium">{u.pack}</span>
+                <span className="text-amber-800"> — {u.note}</span>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
 
       <section className="mt-8 border-t border-wsa-navy/10 pt-6">
         <h3 className="mb-1 text-lg font-semibold text-wsa-navy">Not hers to answer</h3>
