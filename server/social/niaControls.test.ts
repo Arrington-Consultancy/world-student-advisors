@@ -11,6 +11,7 @@ import {
   alexAuthorisesRelease,
   NIA_PAID_BOUNDARY,
   NO_VERIFIED_PAID_EVIDENCE,
+  INTERFACE_RECORD,
 } from "./paidEvidence";
 import { PLATFORM_IMPORT_POSITIONS, HISTORICAL_MEMORY_POSITION, PROHIBITED_BACKFILL } from "./historicalImport";
 import { ACCOUNT_ADMINISTRATION_MAP, VERIFIED_POSITION, DECISION_FOR_TOM } from "./accountAdministration";
@@ -127,6 +128,18 @@ describe("Nia may reference Alex's paid evidence but cannot mutate it", () => {
     }
   });
 
+  it("approving the interface does not open Alex's gate", () => {
+    // The distinction the approval turns on: it approves the boundary,
+    // not the data. Alex is still not approved, so nothing is released,
+    // and an approved interface must never be read as an approved worker.
+    expect(INTERFACE_RECORD.status).toBe("APPROVED");
+    expect(alexAuthorisesRelease()).toBe(false);
+    expect(INTERFACE_RECORD.whatApprovalDoesNotDo).toContain("does not approve Alex");
+    expect(INTERFACE_RECORD.whatApprovalDoesNotDo).toContain("AB-A01");
+    const r = referencePaidEvidenceForContent({ profile: profile(), contentId: "C-101" });
+    expect(r.available).toBe(false);
+  });
+
   it("keeps Alex the owner of paid-media measurement", () => {
     expect(NIA_PAID_BOUNDARY.owner).toContain("Alex");
     expect(NIA_PAID_BOUNDARY.mayNot).toContain("Become the source of truth for paid performance");
@@ -215,7 +228,9 @@ describe("account administration is not inferred", () => {
       expect(a.humanAdministrators).toBeNull();
       expect(a.recoveryDependencies).toBeNull();
       expect(a.managementModel).toBe("unknown");
-      expect(a.sufficientForNia).toBeNull();
+      expect(a.sufficientOrganisationalControl).toBeNull();
+      expect(a.canGrantOrRevokeAccess).toBeNull();
+      expect(a.continuityRiskIfIndividualLeaves).toBeNull();
       expect(a.unverified.length).toBeGreaterThan(0);
     }
   });
@@ -233,7 +248,7 @@ describe("account administration is not inferred", () => {
   });
 
   it("puts one decision to a person, and records that nothing was changed", () => {
-    expect(DECISION_FOR_TOM.decision).toContain("administers");
+    expect(DECISION_FOR_TOM.decision).toContain("business manager");
     expect(DECISION_FOR_TOM.recommendedMinimumChange).toContain("Do not change");
     expect(DECISION_FOR_TOM.changedByThisInspection).toContain("Nothing");
   });

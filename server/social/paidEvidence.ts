@@ -101,6 +101,17 @@ export function alexAuthorisesRelease(): boolean {
  */
 const RELEASABLE_EVIDENCE: readonly PaidEvidenceReference[] = Object.freeze([]);
 
+export const INTERFACE_RECORD = Object.freeze({
+  document: "WSA_Nia_Alex_Paid_Evidence_Interface_v1.0_APPROVED.docx",
+  status: "APPROVED",
+  approvedBy: "Tom Arrington",
+  approvedOn: "31 August 2026",
+  supersedes: "WSA_Nia_Alex_Paid_Evidence_Interface_v0.1_WORKING_DRAFT.docx, preserved unchanged.",
+  whatApprovalDoesNotDo:
+    "It does not activate data access Alex does not currently possess, does not approve Alex, and does not resolve " +
+    "AB-A01 to AB-A12. It approves the boundary between the two workers, not the flow of any figure across it.",
+});
+
 export const NO_VERIFIED_PAID_EVIDENCE =
   "No verified paid-performance evidence exists in any controlled record. Alex v0.2 lists current live campaign " +
   "status, budgets and spend, conversion actions and end-to-end attribution as unverified from controlled evidence, " +
