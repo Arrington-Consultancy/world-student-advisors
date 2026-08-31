@@ -161,8 +161,8 @@ const REGISTRY_LIST: WorkerRegistryEntry[] = [
     specificationStatus: "not_approved",
     staffPortalExecutionStatus: "prohibited",
     currentNextControl:
-      "Independent Gatekeeper review plus a consolidated approval decision; the triage-QC entry proposal remains open and non-operative.",
-    materialBlockers: ["Independent Gatekeeper review pending", "Triage-QC entry decision open"],
+      "Independent Gatekeeper review passed (29 August 2026). Awaiting Tom Arrington's consolidated approval decision; the triage-QC entry proposal remains open and non-operative.",
+    materialBlockers: ["Tom Arrington's consolidated approval decision pending", "Triage-QC entry decision open"],
     personality: {
       summary: "Curious, patient and organised. Asks useful questions without interrogating the student.",
       whatFor: "Structured discovery of a student's academic position, goals and circumstances.",
@@ -200,8 +200,8 @@ const REGISTRY_LIST: WorkerRegistryEntry[] = [
     specificationStatus: "not_approved",
     staffPortalExecutionStatus: "prohibited",
     currentNextControl:
-      "Independent Gatekeeper review plus a consolidated approval decision; education-option/research-governance definition remains open.",
-    materialBlockers: ["Independent Gatekeeper review pending", "Education-option/research governance open"],
+      "Independent Gatekeeper review passed (29 August 2026). Awaiting Tom Arrington's consolidated approval decision; education-option/research-governance definition remains open.",
+    materialBlockers: ["Tom Arrington's consolidated approval decision pending", "Education-option/research governance open"],
     personality: {
       summary: "Meticulous, neutral researcher. Quietly sceptical of weak or stale evidence.",
       whatFor: "Locating and structuring authoritative education research evidence.",
@@ -248,8 +248,9 @@ const REGISTRY_LIST: WorkerRegistryEntry[] = [
     specificationVersion: "v0.2",
     specificationStatus: "not_approved",
     staffPortalExecutionStatus: "prohibited",
-    currentNextControl: "Independent Gatekeeper review plus a consolidated approval decision; suitability governance remains open.",
-    materialBlockers: ["Independent Gatekeeper review pending", "Suitability governance open"],
+    currentNextControl:
+      "Independent Gatekeeper review passed (29 August 2026). Awaiting Tom Arrington's consolidated approval decision; suitability governance remains open.",
+    materialBlockers: ["Tom Arrington's consolidated approval decision pending", "Suitability governance open"],
     personality: {
       summary: "Balanced, analytical and plain-spoken. Explains trade-offs rather than selling a winner.",
       whatFor: "Weighing suitability trade-offs across researched options before a student decides.",
@@ -287,8 +288,8 @@ const REGISTRY_LIST: WorkerRegistryEntry[] = [
     specificationStatus: "not_approved",
     staffPortalExecutionStatus: "prohibited",
     currentNextControl:
-      "Ready for Tom Arrington's design approval after Independent Gatekeeper review (formal test 30/30 pass). Live submissions remain deployment-gated regardless.",
-    materialBlockers: ["Independent Gatekeeper review pending", "Tom Arrington design approval pending", "Live submissions deployment-gated"],
+      "Independent Gatekeeper review passed (29 August 2026) and formal test 30/30 pass. Ready for Tom Arrington's design approval. Live submissions remain deployment-gated regardless.",
+    materialBlockers: ["Tom Arrington design approval pending", "Live submissions deployment-gated"],
     personality: {
       summary: "Precise, dependable admissions operator. Formal with institutions, clear with staff and students.",
       whatFor: "Application completeness and admissions requirements tracking.",
@@ -361,11 +362,22 @@ const REGISTRY_LIST: WorkerRegistryEntry[] = [
         id: "rules_explanation",
         name: "Explain confirmed official immigration rules",
         description:
-          "Evidence-based explanation of published official rules, with source and date, and an explicit stop where the position is uncertain.",
+          "Evidence-based explanation of published official rules, with source and date, and an explicit stop where the position is uncertain. Information about the published position, never advice on a person's circumstances.",
         worksWithoutConnector: true,
         requiresConnector: null,
+        // This is the bounded capability worth proposing, and it is still
+        // blocked, for a reason that is not the connector.
+        //
+        // Explaining a published rule is plausibly information rather
+        // than regulated advice, but that line is a legal determination
+        // and AB-P01 is exactly the decision that has not been made. More
+        // immediately, AB-P03 the Knowledge and Evidence Standard is
+        // unapproved, so there is no controlled basis for which source
+        // counts as authoritative or how current it must be. A worker
+        // stating "the rule is X" without that standard is the specific
+        // risk Priya's approval block exists to prevent.
         unavailableBecause:
-          null,
+          "AB-P03 Knowledge and Evidence Standard is unapproved, so no controlled basis exists for which immigration source is authoritative. AB-P01 must also determine whether rule explanation falls outside regulated advice. Both are human decisions.",
       },
       {
         id: "regulated_advice",
@@ -475,8 +487,8 @@ const REGISTRY_LIST: WorkerRegistryEntry[] = [
     specificationStatus: "not_approved",
     staffPortalExecutionStatus: "prohibited",
     currentNextControl:
-      "Governance resolved and narrow regression passed; Independent Gatekeeper/approval and live deployment gates remain. Not authorised for live identifiable student deployment.",
-    materialBlockers: ["Independent Gatekeeper/approval pending", "Live deployment gates pending"],
+      "Governance resolved, narrow regression passed and independent Gatekeeper review passed (29 August 2026). Tom Arrington's approval and the live deployment gates remain. Not authorised for live identifiable student deployment.",
+    materialBlockers: ["Tom Arrington's approval pending", "Live deployment gates pending"],
     personality: {
       summary: "Independent, exacting and fair. Finds defects without trying to become the case owner.",
       whatFor: "Independent audit of case work for defects, contradictions and missing evidence, once approved.",
@@ -805,5 +817,17 @@ export function listWorkers(): WorkerRegistryEntry[] {
 }
 
 /** The estate-wide control recorded in the Worker Register as of v0.39 — not a per-worker blocker, so it lives here rather than on any one entry. */
+/**
+ * Worker Register v0.42 recorded the next estate-level control as the
+ * independent Governance & Assurance review. That was true when written
+ * and was overtaken on 29 August 2026, when
+ * WSA_Governance_Assurance_Gatekeeper_Review_Result_v1.0 returned AMBER
+ * with no system-wide STOP and "CONSOLIDATED APPROVAL PACKET: MAY PROCEED
+ * TO TOM", having inspected twelve worker documents by name.
+ *
+ * The estate is not waiting on assurance. It is waiting on the approval
+ * authority. Register v0.43 carries this correction; no worker's approval
+ * status changes because of it.
+ */
 export const ESTATE_LEVEL_NEXT_CONTROL =
-  "The worker estate has reached design-level testing. Next control: independent Governance & Assurance review. No additional WSA Core Brain self-approval is permitted.";
+  "Independent Governance & Assurance Gatekeeper review passed on 29 August 2026 (AMBER, no system-wide STOP, consolidated approval packet may proceed to Tom). Next control: Tom Arrington's consolidated approval decision. No additional WSA Core Brain self-approval is permitted.";
