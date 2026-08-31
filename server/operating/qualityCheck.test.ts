@@ -5,7 +5,7 @@
  * and §6 on guaranteed outcomes.
  */
 import { describe, it, expect } from "vitest";
-import { runQualityCheck, acceptHumanisation, findSubstanceChanges, type QualityCheckInput } from "./qualityCheck";
+import { runQualityCheck, acceptHumanisation, findSubstanceChanges, type QualityCheckInput, FINDING_GUIDANCE } from "./qualityCheck";
 
 function input(overrides: Partial<QualityCheckInput> = {}): QualityCheckInput {
   return {
@@ -265,5 +265,72 @@ describe("double hyphen means prose punctuation", () => {
     expect(check('className="w-(--sidebar-width) bg-(--color-bg)"')).toEqual([]);
     expect(check('style={{ "--normal-bg": "var(--popover)" }}')).toEqual([]);
     expect(check("Run npm test --coverage to check.")).toEqual([]);
+  });
+});
+
+/**
+ * A finding that says only what is wrong makes the reader guess at the
+ * fix. These assert the useful half stays attached.
+ */
+describe("every finding carries its rule, its remedy and the offending text", () => {
+  const check = (text: string) =>
+    runQualityCheck({
+      text,
+      permissionChecked: true,
+      hasUnresolvedDisagreement: false,
+      disagreementVisibleInText: false,
+      workerBoundaryBreaches: [],
+      evidenceInsufficient: false,
+    });
+
+  it("names a controlled rule and a remedy on every finding", () => {
+    const result = check(
+      "Our bespoke solutions unlock seamless growth — it is not just a service, it is a journey.",
+    );
+    expect(result.findings.length).toBeGreaterThan(0);
+    for (const f of result.findings) {
+      expect(f.rule.length, `${f.code} has no rule`).toBeGreaterThan(10);
+      expect(f.remedy.length, `${f.code} has no remedy`).toBeGreaterThan(10);
+    }
+  });
+
+  it("quotes the offending text for an em dash rather than just naming it", () => {
+    const result = check("Growth — the real kind — takes time.");
+    const emDash = result.findings.find(f => f.code === "em_dash")!;
+    expect(emDash.excerpt).toContain("Growth");
+    expect(emDash.remedy).toMatch(/comma|full stop|brackets/i);
+    expect(emDash.rule).toMatch(/Global Writing Standard/);
+  });
+
+  it("quotes the offending phrase for corporate filler", () => {
+    const result = check("We will leverage our network to deliver value.");
+    const filler = result.findings.find(f => f.code === "corporate_ai_language")!;
+    expect(filler.excerpt).toContain("leverage");
+  });
+
+  it("gives no excerpt where the finding is about the whole piece", () => {
+    const result = check("- one\n- two\n- three\n- four\n- five");
+    const spam = result.findings.find(f => f.code === "bullet_spam");
+    expect(spam?.excerpt).toBeNull();
+  });
+
+  /**
+   * GUARANTEE_WORD is a duck-typed matcher carrying only .test, because
+   * deciding whether a guarantee is negated needs more than a pattern.
+   * Asking it for a location used to throw.
+   */
+  it("survives a matcher that is not a real regular expression", () => {
+    const result = check("We guarantee your visa will be approved.");
+    const guarantee = result.findings.find(f => f.code === "guarantee_language")!;
+    expect(guarantee.severity).toBe("blocking");
+    expect(guarantee.excerpt).toBeNull();
+    expect(guarantee.remedy).toMatch(/Remove the promise/);
+  });
+
+  it("every finding code has guidance, so none can ship without a remedy", () => {
+    for (const [code, guidance] of Object.entries(FINDING_GUIDANCE)) {
+      expect(guidance.rule.length, `${code} rule`).toBeGreaterThan(10);
+      expect(guidance.remedy.length, `${code} remedy`).toBeGreaterThan(10);
+    }
   });
 });

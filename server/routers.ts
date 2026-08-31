@@ -1127,7 +1127,16 @@ export const appRouter = router({
         });
         return {
           passed: result.passed,
-          findings: result.findings.map(f => ({ code: f.code, severity: f.severity, detail: f.detail })),
+          findings: result.findings.map(f => ({
+            code: f.code,
+            severity: f.severity,
+            detail: f.detail,
+            // The rule and the remedy are the useful half. A finding that
+            // says only what is wrong makes the reader guess what to do.
+            rule: f.rule,
+            remedy: f.remedy,
+            excerpt: f.excerpt,
+          })),
           blockingCount: result.blocking.length,
         };
       }),
