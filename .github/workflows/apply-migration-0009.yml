@@ -1,0 +1,157 @@
+name: Apply migration 0009 (executive access audit method)
+
+# Manual-only, one-time, SEPARATELY AUTHORISED step (authorisation limited
+# to migration 0009). Mirrors the proven method of apply-migration-0008.yml:
+#   1. Discovers the MySQL service's public-URL variable NAME (key only,
+#      value never printed).
+#   2. Sets a temporary MIGRATION_DATABASE_URL reference on the app service
+#      (reference syntax only — the connection string is never read or
+#      printed).
+#   3. Re-checks, read-only, that 0009 is the ONLY pending migration, and
+#      stops rather than applying anything unexpected.
+#   4. Runs `drizzle-kit migrate` (NOT db:push/generate), applying exactly
+#      the reviewed, hand-authored 0009 SQL.
+#   5. Runs scripts/verify-0009.mjs — read-only post-verification.
+#   6. Runs the migrator a SECOND time and re-verifies, proving idempotence.
+#   7. Removes the temporary variable (always).
+#
+# 0009 differs from 0005 to 0008 in one way that deserves stating: it is
+# the first migration in this series that MODIFIES existing columns rather
+# than only creating new ones. It widens the authMethod ENUM on
+# workforce_audit_events and staff_enquiries from two values to three,
+# adding shared_executive.
+#
+# Widening an enum is backward compatible: every existing value remains
+# valid, every existing row keeps its value, and code that writes only the
+# two original values keeps working. But "backward compatible" is a claim,
+# so the guards hold it to evidence. The pre-check refuses to run if the
+# SQL contains DROP, DELETE, TRUNCATE, RENAME or CREATE TABLE, or if it is
+# not the reviewed enum widening, or if either column already accepts the
+# new value. The verification afterwards proves both original values
+# survived, both columns are still NOT NULL with no default, and no row was
+# coerced to the empty string, which is what a lossy enum change leaves
+# behind in non-strict mode.
+#
+# The migration grants nothing. It lets the audit trail record honestly
+# that a shared credential acted, rather than borrowing entra_sso and
+# implying a named person was established when none was.
+#
+# No destructive rollback exists or may be created. Narrowing the enum
+# afterwards would invalidate any row already written with the new value.
+#
+# Auth: githubactionsprod — the same production-scoped Railway Project
+# Token the other production workflows use. No credential is read, printed
+# or handled by a person at any point.
+on:
+  workflow_dispatch:
+    inputs:
+      service_name:
+        description: "Railway app service name"
+        required: true
+        default: "world-student-advisors"
+      environment_name:
+        description: "Railway environment name"
+        required: true
+        default: "production"
+      database_service_name:
+        description: "Railway MySQL service name"
+        required: true
+        default: "MySQL"
+
+jobs:
+  migrate:
+    runs-on: ubuntu-latest
+    env:
+      APP_SERVICE_NAME: ${{ github.event.inputs.service_name }}
+      APP_ENV_NAME: ${{ github.event.inputs.environment_name }}
+      DB_SERVICE_NAME: ${{ github.event.inputs.database_service_name }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Install Railway CLI
+        run: npm install -g @railway/cli
+
+      - name: Discover the MySQL service's public-URL variable NAME (key only, value never printed)
+        id: discover
+        env:
+          RAILWAY_TOKEN: ${{ secrets.githubactionsprod }}
+        run: |
+          KEYS=$(railway variables --service "$DB_SERVICE_NAME" --environment "$APP_ENV_NAME" --json | jq -r 'keys[]')
+          PUBLIC_KEY=$(echo "$KEYS" | grep -i -E '^(MYSQL_PUBLIC_URL|DATABASE_PUBLIC_URL)$' | head -n1)
+          if [ -z "$PUBLIC_KEY" ]; then
+            echo "No public-URL-shaped variable found on $DB_SERVICE_NAME. Stopping — not guessing further."
+            exit 1
+          fi
+          echo "Using public URL variable: $PUBLIC_KEY"
+          echo "public_key=$PUBLIC_KEY" >> "$GITHUB_OUTPUT"
+
+      - name: Set a temporary public-reachable migration URL on the app service
+        env:
+          RAILWAY_TOKEN: ${{ secrets.githubactionsprod }}
+          PUBLIC_KEY: ${{ steps.discover.outputs.public_key }}
+        run: |
+          REF=$(printf '\044{{%s.%s}}' "$DB_SERVICE_NAME" "$PUBLIC_KEY")
+          railway variables \
+            --service "$APP_SERVICE_NAME" \
+            --environment "$APP_ENV_NAME" \
+            --set "MIGRATION_DATABASE_URL=${REF}"
+
+      - name: Confirm 0009 is the only pending migration (read-only; stops rather than guessing)
+        timeout-minutes: 10
+        env:
+          RAILWAY_TOKEN: ${{ secrets.githubactionsprod }}
+        run: |
+          railway run --service "$APP_SERVICE_NAME" --environment "$APP_ENV_NAME" -- \
+            sh -c 'DATABASE_URL="$MIGRATION_DATABASE_URL" node scripts/precheck-0009.mjs'
+
+      - name: Apply migration 0009 (drizzle-kit migrate)
+        timeout-minutes: 10
+        env:
+          RAILWAY_TOKEN: ${{ secrets.githubactionsprod }}
+        run: |
+          railway run --service "$APP_SERVICE_NAME" --environment "$APP_ENV_NAME" -- \
+            sh -c 'DATABASE_URL="$MIGRATION_DATABASE_URL" pnpm exec drizzle-kit migrate'
+
+      - name: Read-only post-migration verification
+        timeout-minutes: 10
+        env:
+          RAILWAY_TOKEN: ${{ secrets.githubactionsprod }}
+        run: |
+          railway run --service "$APP_SERVICE_NAME" --environment "$APP_ENV_NAME" -- \
+            sh -c 'DATABASE_URL="$MIGRATION_DATABASE_URL" node scripts/verify-0009.mjs'
+
+      - name: Re-run the migrator to prove it is idempotent (applies nothing the second time)
+        timeout-minutes: 10
+        env:
+          RAILWAY_TOKEN: ${{ secrets.githubactionsprod }}
+        run: |
+          railway run --service "$APP_SERVICE_NAME" --environment "$APP_ENV_NAME" -- \
+            sh -c 'DATABASE_URL="$MIGRATION_DATABASE_URL" pnpm exec drizzle-kit migrate'
+
+      - name: Verify again — the second migrate run changed nothing
+        timeout-minutes: 10
+        env:
+          RAILWAY_TOKEN: ${{ secrets.githubactionsprod }}
+        run: |
+          railway run --service "$APP_SERVICE_NAME" --environment "$APP_ENV_NAME" -- \
+            sh -c 'DATABASE_URL="$MIGRATION_DATABASE_URL" node scripts/verify-0009.mjs'
+
+      - name: Remove the temporary migration URL variable
+        if: always()
+        env:
+          RAILWAY_TOKEN: ${{ secrets.githubactionsprod }}
+        run: |
+          railway variables \
+            --service "$APP_SERVICE_NAME" \
+            --environment "$APP_ENV_NAME" \
+            --set "MIGRATION_DATABASE_URL="

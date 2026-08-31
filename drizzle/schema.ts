@@ -222,7 +222,7 @@ export const workforceAuditEvents = mysqlTable("workforce_audit_events", {
   id: int("id").autoincrement().primaryKey(),
   /** Null for a shared-password session — never a guessed or default staff identity. */
   staffUserId: int("staffUserId"),
-  authMethod: mysqlEnum("authMethod", ["entra_sso", "shared_executive", "shared_password"]).notNull(),
+  authMethod: mysqlEnum("authMethod", ["entra_sso", "shared_password", "shared_executive"]).notNull(),
   workerId: varchar("workerId", { length: 40 }).notNull(),
   workerSpecificationVersion: varchar("workerSpecificationVersion", { length: 60 }).notNull(),
   caseId: varchar("caseId", { length: 60 }),
@@ -394,7 +394,7 @@ export const staffEnquiries = mysqlTable("staff_enquiries", {
   id: int("id").autoincrement().primaryKey(),
   /** Null for a shared-password session, which carries no individual identity — never a guessed staff identity. */
   staffUserId: int("staffUserId"),
-  authMethod: mysqlEnum("authMethod", ["entra_sso", "shared_executive", "shared_password"]).notNull(),
+  authMethod: mysqlEnum("authMethod", ["entra_sso", "shared_password", "shared_executive"]).notNull(),
   /** Present only where the enquiry genuinely concerns a case; null for general questions. */
   caseId: varchar("caseId", { length: 60 }),
   /** Controlled, minimised statement of what was asked. Never the verbatim prompt. */
