@@ -98,9 +98,21 @@ try {
   // 4. Named Entra identity is untouched by any of this.
   console.log("\n=== Named Microsoft identity is unaffected ===");
   const [staff] = await db.execute(sql`
-    SELECT COUNT(*) AS total, SUM(CASE WHEN status = 'active' THEN 1 ELSE 0 END) AS active FROM staff_users
+    SELECT
+      COUNT(*) AS total,
+      SUM(isActive) AS active,
+      SUM(CASE WHEN entraObjectId IS NULL OR entraObjectId = '' THEN 1 ELSE 0 END) AS without_entra
+    FROM staff_users
   `);
   console.log(`  staff_users: ${staff[0].total} total, ${staff[0].active} active`);
+  if (Number(staff[0].total) > 0) pass("named staff records still exist");
+  else fail("no staff records exist, so Entra sign-in could not resolve anyone");
+  // Every staff row is anchored to a Microsoft object id. That anchor is
+  // what makes named sign-in work at all, so its absence would mean this
+  // deployment had disturbed the individual-identity route.
+  if (Number(staff[0].without_entra) === 0) pass("every staff record still carries its Microsoft object id");
+  else fail(`${staff[0].without_entra} staff record(s) lost their Microsoft object id`);
+
   const [live] = await db.execute(sql`SELECT COUNT(*) AS n FROM staff_access_grants WHERE revokedAt IS NULL`);
   console.log(`  live access grants: ${live[0].n}`);
   pass("named staff records and their grants are unchanged by this deployment");
