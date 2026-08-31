@@ -48,7 +48,7 @@ function refuse(connector: ConnectorName): () => Promise<{ success: boolean; mes
     // runConnectorAction only calls attempt() in that state. A loud
     // failure rather than a stub that could one day return a plausible
     // success for a post that was never made.
-    throw new Error(`${connector} connector has no implemented action yet — no authorised integration exists.`);
+    throw new Error(`${connector} connector has no implemented action yet. No authorised integration exists.`);
   };
 }
 

@@ -39,7 +39,7 @@ export function isDriveFolderAuthorised(folderId: string): boolean {
 }
 
 async function driveAttempt(): Promise<{ success: boolean; message: string }> {
-  throw new Error("Google Drive connector has no implemented action yet — configuration is not proven operational.");
+  throw new Error("Google Drive connector has no implemented action yet. Its configuration is not proven operational.");
 }
 
 export function getGoogleDriveStatus(): ConnectorState {

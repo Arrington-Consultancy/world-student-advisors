@@ -42,7 +42,7 @@ async function sharePointAttempt(): Promise<{ success: boolean; message: string 
   // this function at all would mean getSharePointConnectorState() wrongly
   // reported "operational" — runConnectorAction never calls attempt()
   // unless state is operational, so this is a safety net, not a live path.
-  throw new Error("SharePoint connector has no implemented action yet — configuration is not proven operational.");
+  throw new Error("SharePoint connector has no implemented action yet. Its configuration is not proven operational.");
 }
 
 export function getSharePointStatus(): ConnectorState {

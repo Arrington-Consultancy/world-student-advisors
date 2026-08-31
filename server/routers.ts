@@ -353,12 +353,12 @@ export const appRouter = router({
               `Still Dependent on Approval: ${effectiveInput.mixedFundingRemaining}`,
             ] : []),
             effectiveInput.referredToWSA === "yes"
-              ? `Referred to WSA: Yes — ${effectiveInput.referredByWhom || "—"}`
+              ? `Referred to WSA: Yes, by ${effectiveInput.referredByWhom || "not given"}`
               : effectiveInput.referredToWSA
                 ? `Referred to WSA: ${effectiveInput.referredToWSA}`
                 : "",
             `Recommended Counsellor: ${result.recommendedCounsellorLabel}`,
-            result.reusedExistingPerson ? `\n(Matched an existing Pipedrive Person by email/phone — updated rather than duplicated.)` : "",
+            result.reusedExistingPerson ? `\n(Matched an existing Pipedrive Person by email or phone, so it was updated rather than duplicated.)` : "",
             ``,
             `Pipedrive Lead ID: ${result.leadId}`,
           ].filter(Boolean).join("\n"),
@@ -921,7 +921,7 @@ export const appRouter = router({
               `Interview Type: ${TYPE_LABELS[input.interviewType]}`,
               input.courseOrSubject ? `Course/Subject: ${input.courseOrSubject}` : "",
               `Average Score: ${summary.averageScore}%`,
-              `Result: ${summary.passed ? "PASSED — ready for live mock interview" : "Below pass mark (85%)"}`,
+              `Result: ${summary.passed ? "PASSED, ready for live mock interview" : "Below pass mark (85%)"}`,
               ``,
               `Per-question scores:`,
               ...input.results.map((r, i) => `${i + 1}. [${r.score}%] ${r.question}`),

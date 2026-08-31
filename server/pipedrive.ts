@@ -328,14 +328,14 @@ function extractMonth(value: string): string {
  */
 function buildFundingSourceSummary(data: StudentFormData): string | undefined {
   if (data.educationFunding === "sponsor") {
-    return `Sponsor: ${data.sponsorName || "—"} (${data.sponsorStatus || "status not given"})`;
+    return `Sponsor: ${data.sponsorName || "Not given"} (${data.sponsorStatus || "status not given"})`;
   }
   if (data.educationFunding === "scholarship") {
     const coverage = data.scholarshipCoverage ? `, covers: ${data.scholarshipCoverage}` : "";
-    return `Scholarship: ${data.scholarshipName || "—"} (${data.scholarshipStatus || "status not given"})${coverage}`;
+    return `Scholarship: ${data.scholarshipName || "Not given"} (${data.scholarshipStatus || "status not given"})${coverage}`;
   }
   if (data.educationFunding === "mixed") {
-    return `Mixed: ${data.mixedFundingSources || "—"}; confirmed: ${data.mixedFundingConfirmedAmount || "—"}; remaining: ${data.mixedFundingRemaining || "—"}`;
+    return `Mixed: ${data.mixedFundingSources || "Not given"}; confirmed: ${data.mixedFundingConfirmedAmount || "Not given"}; remaining: ${data.mixedFundingRemaining || "Not given"}`;
   }
   return undefined;
 }
@@ -358,7 +358,7 @@ function buildPersonPayload(data: StudentFormData): Record<string, unknown> {
     [PF.preferredDestination]: DESTINATION_MAP[data.preferredDestination] || undefined,
     [PF.educationFunding]: FUNDING_MAP[data.educationFunding] || undefined,
     [PF.fundingSource]: buildFundingSourceSummary(data),
-    [PF.referredBy]: data.referredToWSA === "yes" && data.referredByWhom ? `yes — ${data.referredByWhom}` : (data.referredToWSA || undefined),
+    [PF.referredBy]: data.referredToWSA === "yes" && data.referredByWhom ? `yes, ${data.referredByWhom}` : (data.referredToWSA || undefined),
     [PF.recommendedCounsellor]: COUNSELLOR_MAP[data.recommendedCounsellor] ?? COUNSELLOR_MAP["help-me-choose"],
     [PF.gdprConsent]: data.gdprConsent ? 105 : 106,
     [PF.gclid]: data.gclid || undefined,
@@ -377,36 +377,36 @@ function buildNote(data: StudentFormData): string {
   const lines = [
     `## Student Sign-up Summary`,
     `**Full Name:** ${data.firstName}${data.middleName ? " " + data.middleName : ""} ${data.lastName}`,
-    `**Date of Birth:** ${data.dateOfBirth || "—"}`,
+    `**Date of Birth:** ${data.dateOfBirth || "Not given"}`,
     `**Email:** ${data.email}`,
-    `**Phone:** ${data.phone || "—"}`,
-    `**Gender:** ${data.gender || "—"}`,
-    `**Passport Number:** ${data.passportNumber || "—"}`,
-    `**Nationality:** ${data.nationality || "—"}`,
-    `**Country of Residence:** ${data.country || "—"}`,
-    `**Highest Qualification:** ${data.highestQualification || "—"}`,
-    `**Desired Level of Study:** ${levelLabels[data.desiredLevel] || data.desiredLevel || "—"}`,
-    `**Area of Interest:** ${data.areaOfStudy || "—"}`,
-    `**Preferred Mode:** ${data.preferredMode || "—"}`,
-    `**Preferred Start Month:** ${data.preferredStartMonth || "—"}`,
-    `**Preferred Destination:** ${destinationLabels[data.preferredDestination] || data.preferredDestination || "—"}`,
-    `**Education Funding:** ${data.educationFunding || "—"}`,
+    `**Phone:** ${data.phone || "Not given"}`,
+    `**Gender:** ${data.gender || "Not given"}`,
+    `**Passport Number:** ${data.passportNumber || "Not given"}`,
+    `**Nationality:** ${data.nationality || "Not given"}`,
+    `**Country of Residence:** ${data.country || "Not given"}`,
+    `**Highest Qualification:** ${data.highestQualification || "Not given"}`,
+    `**Desired Level of Study:** ${levelLabels[data.desiredLevel] || data.desiredLevel || "Not given"}`,
+    `**Area of Interest:** ${data.areaOfStudy || "Not given"}`,
+    `**Preferred Mode:** ${data.preferredMode || "Not given"}`,
+    `**Preferred Start Month:** ${data.preferredStartMonth || "Not given"}`,
+    `**Preferred Destination:** ${destinationLabels[data.preferredDestination] || data.preferredDestination || "Not given"}`,
+    `**Education Funding:** ${data.educationFunding || "Not given"}`,
     ...(data.educationFunding === "sponsor" ? [
-      `**Sponsor Name:** ${data.sponsorName || "—"}`,
-      `**Funding Status:** ${data.sponsorStatus || "—"}`,
+      `**Sponsor Name:** ${data.sponsorName || "Not given"}`,
+      `**Funding Status:** ${data.sponsorStatus || "Not given"}`,
     ] : []),
     ...(data.educationFunding === "scholarship" ? [
-      `**Scholarship Name:** ${data.scholarshipName || "—"}`,
-      `**Scholarship Status:** ${data.scholarshipStatus || "—"}`,
-      `**Covers:** ${data.scholarshipCoverage || "—"}`,
+      `**Scholarship Name:** ${data.scholarshipName || "Not given"}`,
+      `**Scholarship Status:** ${data.scholarshipStatus || "Not given"}`,
+      `**Covers:** ${data.scholarshipCoverage || "Not given"}`,
     ] : []),
     ...(data.educationFunding === "mixed" ? [
-      `**Funding Sources:** ${data.mixedFundingSources || "—"}`,
-      `**Already Confirmed:** ${data.mixedFundingConfirmedAmount || "—"}`,
-      `**Still Dependent on Approval:** ${data.mixedFundingRemaining || "—"}`,
+      `**Funding Sources:** ${data.mixedFundingSources || "Not given"}`,
+      `**Already Confirmed:** ${data.mixedFundingConfirmedAmount || "Not given"}`,
+      `**Still Dependent on Approval:** ${data.mixedFundingRemaining || "Not given"}`,
     ] : []),
-    `**Referred to WSA:** ${data.referredToWSA === "yes" ? "Yes" : data.referredToWSA === "no" ? "No" : "—"}`,
-    `**Referrer Name:** ${data.referredToWSA === "yes" && data.referredByWhom ? data.referredByWhom : "—"}`,
+    `**Referred to WSA:** ${data.referredToWSA === "yes" ? "Yes" : data.referredToWSA === "no" ? "No" : "Not given"}`,
+    `**Referrer Name:** ${data.referredToWSA === "yes" && data.referredByWhom ? data.referredByWhom : "Not given"}`,
     `**Recommended Student Counsellor:** ${data.recommendedCounsellor || "Help me choose"}`,
     `**GDPR Consent:** ${data.gdprConsent ? "Yes" : "No"}`,
     ...(data.gclid ? [`**Google Click ID (gclid):** ${data.gclid}`] : []),

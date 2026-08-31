@@ -54,7 +54,7 @@ async function pipedriveAttempt(): Promise<{ success: boolean; message: string }
   // "operational" — runConnectorAction only calls attempt() in that state.
   // Kept as a safety net that fails loudly rather than a stub that might
   // one day return a plausible-looking success.
-  throw new Error("Pipedrive connector has no implemented action yet — configuration is not proven operational.");
+  throw new Error("Pipedrive connector has no implemented action yet. Its configuration is not proven operational.");
 }
 
 export function getPipedriveStatus(): ConnectorState {

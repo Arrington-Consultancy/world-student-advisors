@@ -143,7 +143,7 @@ export function registerGoogleAuthRoutes(app: Express) {
     const cookies = parseCookies(req.headers.cookie);
     const cookieNonce = cookies[STATE_COOKIE];
     if (!cookieNonce || cookieNonce !== decoded.nonce) {
-      res.status(403).send("OAuth state mismatch — possible CSRF.");
+      res.status(403).send("OAuth state mismatch. Possible CSRF.");
       return;
     }
 

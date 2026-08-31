@@ -90,7 +90,7 @@ function pipedriveScope(resourceId: string): ScopeDecision {
     withinWsaScope: false,
     reason:
       `"${entity}" is not a student-journey entity. A worker's CRM scope covers ` +
-      `${PIPEDRIVE_STUDENT_ENTITIES.join(", ")} and nothing else — not users, not account settings, not billing.`,
+      `${PIPEDRIVE_STUDENT_ENTITIES.join(", ")} and nothing else. Not users, not account settings, not billing.`,
   };
 }
 
