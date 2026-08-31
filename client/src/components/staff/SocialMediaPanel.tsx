@@ -117,6 +117,26 @@ export function SocialMediaPanel({ token }: { token: string }) {
         ))}
       </div>
 
+      <section className="mt-6 rounded-lg border border-wsa-navy/10 bg-white p-4">
+        <div className="mb-1 flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
+          <h4 className="font-semibold text-wsa-navy">
+            <span className="mr-1.5 text-xs font-normal text-gray-400">{brain.data.hookFormatLibrary.section}</span>
+            {brain.data.hookFormatLibrary.name}
+          </h4>
+          <span className="shrink-0 text-xs text-gray-400">nothing recorded</span>
+        </div>
+        <p className="text-sm text-gray-600">{brain.data.hookFormatLibrary.holds}</p>
+        <p className="mt-2 text-xs text-gray-500">{brain.data.hookFormatLibrary.emptyReason}</p>
+      </section>
+
+      <section className="mt-6 rounded-lg border border-wsa-navy/10 bg-gray-50 p-4">
+        <h4 className="font-semibold text-wsa-navy">The social accounts</h4>
+        <p className="mt-1 text-sm text-gray-600">{brain.data.accounts.statement}</p>
+        <p className="mt-2 text-xs text-gray-500">
+          <span className="font-medium">Open decision:</span> {brain.data.accounts.openDecision}
+        </p>
+      </section>
+
       <p className="mt-5 flex items-start gap-2 text-xs text-gray-400">
         <Database className="mt-0.5 h-3 w-3 shrink-0" aria-hidden />
         {brain.data.authorityNote}
@@ -143,6 +163,11 @@ export function SocialMediaPanel({ token }: { token: string }) {
 
       <section className="mt-8 border-t border-wsa-navy/10 pt-6">
         <h3 className="mb-1 text-lg font-semibold text-wsa-navy">Not hers to answer</h3>
+        <p className="mb-2 text-xs text-gray-500">
+          <span className="font-medium">On paid:</span> {brain.data.paidBoundary.mayRecord} She may reference{" "}
+          {brain.data.paidBoundary.owner}'s evidence where permissions allow, and never becomes the source of truth
+          for it.
+        </p>
         <p className="mb-3 text-sm text-gray-600">
           Ask her these and she will point you at the right person rather than guess.
         </p>
