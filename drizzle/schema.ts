@@ -477,3 +477,38 @@ export const staffEnquiryContributions = mysqlTable("staff_enquiry_contributions
 
 export type StaffEnquiryContribution = typeof staffEnquiryContributions.$inferSelect;
 export type InsertStaffEnquiryContribution = typeof staffEnquiryContributions.$inferInsert;
+
+/**
+ * One turn of a conversation between a staff member and one worker.
+ *
+ * The transcript lives here rather than in the browser on purpose. Posting
+ * the history back from the client would mean the server accepting, as
+ * fact, a claim about what a worker previously said, and a forged prior
+ * answer is an excellent way to steer a worker somewhere its brief does
+ * not allow. The client holds an opaque conversationId; the server rebuilds
+ * the conversation from turns it wrote itself.
+ *
+ * Only answered exchanges are written. A refused or withheld answer never
+ * becomes history, so blocked text cannot re-enter the next prompt as
+ * something the worker already said.
+ */
+export const workerConversationTurns = mysqlTable("worker_conversation_turns", {
+  id: int("id").autoincrement().primaryKey(),
+  /** Server-issued and opaque. The only part of this the client ever sees. */
+  conversationId: varchar("conversationId", { length: 64 }).notNull(),
+  /**
+   * Null only for a session with no resolved staff identity. The executive
+   * sentinel (-1) is a legitimate value: a shared credential's threads are
+   * shared by everyone holding it, which is a property of the credential
+   * rather than a defect here.
+   */
+  staffUserId: int("staffUserId"),
+  /** Checked on resume, so one worker's thread can never be read into another's context. */
+  workerId: varchar("workerId", { length: 40 }).notNull(),
+  role: mysqlEnum("role", ["staff", "worker"]).notNull(),
+  content: text("content").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type WorkerConversationTurn = typeof workerConversationTurns.$inferSelect;
+export type InsertWorkerConversationTurn = typeof workerConversationTurns.$inferInsert;
