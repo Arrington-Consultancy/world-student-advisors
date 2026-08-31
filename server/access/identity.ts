@@ -26,6 +26,7 @@
 import { and, eq, isNull, or, gt } from "drizzle-orm";
 import { getDb } from "../db";
 import { staffUsers, staffAccessGrants } from "../../drizzle/schema";
+import { EXECUTIVE_STAFF_USER_ID, EXECUTIVE_PROFILE, isExecutiveAccessConfigured } from "./executiveAccess";
 import {
   ACTION_PERMISSIONS,
   CASE_SCOPES,
@@ -264,6 +265,19 @@ export async function resolveStaffAccessProfile(staffUserId: number | null): Pro
       detail:
         "This session has no individual staff identity (shared-password sign-in), so no access assignment can be attached to it.",
     };
+  }
+
+  // Break-glass executive access resolves to a profile held in code
+  // rather than in the database. Deliberately: a row would be editable
+  // through the access screen, and a shared credential whose authority
+  // could be quietly widened by whoever holds it is worse than one whose
+  // authority is fixed and readable in executiveAccess.ts.
+  //
+  // The sentinel is negative, so a real autoincrement id can never reach
+  // this branch, and if the route is unconfigured it falls through and
+  // finds no such row, which denies.
+  if (staffUserId === EXECUTIVE_STAFF_USER_ID && isExecutiveAccessConfigured()) {
+    return { resolved: true, profile: EXECUTIVE_PROFILE, droppedGrantValues: [] };
   }
 
   const db = await getDb();

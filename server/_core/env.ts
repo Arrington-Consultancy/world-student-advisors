@@ -80,4 +80,14 @@ export const ENV = {
    * first use and cannot be replayed by changing this value later.
    */
   accessBootstrapEmail: (process.env.ACCESS_BOOTSTRAP_EMAIL ?? "").toLowerCase(),
+  /**
+   * Bcrypt hash of the break-glass executive password. Server-only: never
+   * send it to the client, log it, or include it in any response.
+   *
+   * Unset means the break-glass route does not exist. There is no default
+   * and no fallback, so a missing or mistyped variable closes the door
+   * rather than opening it. See access/executiveAccess.ts for what this
+   * grants and why it exists.
+   */
+  executivePasswordHash: process.env.EXECUTIVE_PASSWORD_HASH ?? "",
 };

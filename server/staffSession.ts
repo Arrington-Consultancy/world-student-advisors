@@ -24,9 +24,17 @@
 import { TRPCError } from "@trpc/server";
 import { verifyStaffPortalToken } from "./staffPortalAuth";
 import { verifyStaffIdentityToken, requireActiveStaffIdentity } from "./staffIdentityAuth";
+import { verifyExecutiveToken, EXECUTIVE_STAFF_USER_ID } from "./access/executiveAccess";
 
 export type StaffSession =
   | { authMethod: "entra_sso"; staffUserId: number; email: string; displayName: string }
+  /**
+   * Break-glass executive access. Carries a staffUserId so every existing
+   * gate, audit line and screen works unchanged, but it is the reserved
+   * negative sentinel rather than a person, so nothing can mistake it for
+   * one. See access/executiveAccess.ts.
+   */
+  | { authMethod: "shared_executive"; staffUserId: number; email: string; displayName: string }
   | { authMethod: "shared_password"; staffUserId: null };
 
 /**
@@ -44,6 +52,18 @@ export async function resolveStaffSession(token: string): Promise<StaffSession> 
     // deactivated staff member is rejected here even with a valid token.
     const identity = await requireActiveStaffIdentityAsTrpcError(token);
     return { authMethod: "entra_sso", ...identity };
+  }
+
+  // Break-glass executive access, checked before the legacy shared
+  // password because it is the stronger of the two shared routes and they
+  // are minted with different secrets, so neither can shadow the other.
+  if (await verifyExecutiveToken(token)) {
+    return {
+      authMethod: "shared_executive",
+      staffUserId: EXECUTIVE_STAFF_USER_ID,
+      email: "executive-access",
+      displayName: "Executive access (shared credential)",
+    };
   }
 
   const sharedPasswordValid = await verifyStaffPortalToken(token);

@@ -40,6 +40,7 @@ import {
   SENSITIVE_OVERLAY_MIN_LEVEL,
 } from "./access/accessControl";
 import { decideAssignment, CONSEQUENTIAL_ACTION_LIST } from "./access/administration";
+import { authenticateExecutive } from "./access/executiveAccess";
 import {
   listStaff,
   readCurrentAssignment,
@@ -507,6 +508,15 @@ export const appRouter = router({
         if (isStaffPortalLoginRateLimited(ctx.req.ip ?? "unknown")) {
           return { success: false as const, error: "Too many attempts. Please try again in a minute." };
         }
+        // The break-glass executive credential is tried first. Both are
+        // shared passwords, but this one grants full access while the
+        // legacy one grants none, so a password that satisfies the
+        // executive hash must never be consumed by the weaker path.
+        const executiveToken = await authenticateExecutive(input.password);
+        if (executiveToken) {
+          return { success: true as const, token: executiveToken };
+        }
+
         const token = await authenticateStaffPortal(input.password);
         if (!token) {
           return { success: false as const, error: "Incorrect password" };
@@ -569,7 +579,7 @@ export const appRouter = router({
       .input(z.object({ token: z.string() }))
       .query(async ({ input }) => {
         const session = await resolveStaffSession(input.token);
-        const staffUserId = session.authMethod === "entra_sso" ? session.staffUserId : null;
+        const staffUserId = session.authMethod === "shared_password" ? null : session.staffUserId;
         const resolution = await resolveStaffAccessProfile(staffUserId);
 
         const canAdminister =
@@ -619,7 +629,7 @@ export const appRouter = router({
       )
       .mutation(async ({ input }) => {
         const session = await resolveStaffSession(input.token);
-        const staffUserId = session.authMethod === "entra_sso" ? session.staffUserId : null;
+        const staffUserId = session.authMethod === "shared_password" ? null : session.staffUserId;
         const resolution = await resolveStaffAccessProfile(staffUserId);
 
         if (!resolution.resolved || staffUserId === null) {
@@ -695,7 +705,7 @@ export const appRouter = router({
       .input(z.object({ token: z.string() }))
       .query(async ({ input }) => {
         const session = await resolveStaffSession(input.token);
-        const staffUserId = session.authMethod === "entra_sso" ? session.staffUserId : null;
+        const staffUserId = session.authMethod === "shared_password" ? null : session.staffUserId;
         const resolution = await resolveStaffAccessProfile(staffUserId);
 
         if (!resolution.resolved) {
@@ -973,7 +983,7 @@ export const appRouter = router({
       .input(z.object({ token: z.string() }))
       .query(async ({ input }) => {
         const session = await resolveStaffSession(input.token);
-        const staffUserId = session.authMethod === "entra_sso" ? session.staffUserId : null;
+        const staffUserId = session.authMethod === "shared_password" ? null : session.staffUserId;
         const resolution = await resolveStaffAccessProfile(staffUserId);
         const view = buildCommunicationsView(resolution.resolved ? resolution.profile : null);
         return {
