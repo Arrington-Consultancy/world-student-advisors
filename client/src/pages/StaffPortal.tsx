@@ -9,6 +9,7 @@ import { ContentCheckPanel } from "@/components/staff/ContentCheckPanel";
 import { SocialMediaPanel } from "@/components/staff/SocialMediaPanel";
 import { Receptionist } from "@/components/workforce/Receptionist";
 import { AccessBanner } from "@/components/workforce/AccessBanner";
+import { AccessAdmin } from "@/components/workforce/AccessAdmin";
 
 const STORAGE_KEY = "staff_portal_token";
 
@@ -203,7 +204,7 @@ export default function StaffPortal() {
  * actually reports — this component has no local notion of who is
  * "ready"; it only renders what workforce.listWorkers returns.
  */
-type StaffTab = "reception" | "social" | "channels" | "team" | "content";
+type StaffTab = "reception" | "social" | "channels" | "team" | "content" | "access";
 
 const TABS: { id: StaffTab; label: string }[] = [
   { id: "reception", label: "Reception" },
@@ -211,6 +212,7 @@ const TABS: { id: StaffTab; label: string }[] = [
   { id: "channels", label: "Channels" },
   { id: "team", label: "The AI team" },
   { id: "content", label: "Content check" },
+  { id: "access", label: "Staff access" },
 ];
 
 /**
@@ -279,6 +281,7 @@ function WorkforceHome({ token, onLogout }: { token: string; onLogout: () => voi
         {tab === "channels" && <ChannelsPanel token={token} />}
         {tab === "team" && <TeamPanel token={token} />}
         {tab === "content" && <ContentCheckPanel token={token} />}
+        {tab === "access" && <AccessAdmin token={token} />}
       </main>
     </div>
   );

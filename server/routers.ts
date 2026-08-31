@@ -31,7 +31,21 @@ import { resolveStaffSession } from "./staffSession";
 import { resolveStaffAccessProfile } from "./access/identity";
 import { buildCommunicationsView } from "./communications/access";
 import { runQualityCheck } from "./operating/qualityCheck";
-import { ACCESS_LEVEL_NAMES } from "./access/accessControl";
+import {
+  ACCESS_LEVEL_NAMES,
+  FUNCTIONAL_SCOPES,
+  ACTION_PERMISSIONS,
+  SENSITIVE_OVERLAYS,
+  CASE_SCOPES,
+  SENSITIVE_OVERLAY_MIN_LEVEL,
+} from "./access/accessControl";
+import { decideAssignment, CONSEQUENTIAL_ACTION_LIST } from "./access/administration";
+import {
+  listStaff,
+  readCurrentAssignment,
+  applyAssignment,
+  bootstrapFirstAdministrator,
+} from "./access/administrationStore";
 import { recordAuditEvent } from "./workforce/audit";
 import { listWorkers, getWorker } from "./workforce/registry";
 import { evaluateStaffPortalExecutionPermission } from "./workforce/permissions";
@@ -539,6 +553,144 @@ export const appRouter = router({
     // Returns a description, never a capability: nothing downstream reads
     // this response back as authority. Every real decision re-resolves the
     // profile server-side.
+    /**
+     * What the access administration screen may show this person.
+     *
+     * The administrator's own access is resolved server-side from their
+     * verified session and never taken from the request. A client that
+     * could state its own level would be the entire control surface.
+     *
+     * The grantable lists are the administrator's OWN holdings rather than
+     * the full catalogue, because decideAssignment refuses anything they
+     * do not hold. Offering a permission that would then be refused reads
+     * as a bug, and implies an authority nobody has.
+     */
+    accessAdmin: publicProcedure
+      .input(z.object({ token: z.string() }))
+      .query(async ({ input }) => {
+        const session = await resolveStaffSession(input.token);
+        const staffUserId = session.authMethod === "entra_sso" ? session.staffUserId : null;
+        const resolution = await resolveStaffAccessProfile(staffUserId);
+
+        const canAdminister =
+          resolution.resolved &&
+          resolution.profile.status === "active" &&
+          resolution.profile.actionPermissions.includes("access_admin");
+
+        if (!canAdminister) {
+          return {
+            canAdminister: false as const,
+            reason: resolution.resolved
+              ? "You do not hold the access_admin permission, so you cannot change anybody's access."
+              : resolution.detail,
+          };
+        }
+
+        return {
+          canAdminister: true as const,
+          staff: await listStaff(),
+          administratorLevel: resolution.profile.baseAccessLevel,
+          grantableScopes: [...resolution.profile.functionalScopes],
+          grantableActions: [...resolution.profile.actionPermissions],
+          grantableOverlays: [...resolution.profile.sensitiveOverlays],
+          consequentialActions: [...CONSEQUENTIAL_ACTION_LIST],
+          overlayMinimumLevels: SENSITIVE_OVERLAY_MIN_LEVEL,
+          caseScopes: [...CASE_SCOPES],
+          allScopes: [...FUNCTIONAL_SCOPES],
+          allActions: [...ACTION_PERMISSIONS],
+          allOverlays: [...SENSITIVE_OVERLAYS],
+        };
+      }),
+
+    assignAccess: publicProcedure
+      .input(
+        z.object({
+          token: z.string(),
+          targetStaffUserId: z.number().int().positive(),
+          baseAccessLevel: z.number().int().min(1).max(5),
+          caseScope: z.enum(["organisation", "team", "assigned_caseload", "own_applicants"]),
+          functionalScopes: z.array(z.string()).max(30),
+          actionPermissions: z.array(z.string()).max(20),
+          sensitiveOverlays: z.array(z.string()).max(10),
+          accessStatus: z.enum(["active", "suspended", "disabled"]),
+          teamId: z.string().max(60).nullable(),
+          reason: z.string().min(1).max(500),
+        }),
+      )
+      .mutation(async ({ input }) => {
+        const session = await resolveStaffSession(input.token);
+        const staffUserId = session.authMethod === "entra_sso" ? session.staffUserId : null;
+        const resolution = await resolveStaffAccessProfile(staffUserId);
+
+        if (!resolution.resolved || staffUserId === null) {
+          return {
+            applied: false as const,
+            reason: resolution.resolved
+              ? "Access administration needs an individual Microsoft identity."
+              : resolution.detail,
+          };
+        }
+
+        const current = await readCurrentAssignment(input.targetStaffUserId);
+        if (!current) {
+          return {
+            applied: false as const,
+            reason:
+              "That person has no staff record. They must sign in with Microsoft first, which creates it. " +
+              "Access is never granted to an identity that has not authenticated.",
+          };
+        }
+
+        const proposed = {
+          targetStaffUserId: input.targetStaffUserId,
+          baseAccessLevel: input.baseAccessLevel as 1 | 2 | 3 | 4 | 5,
+          caseScope: input.caseScope,
+          functionalScopes: input.functionalScopes as never[],
+          actionPermissions: input.actionPermissions as never[],
+          sensitiveOverlays: input.sensitiveOverlays as never[],
+          accessStatus: input.accessStatus,
+          teamId: input.teamId,
+          reason: input.reason,
+        };
+
+        const decision = decideAssignment(
+          {
+            staffUserId,
+            baseAccessLevel: resolution.profile.baseAccessLevel,
+            functionalScopes: resolution.profile.functionalScopes,
+            actionPermissions: resolution.profile.actionPermissions,
+            sensitiveOverlays: resolution.profile.sensitiveOverlays,
+            caseScope: resolution.profile.caseScope,
+            status: resolution.profile.status,
+          },
+          current,
+          proposed,
+        );
+
+        if (!decision.permitted) {
+          return { applied: false as const, reason: decision.reason };
+        }
+
+        const result = await applyAssignment(decision, proposed, staffUserId);
+        if (!result.applied) return { applied: false as const, reason: result.reason };
+        return { applied: true as const, changes: decision.auditLines.length };
+      }),
+
+    /**
+     * The one-time, self-closing first-administrator bootstrap.
+     *
+     * Requires a valid staff session so it is not an open endpoint, but
+     * the real gate is inside: it refuses once any account holds
+     * access_admin, and it only ever acts on the email named in the
+     * deployment environment.
+     */
+    bootstrapAccessAdmin: publicProcedure
+      .input(z.object({ token: z.string() }))
+      .mutation(async ({ input }) => {
+        await resolveStaffSession(input.token);
+        return bootstrapFirstAdministrator();
+      }),
+
     myAccess: publicProcedure
       .input(z.object({ token: z.string() }))
       .query(async ({ input }) => {
