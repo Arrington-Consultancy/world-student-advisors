@@ -41,8 +41,9 @@ try {
   // 1. The migration is recorded exactly once.
   const [migrations] = await db.execute(sql`SELECT COUNT(*) AS n FROM __drizzle_migrations`);
   console.log(`\n=== Migration ledger ===\n  applied rows: ${migrations[0].n}`);
-  if (Number(migrations[0].n) !== 9) fail(`expected 9 applied migrations, found ${migrations[0].n}`);
-  else pass("nine migrations applied");
+  // Ten, not nine: 0000 to 0008 is nine rows, and 0009 is the tenth.
+  if (Number(migrations[0].n) !== 10) fail(`expected 10 applied migrations, found ${migrations[0].n}`);
+  else pass("ten migrations applied");
 
   // 2. Both columns accept all three values, and lost neither original.
   console.log("\n=== authMethod columns ===");
