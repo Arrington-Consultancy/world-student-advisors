@@ -73,12 +73,15 @@ describe("workforce.listWorkers — requires a valid Staff Portal session", () =
     expect(approved.map(w => w.id)).toEqual(["sophie"]);
   });
 
-  it("never reports any worker as openable for live execution", async () => {
+  it("reports as openable only the workers the register authorises", async () => {
     const caller = makeCaller();
     const token = await getValidToken(caller);
     const result = await caller.workforce.listWorkers({ token });
+    // The endpoint reports the register's answer, not a blanket one.
+    const openable = result.workers.filter(w => w.canOpenForLiveExecution).map(w => w.id);
+    expect(openable).toEqual(["sophie"]);
     for (const w of result.workers) {
-      expect(w.canOpenForLiveExecution).toBe(false);
+      if (w.id !== "sophie") expect(w.canOpenForLiveExecution).toBe(false);
     }
   });
 });

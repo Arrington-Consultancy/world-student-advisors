@@ -10,12 +10,16 @@
  * production change is, after the controlled SharePoint record itself
  * changes.
  *
- * At the time this was written: Sophie is the only worker with
- * specificationStatus "approved", and no worker (including Sophie) has
- * staffPortalExecutionAuthorised true. Do not flip either without a
- * corresponding update to the controlled Worker Register and, for
- * execution, a resolved deployment-channel decision plus tested connector
- * credentials.
+ * Sophie is the only worker with specificationStatus "approved". Her
+ * deployment-channel decision is now resolved to the Staff Portal by
+ * Tom Arrington's recorded instruction, so she is the one worker with
+ * staffPortalExecutionAuthorised true.
+ *
+ * No worker has connectorUseAuthorised or writesAuthorised true, and that
+ * is a separate question from execution: no connector credential is
+ * configured or acceptance-tested for any system in this build. Do not
+ * flip any of these without a corresponding update to the controlled
+ * Worker Register.
  */
 import type { WorkerId, WorkerRegistryEntry } from "./types";
 import { NO_CONTROLLED_CRM_DECISION } from "./types";
@@ -31,18 +35,34 @@ const TOM_ARRINGTON = "Tom Arrington (WSA policy owner and approval authority)";
  * set them directly and no worker can become "authorised" by any route
  * other than its recorded statuses actually changing.
  */
-function deriveAuthorisation(
+/**
+ * Exported so both halves of the rule can be tested. With one approved
+ * worker in the estate, a test that only looks at real entries cannot
+ * tell whether the deployment-channel half is enforced or merely
+ * coincidental.
+ */
+export function deriveAuthorisation(
   specificationStatus: WorkerRegistryEntry["specificationStatus"],
   staffPortalExecutionStatus: WorkerRegistryEntry["staffPortalExecutionStatus"],
 ): { staffPortalExecutionAuthorised: boolean; connectorUseAuthorised: boolean; writesAuthorised: boolean } {
-  // No worker is currently authorised for live Staff Portal case-work
-  // execution or any connector action, regardless of specificationStatus.
-  // Connector use requires technically-configured, acceptance-tested
-  // credentials (Access Matrix section 5) which do not exist yet for any
-  // system in this build. See connectorConfigurationPlan.md.
-  void specificationStatus;
-  void staffPortalExecutionStatus;
-  return { staffPortalExecutionAuthorised: false, connectorUseAuthorised: false, writesAuthorised: false };
+  // Execution authority and connector authority are different questions,
+  // and conflating them was making the whole estate look dead.
+  //
+  // A worker may execute when its specification is approved AND the
+  // deployment-channel decision names the Staff Portal. Both come from
+  // controlled records; neither can be set from code alone.
+  //
+  // Connector authority is separate and remains closed for every worker,
+  // because no connector credential is technically configured or
+  // acceptance-tested for any system in this build (Access Matrix section
+  // 5, connectorConfigurationPlan.md). That correctly disables the
+  // capabilities that need a connector without disabling a worker whose
+  // approved function runs from staff input, case context and controlled
+  // SharePoint evidence.
+  const staffPortalExecutionAuthorised =
+    specificationStatus === "approved" && staffPortalExecutionStatus === "staff_portal_authorised";
+
+  return { staffPortalExecutionAuthorised, connectorUseAuthorised: false, writesAuthorised: false };
 }
 
 function entry(
@@ -77,6 +97,8 @@ const REGISTRY_LIST: WorkerRegistryEntry[] = [
     },
     evidencedHandoffs: [],
     escalationRoute: TOM_ARRINGTON,
+    gatekeeperReview: "not_applicable",
+    capabilities: [],
     controlledBriefReference: `${APPROVED_STANDARDS}/WSA_Core_Operating_System_v1.1_APPROVED.docx`,
   }),
 
@@ -86,9 +108,11 @@ const REGISTRY_LIST: WorkerRegistryEntry[] = [
     roleTitle: "Student Enquiry & Triage",
     specificationVersion: "v1.1",
     specificationStatus: "approved",
-    staffPortalExecutionStatus: "pending_channel_decision",
+    staffPortalExecutionStatus: "staff_portal_authorised",
     currentNextControl:
-      "Deploy as Custom GPT and connector-test. Unresolved deployment-channel decision. Do not assume a Staff Portal deployment replaces this.",
+      "Deployment channel resolved to the Staff Portal by Tom Arrington's recorded decision. Live in the Staff " +
+      "Portal for enquiry and triage. Connector actions remain closed, so a case record is prepared for a human " +
+      "to file rather than written directly.",
     materialBlockers: ["Deployment channel not yet decided (Custom GPT vs. Staff Portal)"],
     personality: {
       summary: "Warm, brisk and reassuring. Makes first contact feel human without becoming sales-led.",
@@ -103,6 +127,29 @@ const REGISTRY_LIST: WorkerRegistryEntry[] = [
     },
     evidencedHandoffs: ["daniel"],
     escalationRoute: TOM_ARRINGTON,
+    gatekeeperReview: "passed_cleared_for_approval",
+    capabilities: [
+      {
+        id: "triage",
+        name: "Take and triage an enquiry",
+        description:
+          "Establish the facts of one student enquiry, identify risks, urgency and missing information, and name the correct next specialist or human owner.",
+        worksWithoutConnector: true,
+        requiresConnector: null,
+        unavailableBecause:
+          null,
+      },
+      {
+        id: "record",
+        name: "Write the case record",
+        description:
+          "Record the enquiry and its outcome to the controlled record.",
+        worksWithoutConnector: false,
+        requiresConnector: "sharepoint",
+        unavailableBecause:
+          "SharePoint connector is not configured, so the case record is prepared for a human to file rather than written directly.",
+      },
+    ],
     controlledBriefReference: `${APPROVED_STANDARDS}/WSA_Sophie_Staff_Operating_Guide_v1.0_APPROVED.docx`,
   }),
 
@@ -129,6 +176,19 @@ const REGISTRY_LIST: WorkerRegistryEntry[] = [
     },
     evidencedHandoffs: ["amelia"],
     escalationRoute: TOM_ARRINGTON,
+    gatekeeperReview: "passed_cleared_for_approval",
+    capabilities: [
+      {
+        id: "discovery",
+        name: "Build a student profile from what staff provide",
+        description:
+          "Gather and structure a student's background, prior study and circumstances from staff input and case context.",
+        worksWithoutConnector: true,
+        requiresConnector: null,
+        unavailableBecause:
+          null,
+      },
+    ],
     controlledBriefReference: `${SHAREPOINT_SITE}/01_ADMIN_&_GOVERNANCE/AI_Operating_System/01_Working_Drafts/`,
   }),
 
@@ -155,6 +215,29 @@ const REGISTRY_LIST: WorkerRegistryEntry[] = [
     },
     evidencedHandoffs: ["oliver"],
     escalationRoute: TOM_ARRINGTON,
+    gatekeeperReview: "passed_cleared_for_approval",
+    capabilities: [
+      {
+        id: "research_controlled",
+        name: "Answer from controlled WSA education evidence",
+        description:
+          "Course, programme and institution information drawn from controlled WSA records and staff-supplied material.",
+        worksWithoutConnector: true,
+        requiresConnector: null,
+        unavailableBecause:
+          null,
+      },
+      {
+        id: "research_web",
+        name: "Current external course and institution checks",
+        description:
+          "Verify current entry requirements, fees and dates against live institution sources.",
+        worksWithoutConnector: false,
+        requiresConnector: null,
+        unavailableBecause:
+          "Approved web research is not yet enabled for this build. The controlled-evidence capability is unaffected.",
+      },
+    ],
     controlledBriefReference: `${SHAREPOINT_SITE}/01_ADMIN_&_GOVERNANCE/AI_Operating_System/01_Working_Drafts/`,
   }),
 
@@ -180,6 +263,19 @@ const REGISTRY_LIST: WorkerRegistryEntry[] = [
     },
     evidencedHandoffs: ["james"],
     escalationRoute: TOM_ARRINGTON,
+    gatekeeperReview: "passed_cleared_for_approval",
+    capabilities: [
+      {
+        id: "suitability",
+        name: "Compare options against a student's evidenced profile",
+        description:
+          "Weigh education options for one student using Amelia's controlled evidence and the recorded student profile.",
+        worksWithoutConnector: true,
+        requiresConnector: null,
+        unavailableBecause:
+          null,
+      },
+    ],
     controlledBriefReference: `${SHAREPOINT_SITE}/01_ADMIN_&_GOVERNANCE/AI_Operating_System/01_Working_Drafts/`,
   }),
 
@@ -206,6 +302,29 @@ const REGISTRY_LIST: WorkerRegistryEntry[] = [
     },
     evidencedHandoffs: [],
     escalationRoute: TOM_ARRINGTON,
+    gatekeeperReview: "passed_cleared_for_approval",
+    capabilities: [
+      {
+        id: "application_prep",
+        name: "Prepare an application and check entry requirements",
+        description:
+          "Assemble and check an application package against recorded entry requirements.",
+        worksWithoutConnector: true,
+        requiresConnector: null,
+        unavailableBecause:
+          null,
+      },
+      {
+        id: "submit",
+        name: "Submit an application",
+        description:
+          "Live submission to an institution.",
+        worksWithoutConnector: false,
+        requiresConnector: null,
+        unavailableBecause:
+          "Live submission authority is deployment-gated and separately approved.",
+      },
+    ],
     controlledBriefReference: `${SHAREPOINT_SITE}/01_ADMIN_&_GOVERNANCE/AI_Operating_System/01_Working_Drafts/`,
   }),
 
@@ -236,6 +355,29 @@ const REGISTRY_LIST: WorkerRegistryEntry[] = [
     },
     evidencedHandoffs: [],
     escalationRoute: TOM_ARRINGTON,
+    gatekeeperReview: "passed_cleared_for_approval",
+    capabilities: [
+      {
+        id: "rules_explanation",
+        name: "Explain confirmed official immigration rules",
+        description:
+          "Evidence-based explanation of published official rules, with source and date, and an explicit stop where the position is uncertain.",
+        worksWithoutConnector: true,
+        requiresConnector: null,
+        unavailableBecause:
+          null,
+      },
+      {
+        id: "regulated_advice",
+        name: "Regulated immigration advice and representations",
+        description:
+          "Advice, representations, submissions and adverse-decision handling.",
+        worksWithoutConnector: false,
+        requiresConnector: null,
+        unavailableBecause:
+          "Reserved regulated activity. Blocked by AB-P01 immigration-advice authority and AB-P04 named authorised human ownership.",
+      },
+    ],
     controlledBriefReference: `${SHAREPOINT_SITE}/01_ADMIN_&_GOVERNANCE/AI_Operating_System/01_Working_Drafts/`,
   }),
 
@@ -261,6 +403,29 @@ const REGISTRY_LIST: WorkerRegistryEntry[] = [
     },
     evidencedHandoffs: [],
     escalationRoute: TOM_ARRINGTON,
+    gatekeeperReview: "passed_cleared_for_approval",
+    capabilities: [
+      {
+        id: "funding_analysis",
+        name: "Structure a funding-gap analysis",
+        description:
+          "Set out a student's funding position and gap from figures staff supply.",
+        worksWithoutConnector: true,
+        requiresConnector: null,
+        unavailableBecause:
+          null,
+      },
+      {
+        id: "scholarship_eligibility",
+        name: "Confirm scholarship eligibility",
+        description:
+          "Determine eligibility against a specific scheme's current rules.",
+        worksWithoutConnector: false,
+        requiresConnector: null,
+        unavailableBecause:
+          "AB-H01 to AB-H15 remain open, so eligibility determinations are not authorised.",
+      },
+    ],
     controlledBriefReference: `${SHAREPOINT_SITE}/01_ADMIN_&_GOVERNANCE/AI_Operating_System/01_Working_Drafts/`,
   }),
 
@@ -286,6 +451,19 @@ const REGISTRY_LIST: WorkerRegistryEntry[] = [
     },
     evidencedHandoffs: [],
     escalationRoute: TOM_ARRINGTON,
+    gatekeeperReview: "passed_cleared_for_approval",
+    capabilities: [
+      {
+        id: "prearrival",
+        name: "Plan pre-arrival and readiness steps",
+        description:
+          "Practical transition and readiness support for a confirmed student.",
+        worksWithoutConnector: true,
+        requiresConnector: null,
+        unavailableBecause:
+          null,
+      },
+    ],
     controlledBriefReference: `${SHAREPOINT_SITE}/01_ADMIN_&_GOVERNANCE/AI_Operating_System/01_Working_Drafts/`,
   }),
 
@@ -312,6 +490,19 @@ const REGISTRY_LIST: WorkerRegistryEntry[] = [
     },
     evidencedHandoffs: [],
     escalationRoute: TOM_ARRINGTON,
+    gatekeeperReview: "passed_cleared_for_approval",
+    capabilities: [
+      {
+        id: "case_audit",
+        name: "Audit case work for defects",
+        description:
+          "Independent review of a case for defects, contradictions and missing evidence.",
+        worksWithoutConnector: true,
+        requiresConnector: null,
+        unavailableBecause:
+          null,
+      },
+    ],
     controlledBriefReference: `${APPROVED_STANDARDS}/WSA_Grace_Governance_Dependency_Classification_v1.0_APPROVED.docx`,
   }),
 
@@ -341,6 +532,29 @@ const REGISTRY_LIST: WorkerRegistryEntry[] = [
     },
     evidencedHandoffs: [],
     escalationRoute: TOM_ARRINGTON,
+    gatekeeperReview: "passed_cleared_for_approval",
+    capabilities: [
+      {
+        id: "seo_advice",
+        name: "SEO and organic-growth guidance from evidence supplied",
+        description:
+          "Advice on organic search and site content using material staff provide.",
+        worksWithoutConnector: true,
+        requiresConnector: null,
+        unavailableBecause:
+          null,
+      },
+      {
+        id: "search_console",
+        name: "Read live Search Console performance",
+        description:
+          "Current organic search performance data.",
+        worksWithoutConnector: false,
+        requiresConnector: null,
+        unavailableBecause:
+          "No Search Console connector is configured.",
+      },
+    ],
     controlledBriefReference: `${SHAREPOINT_SITE}/01_ADMIN_&_GOVERNANCE/AI_Operating_System/01_Working_Drafts/`,
   }),
 
@@ -367,6 +581,29 @@ const REGISTRY_LIST: WorkerRegistryEntry[] = [
     },
     evidencedHandoffs: [],
     escalationRoute: TOM_ARRINGTON,
+    gatekeeperReview: "passed_cleared_for_approval",
+    capabilities: [
+      {
+        id: "records_advice",
+        name: "Records-control guidance",
+        description:
+          "Advice on version integrity, structure and records control.",
+        worksWithoutConnector: true,
+        requiresConnector: null,
+        unavailableBecause:
+          null,
+      },
+      {
+        id: "sharepoint_ops",
+        name: "Act on SharePoint records directly",
+        description:
+          "Read, move or repair controlled records.",
+        worksWithoutConnector: false,
+        requiresConnector: "sharepoint",
+        unavailableBecause:
+          "SharePoint connector is not configured.",
+      },
+    ],
     controlledBriefReference: `${SHAREPOINT_SITE}/01_ADMIN_&_GOVERNANCE/AI_Operating_System/01_Working_Drafts/WSA_Maya_SharePoint_Records_Control_Specialist_v0.2_WORKING_DRAFT.docx`,
   }),
 
@@ -393,6 +630,29 @@ const REGISTRY_LIST: WorkerRegistryEntry[] = [
     },
     evidencedHandoffs: [],
     escalationRoute: TOM_ARRINGTON,
+    gatekeeperReview: "passed_cleared_for_approval",
+    capabilities: [
+      {
+        id: "paid_analysis",
+        name: "Analyse paid-media evidence supplied by staff",
+        description:
+          "Assess campaign performance from figures and briefs staff provide.",
+        worksWithoutConnector: true,
+        requiresConnector: null,
+        unavailableBecause:
+          null,
+      },
+      {
+        id: "ads_live",
+        name: "Read or change live Google Ads",
+        description:
+          "Live account access, spend and optimisation.",
+        worksWithoutConnector: false,
+        requiresConnector: null,
+        unavailableBecause:
+          "No Google Ads connector, and AB-A01 to AB-A12 remain open.",
+      },
+    ],
     controlledBriefReference: `${SHAREPOINT_SITE}/01_ADMIN_&_GOVERNANCE/AI_Operating_System/01_Working_Drafts/`,
   }),
 
@@ -448,6 +708,29 @@ const REGISTRY_LIST: WorkerRegistryEntry[] = [
     },
     evidencedHandoffs: [],
     escalationRoute: TOM_ARRINGTON,
+    gatekeeperReview: "pending",
+    capabilities: [
+      {
+        id: "content_craft",
+        name: "Create, critique and adapt organic social content",
+        description:
+          "Draft and improve content, run the AI-slop and human-voice gates, and adapt per platform.",
+        worksWithoutConnector: true,
+        requiresConnector: null,
+        unavailableBecause:
+          null,
+      },
+      {
+        id: "publish",
+        name: "Publish, schedule or reply on a social account",
+        description:
+          "Live account action.",
+        worksWithoutConnector: false,
+        requiresConnector: null,
+        unavailableBecause:
+          "No social connector is authorised, and NIA-G01 publishing authority remains open.",
+      },
+    ],
     controlledBriefReference: `${WORKING_DRAFTS}/WSA_Nia_Social_Media_Content_Intelligence_Specialist_v0.1_WORKING_DRAFT.docx`,
   }),
 
@@ -474,6 +757,8 @@ const REGISTRY_LIST: WorkerRegistryEntry[] = [
     },
     evidencedHandoffs: [],
     escalationRoute: TOM_ARRINGTON,
+    gatekeeperReview: "not_applicable",
+    capabilities: [],
     controlledBriefReference: `${SHAREPOINT_SITE}/01_ADMIN_&_GOVERNANCE/AI_Operating_System/07_Control_Room/`,
   }),
 
@@ -499,6 +784,8 @@ const REGISTRY_LIST: WorkerRegistryEntry[] = [
     },
     evidencedHandoffs: [],
     escalationRoute: TOM_ARRINGTON,
+    gatekeeperReview: "not_applicable",
+    capabilities: [],
     controlledBriefReference: `${APPROVED_STANDARDS}/WSA_Worker_Personality_Connector_Access_Matrix_v0.2.docx`,
   }),
 ];

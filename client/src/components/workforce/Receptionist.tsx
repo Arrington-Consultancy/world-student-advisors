@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from "react";
 import { ArrowRight, CircleCheck, CircleDashed, CornerDownLeft, Search } from "lucide-react";
 import { trpc, type RouterOutputs } from "@/lib/trpc";
+import { WorkerChat } from "./WorkerChat";
 
 type Worker = RouterOutputs["workforce"]["listWorkers"]["workers"][number];
 
@@ -153,6 +154,16 @@ export function Receptionist({ token }: { token: string }) {
             <ArrowRight className="mt-0.5 h-4 w-4 shrink-0 text-wsa-red" aria-hidden />
             <p className="text-sm leading-relaxed text-wsa-navy">{result.safeNextAction}</p>
           </div>
+
+          {/* Only where the register authorises execution. The server
+              checks again on every request regardless of what renders. */}
+          {result.availability === "available" && result.responsibleWorkerId && (
+            <WorkerChat
+              token={token}
+              workerId={result.responsibleWorkerId}
+              workerName={result.responsibleWorkerName?.split(",")[0] ?? "this specialist"}
+            />
+          )}
         </article>
       )}
 

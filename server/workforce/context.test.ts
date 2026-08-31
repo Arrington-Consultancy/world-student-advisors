@@ -10,9 +10,9 @@ const personalCase: CaseData = { caseId: "case-A", studentId: "student-1", sourc
 const allowAll = () => ({ allowed: true, reason: "test override" });
 
 describe("buildWorkerContext — execution gate takes priority over data availability", () => {
-  it("denies context (no case data at all) for every worker by default, even with a matching case available", () => {
+  it("denies context for a worker the register does not authorise, even with a matching case available", () => {
     const context = buildWorkerContext({
-      workerId: "sophie",
+      workerId: "priya",
       caseId: "case-A",
       requestedByStudentId: "student-1",
       availableCases: [wsaCaseA],
