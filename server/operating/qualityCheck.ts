@@ -42,6 +42,122 @@ export interface QualityFinding {
   code: QualityFindingCode;
   severity: QualityFindingSeverity;
   detail: string;
+  /** The controlled authority this comes from, so a writer can check it. */
+  rule: string;
+  /** What to do instead. A finding without one is a complaint. */
+  remedy: string;
+  /**
+   * The offending text with a little context, where the finding has a
+   * locatable match. Null for findings about the whole piece, like
+   * bullet spam, which have no single place to point at.
+   */
+  excerpt: string | null;
+}
+
+/**
+ * The rule each finding enforces and what to do about it.
+ *
+ * Kept as one table rather than inline at each site, because the useful
+ * half of a finding is the remedy, and a remedy written at the point of
+ * detection tends to describe the pattern that fired rather than the
+ * writing problem the reader has. "An em dash was found" is a detection.
+ * "Use a comma, a full stop, or brackets" is a finding.
+ */
+export const FINDING_GUIDANCE: Readonly<Record<QualityFindingCode, { rule: string; remedy: string }>> = Object.freeze({
+  permission_not_checked: {
+    rule: "WSA Staff Portal Access Control Standard v1.0, sections 4 and 10",
+    remedy: "Nothing can be released until the access decision has been made. This is a platform fault, not a writing one.",
+  },
+  evidence_insufficient: {
+    rule: "WSA Core Operating System v1.1, section 4.3, evidence before assertion",
+    remedy: "Say what could not be verified and who must verify it, rather than releasing the claim.",
+  },
+  worker_boundary_breach: {
+    rule: "WSA Core Operating System v1.1, section 10, defined remit",
+    remedy: "Remove the material outside the worker's remit and name the specialist who owns it.",
+  },
+  missing_caveat: {
+    rule: "WSA Core Operating System v1.1, section 4.4, transparency",
+    remedy: "State the limitation, cost, risk or condition plainly rather than leaving it out.",
+  },
+  guarantee_language: {
+    rule: "WSA Core Operating System v1.1, sections 4.5 and 6, honest limits",
+    remedy:
+      "Remove the promise. WSA cannot commit to an outcome a university, an awarding body or an immigration " +
+      "authority decides. Say what WSA will do instead.",
+  },
+  unresolved_disagreement_hidden: {
+    rule: "WSA Core Operating System v1.1, section 9",
+    remedy: "Say that the specialists disagree and what each position is. Do not smooth it into one voice.",
+  },
+  em_dash: {
+    rule: "WSA Global Writing Standard v1.0 APPROVED, the single binding rule",
+    remedy: "Use a comma, a full stop, a colon, a semicolon, or brackets.",
+  },
+  double_hyphen: {
+    rule: "WSA Global Writing Standard v1.0 APPROVED, in spirit",
+    remedy: "A double hyphen is an em dash wearing a hat. Use a comma, a full stop, or brackets.",
+  },
+  corporate_ai_language: {
+    rule: "WSA Writing Standards, plain language",
+    remedy: "Say the specific thing instead. What actually changes for the reader?",
+  },
+  artificial_warmth: {
+    rule: "WSA Writing Standards, plain language",
+    remedy: "Cut it. Warmth that is not felt reads as a script, and staff notice faster than anyone.",
+  },
+  formulaic_contrast: {
+    rule: "WSA Writing Standards, plain language",
+    remedy: "State what it is. The contrast adds rhythm, not meaning.",
+  },
+  bullet_spam: {
+    rule: "WSA Writing Standards, prose before lists",
+    remedy: "Turn the connected points back into sentences. Keep bullets for things that are genuinely a list.",
+  },
+  heading_spam: {
+    rule: "WSA Writing Standards, structure serves the reader",
+    remedy: "Remove headings that introduce a sentence or two. A heading should earn its section.",
+  },
+  repeated_summary: {
+    rule: "WSA Writing Standards, no filler",
+    remedy: "Delete the closing summary. The reader has just read it.",
+  },
+  one_sentence_paragraph_run: {
+    rule: "WSA Writing Standards, plain language",
+    remedy: "Join the related sentences into paragraphs. Everything standing alone means nothing is emphasised.",
+  },
+});
+
+/**
+ * Pulls the offending text out with a little context either side, so the
+ * writer can see the actual sentence rather than hunt for it.
+ */
+function excerptFor(text: string, pattern: RegExp): string | null {
+  // Not every matcher here is a real regular expression. GUARANTEE_WORD is
+  // a duck-typed object carrying only .test, because deciding whether a
+  // guarantee is negated needs more than a pattern can express. Those have
+  // no location to point at, so they get no excerpt rather than a crash.
+  if (!(pattern instanceof RegExp)) return null;
+
+  const source = pattern.flags.includes("g") ? new RegExp(pattern.source, pattern.flags.replace("g", "")) : pattern;
+  const match = source.exec(text);
+  if (!match || match.index === undefined) return null;
+
+  const CONTEXT = 45;
+  const start = Math.max(0, match.index - CONTEXT);
+  const end = Math.min(text.length, match.index + match[0].length + CONTEXT);
+  const body = text.slice(start, end).replace(/\s+/g, " ").trim();
+  return `${start > 0 ? "..." : ""}${body}${end < text.length ? "..." : ""}`;
+}
+
+/** Builds a finding, filling the rule and remedy from the table. */
+function finding(
+  code: QualityFindingCode,
+  severity: QualityFindingSeverity,
+  detail: string,
+  excerpt: string | null = null,
+): QualityFinding {
+  return { code, severity, detail, ...FINDING_GUIDANCE[code], excerpt };
 }
 
 export interface QualityCheckInput {
@@ -93,6 +209,7 @@ export interface QualityCheckResult {
  * exceptions and cannot be weakened by growing one.
  */
 const EM_DASH = /\u2014/;
+const DOUBLE_HYPHEN = /[A-Za-z0-9]--[A-Za-z0-9]|[A-Za-z0-9] -- [A-Za-z0-9]/;
 
 const NEGATED_BEFORE = /\b(no|not|never|without|cannot|can'?t|doesn'?t|don'?t|didn'?t|won'?t|nor)\b[^.;!?]{0,60}$/i;
 const NAMING_THE_RULE_AFTER = /^\s*(language|wording|claims?|phrasing)\b/i;
@@ -165,50 +282,41 @@ export function runQualityCheck(input: QualityCheckInput): QualityCheckResult {
 
   // Permission compliance (§4, §10, §32).
   if (!input.permissionChecked) {
-    findings.push({
-      code: "permission_not_checked",
-      severity: "blocking",
-      detail: "No access decision was recorded before this output was assembled.",
-    });
+    findings.push(finding("permission_not_checked", "blocking",
+      "No access decision was recorded before this output was assembled."));
   }
 
   // Worker boundaries (§6).
   for (const breach of input.workerBoundaryBreaches) {
-    findings.push({ code: "worker_boundary_breach", severity: "blocking", detail: breach });
+    findings.push(finding("worker_boundary_breach", "blocking", breach));
   }
 
   // Evidence quality (§17).
   if (input.evidenceInsufficient) {
-    findings.push({
-      code: "evidence_insufficient",
-      severity: "blocking",
-      detail: "Every contributing specialist was working from insufficient evidence.",
-    });
+    findings.push(finding("evidence_insufficient", "blocking",
+      "Every contributing specialist was working from insufficient evidence."));
   }
 
   // §9 — an unresolved conflict must not be smoothed away.
   if (input.hasUnresolvedDisagreement && !input.disagreementVisibleInText) {
-    findings.push({
-      code: "unresolved_disagreement_hidden",
-      severity: "blocking",
-      detail: "Specialists disagree materially but the output does not say so.",
-    });
+    findings.push(finding("unresolved_disagreement_hidden", "blocking",
+      "Specialists disagree materially but the output does not say so."));
   }
 
   // Student protection: no guarantees (WSA Core §4.5 and §6).
   for (const { re, what } of GUARANTEE_PATTERNS) {
     if (re.test(text)) {
-      findings.push({
-        code: "guarantee_language",
-        severity: "blocking",
-        detail: `Output contains ${what}. WSA must not promise or imply outcomes controlled by third parties.`,
-      });
+      findings.push(finding("guarantee_language", "blocking",
+        `Output contains ${what}. WSA must not promise or imply outcomes controlled by third parties.`,
+        excerptFor(text, re)));
     }
   }
 
   // §11 writing standard. Em dashes are a binding universal rule.
   if (EM_DASH.test(text)) {
-    findings.push({ code: "em_dash", severity: "blocking", detail: "Output contains an em dash, which is prohibited universally." });
+    findings.push(finding("em_dash", "blocking",
+      "An em dash is banned everywhere by the Global Writing Standard, in every form including the HTML entity.",
+      excerptFor(text, EM_DASH)));
   }
   // Prose punctuation only. A CSS custom property (--sidebar-width) or a
   // command flag (--coverage) is not a writer reaching for a dash, and
@@ -216,18 +324,23 @@ export function runQualityCheck(input: QualityCheckInput): QualityCheckResult {
   // Prose brackets the pair symmetrically, either tight (word--word) or
   // spaced on both sides; a flag or a variable never does, because it
   // always has a space, quote or bracket on the left and none on the right.
-  if (/[A-Za-z0-9]--[A-Za-z0-9]|[A-Za-z0-9] -- [A-Za-z0-9]/.test(text)) {
-    findings.push({ code: "double_hyphen", severity: "advisory", detail: "Double hyphen used as prose punctuation." });
+  if (DOUBLE_HYPHEN.test(text)) {
+    findings.push(finding("double_hyphen", "advisory", "Double hyphen used as prose punctuation.",
+      excerptFor(text, DOUBLE_HYPHEN)));
   }
   for (const { re, what } of CORPORATE_AI_PATTERNS) {
-    if (re.test(text)) findings.push({ code: "corporate_ai_language", severity: "advisory", detail: `Corporate AI phrasing: "${what}".` });
+    if (re.test(text)) {
+      findings.push(finding("corporate_ai_language", "advisory", `"${what}" is corporate filler.`, excerptFor(text, re)));
+    }
   }
   for (const { re, what } of ARTIFICIAL_WARMTH) {
-    if (re.test(text)) findings.push({ code: "artificial_warmth", severity: "advisory", detail: `Artificial warmth: "${what}".` });
+    if (re.test(text)) {
+      findings.push(finding("artificial_warmth", "advisory", `"${what}" is warmth the writer does not feel.`, excerptFor(text, re)));
+    }
   }
   for (const re of FORMULAIC_CONTRAST) {
     if (re.test(text)) {
-      findings.push({ code: "formulaic_contrast", severity: "advisory", detail: "Formulaic contrast construction." });
+      findings.push(finding("formulaic_contrast", "advisory", "Formulaic contrast construction.", excerptFor(text, re)));
       break;
     }
   }
@@ -236,27 +349,27 @@ export function runQualityCheck(input: QualityCheckInput): QualityCheckResult {
   const bulletLines = text.split("\n").filter(l => /^\s*[-*•]\s+/.test(l)).length;
   const totalLines = text.split("\n").filter(l => l.trim()).length;
   if (bulletLines >= 4 && totalLines > 0 && bulletLines / totalLines > 0.6) {
-    findings.push({ code: "bullet_spam", severity: "advisory", detail: "Most of the output is bullets rather than prose." });
+    findings.push(finding("bullet_spam", "advisory",
+      `${bulletLines} of ${totalLines} lines are bullets.`));
   }
 
   const headings = text.split("\n").filter(l => /^\s*#{1,6}\s+/.test(l) || /^\s*\*\*[^*]+\*\*\s*$/.test(l)).length;
   if (headings >= 3 && paras.length <= headings * 2) {
-    findings.push({ code: "heading_spam", severity: "advisory", detail: "Headings outnumber the substance beneath them." });
+    findings.push(finding("heading_spam", "advisory",
+      `${headings} headings for ${paras.length} paragraphs.`));
   }
 
   const singleSentenceParas = paras.filter(p => !/\n/.test(p) && (p.match(/[.!?](\s|$)/g) ?? []).length === 1).length;
   if (paras.length >= 4 && singleSentenceParas / paras.length > 0.7) {
-    findings.push({
-      code: "one_sentence_paragraph_run",
-      severity: "advisory",
-      detail: "Nearly every paragraph is a single sentence.",
-    });
+    findings.push(finding("one_sentence_paragraph_run", "advisory",
+      `${singleSentenceParas} of ${paras.length} paragraphs are a single sentence.`));
   }
 
   if (paras.length >= 3) {
     const last = paras[paras.length - 1].toLowerCase();
     if (/^(in summary|to summarise|to sum up|in conclusion|overall)\b/.test(last)) {
-      findings.push({ code: "repeated_summary", severity: "advisory", detail: "Output ends with a summary of what it just said." });
+      findings.push(finding("repeated_summary", "advisory",
+        "Output ends with a summary of what it just said.", excerptFor(text, /^(in summary|to summarise|to sum up|in conclusion|overall)\b/im)));
     }
   }
 
