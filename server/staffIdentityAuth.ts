@@ -45,6 +45,22 @@ export function buildMicrosoftAuthorizeUrl(state: string, nonce: string): string
     scope: "openid profile email",
     state,
     nonce,
+    // Force the account chooser rather than letting Microsoft reuse
+    // whatever account the browser already holds.
+    //
+    // Without this, a member of staff whose browser is signed in to a
+    // personal Microsoft account, or to a different tenant, is silently
+    // sent through as that account. The authorize endpoint is
+    // tenant-scoped, so Microsoft rejects it at its own end and never
+    // redirects back here. The staff member sees a Microsoft error and
+    // returns to a login page that has no idea anything happened, and
+    // the server logs show the sign-in starting and no callback ever
+    // arriving.
+    //
+    // This weakens nothing. The nonce, issuer, audience and WSA domain
+    // checks on the returned token are unchanged; the only difference is
+    // that the person gets to pick the right account.
+    prompt: "select_account",
   });
   return `https://login.microsoftonline.com/${ENV.staffSsoTenantId}/oauth2/v2.0/authorize?${params.toString()}`;
 }

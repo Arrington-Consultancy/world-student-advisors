@@ -206,6 +206,29 @@ describe("Microsoft SSO configuration gate", () => {
     expect(url.searchParams.get("state")).toBe("my-state");
     expect(url.searchParams.get("nonce")).toBe("my-nonce");
   });
+
+  /**
+   * Tim Hunt could not sign in on 31 August 2026 while Tom could, on the
+   * same app registration and redirect URI. The production logs showed
+   * three sign-ins starting from his device and no callback ever
+   * arriving, which means Microsoft refused at its own end. Without
+   * prompt=select_account, a browser already holding a personal or
+   * wrong-tenant Microsoft account is sent straight through as that
+   * account, and a tenant-scoped authorize endpoint rejects it there.
+   */
+  it("forces the account chooser, so a cached wrong-tenant account cannot be reused silently", async () => {
+    const { buildMicrosoftAuthorizeUrl } = await import("./staffIdentityAuth");
+    const url = new URL(buildMicrosoftAuthorizeUrl("my-state", "my-nonce"));
+    expect(url.searchParams.get("prompt")).toBe("select_account");
+  });
+
+  it("still scopes sign-in to the WSA tenant, so the chooser is not a way in for any account", async () => {
+    const { buildMicrosoftAuthorizeUrl } = await import("./staffIdentityAuth");
+    const url = new URL(buildMicrosoftAuthorizeUrl("s", "n"));
+    expect(url.pathname).toContain(mockEnv.staffSsoTenantId);
+    expect(url.pathname).not.toContain("/common/");
+    expect(url.pathname).not.toContain("/organizations/");
+  });
 });
 
 describe("staff identity session token", () => {
