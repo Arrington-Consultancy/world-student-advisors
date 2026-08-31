@@ -39,6 +39,9 @@ import {
 } from "../server/access/accessControl";
 import type { StaffSession } from "../server/staffSession";
 import { listWorkers } from "../server/workforce/registry";
+import { routeStaffRequest } from "../server/workforce/router";
+import { WORKER_FUNCTIONAL_SCOPE } from "../server/access/workerScope";
+import { FUNCTIONAL_SCOPES } from "../server/access/accessControl";
 import { evaluateConnectorPermission, evaluateStaffPortalExecutionPermission } from "../server/workforce/permissions";
 import { WORKER_CRM_SCOPE } from "../server/workforce/crmScope";
 import { combineContributions } from "../server/operating/collaboration";
@@ -241,15 +244,41 @@ async function main() {
   section("7. Worker isolation and connector denial");
   const connectors = ["sharepoint", "google_drive", "pipedrive"] as const;
   const operations = ["search", "read", "create", "update", "delete", "external_send"] as const;
-  let permitted = 0;
+  // Execution authority and connector authority are SEPARATE questions,
+  // and this check used to add them into one counter and assert zero.
+  // That was a true statement of the pre-activation position and became
+  // false the moment Tom Arrington's consolidated authority activated
+  // thirteen workers. Counting them together is the same defect that was
+  // corrected in the platform itself in Change Entry 075: a single switch
+  // for two different decisions. Asserting them separately is also
+  // stronger than asserting zero, because it pins execution to the
+  // Register rather than to a number.
+  let connectorPermitted = 0;
   for (const w of listWorkers()) {
-    if (evaluateStaffPortalExecutionPermission(w.id).allowed) permitted += 1;
     for (const c of connectors) for (const o of operations) {
-      if (evaluateConnectorPermission({ workerId: w.id, connector: c, operation: o, resourceScope: "x" }).allowed) permitted += 1;
+      if (evaluateConnectorPermission({ workerId: w.id, connector: c, operation: o, resourceScope: "x" }).allowed) connectorPermitted += 1;
     }
   }
-  check(permitted === 0,
-    `every worker is denied live execution and every connector operation (${permitted} permitted of ${listWorkers().length * (1 + connectors.length * operations.length)})`);
+  const connectorTotal = listWorkers().length * connectors.length * operations.length;
+  check(connectorPermitted === 0,
+    `every connector operation is denied for every worker (${connectorPermitted} permitted of ${connectorTotal})`);
+
+  // Execution must match the controlled record exactly — not merely be
+  // non-zero, and not merely include the thirteen. A worker the Register
+  // does not authorise must still be refused.
+  const SUBSTANTIVE = [
+    "sophie", "daniel", "amelia", "oliver", "james", "priya", "harper",
+    "olivia", "grace", "ethan", "maya", "alex", "nia",
+  ];
+  const executable = listWorkers().filter(w => evaluateStaffPortalExecutionPermission(w.id).allowed).map(w => w.id).sort();
+  check(JSON.stringify(executable) === JSON.stringify([...SUBSTANTIVE].sort()),
+    `exactly the thirteen Register-authorised workers may execute, and no other (found ${executable.length}: ${executable.join(", ")})`);
+
+  for (const id of ["wsa_core_brain", "wsa_governance_assurance", "staff_receptionist"]) {
+    if (!listWorkers().some(w => w.id === id)) continue;
+    check(!evaluateStaffPortalExecutionPermission(id).allowed,
+      `${id} is NOT executable as a substantive worker — the Register does not authorise it`);
+  }
   check(Object.values(WORKER_CRM_SCOPE).every(v => v === null),
     "no worker holds a CRM scope — the Access Matrix has no CRM column");
 
@@ -443,6 +472,130 @@ async function main() {
   const con = await rows<{ n: number }>("SELECT COUNT(*) AS n FROM `staff_enquiry_contributions`");
   console.log(`  staff_enquiries: ${enq[0].n} rows, staff_enquiry_contributions: ${con[0].n} rows`);
   check(true, "both clause-3 tables exist in production and are queryable by the deployed code");
+
+  // ── 16. Reception routes into every substantive worker ───────────────
+  section("16. Reception routes a plain-language request to the right worker");
+  // Reception is the front door. A worker nobody can be routed to is a
+  // worker nobody will use, however correct it is in isolation.
+  const ROUTES: ReadonlyArray<readonly [string, string]> = [
+    ["A new student has emailed us asking for help, can someone triage this enquiry", "sophie"],
+    ["Help me understand what this student is actually looking for and their background", "daniel"],
+    ["Help me research English courses for this student", "amelia"],
+    ["Which of these two universities is the better fit for this student", "oliver"],
+    ["What is the application deadline and what do we need for admissions", "james"],
+    ["What does the visa rule say about maintenance funds", "priya"],
+    ["What scholarship and funding options could close this student's funding gap", "harper"],
+    ["The student has their offer, what do they need before they arrive and enrol", "olivia"],
+    ["Can you quality check this case file before it goes out", "grace"],
+    ["How can we improve the website search ranking for this page", "ethan"],
+    ["How should we structure our SharePoint records and retention", "maya"],
+    ["How are our paid advertising campaigns performing", "alex"],
+    ["I want help creating a social media post", "nia"],
+  ];
+  let routedCorrectly = 0;
+  for (const [request, expected] of ROUTES) {
+    const routed = routeStaffRequest(request);
+    const ok = routed.matched && routed.responsibleWorkerId === expected;
+    if (ok) routedCorrectly += 1;
+    check(ok, `Reception routes to ${expected}` + (ok ? "" : ` — got ${routed.responsibleWorkerId ?? "no match"} for "${request.slice(0, 50)}"`));
+  }
+  check(routedCorrectly === ROUTES.length,
+    `all ${ROUTES.length} substantive workers are reachable through Reception (${routedCorrectly}/${ROUTES.length})`);
+
+  const nonsense = routeStaffRequest("please reconcile the VAT return and file the statutory accounts");
+  check(!nonsense.matched || nonsense.availability !== "available",
+    "Reception does not invent an owner for work no worker owns");
+
+  // ── 17. A worker is reachable only by a staff member holding its scope ─
+  section("17. Worker scope gating, against the real production profile");
+  const scopeDenied: string[] = [];
+  const scopeAllowed: string[] = [];
+  for (const id of SUBSTANTIVE) {
+    const required = WORKER_FUNCTIONAL_SCOPE[id as keyof typeof WORKER_FUNCTIONAL_SCOPE];
+    const decision = decideForProfile(profile, { action: "read", functionalScope: required });
+    (decision.allowed ? scopeAllowed : scopeDenied).push(`${id}(${required})`);
+  }
+  check(scopeDenied.length > 0,
+    `a staff member is refused workers whose scope they do not hold (${scopeDenied.length} of ${SUBSTANTIVE.length} refused)`);
+  console.log(`  reachable by this profile: ${scopeAllowed.join(", ") || "(none)"}`);
+  console.log(`  refused for this profile : ${scopeDenied.length} worker(s)`);
+
+  // Nia specifically, because this is the defect Tom Arrington reported.
+  const niaScope = WORKER_FUNCTIONAL_SCOPE.nia;
+  check(String(niaScope) === "social_media", `Nia requires the ${niaScope} scope`);
+  check((FUNCTIONAL_SCOPES as readonly string[]).includes(niaScope),
+    "social_media is an approved functional scope, so it CAN now be granted through the controlled route");
+  check(!decideForProfile(profile, { action: "read", functionalScope: niaScope }).allowed,
+    "Nia is correctly refused to a profile that does not hold social_media — the fix made the scope grantable, it granted it to nobody");
+  // [derived] — the model as deployed, not a claim about a second person.
+  const withSocial: StaffAccessProfile = {
+    ...profile,
+    functionalScopes: [...profile.functionalScopes, niaScope],
+  };
+  check(decideForProfile(withSocial, { action: "read", functionalScope: niaScope }).allowed,
+    "[derived] a profile holding social_media DOES reach Nia — the old scope error is a permission state, not a defect");
+
+  // ── 18. Conversation memory: real, owned, and isolated ───────────────
+  section("18. Conversation memory against the real production table");
+  // Everything here runs inside a transaction that is ALWAYS rolled back,
+  // so the production table is unchanged when it finishes. The row count is
+  // taken before and after and asserted identical, which makes that a
+  // demonstrated fact rather than an intention.
+  const [turnsBeforeRows] = await db.execute(sql`SELECT COUNT(*) AS n FROM worker_conversation_turns`);
+  const turnsBefore = Number((turnsBeforeRows as unknown as Array<{ n: number }>)[0].n);
+  const SENTINEL = `acceptance-${Date.now()}`;
+  const OTHER_STAFF = -424242;
+  const me = staff[0].id;
+
+  try {
+    await db.transaction(async tx => {
+      await tx.execute(sql`
+        INSERT INTO worker_conversation_turns (conversationId, staffUserId, workerId, role, content) VALUES
+        (${SENTINEL}, ${me}, 'amelia', 'staff', 'Help me research English courses for this student'),
+        (${SENTINEL}, ${me}, 'amelia', 'worker', 'Structured options with sources, pending the student level.')
+      `);
+
+      const own = await tx.execute(sql`
+        SELECT role FROM worker_conversation_turns
+        WHERE conversationId = ${SENTINEL} AND workerId = 'amelia' AND staffUserId = ${me} ORDER BY id ASC
+      `);
+      check((own[0] as unknown as unknown[]).length === 2,
+        "the same staff member and same worker retrieve both turns — follow-up context is genuinely server-held");
+
+      const otherWorker = await tx.execute(sql`
+        SELECT id FROM worker_conversation_turns
+        WHERE conversationId = ${SENTINEL} AND workerId = 'priya' AND staffUserId = ${me}
+      `);
+      check((otherWorker[0] as unknown as unknown[]).length === 0,
+        "ANOTHER WORKER cannot inherit the conversation — Amelia's thread is invisible to Priya even with the same id");
+
+      const otherStaff = await tx.execute(sql`
+        SELECT id FROM worker_conversation_turns
+        WHERE conversationId = ${SENTINEL} AND workerId = 'amelia' AND staffUserId = ${OTHER_STAFF}
+      `);
+      check((otherStaff[0] as unknown as unknown[]).length === 0,
+        "ANOTHER STAFF MEMBER cannot inherit the conversation — the same id under a different person returns nothing");
+
+      const unknown = await tx.execute(sql`
+        SELECT id FROM worker_conversation_turns
+        WHERE conversationId = 'no-such-conversation' AND workerId = 'amelia' AND staffUserId = ${me}
+      `);
+      check((unknown[0] as unknown as unknown[]).length === 0,
+        "an unknown conversation id yields an empty history rather than somebody else's thread");
+
+      throw new Error("acceptance-rollback");
+    });
+  } catch (err) {
+    if (!(err instanceof Error) || err.message !== "acceptance-rollback") throw err;
+  }
+
+  const [turnsAfterRows] = await db.execute(sql`SELECT COUNT(*) AS n FROM worker_conversation_turns`);
+  const turnsAfter = Number((turnsAfterRows as unknown as Array<{ n: number }>)[0].n);
+  check(turnsAfter === turnsBefore,
+    `the conversation checks left the table exactly as they found it (${turnsBefore} -> ${turnsAfter})`);
+  const [left] = await db.execute(sql`SELECT COUNT(*) AS n FROM worker_conversation_turns WHERE conversationId = ${SENTINEL}`);
+  check(Number((left as unknown as Array<{ n: number }>)[0].n) === 0,
+    "no acceptance row survived the rollback");
 
   // ── 15. This suite wrote nothing ──────────────────────────────────────
   section("15. The suite itself wrote nothing");
