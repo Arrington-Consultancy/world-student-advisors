@@ -45,11 +45,24 @@
 import { drizzle } from "drizzle-orm/mysql2";
 import { sql } from "drizzle-orm";
 
+// These three lists are copies of the approved lists in
+// server/access/accessControl.ts, because this script is plain .mjs and
+// cannot import the TypeScript module. A copy is a liability, so
+// assignStaffAccessLists.test.ts compares them against the real exports
+// and fails if they ever diverge again.
+//
+// "Again" is the operative word. social_media was added to the approved
+// scopes when Nia was built and was never added here, so for as long as
+// that lasted no staff member could be granted it through the controlled
+// route, and Nia refused every named user with "functional scope
+// social_media is not granted to this staff member". The worker was fine;
+// the assignment path could not express the permission she required.
 const FUNCTIONAL_SCOPES = [
   "executive", "operations", "enquiry_triage", "discovery", "education_research",
   "suitability", "admissions", "visa_compliance", "scholarships_funding",
   "pre_arrival_student_success", "quality_assurance", "marketing_seo", "paid_media",
-  "records_control", "governance", "finance", "safeguarding", "technical_administration",
+  "social_media", "records_control", "governance", "finance", "safeguarding",
+  "technical_administration",
 ];
 const ACTION_PERMISSIONS = [
   "read", "create", "update", "comment_handoff", "export_download", "external_send",
