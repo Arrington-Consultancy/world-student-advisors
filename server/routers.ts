@@ -44,6 +44,10 @@ import {
   PACK_TO_BRIEF,
   CONTROL_PACK,
 } from "./social/socialBrain";
+import { HOOK_FORMAT_LIBRARY } from "./social/hookFormatLibrary";
+import { NIA_PAID_BOUNDARY } from "./social/paidEvidence";
+import { HISTORICAL_MEMORY_POSITION } from "./social/historicalImport";
+import { VERIFIED_POSITION, DECISION_FOR_TOM } from "./social/accountAdministration";
 
 /** Shared by every Turnstile-protected mutation's input schema. */
 const turnstileField = { turnstileToken: z.string().min(1, "Verification required") };
@@ -733,6 +737,37 @@ export const appRouter = router({
             pack: i.controlPack ?? "no section",
             note: i.note,
           })),
+          /**
+           * The tenth record. Named in brief §8, absent from Control Pack
+           * v0.1, added as §10 at v0.2 and implemented in
+           * server/social/hookFormatLibrary.ts. Reported separately from
+           * the nine so the page does not imply the Pack always had it.
+           */
+          hookFormatLibrary: {
+            name: HOOK_FORMAT_LIBRARY.name,
+            holds: HOOK_FORMAT_LIBRARY.holds,
+            section: HOOK_FORMAT_LIBRARY.controlPackSection,
+            status: HOOK_FORMAT_LIBRARY.status,
+            recorded: 0,
+            emptyReason: HOOK_FORMAT_LIBRARY.emptyReason,
+          },
+          paidBoundary: {
+            owner: NIA_PAID_BOUNDARY.owner,
+            mayReference: NIA_PAID_BOUNDARY.mayReference,
+            mayRecord: NIA_PAID_BOUNDARY.mayRecord,
+            mayNot: NIA_PAID_BOUNDARY.mayNot,
+          },
+          history: {
+            importable: HISTORICAL_MEMORY_POSITION.anyPlatformImportable,
+            summary: HISTORICAL_MEMORY_POSITION.summary,
+            whatWouldChangeIt: HISTORICAL_MEMORY_POSITION.whatWouldChangeIt,
+          },
+          accounts: {
+            identified: VERIFIED_POSITION.accountsIdentified,
+            technicalAccessHeld: VERIFIED_POSITION.technicalAccessHeld,
+            statement: VERIFIED_POSITION.statement,
+            openDecision: DECISION_FOR_TOM.decision,
+          },
           populated: MEMORY_HORIZON.populated,
           emptyNote: MEMORY_HORIZON.actualState,
           toPopulate: MEMORY_HORIZON.toChangeThat,
