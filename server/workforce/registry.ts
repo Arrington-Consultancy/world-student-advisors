@@ -380,6 +380,18 @@ const REGISTRY_LIST: WorkerRegistryEntry[] = [
           "AB-P03 Knowledge and Evidence Standard is unapproved, so no controlled basis exists for which immigration source is authoritative. AB-P01 must also determine whether rule explanation falls outside regulated advice. Both are human decisions.",
       },
       {
+        id: "case_preparation",
+        name: "Visa and compliance case preparation",
+        description:
+          "Identify what an authorised human must determine for this case, what evidence and documents must be " +
+          "obtained, and what is genuinely uncertain. States no rule and gives no advice, so it needs no source " +
+          "hierarchy and is not a regulated activity. Enforced on the output in server/workforce/priyaScope.ts, " +
+          "not merely instructed in the brief.",
+        worksWithoutConnector: true,
+        requiresConnector: null,
+        unavailableBecause: null,
+      },
+      {
         id: "regulated_advice",
         name: "Regulated immigration advice and representations",
         description:

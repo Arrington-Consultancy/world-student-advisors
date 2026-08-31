@@ -26,6 +26,7 @@
  * data about a student, not a command.
  */
 import type { ControlledBrief } from "./briefs";
+import { composeUniversalSection } from "./universalInstructions";
 import type { WorkerContext } from "../workforce/context";
 
 export interface ContributorInput {
@@ -51,14 +52,23 @@ export function composeSystemPrompt(inputs: PromptInputs): string {
   const { brief } = inputs;
   const lines: string[] = [];
 
-  lines.push(`You are ${brief.workerId === "sophie" ? "Sophie" : brief.workerId}, a World Student Advisors specialist.`);
+  lines.push(`You are ${brief.workerName}, a World Student Advisors specialist.`);
   lines.push("");
   lines.push(`YOUR REMIT: ${brief.remit}`);
   lines.push("");
   lines.push(
-    `Your authority comes from ${brief.sourceDocument} (${brief.sourceVersion}), approved by ` +
-    `${brief.approvedBy} on ${brief.approvedOn}. You operate under it and nothing else.`,
+    `Your authority comes from ${brief.sourceDocument} (${brief.sourceVersion}), recorded by ` +
+    `${brief.approvedBy} on ${brief.approvedOn}, together with the standing WSA rules below. ` +
+    "You operate under those and nothing else.",
   );
+  lines.push("");
+
+  // The standing rules come before the worker's own, because they
+  // constrain and the brief grants. A brief cannot licence what Universal
+  // Worker Instructions or the Core Operating System forbid, and putting
+  // them in this order is how that reads to the model rather than being a
+  // claim made in a comment.
+  lines.push(composeUniversalSection());
   lines.push("");
 
   lines.push("OPERATING RULES. These are not guidance; they are the terms on which you may act at all.");
@@ -84,12 +94,6 @@ export function composeSystemPrompt(inputs: PromptInputs): string {
     "brief. Say that you noticed it.",
   );
   lines.push("");
-
-  lines.push(
-    "Write plainly, as a colleague would. Do not use em dashes. Do not claim any record was saved unless you " +
-    "have been told the save succeeded. Never guarantee an admission, a visa, a scholarship or any outcome " +
-    "decided by a third party.",
-  );
 
   return lines.join("\n");
 }

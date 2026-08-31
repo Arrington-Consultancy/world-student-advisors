@@ -28,6 +28,7 @@ import { checkAccessForStaffUser } from "../access/enforcement";
 import { WORKER_FUNCTIONAL_SCOPE } from "../access/workerScope";
 import { runQualityCheck, type QualityCheckResult } from "../operating/qualityCheck";
 import { getControlledBrief, NO_CONTROLLED_BRIEF } from "./briefs";
+import { checkPreparationOnly, PRIYA_REFUSAL } from "../workforce/priyaScope";
 import { composeSystemPrompt, composeUserMessage, type ContributorInput } from "./prompt";
 import type { WorkerId } from "../workforce/types";
 
@@ -38,6 +39,7 @@ export type ExecutionOutcome =
   | "refused_no_brief"
   | "refused_no_context"
   | "blocked_quality"
+  | "blocked_scope"
   | "model_unavailable";
 
 export interface ExecutionRequest {
@@ -155,7 +157,27 @@ export async function executeWorker(request: ExecutionRequest): Promise<Executio
     return refuse("model_unavailable", "The model returned nothing.", request.workerId, brief.sourceDocument);
   }
 
-  // 6. The quality gate, on the model's output, before any staff member
+  // 6. Priya's boundary, checked on the output rather than trusted to
+  //    the prompt. Her permitted work is preparation, and a model asked
+  //    to prepare a case will drift into answering it, usually while
+  //    being helpful. A rule statement that reaches a staff member is
+  //    regulated advice whether or not anybody intended it, so the text
+  //    is inspected before anyone sees it. This runs before the quality
+  //    gate because scope is the more serious failure.
+  if (request.workerId === "priya") {
+    const scope = checkPreparationOnly(modelText);
+    if (!scope.withinScope) {
+      return refuse(
+        "blocked_scope",
+        `${PRIYA_REFUSAL} Her draft answer stated a rule and was withheld: ` +
+        scope.violations.slice(0, 2).map(v => `"${v}"`).join(" "),
+        request.workerId,
+        brief.sourceDocument,
+      );
+    }
+  }
+
+  // 7. The quality gate, on the model's output, before any staff member
   //    sees it. Text that fails is not shown however well it reads.
   const quality = runQualityCheck({
     text: modelText,
