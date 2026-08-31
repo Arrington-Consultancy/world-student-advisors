@@ -24,6 +24,6 @@
 
 ALTER TABLE `workforce_audit_events`
   MODIFY COLUMN `authMethod` ENUM('entra_sso', 'shared_password', 'shared_executive') NOT NULL;
-
+--> statement-breakpoint
 ALTER TABLE `staff_enquiries`
   MODIFY COLUMN `authMethod` ENUM('entra_sso', 'shared_password', 'shared_executive') NOT NULL;

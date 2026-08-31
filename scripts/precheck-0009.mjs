@@ -50,6 +50,31 @@ if (!modifiesExpected) {
   process.exit(1);
 }
 
+// Every statement after the first needs a `--> statement-breakpoint` before
+// it. drizzle-kit splits a migration file on that marker and hands each
+// piece to mysql2 as one query, and mysql2 refuses a string holding more
+// than one statement. A file missing its breakpoints therefore fails at
+// "applying migrations..." with no error text at all, which reads like a
+// connection problem and is not one.
+//
+// This is checked here rather than trusted because the first attempt at
+// 0009 failed exactly this way. A guard that stops before touching the
+// database is worth more than a diagnosis afterwards.
+const executable = migrationSql
+  .replace(/^--.*$/gm, "")
+  .split(";")
+  .map(part => part.trim())
+  .filter(part => part !== "");
+const breakpoints = (migrationSql.match(/^--> statement-breakpoint$/gm) ?? []).length;
+if (breakpoints !== executable.length - 1) {
+  console.error(
+    `STOPPING: ${TAG}.sql has ${executable.length} statement(s) but ${breakpoints} ` +
+      `statement-breakpoint marker(s). drizzle-kit would send more than one statement as a ` +
+      `single query and fail without printing why.`,
+  );
+  process.exit(1);
+}
+
 const db = drizzle(process.env.DATABASE_URL);
 
 try {
