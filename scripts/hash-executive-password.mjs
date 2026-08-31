@@ -19,17 +19,35 @@ const password = process.env.EXECUTIVE_PASSWORD ?? "";
 // accepted that trade knowingly, which makes the strength of the password
 // the entire remaining control, so a weak one is refused here rather than
 // quietly accepted.
+//
+// WHAT THIS CHECKS, AND WHAT IT DELIBERATELY STOPPED CHECKING.
+// The first version of this demanded an uppercase letter, a lowercase
+// letter AND a digit. That is a composition rule, and NIST SP 800-63B
+// recommends against composition rules precisely because they push people
+// towards predictable shapes (Password1!) while adding almost nothing.
+// Length and a blocklist are what actually predict strength: sixteen
+// mixed-case letters is already about 10^27 combinations, and against
+// bcrypt at cost 12 a digit changes nothing that matters.
+//
+// It was dropped because it rejected a genuinely strong sixteen-character
+// passphrase, which is the moment a rule has to justify itself rather than
+// be obeyed. What replaced it is stricter about the things that do predict
+// a weak password: too short, too little variety, or a guessable word.
+const CLASSES = [/[a-z]/, /[A-Z]/, /[0-9]/, /[^A-Za-z0-9]/].filter(re => re.test(password)).length;
+const DISTINCT = new Set(password).size;
+
 const problems = [];
 if (password.length < 16) problems.push(`it is ${password.length} characters; at least 16 are required`);
-if (!/[a-z]/.test(password)) problems.push("it contains no lowercase letter");
-if (!/[A-Z]/.test(password)) problems.push("it contains no uppercase letter");
-if (!/[0-9]/.test(password)) problems.push("it contains no digit");
+// Variety, not composition. "abababababababab" is sixteen characters and
+// two classes, and is not a password.
+if (DISTINCT < 10) problems.push(`it uses only ${DISTINCT} distinct characters; at least 10 are required`);
+// One class means a single alphabet, which is a meaningfully smaller
+// search space than the length alone suggests.
+if (CLASSES < 2) problems.push("it uses only one kind of character; mix at least two of lowercase, uppercase, digits and symbols");
 if (/^\s|\s$/.test(password)) problems.push("it starts or ends with whitespace, which is lost in transit and impossible to type reliably");
-if (/^(?:.)\1+$/.test(password)) problems.push("it is a single repeated character");
 // Deliberately NOT anchored on word boundaries. "MyPassword12345678" is
 // exactly as guessable as "password" and a \b anchor lets it straight
-// through, because the boundary never fires on an embedded word. Substring
-// is the behaviour this check was always meant to have.
+// through, because the boundary never fires on an embedded word.
 const BANNED = ["password", "passw0rd", "worldstudent", "arrington", "letmein", "admin", "changeme", "welcome", "qwerty", "123456"];
 const lowered = password.toLowerCase();
 if (BANNED.some(word => lowered.includes(word)) || /\bwsa\b/i.test(password)) {
