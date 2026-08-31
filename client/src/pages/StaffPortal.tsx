@@ -261,12 +261,13 @@ function WorkforceHome({ token, onLogout }: { token: string; onLogout: () => voi
         </nav>
 
         {tab === "reception" && (
-          <div>
-            <h2 className="mb-1 text-2xl font-semibold text-wsa-navy">How can we help?</h2>
-            <p className="mb-6 max-w-2xl text-sm text-gray-600">
-              Describe what you need in plain language. Reception identifies who owns that kind of work, tells you
-              whether they are available, and gives you a safe next step. It never answers for a specialist itself.
-            </p>
+          <div className="mx-auto max-w-2xl">
+            <div className="mb-7 text-center">
+              <h2 className="text-3xl font-semibold tracking-tight text-wsa-navy">How can we help?</h2>
+              <p className="mx-auto mt-2 max-w-lg text-sm leading-relaxed text-gray-600">
+                Say what you need. Reception finds who owns that kind of work and whether they can take it.
+              </p>
+            </div>
             <Receptionist token={token} />
           </div>
         )}
