@@ -35,7 +35,7 @@ import { ACCESS_LEVEL_NAMES } from "./access/accessControl";
 import { recordAuditEvent } from "./workforce/audit";
 import { listWorkers, getWorker } from "./workforce/registry";
 import { evaluateStaffPortalExecutionPermission } from "./workforce/permissions";
-import { routeStaffRequest } from "./workforce/router";
+import { routeStaffRequestAssisted } from "./workforce/router";
 import {
   SOCIAL_BRAIN_RECORDS,
   DESIGNED_TO_REMEMBER,
@@ -635,7 +635,7 @@ export const appRouter = router({
       .input(z.object({ token: z.string(), request: z.string().min(1).max(500) }))
       .query(async ({ input }) => {
         const session = await resolveStaffSession(input.token);
-        const result = routeStaffRequest(input.request);
+        const result = await routeStaffRequestAssisted(input.request);
         // Routing is a meaningful action, so it is audited with the
         // resolved principal — but deliberately WITHOUT the request's free
         // text, which staff may phrase around a named student. Only the
@@ -650,7 +650,7 @@ export const appRouter = router({
           requestedCapability: "receptionist:route",
           permissionDecision: "allowed",
           permissionReason: result.matched
-            ? `Routed to ${result.responsibleWorkerName} (${result.availability}).`
+            ? `Routed to ${result.responsibleWorkerName} (${result.availability}), by ${result.routedBy}.`
             : "No worker matched; escalated to the authorised human process.",
           success: true,
           errorCategory: "none",
