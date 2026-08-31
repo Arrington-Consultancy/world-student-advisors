@@ -28,7 +28,7 @@ import { checkAccessForStaffUser } from "../access/enforcement";
 import { WORKER_FUNCTIONAL_SCOPE } from "../access/workerScope";
 import { runQualityCheck, type QualityCheckResult } from "../operating/qualityCheck";
 import { getControlledBrief, NO_CONTROLLED_BRIEF } from "./briefs";
-import { checkPreparationOnly, PRIYA_REFUSAL } from "../workforce/priyaScope";
+import { checkPreparationOnly, checkRuleStatementsAreSourced, PRIYA_REFUSAL } from "../workforce/priyaScope";
 import { composeSystemPrompt, composeUserMessage, type ContributorInput } from "./prompt";
 import type { WorkerId } from "../workforce/types";
 
@@ -169,8 +169,26 @@ export async function executeWorker(request: ExecutionRequest): Promise<Executio
     if (!scope.withinScope) {
       return refuse(
         "blocked_scope",
-        `${PRIYA_REFUSAL} Her draft answer stated a rule and was withheld: ` +
+        `${PRIYA_REFUSAL} Her draft answer made a determination about this person and was withheld: ` +
         scope.violations.slice(0, 2).map(v => `"${v}"`).join(" "),
+        request.workerId,
+        brief.sourceDocument,
+      );
+    }
+
+    // Core Operating System section 8: information that changes regularly
+    // must be verified before it is relied upon. An immigration rule
+    // stated with no source is the exact failure Priya's approval block
+    // existed to prevent, so it is withheld as an evidence failure rather
+    // than passed on with a caveat.
+    const evidence = checkRuleStatementsAreSourced(modelText);
+    if (!evidence.sourced) {
+      return refuse(
+        "blocked_scope",
+        "Priya stated an immigration rule without naming the official source and the date it was checked, " +
+        "which the Core Operating System requires for information that changes regularly. It has not been " +
+        "shown. Ask her again, or put the question to a named authorised human. Withheld: " +
+        evidence.unsourced.slice(0, 2).map(v => `"${v}"`).join(" "),
         request.workerId,
         brief.sourceDocument,
       );

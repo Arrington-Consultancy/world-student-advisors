@@ -30,8 +30,10 @@ describe("permission engine — deny by default", () => {
       // channel; every other worker fails one half or both.
       expect(decision.allowed).toBe(w.staffPortalExecutionAuthorised);
     }
-    expect(evaluateStaffPortalExecutionPermission("sophie").allowed).toBe(true);
-    expect(evaluateStaffPortalExecutionPermission("priya").allowed).toBe(false);
+    // The governance and routing functions are not case workers and are
+    // never executable, whatever else changes around them.
+    expect(evaluateStaffPortalExecutionPermission("wsa_core_brain").allowed).toBe(false);
+    expect(evaluateStaffPortalExecutionPermission("staff_receptionist").allowed).toBe(false);
   });
 
   it("throws for an unknown worker id rather than silently denying or defaulting to anything", () => {
@@ -77,9 +79,15 @@ describe("permission engine resists prompt injection and client tampering", () =
 });
 
 describe("James — closest to approval but still fully denied", () => {
-  it("James's formal 30/30 test pass does not grant any connector or execution authority", () => {
+  /**
+   * James is approved and executable since 31 August. That opened his
+   * execution path and nothing else: a test pass and an approval are
+   * still not a credential, and this is the half that must never move.
+   */
+  it("James's approval grants execution but no connector authority", () => {
+    expect(evaluateStaffPortalExecutionPermission("james").allowed).toBe(true);
     expect(evaluateConnectorPermission({ workerId: "james", connector: "sharepoint", operation: "read", resourceScope: "x" }).allowed).toBe(false);
-    expect(evaluateStaffPortalExecutionPermission("james").allowed).toBe(false);
+    expect(evaluateConnectorPermission({ workerId: "james", connector: "google_drive", operation: "read", resourceScope: "x" }).allowed).toBe(false);
   });
 });
 

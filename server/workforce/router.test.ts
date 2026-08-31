@@ -19,13 +19,14 @@ describe("routeStaffRequest — representative cases across student, admissions,
     expect(result.responsibleWorkerId).toBe("james");
   });
 
-  it("visa request routes to Priya, and correctly reports her as not available for live case work", () => {
+  it("visa request routes to Priya, who is now available for her bounded scope", () => {
     const result = routeStaffRequest("Can you check this student's UK visa evidence?");
     expect(result.responsibleWorkerId).toBe("priya");
     expect(result.responsibleWorkerName).toMatch(/Priya/);
-    expect(result.availability).toBe("not_available_for_live_case_work");
-    expect(result.status).toMatch(/approval_blocked|not.*available/i);
-    expect(result.safeNextAction).toMatch(/escalation|authorised human process/i);
+    expect(result.availability).toBe("available");
+    // Available, and still bounded. Reception offering her must never be
+    // read as her being able to give immigration advice.
+    expect(getWorker("priya").currentNextControl).toMatch(/AB-P04/);
   });
 
   it("funding request routes to Harper", () => {
@@ -91,6 +92,6 @@ describe("routeStaffRequest — does not invent ownership or substitute a differ
       expect(result.availability).toBe(expected);
     }
     expect(routeStaffRequest("new student enquiry").availability).toBe("available");
-    expect(routeStaffRequest("visa compliance check").availability).toBe("not_available_for_live_case_work");
+    expect(routeStaffRequest("course research needed").availability).toBe("available");
   });
 });

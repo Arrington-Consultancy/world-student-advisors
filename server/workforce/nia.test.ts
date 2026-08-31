@@ -21,8 +21,12 @@ describe("Nia is transcribed exactly as the Register records her", () => {
     expect(nia.specificationVersion).toBe("v0.1 + Social Brain Control Pack v0.1");
   });
 
-  it("is NOT APPROVED, as the Register says", () => {
-    expect(getWorker("nia").specificationStatus).toBe("not_approved");
+  it("is approved for drafting only, with the account gates still recorded", () => {
+    // Approved 31 August for work inside the Staff Portal that publishes
+    // nothing. NIA-G01 to NIA-G07 govern account-level authority and are
+    // untouched, which the blockers below assert.
+    expect(getWorker("nia").specificationStatus).toBe("approved");
+    expect(getWorker("nia").gatekeeperReview).toBe("pending");
   });
 
   it("has NO LIVE PUBLISHING AUTHORITY — no connector grant on any social channel", () => {
@@ -45,9 +49,10 @@ describe("Nia is transcribed exactly as the Register records her", () => {
     expect(WORKER_CRM_SCOPE.nia).toBeNull();
   });
 
-  it("cannot be opened for live execution", () => {
-    expect(evaluateStaffPortalExecutionPermission("nia").allowed).toBe(false);
-    expect(getWorker("nia").staffPortalExecutionAuthorised).toBe(false);
+  it("executes for drafting, and holds no publishing capability", () => {
+    expect(evaluateStaffPortalExecutionPermission("nia").allowed).toBe(true);
+    const publish = getWorker("nia").capabilities.find(c => c.id === "publish")!;
+    expect(publish.unavailableBecause).not.toBeNull();
   });
 
   it("records the NIA-G01 to NIA-G07 blockers rather than glossing them", () => {
@@ -96,21 +101,20 @@ describe("Reception routes social work to Nia and nothing else to her", () => {
     expect(routeStaffRequest("check this student's visa evidence").responsibleWorkerId).toBe("priya");
   });
 
-  it("reports her honestly as unavailable rather than offering her", () => {
+  it("offers her for drafting, which is what she can actually do", () => {
     const r = routeStaffRequest("write a linkedin post");
     expect(r.responsibleWorkerId).toBe("nia");
-    expect(r.availability).not.toBe("available");
+    expect(r.availability).toBe("available");
   });
 });
 
 describe("the estate remains closed apart from the one authorised worker", () => {
-  it("leaves Nia unexecutable, and no worker connector-authorised", () => {
-    expect(getWorker("nia").staffPortalExecutionAuthorised).toBe(false);
+  it("opened execution for the approved workers and a connector for nobody", () => {
     for (const w of listWorkers()) {
-      // Execution opened for Sophie under a recorded decision. Connector
+      // Execution opened under recorded decisions on 31 August. Connector
       // authority did not, and that separation is the point.
-      expect(w.connectorUseAuthorised).toBe(false);
-      if (w.id !== "sophie") expect(w.staffPortalExecutionAuthorised).toBe(false);
+      expect(w.connectorUseAuthorised, w.id).toBe(false);
+      expect(w.writesAuthorised, w.id).toBe(false);
     }
     expect(listWorkers()).toHaveLength(16);
   });

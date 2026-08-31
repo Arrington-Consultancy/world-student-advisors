@@ -66,59 +66,76 @@ describe("worker registry integrity", () => {
   });
 });
 
-describe("controlled approval status — Sophie is the only approved worker", () => {
-  it("Sophie is the only worker with specificationStatus approved", () => {
-    const approved = listWorkers().filter(w => w.specificationStatus === "approved");
-    expect(approved.map(w => w.id)).toEqual(["sophie"]);
+describe("approval status comes from the controlled record, not from code", () => {
+  /**
+   * These used to assert Sophie was the only approved worker. That was a
+   * true statement of the position on 30 August and is deliberately false
+   * since Tom Arrington's consolidated completion and activation
+   * authority of 31 August. What they protect is not the count: it is
+   * that the register is the source, and that approval and connector
+   * authority remain separate things.
+   */
+  const APPROVED_31_AUGUST: WorkerId[] = [
+    "sophie", "daniel", "amelia", "oliver", "james", "priya",
+    "harper", "olivia", "grace", "ethan", "maya", "alex", "nia",
+  ];
+
+  it("the approved list is exactly the workers the controlled record names", () => {
+    const approved = listWorkers().filter(w => w.specificationStatus === "approved").map(w => w.id);
+    expect(approved.sort()).toEqual([...APPROVED_31_AUGUST].sort());
   });
 
-  it("Priya is specifically approval_blocked, not merely not_approved", () => {
-    expect(getWorker("priya").specificationStatus).toBe("approval_blocked");
-  });
-
-  it("every case-working specialist besides Sophie is not_approved or approval_blocked", () => {
-    const specialists: WorkerId[] = ["daniel", "amelia", "oliver", "james", "priya", "harper", "olivia", "grace", "ethan", "maya", "alex"];
-    for (const id of specialists) {
-      const w = getWorker(id);
-      expect(["not_approved", "approval_blocked"]).toContain(w.specificationStatus);
+  it("execution authority is opened by the register and by nothing else", () => {
+    // Every executable worker must ALSO carry the deployment-channel
+    // decision. Approval alone has never been enough, and that is the
+    // property worth keeping now that thirteen workers are approved.
+    for (const w of listWorkers()) {
+      if (!w.staffPortalExecutionAuthorised) continue;
+      expect(w.specificationStatus, `${w.id} executes without an approved specification`).toBe("approved");
+      expect(w.staffPortalExecutionStatus, `${w.id} executes without a channel decision`).toBe(
+        "staff_portal_authorised",
+      );
     }
   });
 
-  it("authorises live execution only where the register does, which today is Sophie alone", () => {
-    const authorised = listWorkers().filter(w => w.staffPortalExecutionAuthorised).map(w => w.id);
-    expect(authorised).toEqual(["sophie"]);
-  });
-
-  it("Sophie's staff portal execution status records the resolved deployment-channel decision", () => {
-    expect(getWorker("sophie").staffPortalExecutionStatus).toBe("staff_portal_authorised");
-  });
-
-  it("no worker has connector or write authorisation — no live credentials exist yet", () => {
+  it("no worker has connector or write authorisation, whatever its approval status", () => {
+    // The activation opened execution. It opened no credential, and this
+    // is the test that would fail if a future change conflated them again.
     for (const w of listWorkers()) {
-      expect(w.connectorUseAuthorised).toBe(false);
-      expect(w.writesAuthorised).toBe(false);
+      expect(w.connectorUseAuthorised, `${w.id}`).toBe(false);
+      expect(w.writesAuthorised, `${w.id}`).toBe(false);
+    }
+  });
+
+  it("Priya is approved for a bounded scope, with regulated advice still shut", () => {
+    const priya = getWorker("priya");
+    expect(priya.specificationStatus).toBe("approved");
+    const regulated = priya.capabilities.find(c => c.id === "regulated_advice")!;
+    expect(regulated.unavailableBecause).not.toBeNull();
+    expect(priya.currentNextControl).toMatch(/AB-P04/);
+  });
+
+  it("every worker that is live names what it still cannot do", () => {
+    // A worker with every capability open and nothing recorded as
+    // unavailable would be the shape of an activation that quietly
+    // widened a remit. Sophie aside, each live worker keeps a named
+    // restriction or an empty blocker list it has earned.
+    for (const w of listWorkers()) {
+      if (!w.staffPortalExecutionAuthorised) continue;
+      for (const capability of w.capabilities) {
+        if (capability.unavailableBecause !== null) {
+          expect(capability.unavailableBecause.length, `${w.id}/${capability.id}`).toBeGreaterThan(15);
+        }
+      }
     }
   });
 
   it("records the estate-level next control as Tom's approval, the Gatekeeper review having passed", () => {
     expect(ESTATE_LEVEL_NEXT_CONTROL).toMatch(/gatekeeper review passed/i);
-    expect(ESTATE_LEVEL_NEXT_CONTROL).toMatch(/next control: tom arrington's consolidated approval decision/i);
     expect(ESTATE_LEVEL_NEXT_CONTROL).toMatch(/no additional .* self-approval/i);
   });
 });
 
-/**
- * The 29 August 2026 Gatekeeper Result inspected twelve worker documents
- * by name and cleared them to proceed to Tom. Register v0.42's per-worker
- * next-control lines still said that review was the next control, and the
- * portal repeated it to staff, describing ten cleared workers as still in
- * design.
- *
- * Nia is the one legitimate exception: she was created on 30 August, after
- * the review, so hers genuinely is pending. Naming her explicitly is the
- * point — a test that allowed any worker to claim a pending Gatekeeper
- * review would not have caught the stale text in the first place.
- */
 describe("Gatekeeper review currency — stale 'review pending' text cannot return", () => {
   const REVIEWED: WorkerId[] = [
     "sophie", "daniel", "amelia", "oliver", "james", "priya",
@@ -149,32 +166,29 @@ describe("Gatekeeper review currency — stale 'review pending' text cannot retu
 });
 
 /**
- * Priya's bounded rule-explanation capability is the one the directive
- * asked about specifically. It is defined, it is genuinely useful, and it
- * is off — for a reason that is not the missing connector. This test
- * exists so nobody quietly opens it by nulling a field.
+ * Priya's boundary after the 31 August activation. Research is open and
+ * determination is not, so this checks both halves: a test that only
+ * confirmed she was live would pass if the boundary were removed.
  */
-describe("Priya — the bounded capability is defined and blocked for the right reason", () => {
-  const rules = () => {
-    const c = getWorker("priya").capabilities.find(x => x.id === "rules_explanation");
-    if (!c) throw new Error("Priya's rules_explanation capability is missing");
-    return c;
-  };
+describe("Priya — research is open, determination is not", () => {
+  const capability = (id: string) => getWorker("priya").capabilities.find(c => c.id === id)!;
 
-  it("is unavailable", () => {
-    expect(rules().unavailableBecause).not.toBeNull();
+  it("official rule research is available", () => {
+    expect(capability("rules_explanation").unavailableBecause).toBeNull();
   });
 
-  it("is blocked by AB-P03 and AB-P01, not by a connector", () => {
-    const reason = rules().unavailableBecause ?? "";
-    expect(reason).toMatch(/AB-P03/);
-    expect(reason).toMatch(/AB-P01/);
-    expect(rules().requiresConnector).toBeNull();
-    expect(reason).not.toMatch(/connector/i);
+  it("case preparation is available", () => {
+    expect(capability("case_preparation").unavailableBecause).toBeNull();
   });
 
-  it("Priya's regulated-advice capability stays blocked irrespective of those two decisions", () => {
-    const regulated = getWorker("priya").capabilities.find(x => x.id === "regulated_advice");
-    expect(regulated?.unavailableBecause).not.toBeNull();
+  it("regulated advice stays blocked, naming AB-P04", () => {
+    const regulated = capability("regulated_advice");
+    expect(regulated.unavailableBecause).not.toBeNull();
+    expect(regulated.unavailableBecause).toMatch(/AB-P04/);
+  });
+
+  it("neither open capability needs a connector, so neither is a hidden credential grant", () => {
+    expect(capability("rules_explanation").requiresConnector).toBeNull();
+    expect(capability("case_preparation").requiresConnector).toBeNull();
   });
 });

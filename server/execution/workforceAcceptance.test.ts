@@ -176,14 +176,19 @@ describe("acceptance: the workforce as a whole", () => {
     expect(system).toContain("Visa or immigration advice, detailed or otherwise.");
   });
 
-  it("exactly one worker is executable, and it is the one the register names", () => {
-    const executable = listWorkers().filter(w => evaluateStaffPortalExecutionPermission(w.id).allowed);
-    expect(executable.map(w => w.id)).toEqual(["sophie"]);
+  it("the executable set is exactly what the register authorises, and nothing else", () => {
+    for (const w of listWorkers()) {
+      expect(evaluateStaffPortalExecutionPermission(w.id).allowed, w.id).toBe(w.staffPortalExecutionAuthorised);
+    }
+    // The governance and routing functions are not case workers and never
+    // execute, whatever happens to the specialists around them.
+    for (const id of ["wsa_core_brain", "wsa_governance_assurance", "staff_receptionist"] as WorkerId[]) {
+      expect(evaluateStaffPortalExecutionPermission(id).allowed, id).toBe(false);
+    }
   });
 
-  it("every unexecutable worker refuses with a reason a staff member can act on", async () => {
-    for (const { id } of WORKERS) {
-      if (evaluateStaffPortalExecutionPermission(id).allowed) continue;
+  it("a worker the register does not authorise refuses with a reason a staff member can act on", async () => {
+    for (const id of ["wsa_core_brain", "wsa_governance_assurance", "staff_receptionist"] as WorkerId[]) {
       const result = await executeWorker({ staffUserId: 1, workerId: id, requestText: "do some work" });
       expect(result.outcome).toBe("refused_worker_not_executable");
       expect(result.reason.length).toBeGreaterThan(20);

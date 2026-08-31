@@ -16,6 +16,7 @@ import {
 import { PLATFORM_IMPORT_POSITIONS, HISTORICAL_MEMORY_POSITION, PROHIBITED_BACKFILL } from "./historicalImport";
 import { ACCOUNT_ADMINISTRATION_MAP, VERIFIED_POSITION, DECISION_FOR_TOM } from "./accountAdministration";
 import type { StaffAccessProfile } from "../access/accessControl";
+import { getWorker } from "../workforce/registry";
 
 function profile(over: Partial<StaffAccessProfile> = {}): StaffAccessProfile {
   return {
@@ -118,26 +119,32 @@ describe("Nia may reference Alex's paid evidence but cannot mutate it", () => {
     }
   });
 
-  it("refuses release while Alex is not approved", () => {
-    expect(alexAuthorisesRelease()).toBe(false);
-    const r = referencePaidEvidenceForContent({ profile: profile(), contentId: "C-101" });
-    expect(r.available).toBe(false);
-    if (!r.available) {
-      expect(r.deniedBy).toBe("worker_release");
-      expect(r.reason).toContain("Paid measurement remains his");
-    }
+  it("releases only because the Register says Alex is approved, not because the interface says so", () => {
+    // Alex was approved on 31 August, so the gate opens. What matters is
+    // WHERE it reads from: alexAuthorisesRelease consults the Worker
+    // Register, so the gate moved when the controlled record moved and
+    // could not have been opened from inside this module.
+    expect(alexAuthorisesRelease()).toBe(getWorker("alex").specificationStatus === "approved");
+    expect(alexAuthorisesRelease()).toBe(true);
   });
 
-  it("approving the interface does not open Alex's gate", () => {
-    // The distinction the approval turns on: it approves the boundary,
-    // not the data. Alex is still not approved, so nothing is released,
-    // and an approved interface must never be read as an approved worker.
+  it("the interface approval never was the thing that opened the gate", () => {
+    // The interface has been APPROVED throughout, including while Alex
+    // was not and nothing was released. That is the property: an approved
+    // boundary is not an approved worker, and the record still says so.
     expect(INTERFACE_RECORD.status).toBe("APPROVED");
-    expect(alexAuthorisesRelease()).toBe(false);
     expect(INTERFACE_RECORD.whatApprovalDoesNotDo).toContain("does not approve Alex");
     expect(INTERFACE_RECORD.whatApprovalDoesNotDo).toContain("AB-A01");
-    const r = referencePaidEvidenceForContent({ profile: profile(), contentId: "C-101" });
-    expect(r.available).toBe(false);
+  });
+
+  it("releasing evidence to Nia grants her no paid-media authority at all", () => {
+    // The gate opening is about reading Alex's evidence. Nia's own
+    // boundary is unchanged, and this is what would fail if release were
+    // ever confused with authority.
+    const nia = getWorker("nia");
+    expect(nia.connectorUseAuthorised).toBe(false);
+    expect(NIA_PAID_BOUNDARY.mayNot).toContain("Set budgets");
+    expect(NIA_PAID_BOUNDARY.mayNot).toContain("Spend money");
   });
 
   it("keeps Alex the owner of paid-media measurement", () => {

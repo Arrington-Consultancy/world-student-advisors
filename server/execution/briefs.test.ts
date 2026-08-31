@@ -63,9 +63,20 @@ describe("controlled briefs — coverage and provenance", () => {
  * them would have activated twelve unapproved specialists at once.
  */
 describe("a brief is not an authorisation", () => {
-  it("writing briefs for every worker left execution authority untouched", () => {
-    const authorised = listWorkers().filter(w => w.staffPortalExecutionAuthorised).map(w => w.id);
-    expect(authorised).toEqual(["sophie"]);
+  it("a brief never authorises: every executable worker also holds an approved specification", () => {
+    // Briefs were written for thirteen workers while twelve of them could
+    // not execute. What that proved still holds: authority comes from the
+    // register, and a brief on its own opens nothing.
+    for (const w of listWorkers()) {
+      if (!w.staffPortalExecutionAuthorised) continue;
+      expect(w.specificationStatus, w.id).toBe("approved");
+    }
+    for (const id of workersWithBriefs()) {
+      const w = getWorker(id);
+      if (w.specificationStatus !== "approved") {
+        expect(w.staffPortalExecutionAuthorised, `${id} executes on a brief alone`).toBe(false);
+      }
+    }
   });
 
   it("no worker gained connector or write authority from having a brief", () => {

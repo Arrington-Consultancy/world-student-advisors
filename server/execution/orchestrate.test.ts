@@ -44,18 +44,20 @@ describe("choosing one lead", () => {
   });
 
   it("falls back to the first candidate that can execute", () => {
-    expect(selectLead(["daniel", "sophie", "amelia"])).toBe("sophie");
+    expect(selectLead(["daniel", "sophie", "amelia"])).toBe("daniel");
   });
 
   it("returns no lead where nothing can execute, rather than picking one anyway", () => {
-    expect(selectLead(["daniel", "amelia", "priya"])).toBeNull();
+    // The governance and routing functions never execute, so a request
+    // that only reaches them has no lead and must say so.
+    expect(selectLead(["wsa_core_brain", "wsa_governance_assurance", "staff_receptionist"])).toBeNull();
   });
 
   it("does not make an unexecutable case owner the lead", () => {
     const stage: CaseStage = {
       caseId: "case-1",
       currentStage: "Discovery",
-      owningWorkerId: "daniel",
+      owningWorkerId: "wsa_governance_assurance",
       prerequisites: [],
       status: "on_track",
       nextControlledAction: "Complete discovery",
@@ -115,12 +117,12 @@ describe("orchestrating a real request", () => {
       caseId: "case-1",
       studentId: "student-1",
       availableCases: [CASE],
-      candidateWorkerIds: ["sophie", "daniel", "priya", "harper"],
+      candidateWorkerIds: ["sophie", "wsa_core_brain", "wsa_governance_assurance", "staff_receptionist"],
     });
 
     expect(result.outcome).toBe("answered");
     const gapIds = result.gaps.map(g => g.workerId).sort();
-    expect(gapIds).toEqual(["daniel", "harper", "priya"]);
+    expect(gapIds).toEqual(["staff_receptionist", "wsa_core_brain", "wsa_governance_assurance"]);
     for (const gap of result.gaps) {
       expect(gap.reason.length).toBeGreaterThan(10);
       expect(gap.workerName.length).toBeGreaterThan(2);
@@ -136,12 +138,12 @@ describe("orchestrating a real request", () => {
       caseId: "case-1",
       studentId: "student-1",
       availableCases: [CASE],
-      candidateWorkerIds: ["sophie", "priya"],
+      candidateWorkerIds: ["sophie", "wsa_governance_assurance"],
     });
 
     const userMessage = invokeLLM.mock.calls[0][0].messages[1].content as string;
     expect(userMessage).toContain("SPECIALISTS WHO COULD NOT CONTRIBUTE");
-    expect(userMessage).toContain("Priya");
+    expect(userMessage).toContain("Governance");
     expect(userMessage).toContain("do not cover the gap with your own opinion");
   });
 
@@ -176,12 +178,12 @@ describe("orchestrating a real request", () => {
       caseId: "case-1",
       studentId: "student-1",
       availableCases: [CASE],
-      candidateWorkerIds: ["priya", "harper"],
+      candidateWorkerIds: ["wsa_core_brain", "wsa_governance_assurance"],
     });
 
     expect(result.outcome).toBe("no_authorised_lead");
     expect(result.visibleText).toBeNull();
-    expect(result.gaps.map(g => g.workerId).sort()).toEqual(["harper", "priya"]);
+    expect(result.gaps.map(g => g.workerId).sort()).toEqual(["wsa_core_brain", "wsa_governance_assurance"]);
     expect(invokeLLM).not.toHaveBeenCalled();
   });
 
@@ -217,7 +219,7 @@ describe("contributors stay isolated", () => {
       caseId: "case-1",
       studentId: "student-1",
       availableCases: [CASE],
-      candidateWorkerIds: ["sophie", "daniel"],
+      candidateWorkerIds: ["sophie", "wsa_core_brain"],
     });
 
     for (const call of invokeLLM.mock.calls) {
@@ -240,12 +242,12 @@ describe("contributors stay isolated", () => {
       caseId: "case-1",
       studentId: "student-1",
       availableCases: [CASE],
-      candidateWorkerIds: ["sophie", "priya", "james", "maya"],
+      candidateWorkerIds: ["sophie", "wsa_core_brain", "wsa_governance_assurance"],
     });
 
     // Being named alongside an authorised lead does not authorise anyone.
     const ran = result.contributingWorkerIds;
-    for (const id of ["priya", "james", "maya"] as WorkerId[]) {
+    for (const id of ["wsa_core_brain", "wsa_governance_assurance"] as WorkerId[]) {
       expect(ran).not.toContain(id);
     }
   });
