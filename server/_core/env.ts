@@ -67,4 +67,17 @@ export const ENV = {
    * this to the client, log it, or include it in any response. Never falls
    * back to a default: unset means the Staff Portal stays inaccessible. */
   staffPortalPasswordHash: process.env.STAFF_PORTAL_PASSWORD_HASH ?? "",
+  /**
+   * The email of the first access administrator, for the one-time
+   * bootstrap. Access administration requires the access_admin permission,
+   * which itself can only be granted by somebody who already holds it, so
+   * without this nobody could ever hold it.
+   *
+   * Set in Railway by a person with Railway access, which is the same
+   * small group who could otherwise edit the database directly, so it
+   * grants nothing that was not already reachable. The bootstrap refuses
+   * once any account holds access_admin, so it closes itself after the
+   * first use and cannot be replayed by changing this value later.
+   */
+  accessBootstrapEmail: (process.env.ACCESS_BOOTSTRAP_EMAIL ?? "").toLowerCase(),
 };
