@@ -121,13 +121,34 @@ export const HISTORICAL_MEMORY_POSITION = Object.freeze({
   anyPlatformImportable: false,
   verifiedRangeAcrossEstate: null as null,
   summary:
-    "No WSA social history is importable today. No platform has an authorised export or API route, because no " +
-    "credential exists for any of them and no controlled record grants one.",
+    "No WSA social history is importable today. No platform has an authorised connection, so nothing can be exported.",
   whatWouldChangeIt:
-    "For each platform: confirmed account administration (NIA-G06), an authorised application and credential, the " +
-    "approved data-access scope and retention decision (NIA-G03), and a recorded check of what that platform " +
-    "actually returns for that account.",
+    "An authorised connection through the platform's own authorisation flow, made by a WSA staff member the platform " +
+    "confirms may grant that asset. Once one exists, what it can actually return becomes a question with an answer.",
   doNotSay:
     "That WSA holds six years of social memory. Six years is the goal, not the evidenced position, and the " +
     "recoverable range is currently zero days on every platform.",
 });
+
+/**
+ * What has to be established once a real connection exists, before any
+ * import runs.
+ *
+ * Recorded as the questions rather than as guesses at their answers,
+ * because each is a property of the specific account and the scopes that
+ * particular person was able to grant. A business-managed page and a
+ * personal profile return different things, and the API version at the
+ * time of access changes it again.
+ */
+export const ESTABLISH_BEFORE_IMPORT: readonly string[] = Object.freeze([
+  "Available historical range for this exact account, from the platform itself.",
+  "Available metrics and fields, named as the platform names them.",
+  "Retention limitations the platform applies to that data.",
+  "Account type restrictions, since a business asset and a personal profile differ.",
+  "Export and API limitations, including rate and volume caps.",
+]);
+
+/** Import only what the platform genuinely provides. */
+export const IMPORT_RULE =
+  "Import only what the platform can genuinely provide for that account, and record the range imported. Where a " +
+  "period or a metric is unavailable, record it as unavailable rather than filling it in.";

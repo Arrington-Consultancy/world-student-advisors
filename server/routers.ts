@@ -47,7 +47,9 @@ import {
 import { HOOK_FORMAT_LIBRARY } from "./social/hookFormatLibrary";
 import { NIA_PAID_BOUNDARY } from "./social/paidEvidence";
 import { HISTORICAL_MEMORY_POSITION } from "./social/historicalImport";
-import { VERIFIED_POSITION, DECISION_FOR_TOM } from "./social/accountAdministration";
+import { VERIFIED_POSITION, DECISION_FOR_TOM, MAP_ROLE } from "./social/accountAdministration";
+import { ACTIVATION_STATE, CONNECTION_FLOW, NEVER_COLLECTED } from "./social/connection";
+import { GATES } from "./social/gates";
 
 /** Shared by every Turnstile-protected mutation's input schema. */
 const turnstileField = { turnstileToken: z.string().min(1, "Verification required") };
@@ -767,7 +769,26 @@ export const appRouter = router({
             technicalAccessHeld: VERIFIED_POSITION.technicalAccessHeld,
             statement: VERIFIED_POSITION.statement,
             openDecision: DECISION_FOR_TOM.decision,
+            openDecisionDoesNotBlock: DECISION_FOR_TOM.doesNotBlock,
           },
+          /**
+           * How a social account gets connected, and the fact that none
+           * is. Shown so staff can see the route exists without the page
+           * implying anything is live.
+           */
+          connection: {
+            anyPlatformConnected: ACTIVATION_STATE.anyPlatformConnected,
+            note: ACTIVATION_STATE.note,
+            flow: CONNECTION_FLOW,
+            neverCollected: NEVER_COLLECTED,
+            technicalGate: MAP_ROLE.technicalGate,
+          },
+          gates: GATES.map(g => ({
+            id: g.id,
+            state: g.state,
+            outstanding: g.outstanding,
+            doesNotBlock: g.doesNotBlock,
+          })),
           populated: MEMORY_HORIZON.populated,
           emptyNote: MEMORY_HORIZON.actualState,
           toPopulate: MEMORY_HORIZON.toChangeThat,

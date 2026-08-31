@@ -129,11 +129,34 @@ export function SocialMediaPanel({ token }: { token: string }) {
         <p className="mt-2 text-xs text-gray-500">{brain.data.hookFormatLibrary.emptyReason}</p>
       </section>
 
+      <section className="mt-6 rounded-lg border border-wsa-navy/10 bg-white p-4">
+        <h4 className="font-semibold text-wsa-navy">Connecting an account</h4>
+        <p className="mt-1 text-sm text-gray-600">{brain.data.connection.note}</p>
+        <ol className="mt-3 space-y-1.5">
+          {brain.data.connection.flow.map((step: string, i: number) => (
+            <li key={i} className="flex gap-2.5 text-sm text-gray-700">
+              <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-wsa-navy/5 text-xs font-medium text-wsa-navy">
+                {i + 1}
+              </span>
+              <span className="leading-relaxed">{step}</span>
+            </li>
+          ))}
+        </ol>
+        <p className="mt-3 border-t border-wsa-navy/5 pt-2.5 text-xs text-gray-500">
+          <span className="font-medium">Never asked for or stored:</span>{" "}
+          {brain.data.connection.neverCollected.join(", ").toLowerCase()}.
+        </p>
+      </section>
+
       <section className="mt-6 rounded-lg border border-wsa-navy/10 bg-gray-50 p-4">
         <h4 className="font-semibold text-wsa-navy">The social accounts</h4>
         <p className="mt-1 text-sm text-gray-600">{brain.data.accounts.statement}</p>
         <p className="mt-2 text-xs text-gray-500">
           <span className="font-medium">Open decision:</span> {brain.data.accounts.openDecision}
+        </p>
+        <p className="mt-1 text-xs text-gray-500">
+          This is a continuity question, not a connection one. It does not block:{" "}
+          {brain.data.accounts.openDecisionDoesNotBlock.toLowerCase()}
         </p>
       </section>
 
