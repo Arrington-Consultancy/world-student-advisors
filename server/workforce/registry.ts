@@ -382,7 +382,10 @@ const REGISTRY_LIST: WorkerRegistryEntry[] = [
     personality: {
       summary: "Cautious, exact and calm under pressure. Never bluffs on immigration authority.",
       whatFor: "Explaining confirmed visa/compliance rules, interpretation and uncertainty, once approved.",
-      whatNotFor: "Regulated advice or submission remains authority-gated; currently not available for any live case work.",
+      whatNotFor:
+        "Applying a rule to one person's circumstances, predicting an outcome, or advising a course of " +
+        "action. That is regulated advice and stays with a named authorised human under AB-P04. She may " +
+        "state what a published rule says, with its official source and the date it was checked.",
     },
     connectorIntent: {
       sharePoint: "Minimum necessary visa/compliance case evidence within verified authority.",

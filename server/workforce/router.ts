@@ -50,7 +50,11 @@ const ROUTING_DOMAINS: RoutingDomain[] = [
   },
   {
     workerId: "oliver",
-    keywords: ["suitability", "suitable", "compare option", "trade off", "which option", "best fit", "right for this student", "recommend an option"],
+    keywords: [
+      "suitability", "suitable", "compare option", "compare universities", "compare courses", "trade off",
+      "which option", "best fit", "better fit", "better option", "which university", "which of these",
+      "right for this student", "recommend an option",
+    ],
   },
   {
     workerId: "james",
@@ -75,15 +79,27 @@ const ROUTING_DOMAINS: RoutingDomain[] = [
   },
   {
     workerId: "olivia",
-    keywords: ["pre-arrival", "arrival", "orientation", "student success", "settling in", "transition", "accommodation", "airport", "before they travel"],
+    keywords: [
+      "pre-arrival", "arrival", "arrive", "they arrive", "orientation", "student success", "settling in",
+      "transition", "accommodation", "airport", "before they travel", "enrol", "enrolment", "enrollment",
+      "got their offer", "has their offer",
+    ],
   },
   {
     workerId: "grace",
-    keywords: ["audit", "quality assurance", "case review", "quality control", "case audit", "check our work", "did we follow"],
+    keywords: [
+      "audit", "quality assurance", "quality check", "quality checked", "case review", "quality control",
+      "case audit", "check our work", "check this case", "review this case", "did we follow",
+      "before it goes out",
+    ],
   },
   {
     workerId: "ethan",
-    keywords: ["seo", "organic search", "search console", "website traffic", "organic growth", "keyword ranking", "google ranking", "web page"],
+    keywords: [
+      "seo", "organic search", "search console", "website traffic", "organic growth", "keyword ranking",
+      "google ranking", "search ranking", "search rankings", "website search", "search result", "web page",
+      "website ranking",
+    ],
   },
   {
     workerId: "nia",
