@@ -110,7 +110,7 @@ describe("workforce endpoints accept both session types", () => {
     await expect(caller.workforce.route({ token: "garbage", request: "visa check" })).rejects.toThrow();
   });
 
-  it("worker execution controls are identical under both session types — no worker becomes openable via Entra", async () => {
+  it("worker execution controls are identical under both session types, so Entra grants nothing extra", async () => {
     const caller = makeCaller();
     const sharedToken = await getSharedPasswordToken(caller);
     mockStaffUserLookup([activeStaffUser]);
@@ -118,9 +118,14 @@ describe("workforce endpoints accept both session types", () => {
 
     const viaShared = await caller.workforce.listWorkers({ token: sharedToken });
     const viaEntra = await caller.workforce.listWorkers({ token: entraToken });
-    for (const workers of [viaShared.workers, viaEntra.workers]) {
-      for (const w of workers) expect(w.canOpenForLiveExecution).toBe(false);
-    }
+    // Parity is the property, not universal denial: whatever the register
+    // permits must be identical on both paths, so signing in with Entra
+    // can never open a worker the shared password would not.
+    const shared = viaShared.workers.map(w => `${w.id}:${w.canOpenForLiveExecution}`);
+    const entra = viaEntra.workers.map(w => `${w.id}:${w.canOpenForLiveExecution}`);
+    expect(entra).toEqual(shared);
+    expect(shared).toContain("sophie:true");
+    expect(shared).toContain("priya:false");
   });
 });
 

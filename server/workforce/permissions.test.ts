@@ -22,11 +22,16 @@ describe("permission engine — deny by default", () => {
     }
   });
 
-  it("denies live Staff Portal execution for every worker, including Sophie", () => {
+  it("opens live execution only for a worker the register authorises, and refuses the rest", () => {
     for (const w of listWorkers()) {
       const decision = evaluateStaffPortalExecutionPermission(w.id);
-      expect(decision.allowed).toBe(false);
+      // The gate follows the register and nothing else. Sophie is
+      // approved with the Staff Portal recorded as her deployment
+      // channel; every other worker fails one half or both.
+      expect(decision.allowed).toBe(w.staffPortalExecutionAuthorised);
     }
+    expect(evaluateStaffPortalExecutionPermission("sophie").allowed).toBe(true);
+    expect(evaluateStaffPortalExecutionPermission("priya").allowed).toBe(false);
   });
 
   it("throws for an unknown worker id rather than silently denying or defaulting to anything", () => {

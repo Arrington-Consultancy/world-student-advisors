@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { routeStaffRequest, assertRoutingDomainsCoverRealWorkers } from "./router";
+import { getWorker } from "./registry";
 
 describe("routing domain integrity", () => {
   it("every routing keyword domain points at a real registry entry", () => {
@@ -62,7 +63,7 @@ describe("routeStaffRequest — does not invent ownership or substitute a differ
     expect(result.responsibleWorkerId).not.toBe("sophie");
   });
 
-  it("every worker currently reports not_available_for_live_case_work, since no worker is yet execution-authorised", () => {
+  it("reports availability from the register, so an authorised worker shows available and the rest do not", () => {
     const cases = [
       "new student enquiry",
       "student discovery profile",
@@ -79,9 +80,17 @@ describe("routeStaffRequest — does not invent ownership or substitute a differ
     ];
     for (const text of cases) {
       const result = routeStaffRequest(text);
-      if (result.matched) {
-        expect(result.availability).toBe("not_available_for_live_case_work");
-      }
+      if (!result.matched) continue;
+      // Availability is read off the register per worker, never asserted
+      // wholesale. Reception must not offer a worker that cannot work,
+      // and must not withhold one that can.
+      const expected =
+        getWorker(result.responsibleWorkerId!).staffPortalExecutionAuthorised
+          ? "available"
+          : "not_available_for_live_case_work";
+      expect(result.availability).toBe(expected);
     }
+    expect(routeStaffRequest("new student enquiry").availability).toBe("available");
+    expect(routeStaffRequest("visa compliance check").availability).toBe("not_available_for_live_case_work");
   });
 });

@@ -36,6 +36,8 @@ import { recordAuditEvent } from "./workforce/audit";
 import { listWorkers, getWorker } from "./workforce/registry";
 import { evaluateStaffPortalExecutionPermission } from "./workforce/permissions";
 import { routeStaffRequestAssisted } from "./workforce/router";
+import { executeWorker } from "./execution/execute";
+import type { WorkerId } from "./workforce/types";
 import {
   SOCIAL_BRAIN_RECORDS,
   DESIGNED_TO_REMEMBER,
@@ -629,7 +631,79 @@ export const appRouter = router({
             personality: w.personality,
             connectorIntent: w.connectorIntent,
             canOpenForLiveExecution: evaluateStaffPortalExecutionPermission(w.id).allowed,
+            gatekeeperReview: w.gatekeeperReview,
+            capabilities: w.capabilities.map(c => ({
+              id: c.id,
+              name: c.name,
+              description: c.description,
+              available: c.unavailableBecause === null,
+              unavailableBecause: c.unavailableBecause,
+            })),
+            unavailableCapabilities: w.capabilities
+              .filter(c => c.unavailableBecause !== null)
+              .map(c => c.name),
           })),
+        };
+      }),
+
+    /**
+     * Ask an approved worker to do something.
+     *
+     * Every gate lives inside executeWorker (server/execution/execute.ts):
+     * the staff member's own access, the worker's approval and deployment
+     * authorisation, a controlled brief to run under, isolated context,
+     * then the quality gate on the way out. This endpoint adds only the
+     * verified session and the audit row, and passes no authority of its
+     * own. A worker the register does not authorise is refused here for
+     * the same reason it would be refused anywhere else.
+     */
+    ask: publicProcedure
+      .input(
+        z.object({
+          token: z.string(),
+          workerId: z.string(),
+          request: z.string().min(1).max(4000),
+        }),
+      )
+      .mutation(async ({ input }) => {
+        const session = await resolveStaffSession(input.token);
+        const workerId = input.workerId as WorkerId;
+        // Reject an unknown id before it reaches anything else.
+        const worker = listWorkers().find(w => w.id === workerId);
+        if (!worker) {
+          return {
+            outcome: "refused_worker_not_executable" as const,
+            visibleText: null,
+            reason: "No such worker.",
+            workerName: "Unknown",
+            briefReference: null,
+          };
+        }
+
+        const result = await executeWorker({
+          staffUserId: session.staffUserId,
+          workerId,
+          requestText: input.request,
+        });
+
+        recordAuditEvent({
+          staffUserId: session.staffUserId,
+          authMethod: session.authMethod,
+          workerId,
+          workerSpecificationVersion: worker.specificationVersion,
+          requestedCapability: "worker:execute",
+          permissionDecision: result.outcome === "answered" ? "allowed" : "denied",
+          permissionReason: result.reason,
+          success: result.outcome === "answered",
+          errorCategory: result.outcome === "answered" ? "none" : "permission_denied",
+        });
+
+        return {
+          outcome: result.outcome,
+          visibleText: result.visibleText,
+          reason: result.reason,
+          workerName: result.workerName,
+          briefReference: result.briefReference,
         };
       }),
 

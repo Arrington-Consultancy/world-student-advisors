@@ -55,6 +55,8 @@ export type SpecificationStatus =
  * on its own.
  */
 export type StaffPortalExecutionStatus =
+  /** The deployment-channel decision is made and the Staff Portal is it. */
+  | "staff_portal_authorised"
   | "pending_channel_decision"
   | "prohibited"
   | "not_configured"
@@ -104,6 +106,43 @@ export interface PersonalityConfig {
   whatNotFor: string;
 }
 
+/**
+ * The independent assurance step that has to happen before a worker
+ * design can be put to the approval authority.
+ */
+export type GatekeeperReviewState =
+  /** Reviewed by Governance and Assurance and cleared to proceed to Tom. */
+  | "passed_cleared_for_approval"
+  /** Not yet independently reviewed. */
+  | "pending"
+  /** A governance or infrastructure function, not a worker design. */
+  | "not_applicable";
+
+/**
+ * One thing a worker can do, and whether it can do it now.
+ *
+ * Capabilities exist so that a missing connector disables the capability
+ * that needs it and nothing else. A research worker whose optional data
+ * source is unavailable should still answer from controlled evidence and
+ * staff input; switching the whole worker off for that is a bug, not a
+ * safety control.
+ */
+export interface WorkerCapability {
+  id: string;
+  name: string;
+  /** What it does, for staff. */
+  description: string;
+  /**
+   * Whether this capability can run from authorised staff input, case
+   * context, controlled SharePoint evidence and internal records alone.
+   */
+  worksWithoutConnector: boolean;
+  /** The connector it genuinely needs, where it needs one. */
+  requiresConnector: ConnectorName | null;
+  /** Named reason this capability is unavailable, or null when it is available. */
+  unavailableBecause: string | null;
+}
+
 export interface WorkerRegistryEntry {
   id: WorkerId;
   /** Exact canonical name as it appears in the Worker Register. */
@@ -114,6 +153,18 @@ export interface WorkerRegistryEntry {
   specificationVersion: string;
   specificationStatus: SpecificationStatus;
   staffPortalExecutionStatus: StaffPortalExecutionStatus;
+  /**
+   * Whether the mandatory independent Governance and Assurance Gatekeeper
+   * review has actually been done for this worker.
+   *
+   * This exists because the Worker Register's per-worker status lines said
+   * the Gatekeeper review was the next control, when
+   * WSA_Governance_Assurance_Gatekeeper_Review_Result_v1.0 of 29 August
+   * had already completed it: AMBER, no system-wide STOP, packet cleared
+   * to proceed to Tom. A worker waiting on a human decision is not a
+   * worker still in design, and the portal was saying the wrong one.
+   */
+  gatekeeperReview: GatekeeperReviewState;
   /** Verbatim-paraphrased "next control" from the Worker Register. */
   currentNextControl: string;
   /** Named open blockers (AB-xx / GOV-xx codes etc.) where evidenced. Empty array only where the Register records none outstanding. */
@@ -140,6 +191,13 @@ export interface WorkerRegistryEntry {
   connectorUseAuthorised: boolean;
   /** Whether this worker may perform a write/create/update/delete/send connector action right now. */
   writesAuthorised: boolean;
+  /**
+   * What this worker can actually do, capability by capability.
+   *
+   * Empty for governance and infrastructure functions, which are not
+   * case-working workers.
+   */
+  capabilities: readonly WorkerCapability[];
   /** SharePoint web URL of the controlled brief this entry is sourced from, for traceability. */
   controlledBriefReference: string;
 }

@@ -84,14 +84,13 @@ describe("controlled approval status — Sophie is the only approved worker", ()
     }
   });
 
-  it("no worker — including Sophie — is currently authorised for live Staff Portal execution", () => {
-    for (const w of listWorkers()) {
-      expect(w.staffPortalExecutionAuthorised).toBe(false);
-    }
+  it("authorises live execution only where the register does, which today is Sophie alone", () => {
+    const authorised = listWorkers().filter(w => w.staffPortalExecutionAuthorised).map(w => w.id);
+    expect(authorised).toEqual(["sophie"]);
   });
 
-  it("Sophie's staff portal execution status reflects the unresolved deployment-channel decision, not a flat prohibition", () => {
-    expect(getWorker("sophie").staffPortalExecutionStatus).toBe("pending_channel_decision");
+  it("Sophie's staff portal execution status records the resolved deployment-channel decision", () => {
+    expect(getWorker("sophie").staffPortalExecutionStatus).toBe("staff_portal_authorised");
   });
 
   it("no worker has connector or write authorisation — no live credentials exist yet", () => {

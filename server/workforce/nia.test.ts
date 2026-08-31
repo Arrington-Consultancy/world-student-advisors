@@ -103,11 +103,14 @@ describe("Reception routes social work to Nia and nothing else to her", () => {
   });
 });
 
-describe("the estate is still fully closed", () => {
-  it("no worker, Nia included, is executable or connector-authorised", () => {
+describe("the estate remains closed apart from the one authorised worker", () => {
+  it("leaves Nia unexecutable, and no worker connector-authorised", () => {
+    expect(getWorker("nia").staffPortalExecutionAuthorised).toBe(false);
     for (const w of listWorkers()) {
-      expect(w.staffPortalExecutionAuthorised).toBe(false);
+      // Execution opened for Sophie under a recorded decision. Connector
+      // authority did not, and that separation is the point.
       expect(w.connectorUseAuthorised).toBe(false);
+      if (w.id !== "sophie") expect(w.staffPortalExecutionAuthorised).toBe(false);
     }
     expect(listWorkers()).toHaveLength(16);
   });
