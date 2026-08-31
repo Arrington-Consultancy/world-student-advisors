@@ -41,7 +41,8 @@ import {
   DESIGNED_TO_REMEMBER,
   HELD_ELSEWHERE,
   MEMORY_HORIZON,
-  CONTROL_PACK_STATUS,
+  PACK_TO_BRIEF,
+  CONTROL_PACK,
 } from "./social/socialBrain";
 
 /** Shared by every Turnstile-protected mutation's input schema. */
@@ -689,18 +690,21 @@ export const appRouter = router({
      * The Social Brain: what WSA's social memory would hold, and what it
      * actually holds today.
      *
-     * The registers are §8 of Nia's working draft, transcribed in
-     * server/social/socialBrain.ts. Not the Supporting Control Pack: that
-     * document is named by the QC Review but has never been written, and
-     * this endpoint used to print its filename to staff who could not open
-     * it.
+     * The registers are sections 1 to 9 of Nia's Social Brain Supporting
+     * Control Pack v0.1, transcribed in server/social/socialBrain.ts.
+     *
+     * A correction, because the wrong thing was served here briefly: this
+     * endpoint previously reported that the Control Pack had never been
+     * written and rebuilt the list from the brief instead. The Pack does
+     * exist. Its creation is recorded in Change Entry 062.
      *
      * Every count is zero because the design exists and the store does
      * not. Reporting the structure with honest zeroes shows what will be
-     * remembered without letting anybody believe six years of history is
-     * already in there. What she is designed to remember, and what belongs
-     * to another worker, ship alongside it — spend is Alex's, and a page
-     * that stayed quiet about that would invite the assumption it is hers.
+     * remembered without letting anybody believe years of history are
+     * already in there. What she is designed to remember, what belongs to
+     * another worker, and where the Pack and the brief disagree all ship
+     * alongside it: a page that showed only the registers would imply the
+     * two controlled records agree, and on two items they do not.
      */
     socialBrain: publicProcedure
       .input(z.object({ token: z.string() }))
@@ -708,20 +712,27 @@ export const appRouter = router({
         await resolveStaffSession(input.token);
         return {
           ownerWorkerId: "nia" as const,
-          source: CONTROL_PACK_STATUS.source,
-          controlPackNote: CONTROL_PACK_STATUS.note,
+          source: `${CONTROL_PACK.document} (${CONTROL_PACK.version}, ${CONTROL_PACK.status})`,
+          authorityNote: CONTROL_PACK.authorityNote,
           registers: SOCIAL_BRAIN_RECORDS.map(r => ({
             id: r.id,
             name: r.name,
+            section: r.section,
             holds: r.purpose,
             recorded: r.recorded,
           })),
           remembers: DESIGNED_TO_REMEMBER.map(c => ({
             question: c.question,
             answer: c.answer,
-            sections: c.sections.join(" · "),
+            sources: c.sources.join(" · "),
           })),
           elsewhere: HELD_ELSEWHERE.map(e => ({ subject: e.subject, owner: e.owner, why: e.why })),
+          /** Only the items that genuinely do not line up. Renames are not a governance question. */
+          unreconciled: PACK_TO_BRIEF.filter(i => i.controlPack === null || i.briefSection8.startsWith("(not in")).map(i => ({
+            brief: i.briefSection8,
+            pack: i.controlPack ?? "no section",
+            note: i.note,
+          })),
           populated: MEMORY_HORIZON.populated,
           emptyNote: MEMORY_HORIZON.actualState,
           toPopulate: MEMORY_HORIZON.toChangeThat,
