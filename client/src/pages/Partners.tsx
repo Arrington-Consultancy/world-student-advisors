@@ -173,7 +173,7 @@ const categories: PartnerCategory[] = [
         location: "UK, France, Ireland, Netherlands, USA",
         description: "Operates centres in the UK, France, Ireland, the Netherlands and the USA, including a flagship at the University of Amsterdam. Especially strong in Medicine and Science pathways, preparing students for competitive routes such as Medicine, Dentistry and Engineering.",
         strengths: "Medicine, Dentistry, Science, Engineering",
-        usp: "Strong Medicine/Science focus; guaranteed progression",
+        usp: "Strong Medicine and Science focus, with a defined progression route",
         logo: "/manus-storage/oncampus_6bd095a4.png",
       },
       {

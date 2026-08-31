@@ -22,7 +22,7 @@ export function WorkerWorkspace({ worker, open, onOpenChange }: { worker: Workfo
       <DialogContent className="max-w-lg">
         <DialogHeader>
           <DialogTitle className="text-wsa-navy">
-            {worker.canonicalName} — {worker.roleTitle}
+            {worker.canonicalName}, {worker.roleTitle}
           </DialogTitle>
           <DialogDescription>{worker.personality.summary}</DialogDescription>
         </DialogHeader>

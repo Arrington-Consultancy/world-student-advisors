@@ -1077,7 +1077,7 @@ export default function ComponentsShowcase() {
                     </DrawerTrigger>
                     <DrawerContent>
                       <DrawerHeader>
-                        <DrawerTitle>Are you absolutely sure?</DrawerTitle>
+                        <DrawerTitle>Are you sure?</DrawerTitle>
                         <DrawerDescription>
                           This action cannot be undone.
                         </DrawerDescription>
@@ -1158,7 +1158,7 @@ export default function ComponentsShowcase() {
                       <div className="space-y-2">
                         <h4 className="text-sm font-semibold">@nextjs</h4>
                         <p className="text-sm">
-                          The React Framework – created and maintained by
+                          The React Framework, created and maintained by
                           @vercel.
                         </p>
                       </div>

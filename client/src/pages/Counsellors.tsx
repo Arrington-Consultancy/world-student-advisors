@@ -75,7 +75,7 @@ const counsellors = [
   },
   {
     name: "Gladys Naadi Banhu",
-    role: "Regional Director – Ghana",
+    role: "Regional Director, Ghana",
     location: "Ghana",
     region: "Ghana",
     email: "",

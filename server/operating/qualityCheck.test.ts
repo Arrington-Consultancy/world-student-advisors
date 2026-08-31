@@ -206,3 +206,64 @@ describe("§10 humanisation may improve presentation but never substance", () =>
     expect(r.text).toBe(before);
   });
 });
+
+describe("guarantee detection reads negation", () => {
+  const check = (text: string) =>
+    runQualityCheck({
+      text,
+      permissionChecked: true,
+      hasUnresolvedDisagreement: false,
+      disagreementVisibleInText: false,
+      workerBoundaryBreaches: [],
+      evidenceInsufficient: false,
+    }).findings.filter(f => f.code === "guarantee_language");
+
+  it("still blocks an actual guarantee", () => {
+    expect(check("We guarantee your visa will be approved.")).toHaveLength(1);
+    expect(check("Guaranteed progression to a top university.")).toHaveLength(1);
+  });
+
+  it("does not block a disclaimer that denies a guarantee", () => {
+    // The sentence the Core Operating System wants written. Blocking it
+    // would push a writer to delete their own disclaimer to pass the gate.
+    expect(check("WSA does not guarantee admission to any institution.")).toEqual([]);
+    expect(check("We make no guarantee as to the accuracy of this page.")).toEqual([]);
+    expect(check("They cannot guarantee an outcome.")).toEqual([]);
+    expect(check("Scholarships should not be treated as guaranteed.")).toEqual([]);
+    expect(check("These tools don't guarantee any outcome.")).toEqual([]);
+  });
+
+  it("does not block naming the rule itself", () => {
+    expect(check("It looks for guarantee language and corporate filler.")).toEqual([]);
+  });
+
+  it("still blocks a guarantee that appears after an unrelated negative", () => {
+    // A negation earlier in a different sentence must not launder a later
+    // claim, or one "not" at the top of a page would disable the control.
+    expect(check("This is not a brochure. We guarantee you a place.")).toHaveLength(1);
+  });
+});
+
+describe("double hyphen means prose punctuation", () => {
+  const check = (text: string) =>
+    runQualityCheck({
+      text,
+      permissionChecked: true,
+      hasUnresolvedDisagreement: false,
+      disagreementVisibleInText: false,
+      workerBoundaryBreaches: [],
+      evidenceInsufficient: false,
+    }).findings.filter(f => f.code === "double_hyphen");
+
+  it("flags a double hyphen used as a dash", () => {
+    expect(check("The answer--and this matters--was wrong.")).toHaveLength(1);
+    expect(check("The answer -- and this matters -- was wrong.")).toHaveLength(1);
+  });
+
+  it("ignores CSS custom properties and command flags", () => {
+    // Training people to dismiss the finding is worse than not having it.
+    expect(check('className="w-(--sidebar-width) bg-(--color-bg)"')).toEqual([]);
+    expect(check('style={{ "--normal-bg": "var(--popover)" }}')).toEqual([]);
+    expect(check("Run npm test --coverage to check.")).toEqual([]);
+  });
+});

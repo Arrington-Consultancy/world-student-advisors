@@ -66,7 +66,7 @@ const REGISTRY_LIST: WorkerRegistryEntry[] = [
     materialBlockers: [],
     personality: {
       summary: "Calm, constitutional, practical. Challenges weak governance without sounding theatrical.",
-      whatFor: "The governing authority behind every WSA AI worker and standard — not a worker staff open directly.",
+      whatFor: "The governing authority behind every WSA AI worker and standard, not a worker staff open directly.",
       whatNotFor: "Does not make case decisions or grant itself production permissions.",
     },
     connectorIntent: {
@@ -88,7 +88,7 @@ const REGISTRY_LIST: WorkerRegistryEntry[] = [
     specificationStatus: "approved",
     staffPortalExecutionStatus: "pending_channel_decision",
     currentNextControl:
-      "Deploy as Custom GPT and connector-test. Unresolved deployment-channel decision — do not assume a Staff Portal deployment replaces this.",
+      "Deploy as Custom GPT and connector-test. Unresolved deployment-channel decision. Do not assume a Staff Portal deployment replaces this.",
     materialBlockers: ["Deployment channel not yet decided (Custom GPT vs. Staff Portal)"],
     personality: {
       summary: "Warm, brisk and reassuring. Makes first contact feel human without becoming sales-led.",
@@ -225,7 +225,7 @@ const REGISTRY_LIST: WorkerRegistryEntry[] = [
     ],
     personality: {
       summary: "Cautious, exact and calm under pressure. Never bluffs on immigration authority.",
-      whatFor: "Explaining confirmed visa/compliance rules, interpretation and uncertainty — once approved.",
+      whatFor: "Explaining confirmed visa/compliance rules, interpretation and uncertainty, once approved.",
       whatNotFor: "Regulated advice or submission remains authority-gated; currently not available for any live case work.",
     },
     connectorIntent: {
@@ -247,10 +247,10 @@ const REGISTRY_LIST: WorkerRegistryEntry[] = [
     specificationStatus: "not_approved",
     staffPortalExecutionStatus: "prohibited",
     currentNextControl: "Consolidated Harper decisions AB-H01 to AB-H15 plus privacy/human-authority gates remain open.",
-    materialBlockers: ["AB-H01 to AB-H15 open — require Tom Arrington's approval"],
+    materialBlockers: ["AB-H01 to AB-H15 open, requiring Tom Arrington's approval"],
     personality: {
       summary: "Practical, numerate and student-first. Treats affordability as reality, not a sales obstacle.",
-      whatFor: "Verifying scholarship eligibility and structuring funding-gap analysis — once approved.",
+      whatFor: "Verifying scholarship eligibility and structuring funding-gap analysis, once approved.",
       whatNotFor: "No investment advice, visa financial-evidence advice or unsupported scholarship action.",
     },
     connectorIntent: {
@@ -275,7 +275,7 @@ const REGISTRY_LIST: WorkerRegistryEntry[] = [
     materialBlockers: ["GOV-O1 to GOV-O3 open", "DD-O1 to DD-O3 deployment dependencies open"],
     personality: {
       summary: "Reassuring, practical and organised. Focuses on what the student needs to do next.",
-      whatFor: "Practical transition and readiness support once a student is confirmed — once approved.",
+      whatFor: "Practical transition and readiness support once a student is confirmed, once approved.",
       whatNotFor: "Safeguarding, payments and consequential actions remain gated regardless of approval.",
     },
     connectorIntent: {
@@ -301,7 +301,7 @@ const REGISTRY_LIST: WorkerRegistryEntry[] = [
     materialBlockers: ["Independent Gatekeeper/approval pending", "Live deployment gates pending"],
     personality: {
       summary: "Independent, exacting and fair. Finds defects without trying to become the case owner.",
-      whatFor: "Independent audit of case work for defects, contradictions and missing evidence — once approved.",
+      whatFor: "Independent audit of case work for defects, contradictions and missing evidence, once approved.",
       whatNotFor: "Does not rewrite a case simply because she disagrees with style; not the case owner.",
     },
     connectorIntent: {
@@ -330,7 +330,7 @@ const REGISTRY_LIST: WorkerRegistryEntry[] = [
     ],
     personality: {
       summary: "Evidence-led, curious and commercially aware without chasing vanity metrics.",
-      whatFor: "Sustainable organic search evidence and website/SEO governance — once approved.",
+      whatFor: "Sustainable organic search evidence and website/SEO governance, once approved.",
       whatNotFor: "Implementation and high-risk website actions require designated authority, not granted here.",
     },
     connectorIntent: {
@@ -356,7 +356,7 @@ const REGISTRY_LIST: WorkerRegistryEntry[] = [
     materialBlockers: ["RG-01 (critical)", "RG-02 (critical)", "RG-03 (critical)", "RG-04 (high)", "Least-privilege access deployment dependency", "Retention/legal-hold policy pending external evidence"],
     personality: {
       summary: "Methodical records controller. Conservative around destructive actions and version uncertainty.",
-      whatFor: "Records-control scope across authorised SharePoint locations — once approved.",
+      whatFor: "Records-control scope across authorised SharePoint locations, once approved.",
       whatNotFor: "No blind retries, destructive action or retention decision without authority.",
     },
     connectorIntent: {
@@ -382,7 +382,7 @@ const REGISTRY_LIST: WorkerRegistryEntry[] = [
     materialBlockers: ["AB-A01 to AB-A12 open", "No live advertising authority"],
     personality: {
       summary: "Commercially sharp, measured and evidence-led. Optimises for suitable students, not cheap leads.",
-      whatFor: "Evaluating paid-media performance evidence against suitable student acquisition — once approved.",
+      whatFor: "Evaluating paid-media performance evidence against suitable student acquisition, once approved.",
       whatNotFor: "No live ad/account changes until live authority is granted and tested.",
     },
     connectorIntent: {
@@ -423,7 +423,7 @@ const REGISTRY_LIST: WorkerRegistryEntry[] = [
       "Resolve NIA-G01 to NIA-G07, confirm social account/platform ownership and human-team relationship, " +
       "then independent Governance & Assurance review before activation.",
     materialBlockers: [
-      "NIA-G01 to NIA-G07 open — account-level draft, schedule, publish, edit, delete and reply authority undecided",
+      "NIA-G01 to NIA-G07 open. Account-level draft, schedule, publish, edit, delete and reply authority undecided",
       "Social account/platform ownership not yet confirmed",
       "Relationship to the human social team not yet defined",
       "Independent Governance & Assurance review pending",

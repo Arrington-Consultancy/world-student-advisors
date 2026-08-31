@@ -41,7 +41,7 @@ export function TeamPanel({ token }: { token: string }) {
   return (
     <div>
       <p className="mb-6 max-w-2xl text-sm text-gray-600">
-        Who covers what. You do not need this page to get work done — ask reception and it will point you at the
+        Who covers what. You do not need this page to get work done. Ask reception and it will point you at the
         right specialist. This is here for when you want to know how the team is organised.
       </p>
 
@@ -71,7 +71,7 @@ export function TeamPanel({ token }: { token: string }) {
 
       <p className="mt-4 text-xs text-gray-400">
         Statuses come from the controlled WSA AI Worker Register. Approval is Tom Arrington's decision, recorded
-        there — it is not something this portal can grant.
+        there, and it is not something this portal can grant.
       </p>
     </div>
   );

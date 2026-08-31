@@ -20,7 +20,7 @@ export function getStatusDisplay(worker: WorkerListItem): StatusDisplay {
   if (worker.canOpenForLiveExecution) return { label: "Available", tone: "available" };
 
   if (worker.specificationStatus === "infrastructure") return { label: "Routing only", tone: "infrastructure" };
-  if (worker.specificationStatus === "active") return { label: "Governance function — not a case-working worker", tone: "governance" };
+  if (worker.specificationStatus === "active") return { label: "Governance function, not a case-working worker", tone: "governance" };
 
   if (worker.specificationStatus === "approval_blocked") return { label: "Approval blocked", tone: "blocked" };
 
@@ -28,7 +28,7 @@ export function getStatusDisplay(worker: WorkerListItem): StatusDisplay {
     return { label: "Approved, deployment channel undecided", tone: "pending" };
   }
 
-  return { label: "In design — not yet approved", tone: "design" };
+  return { label: "In design, not yet approved", tone: "design" };
 }
 
 export const STATUS_TONE_CLASSES: Record<StatusDisplay["tone"], string> = {

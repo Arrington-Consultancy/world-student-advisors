@@ -25,7 +25,7 @@ export function Receptionist({ token }: { token: string }) {
   return (
     <div className="rounded-lg border border-border/70 bg-white p-5">
       <p className="mb-1 text-sm font-semibold text-wsa-navy">Ask the receptionist</p>
-      <p className="mb-3 text-xs text-gray-500">Describe what you need in plain language — this identifies who owns it, not a general assistant.</p>
+      <p className="mb-3 text-xs text-gray-500">Describe what you need in plain language. This identifies who owns it, and is not a general assistant.</p>
       <form onSubmit={handleSubmit} className="flex gap-2">
         <Input value={request} onChange={e => setRequest(e.target.value)} placeholder="e.g. Can you check this student's UK visa evidence?" className="flex-1" />
         <Button type="submit" disabled={routeQuery.isFetching}>

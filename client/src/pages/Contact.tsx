@@ -134,7 +134,7 @@ function StudentForm() {
     referredByWhom: "",
     recommendedCounsellor: "",
     gdprConsent: false,
-    website: "", // honeypot — real users never see or fill this field
+    website: "", // honeypot: real users never see or fill this field
   });
   const [submitted, setSubmitted] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
