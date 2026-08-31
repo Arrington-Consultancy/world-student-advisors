@@ -125,7 +125,11 @@ describe("workforce endpoints accept both session types", () => {
     const entra = viaEntra.workers.map(w => `${w.id}:${w.canOpenForLiveExecution}`);
     expect(entra).toEqual(shared);
     expect(shared).toContain("sophie:true");
-    expect(shared).toContain("priya:false");
+    // The functions that are not case workers stay closed on both paths,
+    // so parity is being checked against a list with both answers in it
+    // rather than one where everything happens to be true.
+    expect(shared).toContain("staff_receptionist:false");
+    expect(shared).toContain("wsa_core_brain:false");
   });
 });
 

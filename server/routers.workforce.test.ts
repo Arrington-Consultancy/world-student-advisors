@@ -1,4 +1,6 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
+import { getWorker } from "./workforce/registry";
+import type { WorkerId } from "./workforce/types";
 
 /**
  * Access-gate and behaviour coverage for the workforce.* procedures:
@@ -64,24 +66,28 @@ describe("workforce.listWorkers — requires a valid Staff Portal session", () =
     await expect(caller.workforce.listWorkers({ token: "garbage" })).rejects.toThrow();
   });
 
-  it("returns the full controlled estate for a valid session, with Sophie the only approved entry", async () => {
+  it("returns the full controlled estate, reporting each worker's real approval status", async () => {
     const caller = makeCaller();
     const token = await getValidToken(caller);
     const result = await caller.workforce.listWorkers({ token });
     expect(result.workers.length).toBeGreaterThanOrEqual(15);
-    const approved = result.workers.filter(w => w.specificationStatus === "approved");
-    expect(approved.map(w => w.id)).toEqual(["sophie"]);
+    // The endpoint reports the register rather than deciding anything.
+    for (const w of result.workers) {
+      expect(w.specificationStatus, w.id).toBe(getWorker(w.id as WorkerId).specificationStatus);
+    }
   });
 
   it("reports as openable only the workers the register authorises", async () => {
     const caller = makeCaller();
     const token = await getValidToken(caller);
     const result = await caller.workforce.listWorkers({ token });
-    // The endpoint reports the register's answer, not a blanket one.
-    const openable = result.workers.filter(w => w.canOpenForLiveExecution).map(w => w.id);
-    expect(openable).toEqual(["sophie"]);
+    // The endpoint reports the register's answer, never a blanket one in
+    // either direction. This would fail if the endpoint ever hard-coded a
+    // list rather than reading the controlled record.
     for (const w of result.workers) {
-      if (w.id !== "sophie") expect(w.canOpenForLiveExecution).toBe(false);
+      expect(w.canOpenForLiveExecution, w.id).toBe(
+        getWorker(w.id as WorkerId).staffPortalExecutionAuthorised,
+      );
     }
   });
 });
@@ -92,11 +98,13 @@ describe("workforce.route — requires a valid Staff Portal session and never in
     await expect(caller.workforce.route({ token: "garbage", request: "visa check" })).rejects.toThrow();
   });
 
-  it("routes a visa request to Priya and reports her as not available, for a valid session", async () => {
+  it("routes a visa request to Priya and reports the register's availability, for a valid session", async () => {
     const caller = makeCaller();
     const token = await getValidToken(caller);
     const result = await caller.workforce.route({ token, request: "Can you check this student's UK visa evidence?" });
     expect(result.responsibleWorkerId).toBe("priya");
-    expect(result.availability).toBe("not_available_for_live_case_work");
+    expect(result.availability).toBe(
+      getWorker("priya").staffPortalExecutionAuthorised ? "available" : "not_available_for_live_case_work",
+    );
   });
 });

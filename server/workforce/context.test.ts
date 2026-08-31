@@ -11,8 +11,10 @@ const allowAll = () => ({ allowed: true, reason: "test override" });
 
 describe("buildWorkerContext — execution gate takes priority over data availability", () => {
   it("denies context for a worker the register does not authorise, even with a matching case available", () => {
+    // The governance function is not a case worker and never executes,
+    // so it is the standing example of a worker the register refuses.
     const context = buildWorkerContext({
-      workerId: "priya",
+      workerId: "wsa_governance_assurance",
       caseId: "case-A",
       requestedByStudentId: "student-1",
       availableCases: [wsaCaseA],
@@ -23,8 +25,10 @@ describe("buildWorkerContext — execution gate takes priority over data availab
   });
 
   it("an unapproved worker cannot be made live merely by the client asserting it should be, since the check is registry-backed not request-backed", () => {
+    // The governance function is not a case worker and never executes,
+    // so it is the standing example of a worker the register refuses.
     const context = buildWorkerContext({
-      workerId: "priya",
+      workerId: "wsa_governance_assurance",
       caseId: "case-A",
       requestedByStudentId: "student-1",
       availableCases: [wsaCaseA],

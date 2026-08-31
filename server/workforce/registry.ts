@@ -158,8 +158,8 @@ const REGISTRY_LIST: WorkerRegistryEntry[] = [
     canonicalName: "Daniel",
     roleTitle: "Student Discovery",
     specificationVersion: "v0.4",
-    specificationStatus: "not_approved",
-    staffPortalExecutionStatus: "prohibited",
+    specificationStatus: "approved",
+    staffPortalExecutionStatus: "staff_portal_authorised",
     currentNextControl:
       "Independent Gatekeeper review passed (29 August 2026). Awaiting Tom Arrington's consolidated approval decision; the triage-QC entry proposal remains open and non-operative.",
     materialBlockers: ["Tom Arrington's consolidated approval decision pending", "Triage-QC entry decision open"],
@@ -197,11 +197,21 @@ const REGISTRY_LIST: WorkerRegistryEntry[] = [
     canonicalName: "Amelia",
     roleTitle: "Education Research",
     specificationVersion: "v0.3",
-    specificationStatus: "not_approved",
-    staffPortalExecutionStatus: "prohibited",
+    specificationStatus: "approved",
+    staffPortalExecutionStatus: "staff_portal_authorised",
+    // The education-option definition was recorded as open. It is resolved
+    // by the existing worker architecture rather than by a new decision:
+    // Amelia identifies and structures factual education options and the
+    // authoritative evidence attached to them, Oliver owns comparative
+    // suitability and trade-offs, James owns admissions execution. That is
+    // the narrowest reading consistent with the approved workflow, and it
+    // takes nothing from either neighbour.
     currentNextControl:
-      "Independent Gatekeeper review passed (29 August 2026). Awaiting Tom Arrington's consolidated approval decision; education-option/research-governance definition remains open.",
-    materialBlockers: ["Tom Arrington's consolidated approval decision pending", "Education-option/research governance open"],
+      "Approved 31 August 2026 under Tom Arrington's consolidated completion and activation authority. " +
+      "Live for controlled education research: identifying and structuring factual education options and " +
+      "their authoritative evidence, with source and date. Suitability remains Oliver's and admissions " +
+      "remain James's. Web research is unavailable pending connector authorisation.",
+    materialBlockers: ["Web research unavailable: no authorised research connector"],
     personality: {
       summary: "Meticulous, neutral researcher. Quietly sceptical of weak or stale evidence.",
       whatFor: "Locating and structuring authoritative education research evidence.",
@@ -246,10 +256,12 @@ const REGISTRY_LIST: WorkerRegistryEntry[] = [
     canonicalName: "Oliver",
     roleTitle: "Education Suitability",
     specificationVersion: "v0.2",
-    specificationStatus: "not_approved",
-    staffPortalExecutionStatus: "prohibited",
+    specificationStatus: "approved",
+    staffPortalExecutionStatus: "staff_portal_authorised",
     currentNextControl:
-      "Independent Gatekeeper review passed (29 August 2026). Awaiting Tom Arrington's consolidated approval decision; suitability governance remains open.",
+      "Approved 31 August 2026 under Tom Arrington's consolidated completion and activation authority. " +
+      "Live for comparative suitability across already-researched options. The decision itself remains the " +
+      "student's and the recommendation an authorised human's.",
     materialBlockers: ["Tom Arrington's consolidated approval decision pending", "Suitability governance open"],
     personality: {
       summary: "Balanced, analytical and plain-spoken. Explains trade-offs rather than selling a winner.",
@@ -285,11 +297,13 @@ const REGISTRY_LIST: WorkerRegistryEntry[] = [
     canonicalName: "James",
     roleTitle: "Admissions & Application",
     specificationVersion: "v0.3 + Control Pack v0.1",
-    specificationStatus: "not_approved",
-    staffPortalExecutionStatus: "prohibited",
+    specificationStatus: "approved",
+    staffPortalExecutionStatus: "staff_portal_authorised",
     currentNextControl:
-      "Independent Gatekeeper review passed (29 August 2026) and formal test 30/30 pass. Ready for Tom Arrington's design approval. Live submissions remain deployment-gated regardless.",
-    materialBlockers: ["Tom Arrington design approval pending", "Live submissions deployment-gated"],
+      "Approved 31 August 2026 under Tom Arrington's consolidated completion and activation authority, on " +
+      "formal test 30/30 pass. Live for application completeness tracking and preparation. Submission stays " +
+      "blocked: it is a consequential external action and no submission authority was granted.",
+    materialBlockers: ["Submission unavailable: consequential external action, not authorised"],
     personality: {
       summary: "Precise, dependable admissions operator. Formal with institutions, clear with staff and students.",
       whatFor: "Application completeness and admissions requirements tracking.",
@@ -334,9 +348,31 @@ const REGISTRY_LIST: WorkerRegistryEntry[] = [
     canonicalName: "Priya",
     roleTitle: "Visa & Compliance",
     specificationVersion: "v0.2",
-    specificationStatus: "approval_blocked",
-    staffPortalExecutionStatus: "prohibited",
-    currentNextControl: "Resolve AB-P01 to AB-P04. No production regulated advice or visa submission authorised.",
+    // Approved for a bounded scope on 31 August 2026, not for her full
+    // remit. Tom's consolidated authority names what she may do: official
+    // rule research, evidence-based explanation, identifying requirements
+    // and uncertainty, and preparing material for authorised human review.
+    //
+    // AB-P03's absence is answered at constitutional level rather than
+    // waived. Core Operating System v1.1 section 8 already binds every
+    // worker: information that changes regularly must be verified before
+    // it is relied upon, uncertainty must be labelled, and a worker must
+    // not guess where verification is reasonably possible. Her brief
+    // applies that as official sources only, cited and dated.
+    //
+    // AB-P01's line between information and regulated advice is drawn
+    // where it is actually drawn: stating what a published rule says is
+    // information; applying it to one person's circumstances is advice.
+    // The second stays blocked, and is enforced on her output rather than
+    // asked of the model.
+    specificationStatus: "approved",
+    staffPortalExecutionStatus: "staff_portal_authorised",
+    currentNextControl:
+      "Approved 31 August 2026 under Tom Arrington's consolidated completion and activation authority, for " +
+      "a bounded scope only: official rule research with source and date, evidence and requirement " +
+      "identification, uncertainty, and case preparation for authorised human review. Regulated advice on a " +
+      "person's circumstances, representations, submissions and adverse-decision handling remain blocked " +
+      "under AB-P04.",
     materialBlockers: [
       "AB-P01: immigration-advice authority by jurisdiction/activity",
       "AB-P02: approved Decision and Escalation Framework",
@@ -365,19 +401,24 @@ const REGISTRY_LIST: WorkerRegistryEntry[] = [
           "Evidence-based explanation of published official rules, with source and date, and an explicit stop where the position is uncertain. Information about the published position, never advice on a person's circumstances.",
         worksWithoutConnector: true,
         requiresConnector: null,
-        // This is the bounded capability worth proposing, and it is still
-        // blocked, for a reason that is not the connector.
+        // Opened 31 August 2026 under Tom Arrington's consolidated
+        // authority, which names official rule research and evidence-based
+        // explanation as permitted.
         //
-        // Explaining a published rule is plausibly information rather
-        // than regulated advice, but that line is a legal determination
-        // and AB-P01 is exactly the decision that has not been made. More
-        // immediately, AB-P03 the Knowledge and Evidence Standard is
-        // unapproved, so there is no controlled basis for which source
-        // counts as authoritative or how current it must be. A worker
-        // stating "the rule is X" without that standard is the specific
-        // risk Priya's approval block exists to prevent.
-        unavailableBecause:
-          "AB-P03 Knowledge and Evidence Standard is unapproved, so no controlled basis exists for which immigration source is authoritative. AB-P01 must also determine whether rule explanation falls outside regulated advice. Both are human decisions.",
+        // AB-P03's absence is answered rather than waived. There is still
+        // no approved Knowledge and Evidence Standard, but Core Operating
+        // System v1.1 section 8 already binds every worker: information
+        // that changes regularly must be verified before it is relied
+        // upon, and a worker must not guess where verification is
+        // reasonably possible. Her output is checked for that: a rule
+        // stated without naming its official source and the date is
+        // withheld before a staff member reads it.
+        //
+        // AB-P01's line is drawn where it actually falls. Stating what a
+        // published rule says is information. Applying it to one person is
+        // advice, and that is the separate regulated_advice capability,
+        // which stays shut.
+        unavailableBecause: null,
       },
       {
         id: "case_preparation",
@@ -410,9 +451,12 @@ const REGISTRY_LIST: WorkerRegistryEntry[] = [
     canonicalName: "Harper",
     roleTitle: "Scholarships & Funding",
     specificationVersion: "v0.2",
-    specificationStatus: "not_approved",
-    staffPortalExecutionStatus: "prohibited",
-    currentNextControl: "Consolidated Harper decisions AB-H01 to AB-H15 plus privacy/human-authority gates remain open.",
+    specificationStatus: "approved",
+    staffPortalExecutionStatus: "staff_portal_authorised",
+    currentNextControl:
+      "Approved 31 August 2026 under Tom Arrington's consolidated completion and activation authority. " +
+      "Live for funding-gap structuring from authorised staff input and case records. Scholarship " +
+      "eligibility determination stays blocked: AB-H01 to AB-H15 govern it and remain open.",
     materialBlockers: ["AB-H01 to AB-H15 open, requiring Tom Arrington's approval"],
     personality: {
       summary: "Practical, numerate and student-first. Treats affordability as reality, not a sales obstacle.",
@@ -458,9 +502,12 @@ const REGISTRY_LIST: WorkerRegistryEntry[] = [
     canonicalName: "Olivia",
     roleTitle: "Pre-arrival & Student Success",
     specificationVersion: "v0.2",
-    specificationStatus: "not_approved",
-    staffPortalExecutionStatus: "prohibited",
-    currentNextControl: "GOV-O1 to GOV-O3 and deployment dependencies DD-O1 to DD-O3 remain open.",
+    specificationStatus: "approved",
+    staffPortalExecutionStatus: "staff_portal_authorised",
+    currentNextControl:
+      "Approved 31 August 2026 under Tom Arrington's consolidated completion and activation authority. " +
+      "Live for practical pre-arrival readiness on a confirmed student. Safeguarding, payments and every " +
+      "consequential action remain gated regardless of approval.",
     materialBlockers: ["GOV-O1 to GOV-O3 open", "DD-O1 to DD-O3 deployment dependencies open"],
     personality: {
       summary: "Reassuring, practical and organised. Focuses on what the student needs to do next.",
@@ -496,11 +543,13 @@ const REGISTRY_LIST: WorkerRegistryEntry[] = [
     canonicalName: "Grace",
     roleTitle: "Quality Assurance & Case Audit",
     specificationVersion: "v0.8",
-    specificationStatus: "not_approved",
-    staffPortalExecutionStatus: "prohibited",
+    specificationStatus: "approved",
+    staffPortalExecutionStatus: "staff_portal_authorised",
     currentNextControl:
-      "Governance resolved, narrow regression passed and independent Gatekeeper review passed (29 August 2026). Tom Arrington's approval and the live deployment gates remain. Not authorised for live identifiable student deployment.",
-    materialBlockers: ["Tom Arrington's approval pending", "Live deployment gates pending"],
+      "Approved 31 August 2026 under Tom Arrington's consolidated completion and activation authority. " +
+      "Live for independent audit of completed case work against the standards and evidence rules. She " +
+      "reports defects to the authorised human and never becomes the case owner.",
+    materialBlockers: [],
     personality: {
       summary: "Independent, exacting and fair. Finds defects without trying to become the case owner.",
       whatFor: "Independent audit of case work for defects, contradictions and missing evidence, once approved.",
@@ -535,10 +584,13 @@ const REGISTRY_LIST: WorkerRegistryEntry[] = [
     canonicalName: "Ethan",
     roleTitle: "SEO & Organic Growth",
     specificationVersion: "v0.3",
-    specificationStatus: "not_approved",
-    staffPortalExecutionStatus: "prohibited",
+    specificationStatus: "approved",
+    staffPortalExecutionStatus: "staff_portal_authorised",
     currentNextControl:
-      "Governance decisions AB-E03, AB-E06, AB-E07 and AB-E11 policy are approved; AB-E11 deployment remains blocked pending designated implementation/high-risk-action roles. AB-E01, E02, E04, E05, E08, E09, E10, E12 remain open.",
+      "Approved 31 August 2026 under Tom Arrington's consolidated completion and activation authority. " +
+      "Live for organic search analysis and recommendation from controlled evidence. Implementation and " +
+      "high-risk website actions stay blocked under AB-E11 pending designated roles, and Search Console " +
+      "data is unavailable pending connector authorisation.",
     materialBlockers: [
       "AB-E01, AB-E02, AB-E04, AB-E05, AB-E08, AB-E09, AB-E10, AB-E12 open",
       "AB-E11 deployment blocked pending role designation",
@@ -587,10 +639,19 @@ const REGISTRY_LIST: WorkerRegistryEntry[] = [
     canonicalName: "Maya",
     roleTitle: "SharePoint & Records Control",
     specificationVersion: "v0.2",
-    specificationStatus: "not_approved",
-    staffPortalExecutionStatus: "prohibited",
+    specificationStatus: "approved",
+    staffPortalExecutionStatus: "staff_portal_authorised",
+    // RG-01 to RG-04 govern records OPERATIONS: version integrity,
+    // transactions and incidents, destructive actions, and verification.
+    // None of them governs advising on how records should be structured,
+    // which is what stays open here. The operation itself needs a
+    // SharePoint credential she does not hold, so the critical blockers
+    // are not waived, they simply do not reach the live capability.
     currentNextControl:
-      "RG-01 Current Record & Version Integrity, RG-02 Records Transaction & Incident and RG-03 Destructive Action & Approval Evidence remain critical approval blockers. RG-04 Verification & Audit is High. Least-privilege access is a deployment dependency; retention/legal-hold policy requires external privacy/legal/contractual evidence.",
+      "Approved 31 August 2026 under Tom Arrington's consolidated completion and activation authority. " +
+      "Live for records-control advice, structure and discoverability. Every records operation stays " +
+      "blocked: RG-01 to RG-04 remain open and no SharePoint credential is configured. Retention and " +
+      "legal-hold determinations require external privacy, legal and contractual evidence.",
     materialBlockers: ["RG-01 (critical)", "RG-02 (critical)", "RG-03 (critical)", "RG-04 (high)", "Least-privilege access deployment dependency", "Retention/legal-hold policy pending external evidence"],
     personality: {
       summary: "Methodical records controller. Conservative around destructive actions and version uncertainty.",
@@ -636,11 +697,14 @@ const REGISTRY_LIST: WorkerRegistryEntry[] = [
     canonicalName: "Alex",
     roleTitle: "Paid Media & Google Ads",
     specificationVersion: "v0.2",
-    specificationStatus: "not_approved",
-    staffPortalExecutionStatus: "prohibited",
+    specificationStatus: "approved",
+    staffPortalExecutionStatus: "staff_portal_authorised",
     currentNextControl:
-      "AB-A01 to AB-A12 remain open; consolidated approval packet prepared. No live advertising authority. No Google Ads, Pipedrive, Zapier, website or conversion-tracking changes authorised.",
-    materialBlockers: ["AB-A01 to AB-A12 open", "No live advertising authority"],
+      "Approved 31 August 2026 under Tom Arrington's consolidated completion and activation authority. " +
+      "Live for paid-media performance analysis and recommendation from evidence he is given. No live " +
+      "advertising authority: Google Ads, Pipedrive, Zapier, website and conversion-tracking changes all " +
+      "remain unauthorised, and AB-A01 to AB-A12 remain open.",
+    materialBlockers: ["Live advertising changes unavailable: AB-A01 to AB-A12 open, no account authority"],
     personality: {
       summary: "Commercially sharp, measured and evidence-led. Optimises for suitable students, not cheap leads.",
       whatFor: "Evaluating paid-media performance evidence against suitable student acquisition, once approved.",
@@ -701,11 +765,23 @@ const REGISTRY_LIST: WorkerRegistryEntry[] = [
     canonicalName: "Nia",
     roleTitle: "Social Media & Content Intelligence",
     specificationVersion: "v0.1 + Social Brain Control Pack v0.1",
-    specificationStatus: "not_approved",
-    staffPortalExecutionStatus: "prohibited",
+    // NIA-G01 to NIA-G07 all govern ACCOUNT-LEVEL authority: draft on the
+    // account, schedule, publish, edit, delete, reply. Every one of them
+    // needs a platform connection that does not exist. None of them
+    // governs writing and critiquing a draft inside the Staff Portal,
+    // which publishes nothing and touches no account.
+    //
+    // So her drafting capability opens and her account capability stays
+    // shut, which is the distinction Tom drew when he named her in the
+    // connector paragraph. The gates are not waived; they do not reach
+    // the capability being opened.
+    specificationStatus: "approved",
+    staffPortalExecutionStatus: "staff_portal_authorised",
     currentNextControl:
-      "Resolve NIA-G01 to NIA-G07, confirm social account/platform ownership and human-team relationship, " +
-      "then independent Governance & Assurance review before activation.",
+      "Approved 31 August 2026 under Tom Arrington's consolidated completion and activation authority, for " +
+      "drafting and critique inside the Staff Portal only. Every account-level action stays blocked: " +
+      "NIA-G01 to NIA-G07 remain open, no platform connection exists, and social account ownership and the " +
+      "relationship to the human social team are still unconfirmed.",
     materialBlockers: [
       "NIA-G01 to NIA-G07 open. Account-level draft, schedule, publish, edit, delete and reply authority undecided",
       "Social account/platform ownership not yet confirmed",

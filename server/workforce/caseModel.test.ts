@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { evaluateHandoff, describeCaseStage, type Prerequisite } from "./caseModel";
+import { getWorker } from "./registry";
 
 const satisfied: Prerequisite[] = [{ description: "discovery complete", satisfied: true }];
 const unmet: Prerequisite[] = [{ description: "discovery complete", satisfied: false }];
@@ -29,10 +30,18 @@ describe("evaluateHandoff — prerequisite gate", () => {
     expect(result.handoffValid).toBe(false);
   });
 
-  it("a valid handoff still reports the downstream worker as not execution-authorised, since none are yet", () => {
+  it("handoff validity and downstream execution authority stay separate answers", () => {
+    // Both are true for an approved downstream worker, and the point is
+    // that they are computed separately: a valid handoff has never been
+    // what authorises the worker receiving it.
     const result = evaluateHandoff("sophie", "daniel", satisfied);
     expect(result.handoffValid).toBe(true);
-    expect(result.downstreamExecutionAuthorised).toBe(false);
+    expect(result.downstreamExecutionAuthorised).toBe(getWorker("daniel").staffPortalExecutionAuthorised);
+
+    // A procedurally valid handoff into a worker that cannot execute
+    // still reports the handoff valid and the execution refused.
+    const toGovernance = evaluateHandoff("grace", "wsa_governance_assurance", satisfied);
+    expect(toGovernance.downstreamExecutionAuthorised).toBe(false);
   });
 });
 

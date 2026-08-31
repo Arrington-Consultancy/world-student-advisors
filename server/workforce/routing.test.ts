@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { readFileSync } from "fs";
 import { tokenise, matchesTerm, scoreTerms } from "./routing";
 import { routeStaffRequest, routeStaffRequestAssisted } from "./router";
+import { getWorker } from "./registry";
 
 vi.mock("../_core/llm", () => ({ invokeLLM: vi.fn() }));
 import { invokeLLM } from "../_core/llm";
@@ -140,9 +141,11 @@ describe("the assistant can classify but cannot answer or invent", () => {
   it("still lets the register decide availability, not the model", async () => {
     vi.mocked(invokeLLM).mockResolvedValue(reply("priya") as never);
     const r = await routeStaffRequestAssisted("does she need the biometric thing before flying", 50);
-    // Priya is approval-blocked in the register. A model naming her must
-    // not make her available.
-    expect(r.availability).toBe("not_available_for_live_case_work");
+    // The register decides, not the model. Priya is available for her
+    // bounded scope since 31 August, and the assistant naming her cannot
+    // change that either way.
+    expect(r.availability).toBe(getWorker("priya").staffPortalExecutionAuthorised ? "available" : "not_available_for_live_case_work");
+    expect(r.availability).toBe("available");
   });
 });
 

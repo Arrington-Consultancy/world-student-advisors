@@ -25,10 +25,14 @@ describe("execution authority and connector authority are separate questions", (
     }
   });
 
-  it("still refuses execution for every worker the register has not approved", () => {
+  it("execution follows the register exactly, for every worker", () => {
+    // Thirteen workers are approved and executable since 31 August. The
+    // control is not how many: it is that the gate and the register never
+    // disagree, so nothing can be opened anywhere else.
     for (const id of CASE_WORKERS) {
-      if (id === "sophie") continue;
-      expect(evaluateStaffPortalExecutionPermission(id).allowed).toBe(false);
+      expect(evaluateStaffPortalExecutionPermission(id).allowed, id).toBe(
+        getWorker(id).staffPortalExecutionAuthorised,
+      );
     }
   });
 
@@ -133,33 +137,35 @@ describe("the portal describes the real state", () => {
     expect(d.detail).toContain("Working");
   });
 
-  it("never calls a Gatekeeper-cleared worker In design", () => {
-    // The defect that prompted this: ten workers waiting on Tom were
-    // labelled as though they were still being drafted.
+  it("never calls an approved and executing worker In design or Awaiting approval", () => {
+    // The defect that prompted this: workers who had passed review were
+    // labelled as though they were still being drafted. Now that they are
+    // live, neither stale label may reappear.
     for (const id of CASE_WORKERS) {
-      if (id === "nia" || id === "priya" || id === "sophie") continue;
       const d = display(id);
-      expect(d.label).toBe("Awaiting approval");
-      expect(d.label).not.toBe("In design");
+      expect(d.label, id).not.toBe("In design");
+      expect(d.label, id).not.toBe("Awaiting approval");
+      expect(["Live", "Limited"], id).toContain(d.label);
     }
   });
 
-  it("shows Priya as Blocked, distinct from awaiting approval", () => {
-    expect(display("priya").label).toBe("Blocked");
-  });
-
-  it("shows Nia as In design, because she has not been independently reviewed", () => {
-    expect(display("nia").label).toBe("In design");
-  });
-
-  it("never shows Live for a worker that cannot execute", () => {
+  it("shows a worker with a capability switched off as Limited, with the restriction named", () => {
     for (const id of CASE_WORKERS) {
       const w = getWorker(id);
+      const off = w.capabilities.filter(c => c.unavailableBecause);
       const d = display(id);
-      if (!w.staffPortalExecutionAuthorised) {
-        expect(d.label).not.toBe("Live");
-        expect(d.label).not.toBe("Limited");
+      if (off.length > 0) {
+        expect(d.label, id).toBe("Limited");
+        expect(d.detail, id).toContain("unavailable");
+      } else {
+        expect(d.label, id).toBe("Live");
       }
     }
+  });
+
+  it("Limited never reads as unusable, because it is not", () => {
+    const d = display("priya");
+    expect(d.label).toBe("Limited");
+    expect(d.detail).toContain("Working");
   });
 });
