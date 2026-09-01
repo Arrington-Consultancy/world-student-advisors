@@ -13,6 +13,14 @@ beforeEach(() => {
   // satisfied here rather than bypassed — there is deliberately no way to
   // override it, unlike the permission gates below.
   process.env.SHAREPOINT_GRAPH_SITE_ID = "wsa-site";
+  // The machinery tests below run over Google Drive rather than
+  // SharePoint. SharePoint now has a second, per-worker gate after the WSA
+  // boundary (sharePointLocations.ts) and, like the boundary, there is
+  // deliberately no way to override it — no worker has a designated
+  // location, so a SharePoint request can no longer reach getState or
+  // attempt at all. Drive has no such gate, so it is the connector that
+  // still exercises the state, attempt and retry machinery end to end.
+  process.env.WORKFORCE_DRIVE_ALLOWED_FOLDER_IDS = "wsa-legacy";
 });
 
 afterEach(() => {
@@ -24,6 +32,16 @@ const baseRequest = {
   connector: "sharepoint" as const,
   operation: "read" as const,
   resourceScope: "wsa-site/enquiry/12345",
+  staffUserId: 1,
+  authMethod: "entra_sso",
+};
+
+/** Inside the WSA boundary and past every gate, so the machinery runs. */
+const driveRequest = {
+  workerId: "sophie" as const,
+  connector: "google_drive" as const,
+  operation: "read" as const,
+  resourceScope: "wsa-legacy/website/old-sitemap.xml",
   staffUserId: 1,
   authMethod: "entra_sso",
 };
@@ -96,15 +114,55 @@ describe("runConnectorAction — connector state honesty (permission override fo
   it("allows a resource inside the WSA boundary through to the attempt", async () => {
     const getState = vi.fn().mockReturnValue("operational");
     const attempt = vi.fn().mockResolvedValue({ success: true, message: "done" });
-    const result = await runConnectorAction(baseRequest, getState, attempt, allowOverride, allowStaffOverride);
+    const result = await runConnectorAction(driveRequest, getState, attempt, allowOverride, allowStaffOverride);
     expect(result.success).toBe(true);
     expect(attempt).toHaveBeenCalled();
+  });
+
+  // The location gate, reached only because this test satisfies the two
+  // permission gates and the WSA boundary. Being inside the WSA site is no
+  // longer sufficient for SharePoint: the site is one drive that also
+  // holds personal, banking and HR material, so a second gate asks whether
+  // the path is inside a location designated for THIS worker. There is no
+  // override for it, which is why this assertion is the thing standing
+  // between the gate and being deleted from the chokepoint unnoticed.
+  it("denies a SharePoint resource that is inside the WSA boundary but in no location designated for the worker", async () => {
+    const getState = vi.fn().mockReturnValue("operational");
+    const attempt = vi.fn().mockResolvedValue({ success: true, message: "would have worked" });
+    const result = await runConnectorAction(baseRequest, getState, attempt, allowOverride, allowStaffOverride);
+    expect(result.success).toBe(false);
+    expect(result.message).toMatch(/no sharepoint location is designated/i);
+    expect(getState).not.toHaveBeenCalled();
+    expect(attempt).not.toHaveBeenCalled();
+  });
+
+  it("refuses personal and banking areas of the WSA site for a reason that no designation could fix", async () => {
+    for (const area of ["wsa-site/03_FAMILY_&_PERSONAL/photos", "wsa-site/04_FINANCE_&_BANKING/statements"]) {
+      const result = await runConnectorAction(
+        { ...baseRequest, resourceScope: area },
+        vi.fn().mockReturnValue("operational"), vi.fn(), allowOverride, allowStaffOverride,
+      );
+      expect(result.success).toBe(false);
+      expect(result.message).toMatch(/can never be designated/i);
+    }
+  });
+
+  it("audits a location refusal as a permission denial, with the path it refused", async () => {
+    await runConnectorAction(
+      { ...baseRequest, resourceScope: "wsa-site/04_FINANCE_&_BANKING/statements" },
+      vi.fn().mockReturnValue("operational"), vi.fn(), allowOverride, allowStaffOverride,
+    );
+    const [event] = getAuditLog();
+    expect(event.permissionDecision).toBe("denied");
+    expect(event.errorCategory).toBe("permission_denied");
+    expect(event.targetResourceId).toBe("wsa-site/04_FINANCE_&_BANKING/statements");
+    expect(event.connector).toBe("sharepoint");
   });
 
   it("never claims success when the connector is unconfigured", async () => {
     const getState = vi.fn().mockReturnValue("unconfigured");
     const attempt = vi.fn();
-    const result = await runConnectorAction(baseRequest, getState, attempt, allowOverride, allowStaffOverride);
+    const result = await runConnectorAction(driveRequest, getState, attempt, allowOverride, allowStaffOverride);
     expect(result.success).toBe(false);
     expect(result.message).toMatch(/not configured/i);
     expect(attempt).not.toHaveBeenCalled();
@@ -114,7 +172,7 @@ describe("runConnectorAction — connector state honesty (permission override fo
   it("retries exactly once on a failed attempt before giving up", async () => {
     const getState = vi.fn().mockReturnValue("operational");
     const attempt = vi.fn().mockResolvedValue({ success: false, message: "transient error" });
-    const result = await runConnectorAction(baseRequest, getState, attempt, allowOverride, allowStaffOverride);
+    const result = await runConnectorAction(driveRequest, getState, attempt, allowOverride, allowStaffOverride);
     expect(attempt).toHaveBeenCalledTimes(2);
     expect(result.success).toBe(false);
     expect(result.copyableHandoff).toBeDefined();
@@ -123,7 +181,7 @@ describe("runConnectorAction — connector state honesty (permission override fo
   it("does not retry when the first attempt succeeds", async () => {
     const getState = vi.fn().mockReturnValue("operational");
     const attempt = vi.fn().mockResolvedValue({ success: true, message: "done" });
-    const result = await runConnectorAction(baseRequest, getState, attempt, allowOverride, allowStaffOverride);
+    const result = await runConnectorAction(driveRequest, getState, attempt, allowOverride, allowStaffOverride);
     expect(attempt).toHaveBeenCalledTimes(1);
     expect(result.success).toBe(true);
   });
@@ -134,7 +192,7 @@ describe("runConnectorAction — connector state honesty (permission override fo
       .fn()
       .mockResolvedValueOnce({ success: false, message: "first failure" })
       .mockResolvedValueOnce({ success: true, message: "second try worked" });
-    const result = await runConnectorAction(baseRequest, getState, attempt, allowOverride, allowStaffOverride);
+    const result = await runConnectorAction(driveRequest, getState, attempt, allowOverride, allowStaffOverride);
     expect(attempt).toHaveBeenCalledTimes(2);
     expect(result.success).toBe(true);
   });
@@ -142,7 +200,7 @@ describe("runConnectorAction — connector state honesty (permission override fo
   it("catches a thrown error from attempt and reports it honestly rather than crashing or claiming success", async () => {
     const getState = vi.fn().mockReturnValue("operational");
     const attempt = vi.fn().mockRejectedValue(new Error("Graph API 503"));
-    const result = await runConnectorAction(baseRequest, getState, attempt, allowOverride, allowStaffOverride);
+    const result = await runConnectorAction(driveRequest, getState, attempt, allowOverride, allowStaffOverride);
     expect(result.success).toBe(false);
     expect(result.message).toMatch(/Graph API 503/);
   });
@@ -150,7 +208,7 @@ describe("runConnectorAction — connector state honesty (permission override fo
   it("logs an audit event for every outcome, success or failure", async () => {
     const getState = vi.fn().mockReturnValue("operational");
     const attempt = vi.fn().mockResolvedValue({ success: true, message: "done" });
-    await runConnectorAction(baseRequest, getState, attempt, allowOverride, allowStaffOverride);
+    await runConnectorAction(driveRequest, getState, attempt, allowOverride, allowStaffOverride);
     expect(getAuditLog()).toHaveLength(1);
     expect(getAuditLog()[0].success).toBe(true);
   });

@@ -16,6 +16,7 @@ import { WORKER_FUNCTIONAL_SCOPE, CONNECTOR_OPERATION_ACTION } from "../../acces
 import { recordAuditEvent, type AuditAuthMethod } from "../audit";
 import { getWorker } from "../registry";
 import { evaluateWsaScope } from "../wsaScope";
+import { decideSharePointLocation } from "../sharePointLocations";
 import type { ConnectorName, ConnectorOperation, ConnectorState, WorkerId } from "../types";
 import type { PermissionDecision } from "../permissions";
 
@@ -159,6 +160,40 @@ export async function runConnectorAction(
       errorCategory: "permission_denied",
     });
     return { success: false, connectorState: "unconfigured", message: wsaScope.reason };
+  }
+
+  // The per-worker SharePoint location gate. The WSA boundary above
+  // established that the path is inside WSA's site; this establishes that
+  // it is inside the part of that site designated for THIS worker.
+  //
+  // Both are needed because the WSA site is a single drive that also
+  // holds personal, family, banking, HR and appraisal material. "Inside
+  // the WSA site" was therefore never the same permission as "material a
+  // worker may read", and treating them as one would have let any worker
+  // with a SharePoint grant read all of it.
+  //
+  // Checked at the chokepoint rather than in the SharePoint connector, so
+  // a second SharePoint code path cannot be added that forgets it.
+  if (request.connector === "sharepoint") {
+    const location = decideSharePointLocation(request.workerId, request.resourceScope);
+    if (!location.permitted) {
+      recordAuditEvent({
+        staffUserId: request.staffUserId,
+        authMethod: request.authMethod,
+        workerId: request.workerId,
+        workerSpecificationVersion: worker.specificationVersion,
+        caseId: request.caseId,
+        requestedCapability: `${request.connector}:${request.operation}`,
+        permissionDecision: "denied",
+        permissionReason: location.reason,
+        connector: request.connector,
+        connectorOperation: request.operation,
+        success: null,
+        targetResourceId: request.resourceScope,
+        errorCategory: "permission_denied",
+      });
+      return { success: false, connectorState: "unconfigured", message: location.reason };
+    }
   }
 
   const state = getState();
