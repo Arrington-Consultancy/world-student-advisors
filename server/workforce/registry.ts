@@ -25,8 +25,27 @@ import type { WorkerId, WorkerRegistryEntry } from "./types";
 import { NO_CONTROLLED_CRM_DECISION } from "./types";
 
 const SHAREPOINT_SITE = "https://worldstudentadvisors123.sharepoint.com/sites/WSASharePoint/Shared Documents";
-const APPROVED_STANDARDS = `${SHAREPOINT_SITE}/01_ADMIN_&_GOVERNANCE/AI_Operating_System/02_Approved_Standards`;
-const WORKING_DRAFTS = `${SHAREPOINT_SITE}/01_ADMIN_&_GOVERNANCE/AI_Operating_System/01_Working_Drafts`;
+/**
+ * The AI Operating System tree lives under 17_Senior Management Team.
+ *
+ * These references previously said 01_ADMIN_&_GOVERNANCE/AI_Operating_System.
+ * That folder does not exist: 01_ADMIN_&_GOVERNANCE is real, but its
+ * children are 00_Archive, 00_Business plans, 01_Company_&_Legal,
+ * 02_Policies_&_Compliances, 03_British Council_&_Accreditation,
+ * 04_HR_&_People Governance, 05_Board_&_Advisory, 06_Risk_&_Issues,
+ * 07_Templates_&_Standards, 08_MS365_123Reg and 09_Apps. Every controlled
+ * brief, standard and Change Log version is under 17_Senior Management
+ * Team/AI_Operating_System instead, read from the live tenant on
+ * 1 September 2026.
+ *
+ * A wrong path here is not cosmetic. These strings are what a person
+ * follows to check a worker against its brief, and they are the obvious
+ * source for a future SharePoint location designation. Pointing either at
+ * a folder that does not exist wastes the reader's time at best, and at
+ * worst designates a worker's read scope onto the wrong tree.
+ */
+const APPROVED_STANDARDS = `${SHAREPOINT_SITE}/17_Senior Management Team/AI_Operating_System/02_Approved_Standards`;
+const WORKING_DRAFTS = `${SHAREPOINT_SITE}/17_Senior Management Team/AI_Operating_System/01_Working_Drafts`;
 
 const TOM_ARRINGTON = "Tom Arrington (WSA policy owner and approval authority)";
 
@@ -189,7 +208,7 @@ const REGISTRY_LIST: WorkerRegistryEntry[] = [
           null,
       },
     ],
-    controlledBriefReference: `${SHAREPOINT_SITE}/01_ADMIN_&_GOVERNANCE/AI_Operating_System/01_Working_Drafts/`,
+    controlledBriefReference: `${SHAREPOINT_SITE}/17_Senior Management Team/AI_Operating_System/01_Working_Drafts/`,
   }),
 
   entry({
@@ -248,7 +267,7 @@ const REGISTRY_LIST: WorkerRegistryEntry[] = [
           "Approved web research is not yet enabled for this build. The controlled-evidence capability is unaffected.",
       },
     ],
-    controlledBriefReference: `${SHAREPOINT_SITE}/01_ADMIN_&_GOVERNANCE/AI_Operating_System/01_Working_Drafts/`,
+    controlledBriefReference: `${SHAREPOINT_SITE}/17_Senior Management Team/AI_Operating_System/01_Working_Drafts/`,
   }),
 
   entry({
@@ -289,7 +308,7 @@ const REGISTRY_LIST: WorkerRegistryEntry[] = [
           null,
       },
     ],
-    controlledBriefReference: `${SHAREPOINT_SITE}/01_ADMIN_&_GOVERNANCE/AI_Operating_System/01_Working_Drafts/`,
+    controlledBriefReference: `${SHAREPOINT_SITE}/17_Senior Management Team/AI_Operating_System/01_Working_Drafts/`,
   }),
 
   entry({
@@ -340,7 +359,7 @@ const REGISTRY_LIST: WorkerRegistryEntry[] = [
           "Live submission authority is deployment-gated and separately approved.",
       },
     ],
-    controlledBriefReference: `${SHAREPOINT_SITE}/01_ADMIN_&_GOVERNANCE/AI_Operating_System/01_Working_Drafts/`,
+    controlledBriefReference: `${SHAREPOINT_SITE}/17_Senior Management Team/AI_Operating_System/01_Working_Drafts/`,
   }),
 
   entry({
@@ -446,7 +465,7 @@ const REGISTRY_LIST: WorkerRegistryEntry[] = [
           "Reserved regulated activity. Blocked by AB-P01 immigration-advice authority and AB-P04 named authorised human ownership.",
       },
     ],
-    controlledBriefReference: `${SHAREPOINT_SITE}/01_ADMIN_&_GOVERNANCE/AI_Operating_System/01_Working_Drafts/`,
+    controlledBriefReference: `${SHAREPOINT_SITE}/17_Senior Management Team/AI_Operating_System/01_Working_Drafts/`,
   }),
 
   entry({
@@ -497,7 +516,7 @@ const REGISTRY_LIST: WorkerRegistryEntry[] = [
           "AB-H01 to AB-H15 remain open, so eligibility determinations are not authorised.",
       },
     ],
-    controlledBriefReference: `${SHAREPOINT_SITE}/01_ADMIN_&_GOVERNANCE/AI_Operating_System/01_Working_Drafts/`,
+    controlledBriefReference: `${SHAREPOINT_SITE}/17_Senior Management Team/AI_Operating_System/01_Working_Drafts/`,
   }),
 
   entry({
@@ -538,7 +557,7 @@ const REGISTRY_LIST: WorkerRegistryEntry[] = [
           null,
       },
     ],
-    controlledBriefReference: `${SHAREPOINT_SITE}/01_ADMIN_&_GOVERNANCE/AI_Operating_System/01_Working_Drafts/`,
+    controlledBriefReference: `${SHAREPOINT_SITE}/17_Senior Management Team/AI_Operating_System/01_Working_Drafts/`,
   }),
 
   entry({
@@ -634,7 +653,7 @@ const REGISTRY_LIST: WorkerRegistryEntry[] = [
           "No Search Console connector is configured.",
       },
     ],
-    controlledBriefReference: `${SHAREPOINT_SITE}/01_ADMIN_&_GOVERNANCE/AI_Operating_System/01_Working_Drafts/`,
+    controlledBriefReference: `${SHAREPOINT_SITE}/17_Senior Management Team/AI_Operating_System/01_Working_Drafts/`,
   }),
 
   entry({
@@ -692,7 +711,7 @@ const REGISTRY_LIST: WorkerRegistryEntry[] = [
           "SharePoint connector is not configured.",
       },
     ],
-    controlledBriefReference: `${SHAREPOINT_SITE}/01_ADMIN_&_GOVERNANCE/AI_Operating_System/01_Working_Drafts/WSA_Maya_SharePoint_Records_Control_Specialist_v0.2_WORKING_DRAFT.docx`,
+    controlledBriefReference: `${SHAREPOINT_SITE}/17_Senior Management Team/AI_Operating_System/01_Working_Drafts/WSA_Maya_SharePoint_Records_Control_Specialist_v0.2_WORKING_DRAFT.docx`,
   }),
 
   entry({
@@ -744,7 +763,7 @@ const REGISTRY_LIST: WorkerRegistryEntry[] = [
           "No Google Ads connector, and AB-A01 to AB-A12 remain open.",
       },
     ],
-    controlledBriefReference: `${SHAREPOINT_SITE}/01_ADMIN_&_GOVERNANCE/AI_Operating_System/01_Working_Drafts/`,
+    controlledBriefReference: `${SHAREPOINT_SITE}/17_Senior Management Team/AI_Operating_System/01_Working_Drafts/`,
   }),
 
   /**
@@ -862,7 +881,7 @@ const REGISTRY_LIST: WorkerRegistryEntry[] = [
     escalationRoute: TOM_ARRINGTON,
     gatekeeperReview: "not_applicable",
     capabilities: [],
-    controlledBriefReference: `${SHAREPOINT_SITE}/01_ADMIN_&_GOVERNANCE/AI_Operating_System/07_Control_Room/`,
+    controlledBriefReference: `${SHAREPOINT_SITE}/17_Senior Management Team/AI_Operating_System/07_Control_Room/`,
   }),
 
   entry({

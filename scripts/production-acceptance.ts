@@ -44,6 +44,10 @@ import { WORKER_FUNCTIONAL_SCOPE } from "../server/access/workerScope";
 import { FUNCTIONAL_SCOPES } from "../server/access/accessControl";
 import { evaluateConnectorPermission, evaluateStaffPortalExecutionPermission } from "../server/workforce/permissions";
 import { WORKER_CRM_SCOPE } from "../server/workforce/crmScope";
+import { connectorScopeGrants, WORKER_CONNECTOR_SCOPE } from "../server/workforce/connectorScope";
+import { decideSharePointLocation, WORKER_SHAREPOINT_LOCATIONS, NEVER_DESIGNATED } from "../server/workforce/sharePointLocations";
+import { evaluateWsaScope, isRingFenced } from "../server/workforce/wsaScope";
+import { getSharePointStatus } from "../server/workforce/connectors/sharepoint";
 import { combineContributions } from "../server/operating/collaboration";
 import { runQualityCheck, acceptHumanisation, findSubstanceChanges } from "../server/operating/qualityCheck";
 import { routeEscalation, validateEscalation } from "../server/operating/escalation";
@@ -648,6 +652,79 @@ async function main() {
   const [left] = await db.execute(sql`SELECT COUNT(*) AS n FROM worker_conversation_turns WHERE conversationId = ${SENTINEL}`);
   check(Number((left as unknown as Array<{ n: number }>)[0].n) === 0,
     "no acceptance row survived the rollback");
+
+  // ── 19. SharePoint access, worker by worker ───────────────────────────
+  section("19. SharePoint access for all thirteen workers, against production");
+  // Everything here runs the DECISION layer, not the connector. Calling a
+  // connector action would write an audit row, and this suite's own
+  // guarantee is that it writes nothing. The decisions below are the same
+  // ones runConnectorAction consults, in the same order, so what they say
+  // is what a live request would get. Audit-on-connector-action is proven
+  // in server/workforce/connectors/shared.test.ts, where the in-memory log
+  // can be read without touching production.
+  const SP_SITE = process.env.SHAREPOINT_GRAPH_SITE_ID;
+  console.log(`  SHAREPOINT_GRAPH_SITE_ID configured: ${SP_SITE ? "yes" : "no"}`);
+  console.log(`  SharePoint connector state: ${getSharePointStatus()}`);
+  check(getSharePointStatus() !== "operational",
+    "the SharePoint connector does not report operational, because no tested Graph Sites/Files credential exists");
+
+  const SP_OPERATIONS = ["search", "read", "create", "update", "delete", "external_send"] as const;
+  let spPermitted = 0;
+  for (const id of SUBSTANTIVE) {
+    const worker = id as keyof typeof WORKER_CONNECTOR_SCOPE;
+    const granted = SP_OPERATIONS.filter(op => connectorScopeGrants(worker, "sharepoint", op));
+    const decision = evaluateConnectorPermission({
+      workerId: worker, connector: "sharepoint", operation: "read", resourceScope: `${SP_SITE ?? "wsa-site"}/x`,
+    });
+    const location = decideSharePointLocation(worker, `${SP_SITE ?? "wsa-site"}/17_Senior Management Team/AI_Operating_System`);
+    for (const op of SP_OPERATIONS) {
+      if (evaluateConnectorPermission({ workerId: worker, connector: "sharepoint", operation: op, resourceScope: `${SP_SITE ?? "wsa-site"}/x` }).allowed) spPermitted += 1;
+    }
+    console.log(`  ${id}: matrix grant [${granted.join(", ") || "none"}] | designated locations ${WORKER_SHAREPOINT_LOCATIONS[worker].length} | read decision: ${decision.allowed ? "ALLOWED" : "denied"}`);
+    check(!decision.allowed && decision.reason.trim().length > 0,
+      `${id} is refused a SharePoint read, with a reason that names what is blocking`);
+    check(!location.permitted,
+      `${id} has no designated SharePoint location, so no path is reachable even inside the WSA site`);
+  }
+  check(spPermitted === 0,
+    `no worker is permitted any SharePoint operation (0 of ${SUBSTANTIVE.length * SP_OPERATIONS.length} permitted)`);
+
+  // An unauthorised record class, refused for every worker. These are real
+  // folders at the root of the live WSA drive, and before the location
+  // gate every one of them was inside scope for any worker with a grant.
+  for (const area of ["03_FAMILY_&_PERSONAL/x", "04_FINANCE_&_BANKING/statements", "05_HUB/13. Appraisals_Feedback_Docs/review.docx"]) {
+    let refusedForAll = true;
+    for (const id of SUBSTANTIVE) {
+      const d = decideSharePointLocation(id as keyof typeof WORKER_SHAREPOINT_LOCATIONS, `${SP_SITE ?? "wsa-site"}/${area}`);
+      if (d.permitted || !d.reason.includes("can never be designated")) refusedForAll = false;
+    }
+    check(refusedForAll, `"${area}" is refused to every worker for a reason no designation could fix`);
+  }
+  check(NEVER_DESIGNATED.length > 0, `${NEVER_DESIGNATED.length} area(s) are permanently out of bounds for the whole workforce`);
+
+  // Credential material, refused by the ring fence before any allowlist.
+  for (const path of ["01_ADMIN_&_GOVERNANCE/07_Templates_&_Standards/Password/Passwords January 2026.xlsx", "05_HUB/14_HUB Password/list.xlsx"]) {
+    check(isRingFenced(path), `ring-fenced: ${path.split("/").pop()}`);
+    check(!evaluateWsaScope("sharepoint", path).withinWsaScope, "a ring-fenced path is out of WSA scope whatever else allows it");
+  }
+
+  // Cross-staff isolation on the SharePoint path. The connector consults
+  // the signed-in person's own permissions using the WORKER's functional
+  // scope, so a profile without that scope is refused the worker's reads.
+  const spScope = WORKER_FUNCTIONAL_SCOPE.maya;
+  const withoutRecords: StaffAccessProfile = {
+    ...profile,
+    functionalScopes: profile.functionalScopes.filter(s => s !== spScope),
+  };
+  check(!decideForProfile(withoutRecords, { action: "read", functionalScope: spScope }).allowed,
+    "[derived] a staff member without records_control is refused Maya's SharePoint reads, whatever Maya is granted");
+  check(decideForProfile(profile, { action: "read", functionalScope: spScope }).allowed,
+    "the named production profile does hold records_control, so the refusal above is the scope and not the account");
+
+  // Honest failure. An unconfigured connector must never be reported as a
+  // successful read, and the state check is what stands between the two.
+  check(getSharePointStatus() === "unconfigured" || getSharePointStatus() === "permission_missing",
+    `SharePoint reports its true state (${getSharePointStatus()}) rather than a usable one`);
 
   // ── 15. This suite wrote nothing ──────────────────────────────────────
   section("15. The suite itself wrote nothing");
