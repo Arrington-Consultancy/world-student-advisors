@@ -1,0 +1,149 @@
+name: Add functional scopes to an existing staff access assignment
+
+# Manual-only, SEPARATELY AUTHORISED. Adds functional scopes to a staff
+# access assignment that ALREADY EXISTS, per the WSA Staff Portal Access
+# Control Standard v1.0 (APPROVED), and writes the section 9 audit trail.
+#
+# Defaults to a DRY RUN. Nothing is written unless `apply` is set to true,
+# so the normal use is: run it, read the exact before/after delta it
+# prints, then run it again with apply.
+#
+# Why this exists alongside assign-staff-access.yml: that workflow records
+# a FIRST assignment and stops if the row already carries one. The access
+# screen is the intended route for a change, but it needs an administrator
+# holding access_admin who is not the target, and nobody administers
+# themselves. This closes that gap without opening any other.
+#
+# What this cannot do, by construction (the rules are
+# decideControlledScopeAddition in server/access/administration.ts, tested
+# in server/access/controlledScopeAddition.test.ts):
+#   - create a staff account;
+#   - assign access to whoever happens to occupy an id: the run must state
+#     the display name it expects on that row, and a mismatch stops it;
+#   - make a FIRST assignment: the row must already carry one;
+#   - change the access level, the case scope, the status or the team;
+#   - add or remove ANY action permission, which puts all seven
+#     consequential permissions out of reach by construction rather than
+#     by a refusal list;
+#   - add or remove ANY sensitive overlay;
+#   - revoke a functional scope: there is no input that expresses removal;
+#   - run without a written controlled approval reference;
+#   - write anything at all when the proposed scopes are already held.
+#
+# Auth: githubactionsprod, the same production-scoped Railway Project
+# Token the other production workflows use.
+on:
+  workflow_dispatch:
+    inputs:
+      staff_user_id:
+        description: "staff_users.id of the existing assignment to amend"
+        required: true
+      expect_display_name:
+        description: "The displayName you believe that row carries. A mismatch stops the run."
+        required: true
+      add_functional_scopes:
+        description: "Functional scopes to ADD, comma-separated. Nothing is ever removed."
+        required: true
+      authority:
+        description: "Controlled approval reference this amendment is made under"
+        required: true
+      reason:
+        description: "Why this amendment"
+        required: true
+      apply:
+        description: "Set to true to actually write. Anything else is a dry run."
+        required: true
+        default: "false"
+      service_name:
+        description: "Railway app service name"
+        required: true
+        default: "world-student-advisors"
+      environment_name:
+        description: "Railway environment name"
+        required: true
+        default: "production"
+      database_service_name:
+        description: "Railway MySQL service name"
+        required: true
+        default: "MySQL"
+
+jobs:
+  amend:
+    runs-on: ubuntu-latest
+    # Main only: an access change must be made by reviewed, merged code.
+    if: github.ref == 'refs/heads/main'
+    env:
+      APP_SERVICE_NAME: ${{ github.event.inputs.service_name }}
+      APP_ENV_NAME: ${{ github.event.inputs.environment_name }}
+      DB_SERVICE_NAME: ${{ github.event.inputs.database_service_name }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Install Railway CLI
+        run: npm install -g @railway/cli
+
+      - name: Discover the MySQL service's public-URL variable NAME (key only, value never printed)
+        id: discover
+        env:
+          RAILWAY_TOKEN: ${{ secrets.githubactionsprod }}
+        run: |
+          KEYS=$(railway variables --service "$DB_SERVICE_NAME" --environment "$APP_ENV_NAME" --json | jq -r 'keys[]')
+          PUBLIC_KEY=$(echo "$KEYS" | grep -i -E '^(MYSQL_PUBLIC_URL|DATABASE_PUBLIC_URL)$' | head -n1)
+          if [ -z "$PUBLIC_KEY" ]; then
+            echo "No public-URL-shaped variable found on $DB_SERVICE_NAME. Stopping — not guessing further."
+            exit 1
+          fi
+          echo "Using public URL variable: $PUBLIC_KEY"
+          echo "public_key=$PUBLIC_KEY" >> "$GITHUB_OUTPUT"
+
+      - name: Set a temporary public-reachable URL on the app service
+        env:
+          RAILWAY_TOKEN: ${{ secrets.githubactionsprod }}
+          PUBLIC_KEY: ${{ steps.discover.outputs.public_key }}
+        run: |
+          REF=$(printf '\044{{%s.%s}}' "$DB_SERVICE_NAME" "$PUBLIC_KEY")
+          railway variables \
+            --service "$APP_SERVICE_NAME" \
+            --environment "$APP_ENV_NAME" \
+            --set "AMENDMENT_DATABASE_URL=${REF}" \
+            --skip-deploys
+
+      - name: Record the amendment
+        timeout-minutes: 10
+        env:
+          RAILWAY_TOKEN: ${{ secrets.githubactionsprod }}
+          # Passed as environment variables, never interpolated into a shell
+          # string. An apostrophe in a reason or authority reference would
+          # otherwise break the quoting, and a quote plus a semicolon would
+          # be executed. amend-staff-access.ts reads these directly.
+          WSA_AMEND_STAFF_USER_ID: ${{ github.event.inputs.staff_user_id }}
+          WSA_AMEND_EXPECT_DISPLAY_NAME: ${{ github.event.inputs.expect_display_name }}
+          WSA_AMEND_ADD_SCOPES: ${{ github.event.inputs.add_functional_scopes }}
+          WSA_AMEND_AUTHORITY: ${{ github.event.inputs.authority }}
+          WSA_AMEND_REASON: ${{ github.event.inputs.reason }}
+          WSA_AMEND_APPLY: ${{ github.event.inputs.apply }}
+        run: |
+          railway run --service "$APP_SERVICE_NAME" --environment "$APP_ENV_NAME" -- \
+            sh -c 'DATABASE_URL="$AMENDMENT_DATABASE_URL" npx tsx scripts/amend-staff-access.ts'
+
+      - name: Remove the temporary variable
+        if: always()
+        timeout-minutes: 10
+        env:
+          RAILWAY_TOKEN: ${{ secrets.githubactionsprod }}
+        run: |
+          railway variables \
+            --service "$APP_SERVICE_NAME" \
+            --environment "$APP_ENV_NAME" \
+            --set "AMENDMENT_DATABASE_URL=" \
+            --skip-deploys

@@ -515,25 +515,57 @@ async function main() {
     const decision = decideForProfile(profile, { action: "read", functionalScope: required });
     (decision.allowed ? scopeAllowed : scopeDenied).push(`${id}(${required})`);
   }
-  check(scopeDenied.length > 0,
-    `a staff member is refused workers whose scope they do not hold (${scopeDenied.length} of ${SUBSTANTIVE.length} refused)`);
   console.log(`  reachable by this profile: ${scopeAllowed.join(", ") || "(none)"}`);
   console.log(`  refused for this profile : ${scopeDenied.length} worker(s)`);
+
+  // The control is an equivalence, not a count. Asserting "somebody is
+  // refused something" only holds while the live profile happens to be
+  // narrow, and would have to be rewritten every time access changes,
+  // which is how a control quietly becomes a snapshot. This says what the
+  // gate actually promises: a worker is reachable exactly when the staff
+  // member holds its scope, and never otherwise.
+  let equivalenceHolds = true;
+  for (const id of SUBSTANTIVE) {
+    const required = WORKER_FUNCTIONAL_SCOPE[id as keyof typeof WORKER_FUNCTIONAL_SCOPE];
+    const holds = (profile.functionalScopes as readonly string[]).includes(required);
+    const allowed = decideForProfile(profile, { action: "read", functionalScope: required }).allowed;
+    if (holds !== allowed) equivalenceHolds = false;
+  }
+  check(equivalenceHolds,
+    "a worker is reachable exactly when the staff member holds its functional scope, and never otherwise");
+
+  // [derived] the negative, held independently of what the live profile
+  // happens to carry: strip a scope and the worker goes out of reach.
+  const strippedOfAdmissions: StaffAccessProfile = {
+    ...profile,
+    functionalScopes: profile.functionalScopes.filter(s => s !== "admissions"),
+  };
+  check(!decideForProfile(strippedOfAdmissions, { action: "read", functionalScope: "admissions" }).allowed,
+    "[derived] removing a scope removes the worker, so the gate is the scope and not the account");
+
+  // The approved end state of 1 September: the named account reaches every
+  // staff-facing worker through the ordinary permission model, rather than
+  // through the shared executive route.
+  check(scopeAllowed.length === SUBSTANTIVE.length,
+    `the named production profile reaches all ${SUBSTANTIVE.length} staff-facing workers ` +
+    `(${scopeAllowed.length}/${SUBSTANTIVE.length}, refused: ${scopeDenied.join(", ") || "none"})`);
 
   // Nia specifically, because this is the defect Tom Arrington reported.
   const niaScope = WORKER_FUNCTIONAL_SCOPE.nia;
   check(String(niaScope) === "social_media", `Nia requires the ${niaScope} scope`);
   check((FUNCTIONAL_SCOPES as readonly string[]).includes(niaScope),
     "social_media is an approved functional scope, so it CAN now be granted through the controlled route");
-  check(!decideForProfile(profile, { action: "read", functionalScope: niaScope }).allowed,
-    "Nia is correctly refused to a profile that does not hold social_media — the fix made the scope grantable, it granted it to nobody");
-  // [derived] — the model as deployed, not a claim about a second person.
-  const withSocial: StaffAccessProfile = {
+  check(decideForProfile(profile, { action: "read", functionalScope: niaScope }).allowed,
+    "Nia is reachable by the named production profile, which now holds social_media");
+  // [derived] — the refusal Tom Arrington first reported, reproduced from
+  // the live model rather than remembered, so the fix is shown to be a
+  // granted permission and not a weakened gate.
+  const withoutSocial: StaffAccessProfile = {
     ...profile,
-    functionalScopes: [...profile.functionalScopes, niaScope],
+    functionalScopes: profile.functionalScopes.filter(s => s !== niaScope),
   };
-  check(decideForProfile(withSocial, { action: "read", functionalScope: niaScope }).allowed,
-    "[derived] a profile holding social_media DOES reach Nia — the old scope error is a permission state, not a defect");
+  check(!decideForProfile(withoutSocial, { action: "read", functionalScope: niaScope }).allowed,
+    "[derived] without social_media Nia is still refused — the scope was granted, the gate was not removed");
 
   // ── 18. Conversation memory: real, owned, and isolated ───────────────
   section("18. Conversation memory against the real production table");
