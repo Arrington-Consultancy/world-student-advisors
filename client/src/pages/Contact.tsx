@@ -535,7 +535,17 @@ function StudentForm() {
           </div>
         </div>
         <div>
-          <label className="block text-sm font-medium text-wsa-navy mb-1.5">Education Funding *</label>
+          {/*
+            Reworded 1 September 2026 at staff request. Asking how someone is
+            financing their studies reads as a question to the applicant;
+            "Education Funding" read as an internal category name.
+
+            The options are deliberately unchanged. Removing Student Loan and
+            Mixed funding was requested in the same document and is NOT done:
+            both remain open pending clarification from staff, so a student
+            who is financing their studies either way can still say so.
+          */}
+          <label className="block text-sm font-medium text-wsa-navy mb-1.5">How are you financing your studies? *</label>
           <select
             required
             value={formData.educationFunding}
