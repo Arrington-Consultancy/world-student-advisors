@@ -110,6 +110,35 @@ describe("path containment is a prefix, not a substring", () => {
   });
 });
 
+describe("the forbidden check does not depend on the site id being configured", () => {
+  // The production acceptance run of 1 September 2026 caught this:
+  // SHAREPOINT_GRAPH_SITE_ID is not set in production, so the site prefix
+  // was never stripped, so a path carrying it did not match a forbidden
+  // location by prefix. Three checks failed and they were right to.
+  it("refuses a forbidden area when no site id is configured at all", () => {
+    for (const scope of [
+      "wsa-site/03_FAMILY_&_PERSONAL/x",
+      "some-other-site-id/04_FINANCE_&_BANKING/statements",
+      "03_FAMILY_&_PERSONAL/x",
+    ]) {
+      const decision = decideSharePointLocation("maya", scope, undefined);
+      expect(decision.permitted).toBe(false);
+      expect(decision.reason).toContain("can never be designated");
+    }
+  });
+
+  it("refuses a forbidden area nested below something else", () => {
+    const decision = decideSharePointLocation("maya", "wsa-site/00_Archive/03_FAMILY_&_PERSONAL/old", undefined);
+    expect(decision.reason).toContain("can never be designated");
+  });
+
+  it("still distinguishes a same-prefixed sibling when the site id is absent", () => {
+    const decision = decideSharePointLocation("maya", "wsa-site/03_FAMILY_&_PERSONAL_ARCHIVE/x", undefined);
+    expect(decision.permitted).toBe(false);
+    expect(decision.reason).toContain("No SharePoint location is designated");
+  });
+});
+
 describe("the site id is stripped before matching, however the scope is written", () => {
   it("matches a forbidden area whether or not the site id prefixes it", () => {
     for (const scope of [`${SITE}/04_FINANCE_&_BANKING/x`, "04_FINANCE_&_BANKING/x"]) {

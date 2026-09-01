@@ -130,6 +130,43 @@ function isWithin(path: string, location: SharePointLocation): boolean {
   return path === location || path.startsWith(`${location}/`);
 }
 
+function segments(value: string): string[] {
+  return value.split("/").filter(part => part !== "");
+}
+
+/**
+ * Whether a forbidden location appears anywhere in the path as a run of
+ * whole segments.
+ *
+ * Deliberately more defensive than the prefix match used for
+ * designations, and the difference matters. The prefix match depends on
+ * the site id having been stripped correctly, which depends on
+ * SHAREPOINT_GRAPH_SITE_ID being configured. It is not configured in
+ * production today, and a production acceptance run caught this exactly:
+ * an unstripped path meant "wsa-site/03_FAMILY_&_PERSONAL/x" did not start
+ * with "03_FAMILY_&_PERSONAL" and sailed past the forbidden check.
+ *
+ * Nothing was reachable anyway, because the WSA boundary refuses every
+ * SharePoint request while the site is unconfigured. But this is the one
+ * check whose failure mode is a worker reading somebody's bank statements,
+ * and leaning on a different gate for its correctness is the fragility
+ * this module exists to remove. So it no longer depends on configuration
+ * being right.
+ *
+ * Segment-aligned, so "03_FAMILY_&_PERSONAL_ARCHIVE" is still a different
+ * folder, and a nested folder of the same name is caught too: a directory
+ * called Passwords three levels down is the same risk as one at the root.
+ */
+function containsForbidden(path: string, location: SharePointLocation): boolean {
+  const haystack = segments(path);
+  const needle = segments(location);
+  if (needle.length === 0 || needle.length > haystack.length) return false;
+  for (let i = 0; i + needle.length <= haystack.length; i += 1) {
+    if (needle.every((part, j) => haystack[i + j] === part)) return true;
+  }
+  return false;
+}
+
 /**
  * Strips the configured site id from a resource scope, leaving the path
  * within the drive. wsaScope.ts has already established that the scope is
@@ -160,8 +197,13 @@ export function decideSharePointLocation(
 ): LocationDecision {
   const path = pathWithinSite(resourceScope, siteId);
 
+  // Segment containment rather than a prefix, so a missing or mismatched
+  // site id cannot let a forbidden area through. Checking the raw scope as
+  // well was tried and removed: segment matching already catches an
+  // unstripped path, no test could tell the two apart, and defensive code
+  // that implies a guarantee it is not providing is worse than none.
   for (const forbidden of NEVER_DESIGNATED) {
-    if (isWithin(path, forbidden)) {
+    if (containsForbidden(path, forbidden)) {
       return { permitted: false, reason: NEVER_DESIGNATED_REASON };
     }
   }
