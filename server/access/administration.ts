@@ -84,7 +84,19 @@ export type RefusalCode =
   | "grant_administrator_lacks"
   | "overlay_below_minimum_level"
   | "unknown_value"
-  | "reason_missing";
+  | "reason_missing"
+  // Refusals belonging only to the controlled scope-addition route below.
+  | "no_existing_assignment"
+  | "target_not_active"
+  | "level_would_change"
+  | "case_scope_would_change"
+  | "status_would_change"
+  | "team_would_change"
+  | "action_permission_would_change"
+  | "overlay_would_change"
+  | "scope_would_be_revoked"
+  | "authority_missing"
+  | "no_change";
 
 export interface AdministrationRefusal {
   permitted: false;
@@ -305,6 +317,139 @@ function diffRevoked(current: CurrentAssignment, proposed: ProposedAssignment) {
     if (!proposed.sensitiveOverlays.includes(o)) revoked.push({ grantType: "sensitive_overlay", value: o });
   }
   return revoked;
+}
+
+/**
+ * The one change a controlled workflow may make without an administrator
+ * present: adding functional scopes to an assignment that already exists.
+ *
+ * WHY THIS EXISTS SEPARATELY. decideAssignment above is the screen's rule
+ * set, and it assumes a signed-in administrator who is not the target.
+ * That assumption is correct there and cannot be relaxed. But it leaves a
+ * real gap: the only account holding access_admin is the shared executive
+ * session, and a person cannot administer themselves, so an owner sitting
+ * at a keyboard with no second administrator has no route to widen their
+ * own named account except a hand-edited production row. Hand-edited rows
+ * are exactly what this whole module was written to stop.
+ *
+ * So this route grants no administrator authority at all. It is defined
+ * by what it refuses. The level cannot move, the case scope cannot move,
+ * the status cannot move, the team cannot move, not one action permission
+ * may be added or removed, not one sensitive overlay may be added or
+ * removed, and no functional scope may be revoked. It can add functional
+ * scopes to an active, already-assigned account, and it can do nothing
+ * else. Every consequential permission in section 3 is therefore out of
+ * reach here by construction rather than by a list that could be edited:
+ * they are action permissions, and action permissions cannot change.
+ *
+ * A written authority reference is required and a no-op is refused, so a
+ * repeated run cannot quietly append audit rows recording no change.
+ *
+ * It returns the same decision type as decideAssignment and produces its
+ * diff and audit lines from the same functions, so applyAssignment still
+ * only ever receives a decision that some rule set produced.
+ */
+export function decideControlledScopeAddition(
+  current: CurrentAssignment,
+  proposed: ProposedAssignment,
+): AdministrationDecision {
+  if (current.baseAccessLevel === null || current.accessStatus === null || current.caseScope === null) {
+    return refuse(
+      "no_existing_assignment",
+      "This route amends an assignment that already exists. This account has none, so there is nothing " +
+      "to add a scope to and the first assignment must be made deliberately.",
+    );
+  }
+  if (current.accessStatus !== "active") {
+    return refuse("target_not_active", `This account's access is ${current.accessStatus}, so it is not widened here.`);
+  }
+  if (proposed.reason.trim().length < 10) {
+    return refuse(
+      "reason_missing",
+      "Access Control Standard section 9 requires a reason for every permission change.",
+    );
+  }
+  if (!proposed.authorityReference || proposed.authorityReference.trim().length < 10) {
+    return refuse(
+      "authority_missing",
+      "A controlled approval reference is required: this route runs with no administrator present, so the " +
+      "written authority is the only thing standing behind the change.",
+    );
+  }
+
+  if (proposed.baseAccessLevel !== current.baseAccessLevel) {
+    return refuse(
+      "level_would_change",
+      `This route cannot change an access level. The account is Level ${current.baseAccessLevel} and the ` +
+      `proposal says Level ${proposed.baseAccessLevel}.`,
+    );
+  }
+  if (proposed.caseScope !== current.caseScope) {
+    return refuse(
+      "case_scope_would_change",
+      `This route cannot change a case scope. The account is ${current.caseScope} and the proposal says ` +
+      `${proposed.caseScope}.`,
+    );
+  }
+  if (proposed.accessStatus !== current.accessStatus) {
+    return refuse("status_would_change", "This route cannot change an access status.");
+  }
+  if ((proposed.teamId ?? null) !== (current.teamId ?? null)) {
+    return refuse("team_would_change", "This route cannot change a team.");
+  }
+
+  if (!sameMembers(current.actionPermissions, proposed.actionPermissions)) {
+    return refuse(
+      "action_permission_would_change",
+      "This route cannot add or remove an action permission. It holds [" +
+      `${[...current.actionPermissions].sort().join(", ")}] and the proposal says [` +
+      `${[...proposed.actionPermissions].sort().join(", ")}].`,
+    );
+  }
+  if (!sameMembers(current.sensitiveOverlays, proposed.sensitiveOverlays)) {
+    return refuse(
+      "overlay_would_change",
+      "This route cannot add or remove a sensitive overlay. It holds [" +
+      `${[...current.sensitiveOverlays].sort().join(", ")}] and the proposal says [` +
+      `${[...proposed.sensitiveOverlays].sort().join(", ")}].`,
+    );
+  }
+
+  for (const scope of proposed.functionalScopes) {
+    if (!isOneOf(FUNCTIONAL_SCOPES, scope)) return refuse("unknown_value", `${scope} is not a functional scope.`);
+  }
+  for (const held of current.functionalScopes) {
+    if (!proposed.functionalScopes.includes(held)) {
+      return refuse(
+        "scope_would_be_revoked",
+        `This route only adds. The proposal would revoke the ${held} scope, which is a separate decision.`,
+      );
+    }
+  }
+
+  const added = diffAdded(current, proposed);
+  if (added.length === 0) {
+    return refuse(
+      "no_change",
+      "This account already holds every scope proposed, so there is nothing to add. Refusing rather than " +
+      "writing audit rows that record no change.",
+    );
+  }
+
+  return {
+    permitted: true,
+    auditLines: buildAuditLines(current, proposed),
+    grantsToAdd: added,
+    grantsToRevoke: diffRevoked(current, proposed),
+  };
+}
+
+/** Set equality, so ordering and duplication cannot look like a change. */
+function sameMembers(a: readonly string[], b: readonly string[]): boolean {
+  const left = new Set(a);
+  const right = new Set(b);
+  if (left.size !== right.size) return false;
+  return a.every(value => right.has(value));
 }
 
 /**

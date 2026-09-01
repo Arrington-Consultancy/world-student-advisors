@@ -25,6 +25,27 @@ const CONSEQUENTIAL = [
   "financial_action", "access_admin", "credential_admin",
 ];
 
+// The functional scopes this account is approved to hold, and the whole
+// list. "executive" is the original assignment of 30 August. The thirteen
+// after it are one per staff-facing worker, added on 1 September under
+// Tom Arrington's explicit named-account workforce access approval, so
+// that a named identity can reach the workforce through the ordinary
+// permission model rather than the shared executive route.
+//
+// This is asserted as an exact set, not a superset. A scope appearing
+// here that nobody approved is the failure this check exists to catch,
+// and "at least these" would not catch it.
+const EXPECTED_SCOPES = [
+  "executive",
+  "enquiry_triage", "discovery", "education_research", "suitability",
+  "admissions", "visa_compliance", "scholarships_funding",
+  "pre_arrival_student_success", "quality_assurance", "marketing_seo",
+  "records_control", "paid_media", "social_media",
+];
+// Approved for nobody through any controlled route so far. Named so the
+// check reads as a statement about them rather than as arithmetic.
+const SCOPES_NOT_APPROVED = ["operations", "governance", "finance", "safeguarding", "technical_administration"];
+
 const db = drizzle(process.env.DATABASE_URL);
 let failures = 0;
 
@@ -93,7 +114,23 @@ try {
   const overlays = forStaff.filter(g => g.grantType === "sensitive_overlay").map(g => g.value);
   const caseScopeGrants = forStaff.filter(g => g.grantType === "case_scope").map(g => g.value);
 
-  check(scopes.length === 1 && scopes[0] === "executive", `Executive is the only functional scope (found [${scopes.join(", ")}])`);
+  const missingScopes = EXPECTED_SCOPES.filter(s => !scopes.includes(s));
+  const unexpectedScopes = scopes.filter(s => !EXPECTED_SCOPES.includes(s));
+  check(
+    missingScopes.length === 0,
+    `every approved functional scope is held (missing [${missingScopes.join(", ")}])`,
+  );
+  check(
+    unexpectedScopes.length === 0,
+    `no functional scope beyond the approval is held (unexpected [${unexpectedScopes.join(", ")}])`,
+  );
+  check(
+    scopes.length === EXPECTED_SCOPES.length,
+    `exactly ${EXPECTED_SCOPES.length} functional scopes are held (found ${scopes.length})`,
+  );
+  for (const s of SCOPES_NOT_APPROVED) {
+    check(!scopes.includes(s), `the ${s} scope is NOT granted`);
+  }
   check(actions.length === 1 && actions[0] === "read", `read is the only action permission (found [${actions.join(", ")}])`);
   check(overlays.length === 0, `no sensitive overlay is granted, so finance access is NOT granted (found [${overlays.join(", ")}])`);
   check(!overlays.includes("finance"), "the finance overlay specifically is absent");
