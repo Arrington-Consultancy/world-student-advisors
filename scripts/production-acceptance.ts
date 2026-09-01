@@ -167,7 +167,23 @@ async function main() {
 
   // ── 5. Unheld scope, overlays ─────────────────────────────────────────
   section("5. Scope and sensitive overlays");
-  const otherScope = profile.functionalScopes.includes("visa_compliance") ? "admissions" : "visa_compliance";
+  // The scope this account does NOT hold, found by asking the live profile
+  // rather than by naming one. Every negative check below leans on it, and
+  // naming a scope is a bet that nobody will ever be granted it: when Tom
+  // Arrington's account was widened to the thirteen worker scopes on
+  // 1 September, the hard-coded "admissions" became a scope he held, and
+  // nine checks stopped testing anything and started failing. A negative
+  // control has to be derived from the state it is testing against.
+  const unheld = FUNCTIONAL_SCOPES.filter(s => !profile.functionalScopes.includes(s));
+  if (unheld.length === 0) {
+    console.error(
+      "  STOPPING: this profile holds all " + FUNCTIONAL_SCOPES.length + " functional scopes, so there is no " +
+      "unheld scope to test the refusal with. The negative cases below would pass vacuously.",
+    );
+    process.exit(1);
+  }
+  const otherScope = unheld[0];
+  console.log(`  unheld scopes available for the negative cases: [${unheld.join(", ")}]`);
   const wrongScope = await checkAccessForStaffUser(staff[0].id,
     { action: "read", functionalScope: otherScope as never });
   check(!wrongScope.allowed, `read in the unheld scope "${otherScope}" is DENIED`);
@@ -536,12 +552,16 @@ async function main() {
 
   // [derived] the negative, held independently of what the live profile
   // happens to carry: strip a scope and the worker goes out of reach.
-  const strippedOfAdmissions: StaffAccessProfile = {
+  // Stripped of a scope the profile ACTUALLY holds, so the check cannot
+  // pass vacuously by removing something that was never there.
+  const heldScope = profile.functionalScopes[0];
+  const stripped: StaffAccessProfile = {
     ...profile,
-    functionalScopes: profile.functionalScopes.filter(s => s !== "admissions"),
+    functionalScopes: profile.functionalScopes.filter(s => s !== heldScope),
   };
-  check(!decideForProfile(strippedOfAdmissions, { action: "read", functionalScope: "admissions" }).allowed,
-    "[derived] removing a scope removes the worker, so the gate is the scope and not the account");
+  check(decideForProfile(profile, { action: "read", functionalScope: heldScope }).allowed
+    && !decideForProfile(stripped, { action: "read", functionalScope: heldScope }).allowed,
+    `[derived] removing the ${heldScope} scope removes that access, so the gate is the scope and not the account`);
 
   // The approved end state of 1 September: the named account reaches every
   // staff-facing worker through the ordinary permission model, rather than
