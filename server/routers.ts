@@ -29,6 +29,12 @@ import { authenticateStaffPortal, verifyStaffPortalToken, isStaffPortalLoginRate
 import { isMicrosoftSsoConfigured, buildMicrosoftSignInRequest, completeMicrosoftSignInFromCallback } from "./staffIdentityAuth";
 import { resolveStaffSession } from "./staffSession";
 import { resolveStaffAccessProfile } from "./access/identity";
+import {
+  MAY_INTAKE_RECORDS, MAY_INTAKE_PROVENANCE,
+  PARTNER_INSTITUTIONS, PARTNER_PROVENANCE, PARTNER_AREA_MUST_NOT_HOLD,
+  MESSAGE_TEMPLATES, TRAINING_RESOURCES, TEMPLATES_PROVENANCE,
+  DEFERRED_BY_STAFF_REQUEST,
+} from "./resources/controlledResources";
 import { buildCommunicationsView } from "./communications/access";
 import { runQualityCheck } from "./operating/qualityCheck";
 import {
@@ -1009,6 +1015,57 @@ export const appRouter = router({
      * the profile server-side. The permission decision is made here rather
      * than in the client, so a hidden button is not what stops anyone.
      */
+    /**
+     * The three resource areas staff asked for on 1 September 2026.
+     *
+     * All three are empty and say so. The content is still to be supplied,
+     * and an invented university, a plausible intake date or a constructed
+     * agent-portal URL would be indistinguishable from a real one on this
+     * screen — a counsellor would read it and repeat it to a student. So
+     * the structure exists, the supplier is named, and nothing is shown.
+     *
+     * Gated on a resolved individual identity holding read. A
+     * shared-password session has no identity and gets nothing, which
+     * matters more once real partner links are in here.
+     */
+    resources: publicProcedure
+      .input(z.object({ token: z.string() }))
+      .query(async ({ input }) => {
+        const session = await resolveStaffSession(input.token);
+        const staffUserId = session.authMethod === "shared_password" ? null : session.staffUserId;
+        const resolution = await resolveStaffAccessProfile(staffUserId);
+
+        const permitted =
+          resolution.resolved &&
+          resolution.profile.status === "active" &&
+          resolution.profile.actionPermissions.includes("read");
+
+        if (!permitted) {
+          return {
+            permitted: false as const,
+            reason: resolution.resolved
+              ? "Your access does not include read, so the staff resource areas are not shown."
+              : "You are signed in without an individual identity. Sign in with your Microsoft account to see the staff resource areas.",
+          };
+        }
+
+        return {
+          permitted: true as const,
+          mayIntake: { records: MAY_INTAKE_RECORDS, provenance: MAY_INTAKE_PROVENANCE },
+          partners: {
+            institutions: PARTNER_INSTITUTIONS,
+            provenance: PARTNER_PROVENANCE,
+            mustNotHold: PARTNER_AREA_MUST_NOT_HOLD,
+          },
+          templates: {
+            messageTemplates: MESSAGE_TEMPLATES,
+            trainingResources: TRAINING_RESOURCES,
+            provenance: TEMPLATES_PROVENANCE,
+          },
+          deferred: DEFERRED_BY_STAFF_REQUEST,
+        };
+      }),
+
     communications: publicProcedure
       .input(z.object({ token: z.string() }))
       .query(async ({ input }) => {
