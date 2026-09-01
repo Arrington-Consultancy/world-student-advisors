@@ -86,8 +86,9 @@ export const WORKER_SHAREPOINT_LOCATIONS: Readonly<Record<WorkerId, readonly Sha
  * This is separate from the per-worker designation on purpose. A
  * designation is a decision somebody makes; this is a decision already
  * made, and it is checked independently so that designating a location by
- * mistake cannot reach these. It is matched as a path prefix against the
- * whole resource path, so naming a parent catches everything under it.
+ * mistake cannot reach these. It is matched as a run of whole path
+ * segments anywhere in the path, so naming a parent catches everything
+ * under it and a nested folder of the same name is caught too.
  *
  * Every entry was read from the live site rather than guessed, and each
  * is here because its content is categorically not worker material:
