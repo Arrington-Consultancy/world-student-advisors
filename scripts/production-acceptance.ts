@@ -695,7 +695,7 @@ async function main() {
   for (const area of ["03_FAMILY_&_PERSONAL/x", "04_FINANCE_&_BANKING/statements", "05_HUB/13. Appraisals_Feedback_Docs/review.docx"]) {
     let refusedForAll = true;
     for (const id of SUBSTANTIVE) {
-      const d = decideSharePointLocation(id as keyof typeof WORKER_SHAREPOINT_LOCATIONS, `${SP_SITE ?? "wsa-site"}/${area}`);
+      const d = decideSharePointLocation(id as keyof typeof WORKER_SHAREPOINT_LOCATIONS, SP_SITE ? `${SP_SITE}/${area}` : area);
       if (d.permitted || !d.reason.includes("can never be designated")) refusedForAll = false;
     }
     check(refusedForAll, `"${area}" is refused to every worker for a reason no designation could fix`);
