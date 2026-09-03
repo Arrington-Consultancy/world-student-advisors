@@ -183,7 +183,19 @@ if (!APPLY) {
 const result = await applyAssignment(decision, proposed, staff.id);
 if (!result.applied) fail(result.reason);
 
-for (const id of duplicateIds) {
+// Only rows still live after the apply above. A duplicate of a permission
+// the apply has just revoked outright is already gone, and rewriting it
+// here would replace an accurate revocation reason with a less accurate
+// one.
+const stillLive = await db
+  .select()
+  .from(staffAccessGrants)
+  .where(and(eq(staffAccessGrants.staffUserId, staffUserId), isNull(staffAccessGrants.revokedAt)));
+const liveIds = new Set(stillLive.map(g => g.id));
+const retiredIds = duplicateIds.filter(id => liveIds.has(id));
+console.log(`\n  duplicate rows still live after the apply: ${retiredIds.length}${retiredIds.length ? ` (ids ${retiredIds.join(", ")})` : ""}`);
+
+for (const id of retiredIds) {
   await db
     .update(staffAccessGrants)
     .set({
@@ -193,12 +205,12 @@ for (const id of duplicateIds) {
     })
     .where(eq(staffAccessGrants.id, id));
 }
-if (duplicateIds.length > 0) {
+if (retiredIds.length > 0) {
   await db.insert(staffAccessChanges).values({
     staffUserId: staff.id,
     changedByStaffUserId: staff.id,
     changeType: "grant_revoked",
-    previousValue: `${duplicateIds.length} duplicate grant row(s)`,
+    previousValue: `${retiredIds.length} duplicate grant row(s)`,
     newValue: null,
     reason: "Retiring duplicate rows left by the pre-correction bootstrap. No permission was added or removed.",
     authorityReference: FIRST_ADMINISTRATOR_AUTHORITY,
