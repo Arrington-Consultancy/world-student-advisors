@@ -162,12 +162,26 @@ async function main() {
 
   // ── 4. Consequential actions are refused ──────────────────────────────
   section("4. Consequential actions — seniority never implies capability");
+  // access_admin is held by the first administrator and is the ONLY
+  // consequential permission that account holds. This used to assert that
+  // NONE was held, which was true until the first-administrator bootstrap
+  // ran on 2 September and would have had to be rewritten anyway. It now
+  // asserts what the control actually promises: a consequential permission
+  // is allowed exactly when it has been granted by name, and never
+  // inherited from Level 1.
   const held = consequentialActionsHeld(profile, NOW);
-  check(held.length === 0, `no consequential action is held (found [${held.join(",")}])`);
+  console.log(`  consequential permissions held: ${held.join(", ") || "(none)"}`);
+  check(held.every(a => a === "access_admin"),
+    `access_admin is the only consequential permission held (found [${held.join(",")}])`);
+  let consequentialMatches = true;
   for (const action of Array.from(CONSEQUENTIAL_ACTIONS)) {
     const outcome = await checkAccessForStaffUser(staff[0].id, { action, functionalScope: scope });
-    check(!outcome.allowed, `${action} is DENIED to the real production profile`);
+    const granted = (profile.actionPermissions as readonly string[]).includes(action);
+    if (outcome.allowed !== granted) consequentialMatches = false;
+    if (!granted) check(!outcome.allowed, `${action} is DENIED to the real production profile`);
   }
+  check(consequentialMatches,
+    "a consequential permission is allowed exactly when it is granted by name, and never implied by the level");
 
   // ── 5. Unheld scope, overlays ─────────────────────────────────────────
   section("5. Scope and sensitive overlays");

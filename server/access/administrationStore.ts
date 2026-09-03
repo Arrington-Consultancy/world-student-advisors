@@ -25,6 +25,13 @@ import { staffUsers, staffAccessGrants, staffAccessChanges } from "../../drizzle
 import { ENV } from "../_core/env";
 import type { AdministrationApproval, ProposedAssignment, CurrentAssignment } from "./administration";
 import type { AccessLevel, CaseScope, FunctionalScope, ActionPermission, SensitiveOverlay } from "./accessControl";
+import {
+  FIRST_ADMINISTRATOR_ACTIONS,
+  FIRST_ADMINISTRATOR_CASE_SCOPE,
+  FIRST_ADMINISTRATOR_LEVEL,
+  FIRST_ADMINISTRATOR_REASON,
+  FIRST_ADMINISTRATOR_SCOPES,
+} from "./firstAdministratorProfile";
 
 export interface StaffSummary {
   staffUserId: number;
@@ -172,6 +179,24 @@ export type BootstrapOutcome =
  *
  * The named person must already have signed in through Microsoft. This
  * grants access to a real, verified identity or to nobody.
+ *
+ * IT ESTABLISHES THE WHOLE PROFILE, ATOMICALLY. It used to grant four
+ * scopes and leave the account short of what administering actually needs,
+ * with a comment saying a second administrator would widen the first. That
+ * is a deadlock rather than a process, and WSA hit it in production on
+ * 3 September 2026: the access screen correctly refuses self-
+ * administration, and there was no second administrator to ask. A
+ * bootstrap that can leave an account it has no way to finish is not a
+ * bootstrap. The profile now comes from firstAdministratorProfile.ts and
+ * is written in one transaction, so the outcome is the complete approved
+ * administrator or nothing at all.
+ *
+ * IT NO LONGER CREATES DUPLICATE GRANTS. It used to insert every scope and
+ * action unconditionally, so an account that already held one ended up
+ * with two rows for it. Set membership made that harmless to decisions and
+ * it was not harmless to read: the access screen showed "executive" and
+ * "read" twice, which reads as a bug in the permission model. Grants the
+ * account already holds are skipped.
  */
 export async function bootstrapFirstAdministrator(): Promise<BootstrapOutcome> {
   const db = await getDb();
@@ -212,52 +237,61 @@ export async function bootstrapFirstAdministrator(): Promise<BootstrapOutcome> {
   }
   const target = rows[0];
 
-  // Level 1 with the executive and governance scopes, plus access_admin.
-  // Deliberately NOT every action permission: the first administrator gets
-  // what is needed to administer access and nothing else. They can grant
-  // themselves nothing further, because self-administration is refused, so
-  // a second administrator has to widen the first if that is ever wanted.
-  const scopes: FunctionalScope[] = ["executive", "operations", "governance", "technical_administration"];
-  const actions: ActionPermission[] = ["read", "create", "update", "access_admin"];
+  // Everything below is one transaction. A half-written bootstrap is the
+  // exact failure this route exists to avoid: an account holding
+  // access_admin but not the scopes it needs cannot be completed through
+  // the access screen, because self-administration is refused there.
+  await db.transaction(async tx => {
+    await tx
+      .update(staffUsers)
+      .set({
+        baseAccessLevel: FIRST_ADMINISTRATOR_LEVEL,
+        caseScope: FIRST_ADMINISTRATOR_CASE_SCOPE,
+        accessStatus: "active",
+        assignedAt: new Date(),
+        assignmentReason: FIRST_ADMINISTRATOR_REASON,
+      })
+      .where(eq(staffUsers.id, target.id));
 
-  await db
-    .update(staffUsers)
-    .set({
-      baseAccessLevel: 1,
-      caseScope: "organisation",
-      accessStatus: "active",
-      assignedAt: new Date(),
-      assignmentReason: "First access administrator, established by controlled bootstrap.",
-    })
-    .where(eq(staffUsers.id, target.id));
+    // What the account already holds, so a re-grant does not become a
+    // second row for the same permission.
+    const held = await tx
+      .select()
+      .from(staffAccessGrants)
+      .where(and(eq(staffAccessGrants.staffUserId, target.id), isNull(staffAccessGrants.revokedAt)));
+    const alreadyHolds = (grantType: string, value: string) =>
+      held.some(g => g.grantType === grantType && g.value === value);
 
-  for (const value of scopes) {
-    await db.insert(staffAccessGrants).values({
+    for (const value of FIRST_ADMINISTRATOR_SCOPES) {
+      if (alreadyHolds("functional_scope", value)) continue;
+      await tx.insert(staffAccessGrants).values({
+        staffUserId: target.id,
+        grantType: "functional_scope",
+        value,
+        grantedByStaffUserId: target.id,
+        reason: FIRST_ADMINISTRATOR_REASON,
+      });
+    }
+    for (const value of FIRST_ADMINISTRATOR_ACTIONS) {
+      if (alreadyHolds("action_permission", value)) continue;
+      await tx.insert(staffAccessGrants).values({
+        staffUserId: target.id,
+        grantType: "action_permission",
+        value,
+        grantedByStaffUserId: target.id,
+        reason: FIRST_ADMINISTRATOR_REASON,
+      });
+    }
+
+    await tx.insert(staffAccessChanges).values({
       staffUserId: target.id,
-      grantType: "functional_scope",
-      value,
-      grantedByStaffUserId: target.id,
-      reason: "First access administrator, established by controlled bootstrap.",
+      changedByStaffUserId: null,
+      changeType: "level_assigned",
+      previousValue: null,
+      newValue: "Level 1, organisation, the thirteen worker scopes, read/create/update/access_admin",
+      reason: "First access administrator. No administrator existed, so no administrator could have granted this.",
+      authorityReference: "ACCESS_BOOTSTRAP_EMAIL, one-time and self-closing",
     });
-  }
-  for (const value of actions) {
-    await db.insert(staffAccessGrants).values({
-      staffUserId: target.id,
-      grantType: "action_permission",
-      value,
-      grantedByStaffUserId: target.id,
-      reason: "First access administrator, established by controlled bootstrap.",
-    });
-  }
-
-  await db.insert(staffAccessChanges).values({
-    staffUserId: target.id,
-    changedByStaffUserId: null,
-    changeType: "level_assigned",
-    previousValue: null,
-    newValue: "Level 1, access_admin, by controlled bootstrap",
-    reason: "First access administrator. No administrator existed, so no administrator could have granted this.",
-    authorityReference: "ACCESS_BOOTSTRAP_EMAIL, one-time and self-closing",
   });
 
   return { bootstrapped: true, staffUserId: target.id, email: target.email };

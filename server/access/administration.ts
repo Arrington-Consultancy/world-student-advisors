@@ -36,6 +36,12 @@
  * a time, by name, with a reason, or not at all.
  */
 import {
+  FIRST_ADMINISTRATOR_ACTIONS,
+  FIRST_ADMINISTRATOR_CASE_SCOPE,
+  FIRST_ADMINISTRATOR_LEVEL,
+  FIRST_ADMINISTRATOR_SCOPES,
+} from "./firstAdministratorProfile";
+import {
   CASE_SCOPES,
   FUNCTIONAL_SCOPES,
   ACTION_PERMISSIONS,
@@ -96,7 +102,10 @@ export type RefusalCode =
   | "overlay_would_change"
   | "scope_would_be_revoked"
   | "authority_missing"
-  | "no_change";
+  | "no_change"
+  // Refusals belonging only to the first-administrator completion route.
+  | "not_the_first_administrator"
+  | "administration_estate_established";
 
 export interface AdministrationRefusal {
   permitted: false;
@@ -450,6 +459,124 @@ function sameMembers(a: readonly string[], b: readonly string[]): boolean {
   const right = new Set(b);
   if (left.size !== right.size) return false;
   return a.every(value => right.has(value));
+}
+
+/**
+ * What the caller must establish about the estate before this route runs.
+ * Facts, counted from the live grants table, never asserted by a request.
+ */
+export interface FirstAdministratorContext {
+  /** Distinct accounts holding a live access_admin grant. */
+  accessAdminHolderCount: number;
+  /** Whether the account being completed is one of them. */
+  targetHoldsAccessAdmin: boolean;
+}
+
+/**
+ * Completes the first access administrator, once, to the approved profile.
+ *
+ * THE DEADLOCK THIS EXISTS TO BREAK. WSA hit it in production on
+ * 3 September 2026. The bootstrap established a partial profile, and the
+ * access screen then refused to let the administrator finish it, because
+ * decideAssignment refuses self-administration. That refusal is correct
+ * and is deliberately untouched: an administrator who can elevate
+ * themselves makes every other control decorative. What was wrong was a
+ * bootstrap that could leave an account it had no way to complete.
+ *
+ * WHY THIS IS NOT A SELF-SERVICE ESCALATION ROUTE. Four things hold, and
+ * each is tested:
+ *
+ * It takes no profile. The result is FIRST_ADMINISTRATOR_* or nothing, so
+ * there is no argument, input or workflow parameter that can widen it.
+ * Passing it a request for credential_admin is not possible, because there
+ * is nowhere to put one.
+ *
+ * It only ever completes an account that ALREADY holds access_admin. It
+ * cannot appoint anybody, so it is not a way in.
+ *
+ * It refuses once a second administrator exists. The window is the period
+ * when exactly one account can administer, which is the definition of "the
+ * first administrator", and it closes permanently the moment a real
+ * administration estate exists.
+ *
+ * It refuses a no-op, so once the profile matches, running it again does
+ * nothing and writes nothing. In the ordinary case it is available exactly
+ * once, and the run that uses it is the run that closes it.
+ *
+ * It also never touches sensitive overlays. Those are a separate approval
+ * about categories of material, so whatever the account holds is carried
+ * through untouched rather than granted or revoked here.
+ */
+export function decideFirstAdministratorCompletion(
+  current: CurrentAssignment,
+  context: FirstAdministratorContext,
+  reason: string,
+  authorityReference: string,
+): AdministrationDecision {
+  if (!context.targetHoldsAccessAdmin) {
+    return refuse(
+      "not_the_first_administrator",
+      "This account does not hold access_admin, so it is not the first administrator and this route cannot " +
+      "appoint it. Appointing an administrator is the bootstrap's job, and an ordinary assignment thereafter.",
+    );
+  }
+  if (context.accessAdminHolderCount !== 1) {
+    return refuse(
+      "administration_estate_established",
+      `${context.accessAdminHolderCount} accounts hold access_admin, so there is an administration estate and ` +
+      "this route is closed. A second administrator makes the ordinary access screen the correct way to change " +
+      "anybody's access, including the first administrator's.",
+    );
+  }
+  if (current.baseAccessLevel === null || current.accessStatus === null || current.caseScope === null) {
+    return refuse(
+      "no_existing_assignment",
+      "This account has no recorded assignment at all, so the bootstrap has not run. Run the bootstrap rather " +
+      "than completing something that does not exist.",
+    );
+  }
+  if (current.accessStatus !== "active") {
+    return refuse("target_not_active", `This account's access is ${current.accessStatus}, so it is not completed here.`);
+  }
+  if (reason.trim().length < 10) {
+    return refuse("reason_missing", "Access Control Standard section 9 requires a reason for every permission change.");
+  }
+  if (authorityReference.trim().length < 10) {
+    return refuse("authority_missing", "A controlled approval reference is required.");
+  }
+
+  const proposed: ProposedAssignment = {
+    targetStaffUserId: 0,
+    baseAccessLevel: FIRST_ADMINISTRATOR_LEVEL,
+    caseScope: FIRST_ADMINISTRATOR_CASE_SCOPE,
+    functionalScopes: [...FIRST_ADMINISTRATOR_SCOPES],
+    actionPermissions: [...FIRST_ADMINISTRATOR_ACTIONS],
+    // Carried through, never decided here.
+    sensitiveOverlays: current.sensitiveOverlays,
+    accessStatus: "active",
+    teamId: current.teamId,
+    reason,
+    authorityReference,
+  };
+
+  const added = diffAdded(current, proposed);
+  const revoked = diffRevoked(current, proposed);
+  const levelMoves = current.baseAccessLevel !== proposed.baseAccessLevel;
+  const scopeMoves = current.caseScope !== proposed.caseScope;
+  if (added.length === 0 && revoked.length === 0 && !levelMoves && !scopeMoves) {
+    return refuse(
+      "no_change",
+      "This account already holds exactly the approved first-administrator profile, so there is nothing to " +
+      "complete. Refusing rather than writing audit rows that record no change.",
+    );
+  }
+
+  return {
+    permitted: true,
+    auditLines: buildAuditLines(current, proposed),
+    grantsToAdd: added,
+    grantsToRevoke: revoked,
+  };
 }
 
 /**
