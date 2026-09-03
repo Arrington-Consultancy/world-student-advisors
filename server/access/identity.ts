@@ -167,10 +167,19 @@ export function assembleGrants(rows: readonly GrantRow[]): {
     }
   }
 
+  // Deduplicated before returning. Two live rows for the same permission
+  // are a data defect rather than a stronger grant, and every decision
+  // here already asks set membership, so removing the repeat changes no
+  // outcome. It changes what a person is shown: WSA's first-administrator
+  // bootstrap inserted grants without checking what the account already
+  // held, and the access screen then displayed "executive" and "read"
+  // twice, which reads as a fault in the permission model rather than as
+  // two rows. The bootstrap no longer creates them; this makes sure an
+  // older one cannot still be displayed as if it meant something.
   return {
-    functionalScopes,
-    actionPermissions,
-    sensitiveOverlays,
+    functionalScopes: functionalScopes.filter((v, i) => functionalScopes.indexOf(v) === i),
+    actionPermissions: actionPermissions.filter((v, i) => actionPermissions.indexOf(v) === i),
+    sensitiveOverlays: sensitiveOverlays.filter((v, i) => sensitiveOverlays.indexOf(v) === i),
     standingCaseScope,
     temporaryGrants,
     droppedGrantValues,

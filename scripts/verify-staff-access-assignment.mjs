@@ -20,31 +20,42 @@ if (!process.env.DATABASE_URL) {
 }
 
 const EXPECTED_NAME = process.env.WSA_VERIFY_DISPLAY_NAME ?? "Tom Arrington";
-const CONSEQUENTIAL = [
+const CONSEQUENTIAL_WITHHELD = [
   "export_download", "external_send", "submit", "delete_destructive",
-  "financial_action", "access_admin", "credential_admin",
+  "financial_action", "credential_admin",
 ];
 
-// The functional scopes this account is approved to hold, and the whole
-// list. "executive" is the original assignment of 30 August. The thirteen
-// after it are one per staff-facing worker, added on 1 September under
-// Tom Arrington's explicit named-account workforce access approval, so
-// that a named identity can reach the workforce through the ordinary
-// permission model rather than the shared executive route.
+// The approved first-administrator profile, per Tom Arrington's explicit
+// first-administrator access approval of 3 September 2026. One scope per
+// staff-facing worker, so this account can both use the workforce and
+// assign it to colleagues: an administrator may not grant what they do
+// not hold, so a narrower profile could not administer at all.
 //
-// This is asserted as an exact set, not a superset. A scope appearing
-// here that nobody approved is the failure this check exists to catch,
-// and "at least these" would not catch it.
+// "executive" is deliberately NOT here any more. It was the original
+// assignment of 30 August and maps to no worker; the 3 September approval
+// names the thirteen and nothing else.
+//
+// Asserted as an exact set, not a superset. A scope appearing that nobody
+// approved is the failure this check exists to catch, and "at least
+// these" would not catch it.
 const EXPECTED_SCOPES = [
-  "executive",
   "enquiry_triage", "discovery", "education_research", "suitability",
   "admissions", "visa_compliance", "scholarships_funding",
   "pre_arrival_student_success", "quality_assurance", "marketing_seo",
   "records_control", "paid_media", "social_media",
 ];
-// Approved for nobody through any controlled route so far. Named so the
-// check reads as a statement about them rather than as arithmetic.
-const SCOPES_NOT_APPROVED = ["operations", "governance", "finance", "safeguarding", "technical_administration"];
+// Approved for nobody through any controlled route. Named so the check
+// reads as a statement about them rather than as arithmetic. The first
+// four were added by the pre-correction bootstrap and removed by the
+// first-administrator completion of 3 September.
+const SCOPES_NOT_APPROVED = [
+  "executive", "operations", "governance", "technical_administration",
+  "finance", "safeguarding",
+];
+
+// access_admin is held, and is the ONLY consequential permission held.
+// The other six are checked by name below and must stay absent.
+const EXPECTED_ACTIONS = ["read", "create", "update", "access_admin"];
 
 const db = drizzle(process.env.DATABASE_URL);
 let failures = 0;
@@ -131,13 +142,26 @@ try {
   for (const s of SCOPES_NOT_APPROVED) {
     check(!scopes.includes(s), `the ${s} scope is NOT granted`);
   }
-  check(actions.length === 1 && actions[0] === "read", `read is the only action permission (found [${actions.join(", ")}])`);
+  const missingActions = EXPECTED_ACTIONS.filter(a => !actions.includes(a));
+  const unexpectedActions = actions.filter(a => !EXPECTED_ACTIONS.includes(a));
+  check(missingActions.length === 0, `every approved action permission is held (missing [${missingActions.join(", ")}])`);
+  check(unexpectedActions.length === 0, `no action permission beyond the approval is held (unexpected [${unexpectedActions.join(", ")}])`);
+  check(actions.includes("access_admin"), "access_admin IS held, so this account can administer staff access");
+
+  // Duplicate live rows are a data defect, not a stronger grant. The
+  // pre-correction bootstrap inserted without checking what the account
+  // already held, and the access screen then showed the same permission
+  // twice.
+  const duplicated = forStaff
+    .map(g => `${g.grantType}:${g.value}`)
+    .filter((v, i, a) => a.indexOf(v) !== i);
+  check(duplicated.length === 0, `no permission is held twice (duplicated [${[...new Set(duplicated)].join(", ")}])`);
   check(overlays.length === 0, `no sensitive overlay is granted, so finance access is NOT granted (found [${overlays.join(", ")}])`);
   check(!overlays.includes("finance"), "the finance overlay specifically is absent");
   check(caseScopeGrants.length === 0, `no case-scope grant widens the recorded scope (found [${caseScopeGrants.join(", ")}])`);
 
-  console.log("\n--- no consequential action permission is held ---");
-  for (const a of CONSEQUENTIAL) {
+  console.log("\n--- the six withheld consequential permissions ---");
+  for (const a of CONSEQUENTIAL_WITHHELD) {
     check(!actions.includes(a), `${a} is NOT granted`);
   }
 
