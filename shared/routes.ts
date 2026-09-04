@@ -35,6 +35,7 @@ export const VALID_CLIENT_ROUTES = [
   "/events",
   "/partners",
   "/our-global-education-partners",
+  "/student-success-stories",
   "/contact",
   "/privacy",
   "/privacy-policy",

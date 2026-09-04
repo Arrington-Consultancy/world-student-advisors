@@ -41,6 +41,7 @@ export const PRERENDER_ROUTES: readonly string[] = [
   "/training-workshops",
   "/events",
   "/partners",
+  "/student-success-stories",
   "/privacy-policy",
   "/terms",
   "/compliance",

@@ -102,6 +102,11 @@ export const SEO_MAP: Record<string, SeoEntry> = {
     description:
       "WorldStudentAdvisors' trusted network of UK and international university and college partners.",
   },
+  "/student-success-stories": {
+    title: "Student Success Stories | World Student Advisors",
+    description:
+      "Accounts from students who studied abroad with WorldStudentAdvisors, published in their own words and only with their recorded permission.",
+  },
   "/contact": {
     title: "Contact & Registration | World Student Advisors",
     description:
