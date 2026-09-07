@@ -1,6 +1,25 @@
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import { SPONSOR_STATUS_OPTIONS, SCHOLARSHIP_STATUS_OPTIONS } from "../shared/fundingStatus";
+import { checkAttachment } from "../shared/attachments";
+
+/**
+ * A prefix for the audit reason naming what was attached, never its content.
+ *
+ * The audit trail has to show that a file reached a worker, because that is
+ * the fact somebody reviewing an incident needs. It must not show the file,
+ * because the audit table is not a place to keep a copy of whatever a member
+ * of staff uploaded.
+ */
+function attachmentAudit(
+  files: readonly { filename: string; mediaType: string; byteSize: number }[] | undefined,
+): string {
+  if (!files || files.length === 0) return "";
+  const listed = files
+    .map(f => `${f.filename} (${f.mediaType}, ${f.byteSize} bytes)`)
+    .join("; ");
+  return `Attached ${files.length} file(s): ${listed}. `;
+}
 import {
   notifyStaff,
   notifyInterviewCoachResult,
@@ -841,6 +860,23 @@ export const appRouter = router({
            * invent what a worker previously said and steer it with that.
            */
           conversationId: z.string().max(64).optional(),
+          /**
+           * Files to examine for this one question. Never stored: they go to
+           * the model with this turn and are gone. Validated here against the
+           * same shared rules the browser uses, because a browser check is a
+           * convenience and not a control.
+           */
+          attachments: z
+            .array(
+              z.object({
+                filename: z.string().min(1).max(255),
+                mediaType: z.string().min(1).max(100),
+                byteSize: z.number().int().positive(),
+                data: z.string().min(1),
+              }),
+            )
+            .max(3)
+            .optional(),
         }),
       )
       .mutation(async ({ input }) => {
@@ -858,6 +894,21 @@ export const appRouter = router({
           };
         }
 
+        // Re-check every attachment server-side. The browser already
+        // refused the same cases, and that check is not the control.
+        for (const file of input.attachments ?? []) {
+          const check = checkAttachment(file);
+          if (!check.ok) {
+            return {
+              outcome: "refused_attachment" as const,
+              visibleText: null,
+              reason: check.reason ?? "That file cannot be attached.",
+              workerName: worker.canonicalName,
+              briefReference: null,
+            };
+          }
+        }
+
         // Ownership is enforced inside readConversation: an id belonging
         // to another staff member, or to another worker, yields an empty
         // history rather than someone else's thread.
@@ -868,6 +919,7 @@ export const appRouter = router({
           workerId,
           requestText: input.request,
           history,
+          attachments: input.attachments?.map(f => ({ mediaType: f.mediaType, data: f.data })),
         });
 
         recordAuditEvent({
@@ -877,7 +929,7 @@ export const appRouter = router({
           workerSpecificationVersion: worker.specificationVersion,
           requestedCapability: "worker:execute",
           permissionDecision: result.outcome === "answered" ? "allowed" : "denied",
-          permissionReason: result.reason,
+          permissionReason: attachmentAudit(input.attachments) + result.reason,
           success: result.outcome === "answered",
           errorCategory: result.outcome === "answered" ? "none" : "permission_denied",
         });

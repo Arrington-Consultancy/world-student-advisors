@@ -50,6 +50,7 @@ export default function Footer() {
               <Link href="/training-workshops" className="text-sm hover:text-white transition-colors">Training & Workshops</Link>
               <Link href="/events" className="text-sm hover:text-white transition-colors">Events</Link>
               <Link href="/partners" className="text-sm hover:text-white transition-colors">Partners</Link>
+              <Link href="/student-success-stories" className="text-sm hover:text-white transition-colors">Student Success Stories</Link>
               <a href={SOCIAL_LINKS.friendshipSociety} target="_blank" rel="noopener noreferrer" className="text-sm hover:text-white transition-colors">
                 International Friendship Society
               </a>
