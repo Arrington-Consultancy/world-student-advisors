@@ -1,11 +1,6 @@
-import { useRef, useState, type ChangeEvent, type FormEvent } from "react";
-import { CornerDownLeft, FileText, Paperclip, X, TriangleAlert } from "lucide-react";
+import { useState, type FormEvent } from "react";
+import { CornerDownLeft, FileText } from "lucide-react";
 import { trpc } from "@/lib/trpc";
-import {
-  ATTACHMENT_ACCEPT,
-  ATTACHMENT_DISCLAIMER,
-  checkAttachment,
-} from "@shared/attachments";
 
 /**
  * A conversation with an approved worker.
@@ -26,14 +21,6 @@ import {
  * could tell an invented turn from a real one. So what is drawn here is a
  * display copy, and the server's copy is the one that counts.
  *
- * ATTACHMENTS. A file is sent with one question and is never stored. It is
- * not added to the display thread either, because the server does not keep
- * it and a paperclip sitting in the transcript would suggest the worker can
- * still see it on the next turn. The disclaimer is shown as soon as a file
- * is chosen, before it can be sent, because a warning after the fact is not
- * a warning. Type and size are checked here for a quick answer and again on
- * the server, which is where the actual limit lives.
- *
  * A refusal is shown as plainly as an answer, and is NOT added to the
  * thread, because the server does not remember it either. The reasons
  * here are the ones a staff member can act on, and hiding them behind a
@@ -46,70 +33,11 @@ interface Turn {
   briefReference?: string | null;
 }
 
-/** A file chosen but not yet sent. Held in memory only, never persisted. */
-interface PickedFile {
-  filename: string;
-  mediaType: string;
-  byteSize: number;
-  /** Base64 without the data URI prefix, which is what the server expects. */
-  data: string;
-}
-
-const MAX_FILES = 3;
-
-function toBase64(file: File): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => {
-      const result = String(reader.result);
-      // Strip "data:<type>;base64," so the server receives bare base64.
-      resolve(result.slice(result.indexOf(",") + 1));
-    };
-    reader.onerror = () => reject(new Error("Could not read that file."));
-    reader.readAsDataURL(file);
-  });
-}
-
-function readableSize(bytes: number): string {
-  return bytes < 1024 * 1024
-    ? `${Math.max(1, Math.round(bytes / 1024))} KB`
-    : `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
-}
-
 export function WorkerChat({ token, workerId, workerName }: { token: string; workerId: string; workerName: string }) {
   const [text, setText] = useState("");
   const [turns, setTurns] = useState<Turn[]>([]);
   const [conversationId, setConversationId] = useState<string | undefined>(undefined);
-  const [files, setFiles] = useState<PickedFile[]>([]);
-  const [fileError, setFileError] = useState<string | null>(null);
-  const fileInput = useRef<HTMLInputElement>(null);
   const ask = trpc.workforce.ask.useMutation();
-
-  const pick = async (e: ChangeEvent<HTMLInputElement>) => {
-    const chosen = Array.from(e.target.files ?? []);
-    if (fileInput.current) fileInput.current.value = "";
-    setFileError(null);
-
-    const accepted: PickedFile[] = [];
-    for (const file of chosen.slice(0, MAX_FILES - files.length)) {
-      const check = checkAttachment({
-        filename: file.name,
-        mediaType: file.type,
-        byteSize: file.size,
-      });
-      if (!check.ok) {
-        setFileError(check.reason ?? "That file cannot be attached.");
-        continue;
-      }
-      accepted.push({
-        filename: file.name,
-        mediaType: file.type,
-        byteSize: file.size,
-        data: await toBase64(file),
-      });
-    }
-    if (accepted.length > 0) setFiles(prev => [...prev, ...accepted]);
-  };
 
   const submit = (e: FormEvent) => {
     e.preventDefault();
@@ -117,13 +45,7 @@ export function WorkerChat({ token, workerId, workerName }: { token: string; wor
     if (!trimmed || ask.isPending) return;
 
     ask.mutate(
-      {
-        token,
-        workerId,
-        request: trimmed,
-        conversationId,
-        attachments: files.length > 0 ? files : undefined,
-      },
+      { token, workerId, request: trimmed, conversationId },
       {
         onSuccess: result => {
           // The thread only grows on an answer, matching what the server
@@ -137,10 +59,6 @@ export function WorkerChat({ token, workerId, workerName }: { token: string; wor
             ]);
             if (result.conversationId) setConversationId(result.conversationId);
             setText("");
-            // Cleared on the way out. The file went with that one question
-            // and must not ride along with the next one.
-            setFiles([]);
-            setFileError(null);
           }
         },
       },
@@ -194,68 +112,14 @@ export function WorkerChat({ token, workerId, workerName }: { token: string; wor
             }
             className="flex-1 rounded-lg border border-wsa-navy/20 p-2.5 text-sm focus:border-wsa-red focus:outline-none"
           />
-          <div className="flex h-fit shrink-0 flex-col gap-2">
-            <button
-              type="submit"
-              disabled={text.trim().length === 0 || ask.isPending}
-              className="rounded-lg bg-wsa-red px-4 py-2.5 text-sm font-medium text-white transition hover:bg-wsa-red/90 disabled:opacity-40"
-            >
-              {ask.isPending ? "Working…" : <span className="flex items-center gap-1.5">Send <CornerDownLeft className="h-3.5 w-3.5" aria-hidden /></span>}
-            </button>
-            <button
-              type="button"
-              onClick={() => fileInput.current?.click()}
-              disabled={files.length >= MAX_FILES || ask.isPending}
-              className="flex items-center justify-center gap-1.5 rounded-lg border border-wsa-navy/20 px-4 py-2 text-sm text-wsa-navy transition hover:bg-wsa-stone/50 disabled:opacity-40"
-            >
-              <Paperclip className="h-3.5 w-3.5" aria-hidden />
-              Attach
-            </button>
-            <input
-              ref={fileInput}
-              type="file"
-              accept={ATTACHMENT_ACCEPT}
-              multiple
-              onChange={pick}
-              className="hidden"
-              aria-label={`Attach a file for ${workerName} to examine`}
-            />
-          </div>
+          <button
+            type="submit"
+            disabled={text.trim().length === 0 || ask.isPending}
+            className="h-fit shrink-0 rounded-lg bg-wsa-red px-4 py-2.5 text-sm font-medium text-white transition hover:bg-wsa-red/90 disabled:opacity-40"
+          >
+            {ask.isPending ? "Working…" : <span className="flex items-center gap-1.5">Send <CornerDownLeft className="h-3.5 w-3.5" aria-hidden /></span>}
+          </button>
         </div>
-
-        {files.length > 0 && (
-          <div className="mt-3 flex flex-col gap-2">
-            <ul className="flex flex-wrap gap-2">
-              {files.map((file, i) => (
-                <li
-                  key={`${file.filename}-${i}`}
-                  className="flex items-center gap-2 rounded-lg border border-wsa-navy/15 bg-wsa-stone/40 py-1.5 pl-3 pr-1.5 text-xs text-wsa-navy"
-                >
-                  <FileText className="h-3.5 w-3.5 shrink-0" aria-hidden />
-                  <span className="max-w-[16rem] truncate">{file.filename}</span>
-                  <span className="text-gray-500">{readableSize(file.byteSize)}</span>
-                  <button
-                    type="button"
-                    onClick={() => setFiles(prev => prev.filter((_, j) => j !== i))}
-                    className="rounded p-1 text-gray-500 transition hover:bg-wsa-navy/10 hover:text-wsa-navy"
-                    aria-label={`Remove ${file.filename}`}
-                  >
-                    <X className="h-3 w-3" aria-hidden />
-                  </button>
-                </li>
-              ))}
-            </ul>
-
-            <p className="flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2.5 text-xs leading-relaxed text-amber-900">
-              <TriangleAlert className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden />
-              <span>{ATTACHMENT_DISCLAIMER}</span>
-            </p>
-          </div>
-        )}
-
-        {fileError && (
-          <p className="mt-2 text-xs text-red-700">{fileError}</p>
-        )}
       </form>
 
       {ask.error && (

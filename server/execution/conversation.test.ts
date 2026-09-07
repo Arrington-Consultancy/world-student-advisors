@@ -50,12 +50,8 @@ describe("the client cannot supply the transcript", () => {
   });
 
   it("the browser sends the id only, never the turns it drew", () => {
-    expect(chatSource).toMatch(
-      /ask\.mutate\(\s*\{\s*token,\s*workerId,\s*request:\s*trimmed,\s*conversationId\s*[,}]/,
-    );
-    // The drawn thread must not travel with the request. An attachment may
-    // now ride along, and it is this turn's file rather than the transcript,
-    // so the rule that matters is unchanged: nothing derived from `turns`.
+    expect(chatSource).toMatch(/ask\.mutate\(\s*\{\s*token,\s*workerId,\s*request:\s*trimmed,\s*conversationId\s*\}/);
+    // The drawn thread must not travel with the request.
     const mutateCall = chatSource.slice(chatSource.indexOf("ask.mutate("), chatSource.indexOf("onSuccess"));
     expect(mutateCall).not.toContain("turns");
   });
@@ -93,25 +89,7 @@ describe("prior turns enter as messages, never as system text", () => {
   it("history is mapped to user and assistant roles between system and the new message", () => {
     expect(executeSource).toContain('role: turn.role === "staff" ? ("user" as const) : ("assistant" as const)');
     const call = executeSource.slice(executeSource.indexOf("const response = await invokeLLM"));
-    expect(call).toMatch(
-      /\{ role: "system", content: system \},[\s\S]{0,80}\.\.\.priorMessages,[\s\S]{0,300}?\{ role: "user", content: user/,
-    );
-  });
-
-  /**
-   * An attachment belongs to the turn it was sent with. If one were mapped
-   * onto priorMessages it would be replayed into every later turn, so a file
-   * a staff member sent once would keep reaching the model in a conversation
-   * the student never saw it in, and the stored transcript would no longer
-   * describe what was actually sent.
-   */
-  it("attachments ride on the new turn only, never on replayed history", () => {
-    const priorMap = executeSource.slice(
-      executeSource.indexOf("const priorMessages"),
-      executeSource.indexOf("const response = await invokeLLM"),
-    );
-    expect(priorMap).not.toContain("attachments");
-    expect(executeSource).toContain('{ role: "user", content: user, attachments: request.attachments }');
+    expect(call).toMatch(/\{ role: "system", content: system \},\s*\.\.\.priorMessages,\s*\{ role: "user", content: user \}/);
   });
 
   it("composeSystemPrompt is never given the history", () => {

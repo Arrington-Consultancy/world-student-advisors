@@ -48,15 +48,6 @@ export interface ExecutionRequest {
   workerId: WorkerId;
   /** What the staff member typed. Always a user message, never system text. */
   requestText: string;
-  /**
-   * Files the staff member attached for this one question.
-   *
-   * Deliberately not part of `history`: an attachment belongs to the turn it
-   * was sent with and is never replayed into later turns, so a file cannot
-   * follow a conversation around after the question it answered. Validated
-   * against shared/attachments.ts before it reaches here.
-   */
-  attachments?: readonly { mediaType: string; data: string }[];
   caseId?: string;
   studentId?: string;
   availableCases?: CaseData[];
@@ -165,10 +156,7 @@ export async function executeWorker(request: ExecutionRequest): Promise<Executio
       messages: [
         { role: "system", content: system },
         ...priorMessages,
-        // Attachments ride on this turn only. priorMessages carry none,
-        // because the stored transcript is text and a file is never written
-        // to it.
-        { role: "user", content: user, attachments: request.attachments },
+        { role: "user", content: user },
       ],
       maxTokens: 2048,
     });
