@@ -1,4 +1,6 @@
 import { describe, it, expect } from "vitest";
+import { readFileSync } from "fs";
+import path from "path";
 import {
   decideStaffSignup,
   decideVerification,
@@ -141,6 +143,75 @@ describe("the verification link", () => {
       const d = decideVerification(pending, NOW);
       expect(d.permitted).toBe(false);
       expect(d.reason).toBeTruthy();
+    }
+  });
+});
+
+/**
+ * Migration 0012, checked from the repository rather than from a database.
+ *
+ * These are the same three checks that exist for 0010, and they are here
+ * because the journal entry for 0012 was genuinely missing when the workflow
+ * was written. drizzle-kit reads the journal, not the directory listing, so a
+ * migration file with no journal entry is applied by nothing and reported by
+ * nothing: the migrator says it is up to date and the table never appears.
+ * The signup flow would then fail in production against a table that does not
+ * exist, with the repository looking entirely correct.
+ */
+describe("migration 0012 is applicable, not merely present", () => {
+  const sql = readFileSync(
+    path.resolve(import.meta.dirname, "../drizzle/0012_staff_password_signup.sql"),
+    "utf8",
+  );
+
+  it("creates staff_signup_requests with the columns the flow reads and writes", () => {
+    expect(sql).toContain("CREATE TABLE IF NOT EXISTS `staff_signup_requests`");
+    for (const column of ["email", "passwordHash", "verificationTokenHash", "expiresAt", "consumedAt"]) {
+      expect(sql).toContain(`\`${column}\``);
+    }
+  });
+
+  it("stores the verification token only as a hash", () => {
+    // The plain token exists in the emailed link and nowhere else. If this
+    // column ever held a usable token, the link would stop being proof that
+    // somebody can read that mailbox, which is the entire second half of the
+    // signup control.
+    expect(sql).toContain("`verificationTokenHash` VARCHAR(255) NOT NULL");
+    expect(sql).not.toContain("`verificationToken`");
+  });
+
+  it("adds passwordHash to staff_users as nullable, so existing accounts are untouched", () => {
+    expect(sql).toContain("ALTER TABLE `staff_users` ADD COLUMN `passwordHash` VARCHAR(255) NULL");
+  });
+
+  it("carries a statement breakpoint for every statement after the first", () => {
+    // The failure mode from migration 0009: without these, drizzle-kit
+    // sends the whole file as one query and mysql2 refuses it silently.
+    const statements = sql.replace(/^--.*$/gm, "").split(";").map(p => p.trim()).filter(Boolean);
+    const breakpoints = (sql.match(/^--> statement-breakpoint$/gm) ?? []).length;
+    expect(breakpoints).toBe(statements.length - 1);
+  });
+
+  it("is recorded in the journal, which is what the migrator actually reads", () => {
+    const journal = JSON.parse(
+      readFileSync(path.resolve(import.meta.dirname, "../drizzle/meta/_journal.json"), "utf8"),
+    );
+    const entry = journal.entries.find((e: { tag: string }) => e.tag === "0012_staff_password_signup");
+    expect(entry).toBeDefined();
+    expect(entry.idx).toBe(12);
+  });
+
+  it("is the last journal entry, so nothing was inserted after it out of order", () => {
+    const journal = JSON.parse(
+      readFileSync(path.resolve(import.meta.dirname, "../drizzle/meta/_journal.json"), "utf8"),
+    );
+    const entries = journal.entries as { idx: number; tag: string; when: number }[];
+    expect(entries[entries.length - 1].tag).toBe("0012_staff_password_signup");
+    // drizzle orders by idx; a duplicate or a gap means one migration is
+    // silently skipped or applied twice.
+    entries.forEach((e, i) => expect(e.idx).toBe(i));
+    for (let i = 1; i < entries.length; i++) {
+      expect(entries[i].when).toBeGreaterThan(entries[i - 1].when);
     }
   });
 });

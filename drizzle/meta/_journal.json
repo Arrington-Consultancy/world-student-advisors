@@ -85,6 +85,13 @@
       "when": 1788400000000,
       "tag": "0011_staff_google_signin",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "5",
+      "when": 1788500000000,
+      "tag": "0012_staff_password_signup",
+      "breakpoints": true
     }
   ]
 }
