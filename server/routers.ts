@@ -34,6 +34,7 @@ import {
 } from "./staffIdentityAuth";
 import { readApprovalRows, approveEmail, revokeEmail } from "./access/staffApprovalStore";
 import { lookupStudents } from "./crm/staffLookup";
+import { beginStaffSignup, completeStaffSignup, signInWithPassword } from "./staffPasswordAuth";
 import { productionLookupDeps } from "./crm/lookupDeps";
 
 /**
@@ -816,6 +817,25 @@ export const appRouter = router({
       }),
 
     googleSsoStatus: publicProcedure.query(() => ({ configured: isGoogleStaffSsoConfigured() })),
+
+    /**
+     * Signup and sign-in with a WSA work address and a password. The third
+     * route in, alongside Microsoft and Google, neither of which changes.
+     *
+     * Signing up grants nothing: a verified account has no access assignment
+     * and every worker declines until Tom assigns scopes.
+     */
+    signUpWithPassword: publicProcedure
+      .input(z.object({ email: z.string().min(3).max(320), password: z.string().min(1).max(200) }))
+      .mutation(async ({ input }) => beginStaffSignup(input.email, input.password)),
+
+    verifyStaffSignup: publicProcedure
+      .input(z.object({ token: z.string().min(1).max(200) }))
+      .mutation(async ({ input }) => completeStaffSignup(input.token)),
+
+    passwordSignIn: publicProcedure
+      .input(z.object({ email: z.string().min(3).max(320), password: z.string().min(1).max(200) }))
+      .mutation(async ({ input }) => signInWithPassword(input.email, input.password)),
 
     googleLoginUrl: publicProcedure.mutation(async () => {
       return buildGoogleStaffSignInRequest();

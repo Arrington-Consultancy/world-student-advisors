@@ -68,6 +68,43 @@ export default function StaffPortal() {
     },
   });
 
+  // Work email and password: the third route in. Signing up creates no
+  // account until the emailed link is followed, so the form only ever reports
+  // that an email is on its way.
+  const [mode, setMode] = useState<"signin" | "signup">("signin");
+  const [workEmail, setWorkEmail] = useState("");
+  const [workPassword, setWorkPassword] = useState("");
+  const [notice, setNotice] = useState<string | null>(null);
+
+  const signUpMutation = trpc.staffPortal.signUpWithPassword.useMutation({
+    onSuccess: data => { setNotice(data.message); setError(""); },
+    onError: () => setError("Signup could not be completed. Please try again."),
+  });
+
+  const passwordSignInMutation = trpc.staffPortal.passwordSignIn.useMutation({
+    onSuccess: data => {
+      if ("token" in data) {
+        localStorage.setItem(STORAGE_KEY, data.token);
+        setToken(data.token);
+      } else {
+        setError(data.error);
+      }
+    },
+    onError: () => setError("Sign-in could not be completed. Please try again."),
+  });
+
+  const verifyMutation = trpc.staffPortal.verifyStaffSignup.useMutation({
+    onSuccess: data => {
+      if (data.verified && data.token) {
+        localStorage.setItem(STORAGE_KEY, data.token);
+        setToken(data.token);
+      } else {
+        setError(data.reason ?? "That link is not valid.");
+      }
+    },
+    onError: () => setError("That link could not be checked. Please try again."),
+  });
+
   const googleCallbackMutation = trpc.staffPortal.googleCallback.useMutation({
     onSuccess: data => {
       if (data.success) {
@@ -97,6 +134,14 @@ export default function StaffPortal() {
   // the URL so a page refresh doesn't try to replay a spent auth code.
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
+    const verify = params.get("verify");
+    if (verify) {
+      verifyMutation.mutate({ token: verify });
+      const vurl = new URL(window.location.href);
+      vurl.searchParams.delete("verify");
+      window.history.replaceState({}, "", vurl.toString());
+      return;
+    }
     const code = params.get("code");
     const state = params.get("state");
     if (code && state) {
@@ -151,7 +196,7 @@ export default function StaffPortal() {
   const authenticated = !!token && meQuery.data?.authenticated === true;
   const checkingSession = !!token && meQuery.isLoading;
 
-  if (checkingSession || microsoftCallbackMutation.isPending || googleCallbackMutation.isPending) {
+  if (checkingSession || microsoftCallbackMutation.isPending || googleCallbackMutation.isPending || verifyMutation.isPending) {
     return (
       <Shell>
         <p className="text-center text-gray-500">{microsoftCallbackMutation.isPending ? "Completing Microsoft sign-in…" : googleCallbackMutation.isPending ? "Completing Google sign-in…" : "Checking session…"}</p>
@@ -212,6 +257,70 @@ export default function StaffPortal() {
           or
           <span className="h-px flex-1 bg-border" />
         </div>
+      </div>
+
+      <div className="bg-white border border-border/70 p-6 space-y-4 mt-4">
+        <div className="flex gap-1 border-b border-border">
+          {(["signin", "signup"] as const).map(m => (
+            <button
+              key={m}
+              type="button"
+              onClick={() => { setMode(m); setError(""); setNotice(null); }}
+              aria-current={mode === m ? "page" : undefined}
+              className={`-mb-px border-b-2 px-3 py-2 text-sm font-medium transition-colors ${
+                mode === m ? "border-wsa-red text-wsa-red" : "border-transparent text-gray-500 hover:text-wsa-navy"
+              }`}
+            >
+              {m === "signin" ? "Sign in" : "Create an account"}
+            </button>
+          ))}
+        </div>
+
+        <form
+          onSubmit={e => {
+            e.preventDefault();
+            setError("");
+            setNotice(null);
+            if (mode === "signup") signUpMutation.mutate({ email: workEmail, password: workPassword });
+            else passwordSignInMutation.mutate({ email: workEmail, password: workPassword });
+          }}
+          className="space-y-4"
+        >
+          <Input
+            type="email"
+            value={workEmail}
+            onChange={e => setWorkEmail(e.target.value)}
+            placeholder="you@worldstudentadvisors.com"
+            autoComplete="username"
+            required
+          />
+          <Input
+            type="password"
+            value={workPassword}
+            onChange={e => setWorkPassword(e.target.value)}
+            placeholder={mode === "signup" ? "Choose a password, at least 12 characters" : "Password"}
+            autoComplete={mode === "signup" ? "new-password" : "current-password"}
+            required
+          />
+          {mode === "signup" && (
+            <p className="text-xs text-gray-500">
+              Use your WSA work address. We send a link there to confirm it is you, and your account is
+              created once you follow it. A long phrase you will remember makes a better password than a
+              short scramble.
+            </p>
+          )}
+          {notice && <p className="text-sm text-wsa-navy">{notice}</p>}
+          {error && <p className="text-sm text-red-600">{error}</p>}
+          <Button
+            type="submit"
+            disabled={signUpMutation.isPending || passwordSignInMutation.isPending}
+            className="w-full bg-wsa-red hover:bg-wsa-red/90 text-white"
+          >
+            {mode === "signup"
+              ? signUpMutation.isPending ? "Sending…" : "Create my account"
+              : passwordSignInMutation.isPending ? "Checking…" : "Sign in"}
+          </Button>
+        </form>
       </div>
 
       <form onSubmit={handleSubmit} className="bg-white border border-border/70 p-6 space-y-4 mt-4">

@@ -202,6 +202,8 @@ export const staffUsers = mysqlTable("staff_users", {
   entraObjectId: varchar("entraObjectId", { length: 64 }).unique(),
   /** Google's stable sub claim. Never the email, which a person can change. */
   googleSubjectId: varchar("googleSubjectId", { length: 64 }).unique(),
+  /** bcrypt hash. Set only for authProvider "password"; null for Microsoft and Google accounts. */
+  passwordHash: varchar("passwordHash", { length: 255 }),
   email: varchar("email", { length: 320 }).notNull().unique(),
   displayName: varchar("displayName", { length: 200 }).notNull(),
   /** Deactivating here (not deleting) revokes access while preserving audit history's staffUserId references. */
@@ -545,4 +547,28 @@ export const staffApprovedEmails = mysqlTable("staff_approved_emails", {
   revokedAt: timestamp("revokedAt"),
   revokedByStaffUserId: int("revokedByStaffUserId"),
   revocationReason: varchar("revocationReason", { length: 500 }),
+});
+
+/**
+ * Staff signups waiting on their verification link.
+ *
+ * A signup is not an account until somebody proves they can read the work
+ * address they typed, so it waits here rather than in staff_users. An
+ * unverified stranger with a staff_users row would show up on the Staff
+ * access screen as somebody to grant permissions to, which is the thing
+ * verifying exists to prevent.
+ *
+ * The verification token is stored as a bcrypt hash. The token itself exists
+ * only in the email, so this table cannot be read to mint a working link.
+ */
+export const staffSignupRequests = mysqlTable("staff_signup_requests", {
+  id: int("id").autoincrement().primaryKey(),
+  /** Normalised by shared/staffSignIn.ts's normaliseEmail before it gets here. */
+  email: varchar("email", { length: 320 }).notNull().unique(),
+  passwordHash: varchar("passwordHash", { length: 255 }).notNull(),
+  verificationTokenHash: varchar("verificationTokenHash", { length: 255 }).notNull(),
+  expiresAt: timestamp("expiresAt").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  /** Set when the link is followed, making it single use. */
+  consumedAt: timestamp("consumedAt"),
 });
