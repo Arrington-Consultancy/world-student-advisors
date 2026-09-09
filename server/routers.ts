@@ -27,6 +27,38 @@ import { getSessionQuestions, assessAnswer, summariseSession, TYPE_LABELS } from
 import { requireTurnstile } from "./_core/turnstile";
 import { authenticateStaffPortal, verifyStaffPortalToken, isStaffPortalLoginRateLimited } from "./staffPortalAuth";
 import { isMicrosoftSsoConfigured, buildMicrosoftSignInRequest, completeMicrosoftSignInFromCallback } from "./staffIdentityAuth";
+import {
+  isGoogleStaffSsoConfigured,
+  buildGoogleStaffSignInRequest,
+  completeGoogleStaffSignInFromCallback,
+} from "./staffIdentityAuth";
+import { readApprovalRows, approveEmail, revokeEmail } from "./access/staffApprovalStore";
+
+/**
+ * The access_admin gate for the Google approval list.
+ *
+ * Approving an address is not a step towards access on this route, it IS the
+ * access control, so it sits behind the same permission as assigning
+ * someone's scopes. Returns the named staff id so every change is recorded
+ * against a person rather than "the system".
+ */
+async function requireAccessAdmin(
+  token: string,
+): Promise<{ allowed: true; staffUserId: number; reason: string } | { allowed: false; reason: string }> {
+  const session = await resolveStaffSession(token);
+  const staffUserId = session.authMethod === "shared_password" ? null : session.staffUserId;
+  if (staffUserId === null) {
+    return { allowed: false, reason: "This needs an individual Microsoft or Google sign-in, not the shared password." };
+  }
+  const resolution = await resolveStaffAccessProfile(staffUserId);
+  if (!resolution.resolved || resolution.profile.status !== "active") {
+    return { allowed: false, reason: "This staff account has no active access assignment." };
+  }
+  if (!resolution.profile.actionPermissions.includes("access_admin")) {
+    return { allowed: false, reason: "You do not hold the access_admin permission." };
+  }
+  return { allowed: true, staffUserId, reason: "Holds access_admin." };
+}
 import { resolveStaffSession } from "./staffSession";
 import { resolveStaffAccessProfile } from "./access/identity";
 import {
@@ -752,6 +784,77 @@ export const appRouter = router({
     // an honest "not yet configured" state rather than a broken button
     // when STAFF_SSO_* env vars aren't set.
     microsoftSsoStatus: publicProcedure.query(() => ({ configured: isMicrosoftSsoConfigured() })),
+
+    /**
+     * Google sign-in, added 9 September 2026. Additive: Microsoft is
+     * untouched and staff choose between them. A Google account reaches
+     * nothing until Tom has approved its exact address.
+     */
+    googleSsoStatus: publicProcedure.query(() => ({ configured: isGoogleStaffSsoConfigured() })),
+
+    googleLoginUrl: publicProcedure.mutation(async () => {
+      return buildGoogleStaffSignInRequest();
+    }),
+
+    googleCallback: publicProcedure
+      .input(z.object({ code: z.string().min(1), state: z.string().min(1) }))
+      .mutation(async ({ input }) => {
+        try {
+          const token = await completeGoogleStaffSignInFromCallback(input.code, input.state);
+          return { success: true as const, token };
+        } catch (err) {
+          const message = err instanceof Error ? err.message : "Google sign-in failed.";
+          return { success: false as const, error: message };
+        }
+      }),
+
+    /**
+     * The approval list. Reading, approving and revoking all require
+     * access_admin, because on the Google route an approval IS the access
+     * control rather than a step towards it.
+     */
+    googleApprovals: publicProcedure
+      .input(z.object({ token: z.string() }))
+      .query(async ({ input }) => {
+        const gate = await requireAccessAdmin(input.token);
+        if (!gate.allowed) return { allowed: false as const, reason: gate.reason, approvals: [] };
+        const rows = await readApprovalRows();
+        return {
+          allowed: true as const,
+          reason: gate.reason,
+          approvals: rows.map(r => ({
+            email: r.email,
+            reason: r.reason,
+            approvedAt: r.approvedAt?.toISOString() ?? null,
+            revokedAt: r.revokedAt?.toISOString() ?? null,
+            revocationReason: r.revocationReason ?? null,
+          })),
+        };
+      }),
+
+    approveGoogleEmail: publicProcedure
+      .input(z.object({ token: z.string(), email: z.string().min(3).max(320), reason: z.string().min(5).max(500) }))
+      .mutation(async ({ input }) => {
+        const gate = await requireAccessAdmin(input.token);
+        if (!gate.allowed) return { applied: false as const, reason: gate.reason };
+        return approveEmail({
+          email: input.email,
+          reason: input.reason,
+          approvedByStaffUserId: gate.staffUserId,
+        });
+      }),
+
+    revokeGoogleEmail: publicProcedure
+      .input(z.object({ token: z.string(), email: z.string().min(3).max(320), reason: z.string().min(5).max(500) }))
+      .mutation(async ({ input }) => {
+        const gate = await requireAccessAdmin(input.token);
+        if (!gate.allowed) return { applied: false as const, reason: gate.reason };
+        return revokeEmail({
+          email: input.email,
+          reason: input.reason,
+          revokedByStaffUserId: gate.staffUserId,
+        });
+      }),
 
     microsoftLoginUrl: publicProcedure.mutation(async () => {
       return buildMicrosoftSignInRequest();

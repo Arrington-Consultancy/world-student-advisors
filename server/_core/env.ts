@@ -55,6 +55,14 @@ export const ENV = {
   /** Server-only. Never send this to the client, log it, or include it in any response. */
   staffSsoClientSecret: process.env.STAFF_SSO_CLIENT_SECRET ?? "",
   staffSsoRedirectUri: process.env.STAFF_SSO_REDIRECT_URI ?? "",
+  /**
+   * Where Google returns a staff sign-in. Separate from the student portal's
+   * Google redirect because the two flows mint different sessions and must
+   * not be interchangeable. Falls back to the Microsoft staff redirect, which
+   * is the same Staff Portal page.
+   */
+  staffGoogleRedirectUri:
+    process.env.STAFF_GOOGLE_REDIRECT_URI ?? process.env.STAFF_SSO_REDIRECT_URI ?? "",
   /** Safe to expose to the client — served via system.turnstileSiteKey. */
   turnstileSiteKey: process.env.TURNSTILE_SITE_KEY ?? "",
   /** Server-only. Never send this to the client, log it, or include it in any response. */

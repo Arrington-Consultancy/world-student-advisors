@@ -23,6 +23,8 @@ import { eq } from "drizzle-orm";
 import { ENV } from "./_core/env";
 import { getDb } from "./db";
 import { staffUsers, type StaffUser } from "../drizzle/schema";
+import { isCurrentlyApproved, readApprovals } from "./access/staffApprovalStore";
+import { decideStaffSignIn } from "../shared/staffSignIn";
 
 const ALLOWED_EMAIL_DOMAIN = "worldstudentadvisors.com";
 const STAFF_IDENTITY_JWT_SECRET = new TextEncoder().encode(ENV.cookieSecret + "-staff-identity");
@@ -266,5 +268,197 @@ export async function requireActiveStaffIdentity(token: string): Promise<{ staff
   if (!staffUser || staffUser.isActive !== 1) {
     throw new Error("This Staff Portal account is not active. Please contact an administrator.");
   }
+
+  // A Google session's whole authority is its address being on the approval
+  // list, so that is re-read here rather than trusted from sign-in. A token
+  // lasts twelve hours; without this, revoking somebody would leave them
+  // working inside the portal for the rest of the day. A Microsoft session
+  // never reaches this, because its authority is the Entra tenant.
+  if (staffUser.authProvider === "google" && !(await isCurrentlyApproved(staffUser.email))) {
+    throw new Error("Access for this address has been withdrawn. Please contact an administrator.");
+  }
+
   return { staffUserId: staffUser.id, email: staffUser.email, displayName: staffUser.displayName };
+}
+
+// ── Google sign-in ──────────────────────────────────────────────────────
+/**
+ * The second route into the Staff Portal, added 9 September 2026 on Tom
+ * Arrington's decision so staff can use a personal Google account.
+ *
+ * IT IS NOT EQUIVALENT TO THE MICROSOFT ROUTE AND MUST NOT BECOME SO.
+ * A Microsoft sign-in is protected by WSA's Entra tenant and the email
+ * domain. Anybody can create a Google account, so neither applies here and
+ * the approval list in staff_approved_emails is the only control. Every
+ * function below therefore refuses before creating anything: an unapproved
+ * person leaves no staff_users row at all, rather than a dormant one
+ * somebody might later grant access to by mistake.
+ *
+ * The signature, issuer and audience checks mirror the Microsoft path and
+ * the student portal's Google flow. email_verified is additionally required,
+ * because here the address is the credential.
+ */
+const GOOGLE_JWKS_URL = "https://www.googleapis.com/oauth2/v3/certs";
+let _googleJwks: ReturnType<typeof jose.createRemoteJWKSet> | null = null;
+function getGoogleJwks() {
+  if (!_googleJwks) _googleJwks = jose.createRemoteJWKSet(new URL(GOOGLE_JWKS_URL));
+  return _googleJwks;
+}
+
+export function isGoogleStaffSsoConfigured(): boolean {
+  return Boolean(ENV.googleClientId && ENV.googleClientSecret && ENV.staffGoogleRedirectUri);
+}
+
+export function buildGoogleStaffAuthorizeUrl(state: string, nonce: string): string {
+  if (!isGoogleStaffSsoConfigured()) {
+    throw new Error("Google staff sign-in is not configured.");
+  }
+  const params = new URLSearchParams({
+    client_id: ENV.googleClientId,
+    response_type: "code",
+    redirect_uri: ENV.staffGoogleRedirectUri,
+    scope: "openid email profile",
+    state,
+    nonce,
+    prompt: "select_account",
+  });
+  return `https://accounts.google.com/o/oauth2/v2/auth?${params.toString()}`;
+}
+
+export interface VerifiedGoogleClaims {
+  sub: string;
+  email: string;
+  emailVerified: boolean;
+  displayName: string;
+}
+
+/** Verifies a Google ID token against Google's own keys. `jwks` is overridden only in tests. */
+export async function verifyGoogleIdToken(
+  idToken: string,
+  expectedNonce: string,
+  jwks: Parameters<typeof jose.jwtVerify>[1] = getGoogleJwks(),
+): Promise<VerifiedGoogleClaims> {
+  const { payload } = await jose.jwtVerify(idToken, jwks, {
+    issuer: ["https://accounts.google.com", "accounts.google.com"],
+    audience: ENV.googleClientId,
+  });
+  if (payload.nonce !== expectedNonce) {
+    throw new Error("Nonce mismatch on Google sign-in. Possible replay, rejecting.");
+  }
+  const sub = payload.sub;
+  if (typeof sub !== "string" || !sub) {
+    throw new Error("Google ID token had no sub claim.");
+  }
+  const email = typeof payload.email === "string" ? payload.email : "";
+  const displayName = (typeof payload.name === "string" && payload.name) || email;
+  return { sub, email, emailVerified: payload.email_verified === true, displayName };
+}
+
+/**
+ * Finds or creates the staff_users row for a Google identity.
+ *
+ * Keyed on Google's stable `sub`, never the email, so a later address change
+ * does not orphan the record. Called only after the approval gate has
+ * allowed the sign-in.
+ */
+export async function upsertStaffUserFromGoogleClaims(claims: VerifiedGoogleClaims): Promise<StaffUser> {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available, so staff identity cannot be resolved.");
+  const email = claims.email.trim().toLowerCase();
+
+  const bySub = await db.select().from(staffUsers).where(eq(staffUsers.googleSubjectId, claims.sub)).limit(1);
+  if (bySub[0]) {
+    await db
+      .update(staffUsers)
+      .set({ email, displayName: claims.displayName, lastLoginAt: new Date() })
+      .where(eq(staffUsers.id, bySub[0].id));
+    return { ...bySub[0], email, displayName: claims.displayName };
+  }
+
+  // Somebody who already has a Microsoft staff record and now signs in with
+  // Google on the same address is one person, so the Google identity is
+  // linked to the existing row. Two rows would mean two separate access
+  // assignments for one colleague, which is how somebody ends up holding
+  // access nobody knowingly granted them.
+  const byEmail = await db.select().from(staffUsers).where(eq(staffUsers.email, email)).limit(1);
+  if (byEmail[0]) {
+    await db
+      .update(staffUsers)
+      .set({ googleSubjectId: claims.sub, displayName: claims.displayName, lastLoginAt: new Date() })
+      .where(eq(staffUsers.id, byEmail[0].id));
+    return { ...byEmail[0], googleSubjectId: claims.sub, displayName: claims.displayName };
+  }
+
+  const inserted = await db.insert(staffUsers).values({
+    authProvider: "google",
+    googleSubjectId: claims.sub,
+    email,
+    displayName: claims.displayName,
+    lastLoginAt: new Date(),
+  });
+  const insertId = (inserted as unknown as [{ insertId: number }])[0].insertId;
+  const created = await db.select().from(staffUsers).where(eq(staffUsers.id, insertId)).limit(1);
+  return created[0];
+}
+
+async function exchangeGoogleCodeForIdToken(code: string): Promise<string> {
+  const response = await fetch("https://oauth2.googleapis.com/token", {
+    method: "POST",
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    body: new URLSearchParams({
+      code,
+      client_id: ENV.googleClientId,
+      client_secret: ENV.googleClientSecret,
+      redirect_uri: ENV.staffGoogleRedirectUri,
+      grant_type: "authorization_code",
+    }),
+  });
+  if (!response.ok) {
+    throw new Error(`Google rejected the sign-in code (HTTP ${response.status}).`);
+  }
+  const body = (await response.json()) as { id_token?: string };
+  if (!body.id_token) throw new Error("Google returned no id_token.");
+  return body.id_token;
+}
+
+/**
+ * The whole Google sign-in: code, verified claims, APPROVAL GATE, then and
+ * only then a staff row and a session.
+ *
+ * The order is the security property. decideStaffSignIn runs before
+ * upsertStaffUserFromGoogleClaims, so somebody who is not on the approval
+ * list is refused without a staff_users row ever existing for them. A
+ * dormant row for an unapproved stranger would be worse than no row: it
+ * would appear in Staff access as somebody to assign permissions to.
+ */
+export async function completeGoogleStaffSignIn(code: string, expectedNonce: string): Promise<string> {
+  const idToken = await exchangeGoogleCodeForIdToken(code);
+  const claims = await verifyGoogleIdToken(idToken, expectedNonce);
+
+  const decision = decideStaffSignIn(
+    "google",
+    { email: claims.email, emailVerified: claims.emailVerified },
+    await readApprovals(),
+  );
+  if (!decision.permitted) {
+    throw new Error(decision.reason ?? "That account may not sign in to the Staff Portal.");
+  }
+
+  const staffUser = await upsertStaffUserFromGoogleClaims(claims);
+  return mintStaffIdentityToken(staffUser);
+}
+
+/** What the client needs to start Google sign-in. Mirrors the Microsoft pair exactly. */
+export async function buildGoogleStaffSignInRequest(): Promise<{ authorizeUrl: string }> {
+  const { token, nonce } = await issueSsoTransactionToken();
+  return { authorizeUrl: buildGoogleStaffAuthorizeUrl(token, nonce) };
+}
+
+/** Completes Google sign-in from the callback's `code` and `state`, with the same replay protection. */
+export async function completeGoogleStaffSignInFromCallback(code: string, state: string): Promise<string> {
+  const transaction = await verifySsoTransactionToken(state);
+  if (!transaction) {
+    throw new Error("This sign-in attempt is invalid or has expired. Please try again.");
+  }
+  return completeGoogleStaffSignIn(code, transaction.nonce);
 }
