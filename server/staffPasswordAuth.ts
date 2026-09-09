@@ -1,5 +1,5 @@
 /**
- * Staff signup and sign-in with a work email address and a password.
+ * Staff signup, password reset and password sign-in.
  *
  * The third route into the Staff Portal, added 9 September 2026 on Tom
  * Arrington's instruction. Microsoft and Google are untouched; this is
@@ -7,24 +7,33 @@
  *
  * THE FLOW, and why it is in this order.
  *
- *   1. Somebody submits a work address and a password. decideStaffSignup
- *      checks the domain and the password; nothing is written unless both
- *      pass.
- *   2. A pending signup is stored with the password already hashed and the
- *      verification token stored ONLY as a hash. The plain token goes into
- *      the email and nowhere else.
- *   3. Following the link proves they can read that mailbox. Only then does
- *      a staff_users row exist.
+ *   1. Somebody submits a work address. Nothing else. decideStaffSignup
+ *      checks the domain; nothing is written unless it passes.
+ *   2. A pending request is stored with the link's token held ONLY as a
+ *      hash. The plain token goes into the email and nowhere else.
+ *   3. Following the link proves they can read that mailbox. The page it
+ *      opens is where they choose a password, and only then does a
+ *      staff_users row exist.
+ *
+ * THE PASSWORD IS CHOSEN AT STEP 3, NOT STEP 1. An earlier version took it on
+ * the form, which let whoever filled the form choose the password for an
+ * address they did not own. Now the only person who ever chooses it is the
+ * one who can open the mailbox.
  *
  * Steps 1 and 3 are two halves of one control. The domain says which
- * addresses may ever sign up; the link proves this person holds the one they
- * typed. Either alone is not enough, and step 1 alone would let anybody who
- * knows WSA's email format create a staff account.
+ * addresses may ever hold an account; the link proves this person holds the
+ * one they typed. Step 1 alone would let anybody who knows WSA's email format
+ * create a staff account.
+ *
+ * RESET IS THE SAME MECHANISM. Prove you can read the mailbox, then set a
+ * password. It differs only in which starting state it permits, and it
+ * refuses any account that signs in with Microsoft or Google, so it can never
+ * mint a password route around the tenant's own controls.
  *
  * WHAT AN ACCOUNT GETS. Nothing. A verified staff member has no access
  * assignment, exactly like a Microsoft or Google one, and every worker
- * declines until Tom assigns scopes. This module establishes who somebody
- * is; it never decides what they may reach.
+ * declines until Tom assigns scopes. This module establishes who somebody is;
+ * it never decides what they may reach.
  *
  * TIMING. Sign-in compares against a bcrypt hash whether or not the account
  * exists, so a wrong address and a wrong password take the same time. Without
@@ -39,9 +48,14 @@ import { staffUsers, staffSignupRequests, type StaffUser } from "../drizzle/sche
 import { normaliseEmail } from "../shared/staffSignIn";
 import {
   decideStaffSignup,
+  decidePasswordReset,
+  decidePasswordChoice,
   decideVerification,
   signupResponseFor,
+  resetResponseFor,
+  mayResend,
   VERIFICATION_TTL_HOURS,
+  type LinkPurpose,
   type PendingSignup,
 } from "../shared/staffSignup";
 import { sendGraphMail } from "./_core/graphMail";
@@ -58,137 +72,262 @@ const TOKEN_ROUNDS = 10;
  */
 const DECOY_HASH = bcrypt.hashSync(crypto.randomBytes(32).toString("hex"), PASSWORD_ROUNDS);
 
+function portalBase(): string {
+  return ENV.staffSsoRedirectUri || "https://www.worldstudentadvisors.com/staff-portal";
+}
+
 function verificationLink(token: string): string {
-  const base = ENV.staffSsoRedirectUri || "https://www.worldstudentadvisors.com/staff-portal";
-  return `${base}?verify=${encodeURIComponent(token)}`;
+  return `${portalBase()}?verify=${encodeURIComponent(token)}`;
 }
 
 export interface SignupOutcome {
-  /** Always shown to the person. Identical for success and already-registered. */
+  /** Always shown to the person. Identical whatever the underlying decision was. */
   message: string;
+}
+
+/**
+ * Store a pending request and email its link.
+ *
+ * Shared by both routes because they differ only in the wording of the email
+ * and in which starting state was permitted. A second attempt replaces the
+ * first, so somebody who asks twice does not end up with two live links, and
+ * the throttle stops the form being used to bomb a colleague's inbox.
+ */
+async function issueLink(
+  db: NonNullable<Awaited<ReturnType<typeof getDb>>>,
+  email: string,
+  purpose: LinkPurpose,
+): Promise<void> {
+  const existing = await db
+    .select()
+    .from(staffSignupRequests)
+    .where(eq(staffSignupRequests.email, email))
+    .limit(1);
+
+  // Only a live, unspent request holds the throttle. A spent or expired one
+  // must not stop somebody asking again.
+  const live =
+    existing[0] && existing[0].consumedAt === null && existing[0].expiresAt.getTime() > Date.now()
+      ? existing[0]
+      : null;
+  if (live && !mayResend(live.createdAt)) return;
+
+  const token = crypto.randomBytes(32).toString("hex");
+  const verificationTokenHash = await bcrypt.hash(token, TOKEN_ROUNDS);
+  const expiresAt = new Date(Date.now() + VERIFICATION_TTL_HOURS * 60 * 60 * 1000);
+
+  if (existing[0]) {
+    await db
+      .update(staffSignupRequests)
+      .set({ verificationTokenHash, purpose, expiresAt, consumedAt: null, createdAt: new Date() })
+      .where(eq(staffSignupRequests.id, existing[0].id));
+  } else {
+    await db.insert(staffSignupRequests).values({ email, verificationTokenHash, purpose, expiresAt });
+  }
+
+  const link = verificationLink(token);
+  const body =
+    purpose === "signup"
+      ? "Somebody asked to create a WSA Staff Portal account for this address.\n\n" +
+        `Set your password and finish setting up: ${link}\n\n` +
+        `The link works for the next ${VERIFICATION_TTL_HOURS} hours and can be used once.\n\n` +
+        "If this was not you, ignore this email. No account is created unless the link is followed."
+      : "Somebody asked to reset the WSA Staff Portal password for this address.\n\n" +
+        `Set a new password: ${link}\n\n` +
+        `The link works for the next ${VERIFICATION_TTL_HOURS} hours and can be used once.\n\n` +
+        "If this was not you, ignore this email. Your current password still works and nothing has changed.";
+
+  // sendGraphMail takes plain text and never throws: it returns false when
+  // Graph is unconfigured. The request is recorded either way, so a mail
+  // outage does not strand anybody, and they can ask for a fresh link.
+  await sendGraphMail({
+    to: [email],
+    subject: purpose === "signup" ? "Set up your WSA Staff Portal account" : "Reset your WSA Staff Portal password",
+    text: body,
+  });
 }
 
 /**
  * Begin a signup. Returns the same message whether the address was accepted
  * or already has an account, so the form cannot be used to enumerate staff.
  */
-export async function beginStaffSignup(emailInput: string, password: string): Promise<SignupOutcome> {
+export async function beginStaffSignup(emailInput: string): Promise<SignupOutcome> {
   const db = await getDb();
   if (!db) return { message: "Signup is unavailable at the moment. Please try again shortly." };
 
   const email = normaliseEmail(emailInput);
-
   const existing = await db.select().from(staffUsers).where(eq(staffUsers.email, email)).limit(1);
-  const decision = decideStaffSignup(emailInput, password, existing.length > 0);
-  const response = signupResponseFor(decision);
+  const response = signupResponseFor(decideStaffSignup(emailInput, existing.length > 0));
 
-  if (!response.sendEmail) return { message: response.shown };
-
-  const token = crypto.randomBytes(32).toString("hex");
-  const [passwordHash, verificationTokenHash] = await Promise.all([
-    bcrypt.hash(password, PASSWORD_ROUNDS),
-    bcrypt.hash(token, TOKEN_ROUNDS),
-  ]);
-  const expiresAt = new Date(Date.now() + VERIFICATION_TTL_HOURS * 60 * 60 * 1000);
-
-  // A second attempt replaces the first, so somebody who mistypes and starts
-  // again does not end up with two live links.
-  const pending = await db
-    .select()
-    .from(staffSignupRequests)
-    .where(eq(staffSignupRequests.email, email))
-    .limit(1);
-
-  if (pending[0]) {
-    await db
-      .update(staffSignupRequests)
-      .set({ passwordHash, verificationTokenHash, expiresAt, consumedAt: null, createdAt: new Date() })
-      .where(eq(staffSignupRequests.id, pending[0].id));
-  } else {
-    await db.insert(staffSignupRequests).values({ email, passwordHash, verificationTokenHash, expiresAt });
-  }
-
-  // sendGraphMail takes plain text and never throws: it returns false when
-  // Graph is unconfigured. The signup is still recorded either way, so a mail
-  // outage does not lose somebody's chosen password, and they can ask for a
-  // fresh link by signing up again.
-  await sendGraphMail({
-    to: [email],
-    subject: "Confirm your WSA Staff Portal account",
-    text:
-      "Somebody asked to create a WSA Staff Portal account for this address.\n\n" +
-      `Confirm your account: ${verificationLink(token)}\n\n` +
-      `The link works for the next ${VERIFICATION_TTL_HOURS} hours and can be used once.\n\n` +
-      "If this was not you, ignore this email. No account is created unless the link is followed.",
-  });
-
+  if (response.sendEmail) await issueLink(db, email, "signup");
   return { message: response.shown };
 }
 
-export interface VerificationOutcome {
-  verified: boolean;
-  /** A Staff Portal session token, present only when verified. */
-  token?: string;
+/**
+ * Begin a password reset. Same message for every outcome, so this form says
+ * nothing about who works here or which of them uses a password.
+ */
+export async function beginPasswordReset(emailInput: string): Promise<SignupOutcome> {
+  const db = await getDb();
+  if (!db) return { message: "Password reset is unavailable at the moment. Please try again shortly." };
+
+  const email = normaliseEmail(emailInput);
+  const rows = await db.select().from(staffUsers).where(eq(staffUsers.email, email)).limit(1);
+  const user = rows[0] as StaffUser | undefined;
+  const decision = decidePasswordReset(
+    emailInput,
+    user ? { authProvider: user.authProvider, isActive: user.isActive === 1 } : null,
+  );
+  const response = resetResponseFor(decision);
+
+  if (response.sendEmail) await issueLink(db, email, "reset");
+  return { message: response.shown };
+}
+
+export interface LinkCheck {
+  valid: boolean;
+  /** What the page should offer: setting a first password, or replacing one. */
+  purpose?: LinkPurpose;
+  /** Shown so the person can see which address they are setting a password for. */
+  email?: string;
   reason?: string;
 }
 
 /**
- * Complete a signup from the emailed link.
+ * Find the pending request a token belongs to.
  *
- * The token is matched by comparing against stored hashes rather than looked
- * up directly, because only the hash is stored. Consuming the row and
- * creating the account happen together, so a link cannot be followed twice.
+ * Matched by comparing against stored hashes rather than looked up directly,
+ * because only the hash is stored.
  */
-export async function completeStaffSignup(token: string): Promise<VerificationOutcome> {
-  const db = await getDb();
-  if (!db) return { verified: false, reason: "Verification is unavailable at the moment." };
-  if (!token) return { verified: false, reason: "That link is not valid. Please sign up again." };
-
+async function findPending(
+  db: NonNullable<Awaited<ReturnType<typeof getDb>>>,
+  token: string,
+): Promise<{ id: number; email: string; purpose: LinkPurpose; expiresAt: Date; consumedAt: Date | null } | null> {
   const candidates = await db
     .select()
     .from(staffSignupRequests)
     .where(isNull(staffSignupRequests.consumedAt));
 
-  let matched: (typeof candidates)[number] | null = null;
   for (const row of candidates) {
     if (await bcrypt.compare(token, row.verificationTokenHash)) {
-      matched = row;
-      break;
+      return {
+        id: row.id,
+        email: row.email,
+        purpose: row.purpose === "reset" ? "reset" : "signup",
+        expiresAt: row.expiresAt,
+        consumedAt: row.consumedAt ?? null,
+      };
     }
   }
+  return null;
+}
 
+/**
+ * Check a link without spending it, so the page can show a password form
+ * rather than an error after the person has typed one in.
+ *
+ * This reads and never writes. The link is spent by setPasswordFromLink.
+ */
+export async function checkSignupLink(token: string): Promise<LinkCheck> {
+  const db = await getDb();
+  if (!db) return { valid: false, reason: "That link cannot be checked at the moment." };
+  if (!token) return { valid: false, reason: "That link is not valid. Please start again." };
+
+  const matched = await findPending(db, token);
   const pending: PendingSignup | null = matched
-    ? { email: matched.email, expiresAt: matched.expiresAt, consumedAt: matched.consumedAt ?? null }
+    ? { email: matched.email, purpose: matched.purpose, expiresAt: matched.expiresAt, consumedAt: matched.consumedAt }
     : null;
   const decision = decideVerification(pending);
   if (!decision.permitted || !matched) {
-    return { verified: false, reason: decision.reason ?? "That link is not valid." };
+    return { valid: false, reason: decision.reason ?? "That link is not valid." };
+  }
+  return { valid: true, purpose: matched.purpose, email: matched.email };
+}
+
+export interface SetPasswordOutcome {
+  ok: boolean;
+  /** A Staff Portal session token, present only on success. */
+  token?: string;
+  reason?: string;
+}
+
+/**
+ * Set a password from an emailed link, creating the account on a signup link
+ * and replacing the password on a reset link.
+ *
+ * The password is checked BEFORE the link is spent. Otherwise somebody who
+ * typed a password that was too short would burn their only link and have to
+ * start again, which is a bad experience with no security benefit: the link
+ * has not been used to change anything.
+ *
+ * The link is then spent BEFORE the write. If anything below fails, the link
+ * is still spent, which is the safe direction: a person can ask for another,
+ * and a replayed link cannot set a second password.
+ */
+export async function setPasswordFromLink(token: string, password: string): Promise<SetPasswordOutcome> {
+  const db = await getDb();
+  if (!db) return { ok: false, reason: "That link cannot be completed at the moment." };
+  if (!token) return { ok: false, reason: "That link is not valid. Please start again." };
+
+  const matched = await findPending(db, token);
+  const pending: PendingSignup | null = matched
+    ? { email: matched.email, purpose: matched.purpose, expiresAt: matched.expiresAt, consumedAt: matched.consumedAt }
+    : null;
+  const linkDecision = decideVerification(pending);
+  if (!linkDecision.permitted || !matched) {
+    return { ok: false, reason: linkDecision.reason ?? "That link is not valid." };
   }
 
-  // Spend the link first. If anything below fails, the link is still spent,
-  // which is the safe direction: a person can sign up again, and a replayed
-  // link cannot create a second account.
+  // The address comes from the stored request, never from the browser, so
+  // the rule about a password containing your own address cannot be dodged
+  // by claiming a different one on the form.
+  const passwordDecision = decidePasswordChoice(matched.email, password);
+  if (!passwordDecision.permitted) {
+    return { ok: false, reason: passwordDecision.reason };
+  }
+
+  const passwordHash = await bcrypt.hash(password, PASSWORD_ROUNDS);
+
   await db
     .update(staffSignupRequests)
     .set({ consumedAt: new Date() })
     .where(eq(staffSignupRequests.id, matched.id));
 
-  const already = await db.select().from(staffUsers).where(eq(staffUsers.email, matched.email)).limit(1);
-  if (already[0]) {
-    // Somebody signed up twice, or by two routes. One person, one row.
-    return { verified: true, token: await mintStaffIdentityToken(already[0]) };
+  const existing = await db.select().from(staffUsers).where(eq(staffUsers.email, matched.email)).limit(1);
+  const user = existing[0] as StaffUser | undefined;
+
+  if (matched.purpose === "reset") {
+    // Re-checked at the moment of the write, not only when the link was
+    // issued. An account could have been deactivated, or switched to
+    // Microsoft, in the 24 hours a link stays live.
+    if (!user || user.isActive !== 1 || user.authProvider !== "password") {
+      return { ok: false, reason: "That link is no longer valid for this account." };
+    }
+    await db
+      .update(staffUsers)
+      .set({ passwordHash, lastLoginAt: new Date() })
+      .where(eq(staffUsers.id, user.id));
+    const refreshed = await db.select().from(staffUsers).where(eq(staffUsers.id, user.id)).limit(1);
+    return { ok: true, token: await mintStaffIdentityToken(refreshed[0]) };
+  }
+
+  if (user) {
+    // Somebody signed up twice, or by two routes, between the link being
+    // issued and followed. One person, one row: the existing account stands
+    // and this link does not overwrite its password.
+    return { ok: false, reason: "That address already has an account. Please sign in." };
   }
 
   const inserted = await db.insert(staffUsers).values({
     authProvider: "password",
     email: matched.email,
     displayName: matched.email.split("@")[0],
-    passwordHash: matched.passwordHash,
+    passwordHash,
     lastLoginAt: new Date(),
   });
   const insertId = (inserted as unknown as [{ insertId: number }])[0].insertId;
   const created = await db.select().from(staffUsers).where(eq(staffUsers.id, insertId)).limit(1);
-  return { verified: true, token: await mintStaffIdentityToken(created[0]) };
+  return { ok: true, token: await mintStaffIdentityToken(created[0]) };
 }
 
 /**

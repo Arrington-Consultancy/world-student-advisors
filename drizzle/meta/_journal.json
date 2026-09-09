@@ -92,6 +92,13 @@
       "when": 1788500000000,
       "tag": "0012_staff_password_signup",
       "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "5",
+      "when": 1788600000000,
+      "tag": "0013_signup_link_sets_password",
+      "breakpoints": true
     }
   ]
 }

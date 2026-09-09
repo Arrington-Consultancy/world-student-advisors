@@ -565,8 +565,15 @@ export const staffSignupRequests = mysqlTable("staff_signup_requests", {
   id: int("id").autoincrement().primaryKey(),
   /** Normalised by shared/staffSignIn.ts's normaliseEmail before it gets here. */
   email: varchar("email", { length: 320 }).notNull().unique(),
-  passwordHash: varchar("passwordHash", { length: 255 }).notNull(),
+  /**
+   * Left from 0012, when the signup form collected a password. The password
+   * is now chosen at the link instead, so nothing writes this. Nullable
+   * since 0013; kept because dropping a column is destructive.
+   */
+  passwordHash: varchar("passwordHash", { length: 255 }),
   verificationTokenHash: varchar("verificationTokenHash", { length: 255 }).notNull(),
+  /** 'signup' creates an account; 'reset' changes an existing password. */
+  purpose: varchar("purpose", { length: 16 }).notNull().default("signup"),
   expiresAt: timestamp("expiresAt").notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   /** Set when the link is followed, making it single use. */

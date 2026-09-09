@@ -3,34 +3,41 @@ import { readFileSync } from "fs";
 import path from "path";
 import {
   decideStaffSignup,
+  decidePasswordReset,
+  decidePasswordChoice,
   decideVerification,
   signupResponseFor,
+  resetResponseFor,
+  mayResend,
   SIGNUP_ACCEPTED_MESSAGE,
+  RESET_ACCEPTED_MESSAGE,
   SIGNUP_ALLOWED_DOMAIN,
   MIN_PASSWORD_LENGTH,
+  RESEND_INTERVAL_MINUTES,
   type PendingSignup,
 } from "../shared/staffSignup";
 
 /**
- * Self-service staff signup.
+ * Self-service staff signup and password reset.
  *
  * Tom's instruction was that staff sign up with their work email address "so
- * we know it's fine". The domain check alone does not establish that, because
- * anybody can type an address they do not own, so these tests treat the
- * domain rule and the verification link as two halves of one control and
- * exercise both.
+ * we know it's fine", then "get an email to their inbox and set the password
+ * there", with a forgot password route alongside. The domain check alone does
+ * not establish who somebody is, because anybody can type an address they do
+ * not own, so these tests treat the domain rule and the emailed link as two
+ * halves of one control and exercise both.
  */
 
 const GOOD = `newstarter@${SIGNUP_ALLOWED_DOMAIN}`;
-const LONG = "correct horse battery staple";
+const LONG_ENOUGH = "correct horse battery staple";
 
 describe("the work email rule", () => {
-  it("accepts a WSA address with a long password", () => {
-    expect(decideStaffSignup(GOOD, LONG, false).permitted).toBe(true);
+  it("accepts a WSA address", () => {
+    expect(decideStaffSignup(GOOD, false).permitted).toBe(true);
   });
 
   it("REFUSES a personal address", () => {
-    const d = decideStaffSignup("someone@gmail.com", LONG, false);
+    const d = decideStaffSignup("someone@gmail.com", false);
     expect(d.permitted).toBe(false);
     expect(d.code).toBe("domain_not_permitted");
   });
@@ -41,72 +48,194 @@ describe("the work email rule", () => {
       `x@not${SIGNUP_ALLOWED_DOMAIN}`,
       `x@${SIGNUP_ALLOWED_DOMAIN}x`,
     ]) {
-      expect(decideStaffSignup(email, LONG, false).code).toBe("domain_not_permitted");
+      expect(decideStaffSignup(email, false).code).toBe("domain_not_permitted");
     }
   });
 
   it("REFUSES an address with the domain only in the local part", () => {
-    expect(decideStaffSignup(`${SIGNUP_ALLOWED_DOMAIN}@gmail.com`, LONG, false).code)
+    expect(decideStaffSignup(`${SIGNUP_ALLOWED_DOMAIN}@gmail.com`, false).code)
       .toBe("domain_not_permitted");
   });
 
   it("accepts the same address whatever the case or spacing", () => {
-    expect(decideStaffSignup(`  NewStarter@${SIGNUP_ALLOWED_DOMAIN.toUpperCase()} `, LONG, false).permitted)
+    expect(decideStaffSignup(`  NewStarter@${SIGNUP_ALLOWED_DOMAIN.toUpperCase()} `, false).permitted)
       .toBe(true);
   });
 
   it("REFUSES an empty or malformed address", () => {
-    expect(decideStaffSignup("", LONG, false).code).toBe("email_missing");
-    expect(decideStaffSignup("not-an-address", LONG, false).code).toBe("email_missing");
+    expect(decideStaffSignup("", false).code).toBe("email_missing");
+    expect(decideStaffSignup("not-an-address", false).code).toBe("email_missing");
   });
 });
 
-describe("password rules", () => {
+describe("the signup form never asks for a password", () => {
+  /**
+   * This is the correction that shaped the current design. When the form
+   * collected a password, whoever filled it in chose the password for an
+   * address they might not own: submit a colleague's address, and if they
+   * followed the link out of curiosity they would be sitting in an account
+   * whose password a stranger knew.
+   *
+   * The test is on the signature, because that is what makes the hole
+   * impossible rather than merely unused. decideStaffSignup takes an address
+   * and a boolean, and there is nowhere for a password to enter.
+   */
+  it("takes an address and a registration flag, and nothing else", () => {
+    expect(decideStaffSignup.length).toBe(2);
+  });
+
+  it("has no password refusal code to return, because it never sees one", () => {
+    const codes = new Set<string | undefined>();
+    for (const email of ["", "x@gmail.com", GOOD, `${SIGNUP_ALLOWED_DOMAIN}@gmail.com`]) {
+      for (const registered of [true, false]) {
+        codes.add(decideStaffSignup(email, registered).code);
+      }
+    }
+    expect([...codes].filter(Boolean).sort())
+      .toEqual(["already_registered", "domain_not_permitted", "email_missing"]);
+  });
+});
+
+describe("password rules, applied where the password is actually chosen", () => {
   it(`REFUSES anything under ${MIN_PASSWORD_LENGTH} characters`, () => {
-    expect(decideStaffSignup(GOOD, "a".repeat(MIN_PASSWORD_LENGTH - 1), false).code)
+    expect(decidePasswordChoice(GOOD, "a".repeat(MIN_PASSWORD_LENGTH - 1)).code)
       .toBe("password_too_short");
   });
 
   it("accepts exactly the minimum length", () => {
-    expect(decideStaffSignup(GOOD, "a".repeat(MIN_PASSWORD_LENGTH), false).permitted).toBe(true);
+    expect(decidePasswordChoice(GOOD, "a".repeat(MIN_PASSWORD_LENGTH)).permitted).toBe(true);
+  });
+
+  it("accepts a long passphrase", () => {
+    expect(decidePasswordChoice(GOOD, LONG_ENOUGH).permitted).toBe(true);
   });
 
   it("REFUSES a password containing the person's own email name", () => {
-    const d = decideStaffSignup(GOOD, "newstarter-2026-wsa", false);
+    const d = decidePasswordChoice(GOOD, "newstarter-2026-wsa");
     expect(d.permitted).toBe(false);
     expect(d.code).toBe("password_contains_email");
   });
 
   it("catches that whatever the case", () => {
-    expect(decideStaffSignup(GOOD, "MyNEWSTARTERpassword", false).code).toBe("password_contains_email");
+    expect(decidePasswordChoice(GOOD, "MyNEWSTARTERpassword").code).toBe("password_contains_email");
+  });
+
+  it("judges the address from the stored request, not one supplied alongside", () => {
+    // The server passes the address off the pending row. If it ever passed
+    // one from the browser, somebody could claim a different address and slip
+    // their own local part past the rule.
+    expect(decidePasswordChoice(GOOD, "newstarterlongenough").code).toBe("password_contains_email");
+    expect(decidePasswordChoice(`other@${SIGNUP_ALLOWED_DOMAIN}`, "newstarterlongenough").permitted)
+      .toBe(true);
   });
 });
 
-describe("the signup form does not answer 'does this person work at WSA'", () => {
+describe("the forgot password route", () => {
+  const passwordAccount = { authProvider: "password", isActive: true };
+
+  it("sends a link for a live password account", () => {
+    expect(decidePasswordReset(GOOD, passwordAccount).permitted).toBe(true);
+  });
+
+  it("REFUSES a Microsoft account, so no password route is minted around the tenant", () => {
+    // The important one. A Microsoft account signs in through Entra, where
+    // MFA and conditional access live and where Tom can revoke somebody
+    // centrally. Letting a reset set a password on it would create a second
+    // way in that none of that sits in front of.
+    const d = decidePasswordReset(GOOD, { authProvider: "microsoft", isActive: true });
+    expect(d.permitted).toBe(false);
+    expect(d.code).toBe("not_a_password_account");
+  });
+
+  it("REFUSES a Google account for the same reason", () => {
+    expect(decidePasswordReset(GOOD, { authProvider: "google", isActive: true }).code)
+      .toBe("not_a_password_account");
+  });
+
+  it("REFUSES an address with no account", () => {
+    expect(decidePasswordReset(GOOD, null).code).toBe("no_account");
+  });
+
+  it("REFUSES a deactivated account", () => {
+    expect(decidePasswordReset(GOOD, { authProvider: "password", isActive: false }).code)
+      .toBe("account_inactive");
+  });
+
+  it("REFUSES a personal address before it looks at any account", () => {
+    expect(decidePasswordReset("someone@gmail.com", passwordAccount).code)
+      .toBe("domain_not_permitted");
+  });
+});
+
+describe("neither form answers 'does this person work at WSA'", () => {
   it("says the same thing for a new address and one already registered", () => {
-    const fresh = signupResponseFor(decideStaffSignup(GOOD, LONG, false));
-    const taken = signupResponseFor(decideStaffSignup(GOOD, LONG, true));
+    const fresh = signupResponseFor(decideStaffSignup(GOOD, false));
+    const taken = signupResponseFor(decideStaffSignup(GOOD, true));
     expect(fresh.shown).toBe(SIGNUP_ACCEPTED_MESSAGE);
     expect(taken.shown).toBe(SIGNUP_ACCEPTED_MESSAGE);
   });
 
-  it("sends an email only for the genuinely new one", () => {
-    expect(signupResponseFor(decideStaffSignup(GOOD, LONG, false)).sendEmail).toBe(true);
-    expect(signupResponseFor(decideStaffSignup(GOOD, LONG, true)).sendEmail).toBe(false);
+  it("sends a signup email only for the genuinely new one", () => {
+    expect(signupResponseFor(decideStaffSignup(GOOD, false)).sendEmail).toBe(true);
+    expect(signupResponseFor(decideStaffSignup(GOOD, true)).sendEmail).toBe(false);
+  });
+
+  it("says the same thing on reset whether the account exists, is Microsoft, or is off", () => {
+    const shown = [
+      decidePasswordReset(GOOD, { authProvider: "password", isActive: true }),
+      decidePasswordReset(GOOD, { authProvider: "microsoft", isActive: true }),
+      decidePasswordReset(GOOD, { authProvider: "password", isActive: false }),
+      decidePasswordReset(GOOD, null),
+    ].map(d => resetResponseFor(d).shown);
+    expect(new Set(shown).size).toBe(1);
+    expect(shown[0]).toBe(RESET_ACCEPTED_MESSAGE);
+  });
+
+  it("emails only the one case that should be emailed", () => {
+    const sends = [
+      decidePasswordReset(GOOD, { authProvider: "password", isActive: true }),
+      decidePasswordReset(GOOD, { authProvider: "microsoft", isActive: true }),
+      decidePasswordReset(GOOD, { authProvider: "password", isActive: false }),
+      decidePasswordReset(GOOD, null),
+    ].map(d => resetResponseFor(d).sendEmail);
+    expect(sends).toEqual([true, false, false, false]);
   });
 
   it("still tells somebody what they can fix about their own input", () => {
-    const wrongDomain = signupResponseFor(decideStaffSignup("x@gmail.com", LONG, false));
-    expect(wrongDomain.shown).not.toBe(SIGNUP_ACCEPTED_MESSAGE);
-    expect(wrongDomain.shown).toContain(SIGNUP_ALLOWED_DOMAIN);
-    expect(wrongDomain.sendEmail).toBe(false);
+    for (const response of [
+      signupResponseFor(decideStaffSignup("x@gmail.com", false)),
+      resetResponseFor(decidePasswordReset("x@gmail.com", null)),
+    ]) {
+      expect(response.shown).not.toBe(SIGNUP_ACCEPTED_MESSAGE);
+      expect(response.shown).not.toBe(RESET_ACCEPTED_MESSAGE);
+      expect(response.shown).toContain(SIGNUP_ALLOWED_DOMAIN);
+      expect(response.sendEmail).toBe(false);
+    }
   });
 });
 
-describe("the verification link", () => {
+describe("the resend throttle", () => {
+  const NOW = new Date("2026-09-09T12:00:00Z");
+
+  it("allows the first email, when there is nothing live", () => {
+    expect(mayResend(null, NOW)).toBe(true);
+  });
+
+  it("REFUSES a second email straight away, so the form cannot bomb an inbox", () => {
+    expect(mayResend(new Date(NOW.getTime() - 1000), NOW)).toBe(false);
+  });
+
+  it("allows another once the interval has passed", () => {
+    const past = new Date(NOW.getTime() - RESEND_INTERVAL_MINUTES * 60 * 1000);
+    expect(mayResend(past, NOW)).toBe(true);
+  });
+});
+
+describe("the emailed link", () => {
   const NOW = new Date("2026-09-09T12:00:00Z");
   const live: PendingSignup = {
     email: GOOD,
+    purpose: "signup",
     expiresAt: new Date("2026-09-10T12:00:00Z"),
     consumedAt: null,
   };
@@ -115,7 +244,7 @@ describe("the verification link", () => {
     expect(decideVerification(live, NOW).permitted).toBe(true);
   });
 
-  it("REFUSES an unknown token, so a guessed link creates nothing", () => {
+  it("REFUSES an unknown token, so a guessed link sets no password", () => {
     expect(decideVerification(null, NOW).code).toBe("token_unknown");
   });
 
@@ -134,6 +263,14 @@ describe("the verification link", () => {
     expect(decideVerification(spentButFresh, NOW).permitted).toBe(false);
   });
 
+  it("applies the same rules to a reset link as to a signup link", () => {
+    const reset: PendingSignup = { ...live, purpose: "reset" };
+    expect(decideVerification(reset, NOW).permitted).toBe(true);
+    expect(decideVerification({ ...reset, consumedAt: NOW }, NOW).code).toBe("token_used");
+    expect(decideVerification({ ...reset, expiresAt: new Date("2026-09-09T11:00:00Z") }, NOW).code)
+      .toBe("token_expired");
+  });
+
   it("explains every refusal in words the person can act on", () => {
     for (const pending of [
       null,
@@ -148,65 +285,75 @@ describe("the verification link", () => {
 });
 
 /**
- * Migration 0012, checked from the repository rather than from a database.
+ * Migrations 0012 and 0013, checked from the repository rather than from a
+ * database.
  *
- * These are the same three checks that exist for 0010, and they are here
- * because the journal entry for 0012 was genuinely missing when the workflow
- * was written. drizzle-kit reads the journal, not the directory listing, so a
- * migration file with no journal entry is applied by nothing and reported by
- * nothing: the migrator says it is up to date and the table never appears.
- * The signup flow would then fail in production against a table that does not
- * exist, with the repository looking entirely correct.
+ * These exist because the journal entry for 0012 was genuinely missing when
+ * its workflow was written. drizzle-kit reads the journal, not the directory
+ * listing, so a migration file with no journal entry is applied by nothing
+ * and reported by nothing: the migrator says it is up to date and the table
+ * never appears. The flow would then fail in production against a table that
+ * does not exist, with the repository looking entirely correct.
  */
-describe("migration 0012 is applicable, not merely present", () => {
-  const sql = readFileSync(
-    path.resolve(import.meta.dirname, "../drizzle/0012_staff_password_signup.sql"),
-    "utf8",
-  );
+describe("the migrations are applicable, not merely present", () => {
+  const read = (tag: string) =>
+    readFileSync(path.resolve(import.meta.dirname, `../drizzle/${tag}.sql`), "utf8");
+  const journal = () =>
+    JSON.parse(readFileSync(path.resolve(import.meta.dirname, "../drizzle/meta/_journal.json"), "utf8"));
 
-  it("creates staff_signup_requests with the columns the flow reads and writes", () => {
-    expect(sql).toContain("CREATE TABLE IF NOT EXISTS `staff_signup_requests`");
-    for (const column of ["email", "passwordHash", "verificationTokenHash", "expiresAt", "consumedAt"]) {
-      expect(sql).toContain(`\`${column}\``);
+  const sql0012 = read("0012_staff_password_signup");
+  const sql0013 = read("0013_signup_link_sets_password");
+
+  it("0012 creates staff_signup_requests with the columns the flow reads and writes", () => {
+    expect(sql0012).toContain("CREATE TABLE IF NOT EXISTS `staff_signup_requests`");
+    for (const column of ["email", "verificationTokenHash", "expiresAt", "consumedAt"]) {
+      expect(sql0012).toContain("`" + column + "`");
     }
   });
 
-  it("stores the verification token only as a hash", () => {
+  it("stores the link's token only as a hash", () => {
     // The plain token exists in the emailed link and nowhere else. If this
     // column ever held a usable token, the link would stop being proof that
     // somebody can read that mailbox, which is the entire second half of the
-    // signup control.
-    expect(sql).toContain("`verificationTokenHash` VARCHAR(255) NOT NULL");
-    expect(sql).not.toContain("`verificationToken`");
+    // control.
+    expect(sql0012).toContain("`verificationTokenHash` VARCHAR(255) NOT NULL");
+    expect(sql0012).not.toContain("`verificationToken`");
   });
 
-  it("adds passwordHash to staff_users as nullable, so existing accounts are untouched", () => {
-    expect(sql).toContain("ALTER TABLE `staff_users` ADD COLUMN `passwordHash` VARCHAR(255) NULL");
+  it("0013 frees passwordHash on the pending row, since no password is collected at signup", () => {
+    expect(sql0013).toContain("MODIFY COLUMN `passwordHash` VARCHAR(255) NULL");
+  });
+
+  it("0013 adds purpose, so a reset link cannot create an account", () => {
+    expect(sql0013).toContain("ADD COLUMN `purpose` VARCHAR(16) NOT NULL DEFAULT 'signup'");
+  });
+
+  it("neither migration drops or renames anything", () => {
+    for (const sql of [sql0012, sql0013]) {
+      const body = sql.replace(/^--.*$/gm, "");
+      expect(body).not.toMatch(/\b(DROP|DELETE|TRUNCATE|RENAME)\b/i);
+    }
   });
 
   it("carries a statement breakpoint for every statement after the first", () => {
     // The failure mode from migration 0009: without these, drizzle-kit
     // sends the whole file as one query and mysql2 refuses it silently.
-    const statements = sql.replace(/^--.*$/gm, "").split(";").map(p => p.trim()).filter(Boolean);
-    const breakpoints = (sql.match(/^--> statement-breakpoint$/gm) ?? []).length;
-    expect(breakpoints).toBe(statements.length - 1);
+    for (const sql of [sql0012, sql0013]) {
+      const statements = sql.replace(/^--.*$/gm, "").split(";").map(s => s.trim()).filter(Boolean);
+      const breakpoints = (sql.match(/^--> statement-breakpoint$/gm) ?? []).length;
+      expect(breakpoints).toBe(statements.length - 1);
+    }
   });
 
-  it("is recorded in the journal, which is what the migrator actually reads", () => {
-    const journal = JSON.parse(
-      readFileSync(path.resolve(import.meta.dirname, "../drizzle/meta/_journal.json"), "utf8"),
-    );
-    const entry = journal.entries.find((e: { tag: string }) => e.tag === "0012_staff_password_signup");
-    expect(entry).toBeDefined();
-    expect(entry.idx).toBe(12);
+  it("both are recorded in the journal, which is what the migrator actually reads", () => {
+    const entries = journal().entries as { idx: number; tag: string }[];
+    expect(entries.find(e => e.tag === "0012_staff_password_signup")?.idx).toBe(12);
+    expect(entries.find(e => e.tag === "0013_signup_link_sets_password")?.idx).toBe(13);
   });
 
-  it("is the last journal entry, so nothing was inserted after it out of order", () => {
-    const journal = JSON.parse(
-      readFileSync(path.resolve(import.meta.dirname, "../drizzle/meta/_journal.json"), "utf8"),
-    );
-    const entries = journal.entries as { idx: number; tag: string; when: number }[];
-    expect(entries[entries.length - 1].tag).toBe("0012_staff_password_signup");
+  it("the journal has no gap, duplicate or out-of-order entry", () => {
+    const entries = journal().entries as { idx: number; tag: string; when: number }[];
+    expect(entries[entries.length - 1].tag).toBe("0013_signup_link_sets_password");
     // drizzle orders by idx; a duplicate or a gap means one migration is
     // silently skipped or applied twice.
     entries.forEach((e, i) => expect(e.idx).toBe(i));

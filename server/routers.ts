@@ -34,7 +34,13 @@ import {
 } from "./staffIdentityAuth";
 import { readApprovalRows, approveEmail, revokeEmail } from "./access/staffApprovalStore";
 import { lookupStudents } from "./crm/staffLookup";
-import { beginStaffSignup, completeStaffSignup, signInWithPassword } from "./staffPasswordAuth";
+import {
+  beginStaffSignup,
+  beginPasswordReset,
+  checkSignupLink,
+  setPasswordFromLink,
+  signInWithPassword,
+} from "./staffPasswordAuth";
 import { productionLookupDeps } from "./crm/lookupDeps";
 
 /**
@@ -825,13 +831,26 @@ export const appRouter = router({
      * Signing up grants nothing: a verified account has no access assignment
      * and every worker declines until Tom assigns scopes.
      */
+    // Signup and reset collect an address and nothing else. The password is
+    // chosen on the page the emailed link opens, so only somebody who can
+    // read that mailbox ever picks it.
     signUpWithPassword: publicProcedure
-      .input(z.object({ email: z.string().min(3).max(320), password: z.string().min(1).max(200) }))
-      .mutation(async ({ input }) => beginStaffSignup(input.email, input.password)),
+      .input(z.object({ email: z.string().min(3).max(320) }))
+      .mutation(async ({ input }) => beginStaffSignup(input.email)),
 
-    verifyStaffSignup: publicProcedure
+    requestPasswordReset: publicProcedure
+      .input(z.object({ email: z.string().min(3).max(320) }))
+      .mutation(async ({ input }) => beginPasswordReset(input.email)),
+
+    // Reads the link without spending it, so the page can show a password
+    // form instead of failing after somebody has typed one in.
+    checkSignupLink: publicProcedure
       .input(z.object({ token: z.string().min(1).max(200) }))
-      .mutation(async ({ input }) => completeStaffSignup(input.token)),
+      .mutation(async ({ input }) => checkSignupLink(input.token)),
+
+    setPasswordFromLink: publicProcedure
+      .input(z.object({ token: z.string().min(1).max(200), password: z.string().min(1).max(200) }))
+      .mutation(async ({ input }) => setPasswordFromLink(input.token, input.password)),
 
     passwordSignIn: publicProcedure
       .input(z.object({ email: z.string().min(3).max(320), password: z.string().min(1).max(200) }))

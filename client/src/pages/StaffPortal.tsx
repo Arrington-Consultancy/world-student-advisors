@@ -68,17 +68,30 @@ export default function StaffPortal() {
     },
   });
 
-  // Work email and password: the third route in. Signing up creates no
-  // account until the emailed link is followed, so the form only ever reports
-  // that an email is on its way.
-  const [mode, setMode] = useState<"signin" | "signup">("signin");
+  // Work email and password: the third route in. Signup and reset collect an
+  // address only. The password is chosen on the page the emailed link opens,
+  // so the form here only ever reports that an email is on its way.
+  const [mode, setMode] = useState<"signin" | "signup" | "forgot">("signin");
   const [workEmail, setWorkEmail] = useState("");
   const [workPassword, setWorkPassword] = useState("");
   const [notice, setNotice] = useState<string | null>(null);
 
+  // Set only when arriving on a link from an email. While it is set, the
+  // page shows the set-password form and nothing else.
+  const [linkToken, setLinkToken] = useState<string | null>(null);
+  const [linkPurpose, setLinkPurpose] = useState<"signup" | "reset">("signup");
+  const [linkEmail, setLinkEmail] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+
   const signUpMutation = trpc.staffPortal.signUpWithPassword.useMutation({
     onSuccess: data => { setNotice(data.message); setError(""); },
     onError: () => setError("Signup could not be completed. Please try again."),
+  });
+
+  const resetRequestMutation = trpc.staffPortal.requestPasswordReset.useMutation({
+    onSuccess: data => { setNotice(data.message); setError(""); },
+    onError: () => setError("That request could not be completed. Please try again."),
   });
 
   const passwordSignInMutation = trpc.staffPortal.passwordSignIn.useMutation({
@@ -93,16 +106,38 @@ export default function StaffPortal() {
     onError: () => setError("Sign-in could not be completed. Please try again."),
   });
 
-  const verifyMutation = trpc.staffPortal.verifyStaffSignup.useMutation({
-    onSuccess: data => {
-      if (data.verified && data.token) {
-        localStorage.setItem(STORAGE_KEY, data.token);
-        setToken(data.token);
+  // Checks the link without spending it, so a person who types a password
+  // that is too short is told so and can try again on the same link.
+  const checkLinkMutation = trpc.staffPortal.checkSignupLink.useMutation({
+    onSuccess: (data, variables) => {
+      if (data.valid) {
+        setLinkToken(variables.token);
+        setLinkPurpose(data.purpose === "reset" ? "reset" : "signup");
+        setLinkEmail(data.email ?? "");
+        setError("");
       } else {
         setError(data.reason ?? "That link is not valid.");
       }
     },
     onError: () => setError("That link could not be checked. Please try again."),
+  });
+
+  const setPasswordMutation = trpc.staffPortal.setPasswordFromLink.useMutation({
+    onSuccess: data => {
+      if (data.ok && data.token) {
+        localStorage.setItem(STORAGE_KEY, data.token);
+        setToken(data.token);
+        setLinkToken(null);
+        setNewPassword("");
+        setConfirmPassword("");
+      } else {
+        // A password the rules refuse is caught before the link is spent, so
+        // the form stays open and the same link still works. Any other
+        // refusal means the link is gone and the message says to start again.
+        setError(data.reason ?? "That password could not be set.");
+      }
+    },
+    onError: () => setError("That password could not be set. Please try again."),
   });
 
   const googleCallbackMutation = trpc.staffPortal.googleCallback.useMutation({
@@ -136,7 +171,10 @@ export default function StaffPortal() {
     const params = new URLSearchParams(window.location.search);
     const verify = params.get("verify");
     if (verify) {
-      verifyMutation.mutate({ token: verify });
+      // Checked, not spent. The token is held in state rather than left in
+      // the address bar, so it does not sit in browser history or get pasted
+      // into a support chat along with the URL.
+      checkLinkMutation.mutate({ token: verify });
       const vurl = new URL(window.location.href);
       vurl.searchParams.delete("verify");
       window.history.replaceState({}, "", vurl.toString());
@@ -196,7 +234,7 @@ export default function StaffPortal() {
   const authenticated = !!token && meQuery.data?.authenticated === true;
   const checkingSession = !!token && meQuery.isLoading;
 
-  if (checkingSession || microsoftCallbackMutation.isPending || googleCallbackMutation.isPending || verifyMutation.isPending) {
+  if (checkingSession || microsoftCallbackMutation.isPending || googleCallbackMutation.isPending || checkLinkMutation.isPending) {
     return (
       <Shell>
         <p className="text-center text-gray-500">{microsoftCallbackMutation.isPending ? "Completing Microsoft sign-in…" : googleCallbackMutation.isPending ? "Completing Google sign-in…" : "Checking session…"}</p>
@@ -206,6 +244,71 @@ export default function StaffPortal() {
 
   if (authenticated) {
     return <WorkforceHome token={token as string} onLogout={handleLogout} />;
+  }
+
+  // Arrived on a link from an email. This is where the password is chosen,
+  // and it is the only place it ever is.
+  if (linkToken) {
+    const mismatch = confirmPassword.length > 0 && newPassword !== confirmPassword;
+    return (
+      <Shell>
+        <div className="text-center mb-8">
+          <div className="w-14 h-14 mx-auto mb-6 bg-wsa-navy flex items-center justify-center">
+            <Lock className="text-white" size={22} />
+          </div>
+          <h1 className="text-2xl font-bold text-wsa-navy mb-2">
+            {linkPurpose === "reset" ? "Set a new password" : "Set your password"}
+          </h1>
+          <p className="text-gray-600 text-sm">{linkEmail}</p>
+        </div>
+
+        <form
+          onSubmit={e => {
+            e.preventDefault();
+            setError("");
+            if (newPassword !== confirmPassword) {
+              setError("Those two passwords are not the same.");
+              return;
+            }
+            setPasswordMutation.mutate({ token: linkToken, password: newPassword });
+          }}
+          className="bg-white border border-border/70 p-6 space-y-4"
+        >
+          <Input
+            type="password"
+            value={newPassword}
+            onChange={e => setNewPassword(e.target.value)}
+            placeholder="New password, at least 12 characters"
+            autoComplete="new-password"
+            required
+            autoFocus
+          />
+          <Input
+            type="password"
+            value={confirmPassword}
+            onChange={e => setConfirmPassword(e.target.value)}
+            placeholder="Type it again"
+            autoComplete="new-password"
+            required
+          />
+          <p className="text-xs text-gray-500">
+            A long phrase you will remember makes a better password than a short scramble. Twelve
+            characters is the minimum.
+          </p>
+          {mismatch && <p className="text-sm text-red-600">Those two passwords are not the same.</p>}
+          {error && <p className="text-sm text-red-600">{error}</p>}
+          <Button
+            type="submit"
+            disabled={setPasswordMutation.isPending || mismatch}
+            className="w-full bg-wsa-red hover:bg-wsa-red/90 text-white"
+          >
+            {setPasswordMutation.isPending
+              ? "Saving…"
+              : linkPurpose === "reset" ? "Save new password" : "Set password and sign in"}
+          </Button>
+        </form>
+      </Shell>
+    );
   }
 
   const ssoConfigured = ssoStatusQuery.data?.configured === true;
@@ -268,7 +371,9 @@ export default function StaffPortal() {
               onClick={() => { setMode(m); setError(""); setNotice(null); }}
               aria-current={mode === m ? "page" : undefined}
               className={`-mb-px border-b-2 px-3 py-2 text-sm font-medium transition-colors ${
-                mode === m ? "border-wsa-red text-wsa-red" : "border-transparent text-gray-500 hover:text-wsa-navy"
+                mode === m || (m === "signin" && mode === "forgot")
+                  ? "border-wsa-red text-wsa-red"
+                  : "border-transparent text-gray-500 hover:text-wsa-navy"
               }`}
             >
               {m === "signin" ? "Sign in" : "Create an account"}
@@ -281,7 +386,8 @@ export default function StaffPortal() {
             e.preventDefault();
             setError("");
             setNotice(null);
-            if (mode === "signup") signUpMutation.mutate({ email: workEmail, password: workPassword });
+            if (mode === "signup") signUpMutation.mutate({ email: workEmail });
+            else if (mode === "forgot") resetRequestMutation.mutate({ email: workEmail });
             else passwordSignInMutation.mutate({ email: workEmail, password: workPassword });
           }}
           className="space-y-4"
@@ -294,32 +400,56 @@ export default function StaffPortal() {
             autoComplete="username"
             required
           />
-          <Input
-            type="password"
-            value={workPassword}
-            onChange={e => setWorkPassword(e.target.value)}
-            placeholder={mode === "signup" ? "Choose a password, at least 12 characters" : "Password"}
-            autoComplete={mode === "signup" ? "new-password" : "current-password"}
-            required
-          />
+          {/* Only signing in asks for a password here. Signup and reset send a
+              link, and the password is chosen on the page that link opens. */}
+          {mode === "signin" && (
+            <Input
+              type="password"
+              value={workPassword}
+              onChange={e => setWorkPassword(e.target.value)}
+              placeholder="Password"
+              autoComplete="current-password"
+              required
+            />
+          )}
           {mode === "signup" && (
             <p className="text-xs text-gray-500">
-              Use your WSA work address. We send a link there to confirm it is you, and your account is
-              created once you follow it. A long phrase you will remember makes a better password than a
-              short scramble.
+              Use your WSA work address. We send a link there to confirm it is you, and you set your
+              password on the page it opens.
+            </p>
+          )}
+          {mode === "forgot" && (
+            <p className="text-xs text-gray-500">
+              Enter your WSA work address and we send a link there. Open it to set a new password. If
+              you sign in with Microsoft or Google, you have no password here and nothing to reset.
             </p>
           )}
           {notice && <p className="text-sm text-wsa-navy">{notice}</p>}
           {error && <p className="text-sm text-red-600">{error}</p>}
           <Button
             type="submit"
-            disabled={signUpMutation.isPending || passwordSignInMutation.isPending}
+            disabled={signUpMutation.isPending || passwordSignInMutation.isPending || resetRequestMutation.isPending}
             className="w-full bg-wsa-red hover:bg-wsa-red/90 text-white"
           >
             {mode === "signup"
-              ? signUpMutation.isPending ? "Sending…" : "Create my account"
-              : passwordSignInMutation.isPending ? "Checking…" : "Sign in"}
+              ? signUpMutation.isPending ? "Sending…" : "Email me a link"
+              : mode === "forgot"
+                ? resetRequestMutation.isPending ? "Sending…" : "Email me a reset link"
+                : passwordSignInMutation.isPending ? "Checking…" : "Sign in"}
           </Button>
+          {mode !== "signup" && (
+            <button
+              type="button"
+              onClick={() => {
+                setMode(mode === "forgot" ? "signin" : "forgot");
+                setError("");
+                setNotice(null);
+              }}
+              className="w-full text-xs text-gray-500 hover:text-wsa-navy underline"
+            >
+              {mode === "forgot" ? "Back to signing in" : "Forgotten your password?"}
+            </button>
+          )}
         </form>
       </div>
 
