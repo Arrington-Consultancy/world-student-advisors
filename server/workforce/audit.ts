@@ -36,12 +36,22 @@ export type ErrorCategory =
  */
 export type AuditAuthMethod = "entra_sso" | "shared_executive" | "shared_password";
 
+/** The platform acting for a staff member with no worker involved. Stored in the varchar workerId column. */
+export type PlatformActor = "staff_portal";
+
 export interface AuditEvent {
   timestamp: string;
   /** The resolved staff_users.id for an entra_sso session; null for a shared-password session, which carries no individual identity. Never client-supplied. */
   staffUserId: number | null;
   authMethod: AuditAuthMethod;
-  workerId: WorkerId;
+  /**
+   * The worker that acted, or the platform itself. "staff_portal" means no
+   * AI worker was involved: the platform performed something under a signed-in
+   * staff member's own authority, as the CRM lookup does. It is a distinct
+   * value rather than a borrowed worker id because an audit line naming a
+   * worker that did nothing would be a false record.
+   */
+  workerId: WorkerId | PlatformActor;
   workerSpecificationVersion: string;
   caseId?: string;
   requestedCapability: string;

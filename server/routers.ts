@@ -33,6 +33,8 @@ import {
   completeGoogleStaffSignInFromCallback,
 } from "./staffIdentityAuth";
 import { readApprovalRows, approveEmail, revokeEmail } from "./access/staffApprovalStore";
+import { lookupStudents } from "./crm/staffLookup";
+import { productionLookupDeps } from "./crm/lookupDeps";
 
 /**
  * The access_admin gate for the Google approval list.
@@ -790,6 +792,29 @@ export const appRouter = router({
      * untouched and staff choose between them. A Google account reaches
      * nothing until Tom has approved its exact address.
      */
+    /**
+     * Staff-facing student lookup in Pipedrive. Read-only, scoped to the
+     * signed-in staff member's own enquiry_triage scope and case scope, and
+     * filtered server-side before anything is projected. See
+     * server/crm/staffLookup.ts for the properties and the order they run in.
+     *
+     * Only an individual identity may look students up. The shared executive
+     * route is a credential that identifies nobody, so no case scope can be
+     * evaluated for it; it is treated as no identity here, matching
+     * access/enforcement.ts's staffUserIdOf rather than the looser
+     * convention some admin screens use.
+     */
+    crmLookup: publicProcedure
+      .input(z.object({ token: z.string(), term: z.string().min(2).max(200), by: z.enum(["phone", "email", "name"]) }))
+      .query(async ({ input }) => {
+        const session = await resolveStaffSession(input.token);
+        const staffUserId = session.authMethod === "entra_sso" ? session.staffUserId : null;
+        return lookupStudents(
+          { staffUserId, authMethod: session.authMethod, term: input.term, by: input.by },
+          productionLookupDeps,
+        );
+      }),
+
     googleSsoStatus: publicProcedure.query(() => ({ configured: isGoogleStaffSsoConfigured() })),
 
     googleLoginUrl: publicProcedure.mutation(async () => {
