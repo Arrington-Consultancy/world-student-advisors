@@ -12,6 +12,7 @@ import { AccessBanner } from "@/components/workforce/AccessBanner";
 import { AccessAdmin } from "@/components/workforce/AccessAdmin";
 import { ResourcesPanel } from "@/components/workforce/ResourcesPanel";
 
+const PENDING_PROVIDER_KEY = "wsa-staff-pending-provider";
 const STORAGE_KEY = "staff_portal_token";
 
 function Shell({ children }: { children: React.ReactNode }) {
@@ -46,11 +47,36 @@ export default function StaffPortal() {
 
   const meQuery = trpc.staffPortal.me.useQuery({ token: token ?? "" }, { enabled: !!token });
   const ssoStatusQuery = trpc.staffPortal.microsoftSsoStatus.useQuery();
+  const googleStatusQuery = trpc.staffPortal.googleSsoStatus.useQuery();
 
   const microsoftLoginUrlMutation = trpc.staffPortal.microsoftLoginUrl.useMutation({
     onSuccess: data => {
+      sessionStorage.setItem(PENDING_PROVIDER_KEY, "microsoft");
       window.location.href = data.authorizeUrl;
     },
+  });
+
+  // Both providers return to this same page with ?code&state, so the one
+  // that started the redirect is remembered here. sessionStorage rather than
+  // a query parameter: Google matches redirect_uri exactly, and a parameter
+  // a person could edit is not a thing to route an auth callback on.
+  const googleLoginUrlMutation = trpc.staffPortal.googleLoginUrl.useMutation({
+    onSuccess: data => {
+      sessionStorage.setItem(PENDING_PROVIDER_KEY, "google");
+      window.location.href = data.authorizeUrl;
+    },
+  });
+
+  const googleCallbackMutation = trpc.staffPortal.googleCallback.useMutation({
+    onSuccess: data => {
+      if (data.success) {
+        localStorage.setItem(STORAGE_KEY, data.token);
+        setToken(data.token);
+      } else {
+        setError(data.error);
+      }
+    },
+    onError: () => setError("Google sign-in failed. Please try again."),
   });
 
   const microsoftCallbackMutation = trpc.staffPortal.microsoftCallback.useMutation({
@@ -73,7 +99,13 @@ export default function StaffPortal() {
     const code = params.get("code");
     const state = params.get("state");
     if (code && state) {
-      microsoftCallbackMutation.mutate({ code, state });
+      const provider = sessionStorage.getItem(PENDING_PROVIDER_KEY);
+      sessionStorage.removeItem(PENDING_PROVIDER_KEY);
+      if (provider === "google") {
+        googleCallbackMutation.mutate({ code, state });
+      } else {
+        microsoftCallbackMutation.mutate({ code, state });
+      }
       const url = new URL(window.location.href);
       url.searchParams.delete("code");
       url.searchParams.delete("state");
@@ -118,10 +150,10 @@ export default function StaffPortal() {
   const authenticated = !!token && meQuery.data?.authenticated === true;
   const checkingSession = !!token && meQuery.isLoading;
 
-  if (checkingSession || microsoftCallbackMutation.isPending) {
+  if (checkingSession || microsoftCallbackMutation.isPending || googleCallbackMutation.isPending) {
     return (
       <Shell>
-        <p className="text-center text-gray-500">{microsoftCallbackMutation.isPending ? "Completing Microsoft sign-in…" : "Checking session…"}</p>
+        <p className="text-center text-gray-500">{microsoftCallbackMutation.isPending ? "Completing Microsoft sign-in…" : googleCallbackMutation.isPending ? "Completing Google sign-in…" : "Checking session…"}</p>
       </Shell>
     );
   }
@@ -152,10 +184,25 @@ export default function StaffPortal() {
         >
           {microsoftLoginUrlMutation.isPending ? "Redirecting…" : "Sign in with Microsoft"}
         </Button>
+        <Button
+          type="button"
+          variant="outline"
+          disabled={!googleStatusQuery.data?.configured || googleLoginUrlMutation.isPending}
+          onClick={() => googleLoginUrlMutation.mutate()}
+          className="w-full border-wsa-navy/20 text-wsa-navy"
+        >
+          {googleLoginUrlMutation.isPending ? "Redirecting…" : "Sign in with Google"}
+        </Button>
+        <p className="text-xs text-gray-500 text-center">
+          Google sign-in works only for addresses Tom has approved. Ask him if yours is not yet on the list.
+        </p>
         {!ssoConfigured && (
           <p className="text-xs text-gray-400 text-center">Microsoft sign-in is not yet configured. Use your password below.</p>
         )}
-        {microsoftCallbackMutation.isError || (microsoftCallbackMutation.data && !microsoftCallbackMutation.data.success) ? (
+        {microsoftCallbackMutation.isError ||
+        googleCallbackMutation.isError ||
+        (microsoftCallbackMutation.data && !microsoftCallbackMutation.data.success) ||
+        (googleCallbackMutation.data && !googleCallbackMutation.data.success) ? (
           <p className="text-sm text-red-600 text-center">{error}</p>
         ) : null}
 

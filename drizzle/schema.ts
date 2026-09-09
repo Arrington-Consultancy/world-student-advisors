@@ -192,7 +192,16 @@ export const staffAccessColumns = {
 
 export const staffUsers = mysqlTable("staff_users", {
   id: int("id").autoincrement().primaryKey(),
-  entraObjectId: varchar("entraObjectId", { length: 64 }).notNull().unique(),
+  /**
+   * Which route this person signs in by. Microsoft accounts are gated by
+   * WSA's Entra tenant and the email domain; Google accounts are gated only
+   * by staffApprovedEmails, so the two are never interchangeable.
+   */
+  authProvider: varchar("authProvider", { length: 20 }).default("microsoft").notNull(),
+  /** Entra's stable oid. Null for a Google account, which has no Entra identity. */
+  entraObjectId: varchar("entraObjectId", { length: 64 }).unique(),
+  /** Google's stable sub claim. Never the email, which a person can change. */
+  googleSubjectId: varchar("googleSubjectId", { length: 64 }).unique(),
   email: varchar("email", { length: 320 }).notNull().unique(),
   displayName: varchar("displayName", { length: 200 }).notNull(),
   /** Deactivating here (not deleting) revokes access while preserving audit history's staffUserId references. */
@@ -512,3 +521,28 @@ export const workerConversationTurns = mysqlTable("worker_conversation_turns", {
 
 export type WorkerConversationTurn = typeof workerConversationTurns.$inferSelect;
 export type InsertWorkerConversationTurn = typeof workerConversationTurns.$inferInsert;
+
+/**
+ * Addresses Tom Arrington has approved for Google sign-in to the Staff
+ * Portal.
+ *
+ * With Microsoft, two controls protect the portal: only WSA's Entra tenant
+ * can issue a token, and the address must be on the WSA domain. With a
+ * personal Google account neither exists, so this table is the whole wall.
+ *
+ * Revoked rather than deleted: erasing the row would erase the fact that
+ * somebody was once let in, which is what an audit of who had access needs.
+ * The unique index on email means re-approving updates the existing row, so
+ * one address can never have a live row and a revoked row at once.
+ */
+export const staffApprovedEmails = mysqlTable("staff_approved_emails", {
+  id: int("id").autoincrement().primaryKey(),
+  /** Already normalised by shared/staffSignIn.ts's normaliseEmail, the same function the sign-in check uses. */
+  email: varchar("email", { length: 320 }).notNull().unique(),
+  approvedByStaffUserId: int("approvedByStaffUserId").notNull(),
+  approvedAt: timestamp("approvedAt").defaultNow().notNull(),
+  reason: varchar("reason", { length: 500 }).notNull(),
+  revokedAt: timestamp("revokedAt"),
+  revokedByStaffUserId: int("revokedByStaffUserId"),
+  revocationReason: varchar("revocationReason", { length: 500 }),
+});
