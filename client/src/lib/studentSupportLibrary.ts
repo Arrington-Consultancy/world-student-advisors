@@ -63,7 +63,7 @@ export const CANONICAL_RESOURCES: Record<string, CanonicalResource> = {
     code: "WSA 004",
     title: "Undergraduate Course Advice",
     description: "Understand your undergraduate study options and how to choose a course and university that suit your goals.",
-    youtubeUrl: "https://www.youtube.com/watch?v=WqNU_CRy_p8",
+    youtubeUrl: "https://www.youtube.com/watch?v=Td_kgKyDnMQ",
     pdfFile: "wsa-004-summary.pdf",
     keywords: ["undergraduate course advice", "foundation course", "choosing a degree", "CV", "school results"],
   },
