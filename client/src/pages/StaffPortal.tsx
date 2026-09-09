@@ -10,6 +10,7 @@ import { SocialMediaPanel } from "@/components/staff/SocialMediaPanel";
 import { Receptionist } from "@/components/workforce/Receptionist";
 import { AccessBanner } from "@/components/workforce/AccessBanner";
 import { AccessAdmin } from "@/components/workforce/AccessAdmin";
+import { StudentLookup } from "@/components/workforce/StudentLookup";
 import { ResourcesPanel } from "@/components/workforce/ResourcesPanel";
 
 const PENDING_PROVIDER_KEY = "wsa-staff-pending-provider";
@@ -252,10 +253,11 @@ export default function StaffPortal() {
  * actually reports — this component has no local notion of who is
  * "ready"; it only renders what workforce.listWorkers returns.
  */
-type StaffTab = "reception" | "social" | "channels" | "team" | "content" | "resources" | "access";
+type StaffTab = "reception" | "students" | "social" | "channels" | "team" | "content" | "resources" | "access";
 
 const TABS: { id: StaffTab; label: string }[] = [
   { id: "reception", label: "Reception" },
+  { id: "students", label: "Students" },
   { id: "social", label: "Social media" },
   { id: "channels", label: "Channels" },
   { id: "team", label: "The AI team" },
@@ -326,6 +328,7 @@ function WorkforceHome({ token, onLogout }: { token: string; onLogout: () => voi
           </div>
         )}
 
+        {tab === "students" && <StudentLookup token={token} />}
         {tab === "social" && <SocialMediaPanel token={token} />}
         {tab === "channels" && <ChannelsPanel token={token} />}
         {tab === "team" && <TeamPanel token={token} />}
