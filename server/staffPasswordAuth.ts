@@ -149,6 +149,42 @@ async function issueLink(
 }
 
 /**
+ * Send the email that is not a link.
+ *
+ * These go to somebody who asked for something they cannot have on an
+ * address they do demonstrably hold: they already have an account, or their
+ * account signs in through Microsoft or Google. Telling them on screen would
+ * answer "does this person work at WSA" for anybody who asked. Telling them
+ * in their own inbox tells only them.
+ */
+async function sendAdvisoryMail(email: string, kind: "already_has_account" | "signs_in_with_sso"): Promise<void> {
+  const signIn = portalBase();
+
+  const [subject, text] =
+    kind === "already_has_account"
+      ? [
+          "You already have a WSA Staff Portal account",
+          "Somebody asked to create a WSA Staff Portal account for this address, and one " +
+            "already exists.\n\n" +
+            `Sign in here: ${signIn}\n\n` +
+            "Use the same button you used before, Microsoft, Google or a password. If you " +
+            "have a password and cannot remember it, use the Forgotten your password link on " +
+            "that page.\n\n" +
+            "If this was not you, nothing has changed and your account is untouched.",
+        ]
+      : [
+          "Your WSA Staff Portal account signs in with Microsoft or Google",
+          "Somebody asked to reset a WSA Staff Portal password for this address.\n\n" +
+            "There is no password to reset. This account signs in with Microsoft or Google " +
+            "instead, so use that button rather than the password box.\n\n" +
+            `Sign in here: ${signIn}\n\n` +
+            "If this was not you, nothing has changed and your account is untouched.",
+        ];
+
+  await sendGraphMail({ to: [email], subject, text });
+}
+
+/**
  * Begin a signup. Returns the same message whether the address was accepted
  * or already has an account, so the form cannot be used to enumerate staff.
  */
@@ -160,7 +196,8 @@ export async function beginStaffSignup(emailInput: string): Promise<SignupOutcom
   const existing = await db.select().from(staffUsers).where(eq(staffUsers.email, email)).limit(1);
   const response = signupResponseFor(decideStaffSignup(emailInput, existing.length > 0));
 
-  if (response.sendEmail) await issueLink(db, email, "signup");
+  if (response.email === "link") await issueLink(db, email, "signup");
+  else if (response.email === "already_has_account") await sendAdvisoryMail(email, "already_has_account");
   return { message: response.shown };
 }
 
@@ -181,7 +218,8 @@ export async function beginPasswordReset(emailInput: string): Promise<SignupOutc
   );
   const response = resetResponseFor(decision);
 
-  if (response.sendEmail) await issueLink(db, email, "reset");
+  if (response.email === "link") await issueLink(db, email, "reset");
+  else if (response.email === "signs_in_with_sso") await sendAdvisoryMail(email, "signs_in_with_sso");
   return { message: response.shown };
 }
 

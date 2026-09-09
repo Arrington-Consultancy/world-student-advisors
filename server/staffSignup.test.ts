@@ -175,9 +175,9 @@ describe("neither form answers 'does this person work at WSA'", () => {
     expect(taken.shown).toBe(SIGNUP_ACCEPTED_MESSAGE);
   });
 
-  it("sends a signup email only for the genuinely new one", () => {
-    expect(signupResponseFor(decideStaffSignup(GOOD, false)).sendEmail).toBe(true);
-    expect(signupResponseFor(decideStaffSignup(GOOD, true)).sendEmail).toBe(false);
+  it("sends a LINK only for the genuinely new one", () => {
+    expect(signupResponseFor(decideStaffSignup(GOOD, false)).email).toBe("link");
+    expect(signupResponseFor(decideStaffSignup(GOOD, true)).email).not.toBe("link");
   });
 
   it("says the same thing on reset whether the account exists, is Microsoft, or is off", () => {
@@ -191,14 +191,14 @@ describe("neither form answers 'does this person work at WSA'", () => {
     expect(shown[0]).toBe(RESET_ACCEPTED_MESSAGE);
   });
 
-  it("emails only the one case that should be emailed", () => {
+  it("sends a reset LINK only to a live password account", () => {
     const sends = [
       decidePasswordReset(GOOD, { authProvider: "password", isActive: true }),
       decidePasswordReset(GOOD, { authProvider: "microsoft", isActive: true }),
       decidePasswordReset(GOOD, { authProvider: "password", isActive: false }),
       decidePasswordReset(GOOD, null),
-    ].map(d => resetResponseFor(d).sendEmail);
-    expect(sends).toEqual([true, false, false, false]);
+    ].map(d => resetResponseFor(d).email);
+    expect(sends).toEqual(["link", "signs_in_with_sso", "none", "none"]);
   });
 
   it("still tells somebody what they can fix about their own input", () => {
@@ -209,8 +209,64 @@ describe("neither form answers 'does this person work at WSA'", () => {
       expect(response.shown).not.toBe(SIGNUP_ACCEPTED_MESSAGE);
       expect(response.shown).not.toBe(RESET_ACCEPTED_MESSAGE);
       expect(response.shown).toContain(SIGNUP_ALLOWED_DOMAIN);
-      expect(response.sendEmail).toBe(false);
+      expect(response.email).toBe("none");
     }
+  });
+});
+
+describe("an address that belongs to somebody never dead-ends", () => {
+  /**
+   * THE FAULT THIS EXISTS FOR. Tom already had a Microsoft account, so
+   * signing up refused him as already_registered and resetting refused him
+   * as not_a_password_account. Both showed "check your WSA email" and sent
+   * nothing at all, so both routes dead-ended with no way to find that out
+   * from the screen. Production confirmed it: three Microsoft accounts, zero
+   * rows in staff_signup_requests, no email ever attempted.
+   *
+   * Silence towards a stranger is a control. Silence towards the person who
+   * owns the mailbox is a dead end.
+   */
+  it("emails somebody who already has an account instead of going quiet", () => {
+    expect(signupResponseFor(decideStaffSignup(GOOD, true)).email).toBe("already_has_account");
+  });
+
+  it("emails a Microsoft account that asked to reset a password it does not have", () => {
+    const microsoft = decidePasswordReset(GOOD, { authProvider: "microsoft", isActive: true });
+    expect(resetResponseFor(microsoft).email).toBe("signs_in_with_sso");
+  });
+
+  it("does the same for a Google account", () => {
+    const google = decidePasswordReset(GOOD, { authProvider: "google", isActive: true });
+    expect(resetResponseFor(google).email).toBe("signs_in_with_sso");
+  });
+
+  it("STILL says the same words on screen, which is what blocks enumeration", () => {
+    // The fix must not undo the control. Somebody fishing sees one response
+    // and receives nothing, because the email goes to a mailbox they do not
+    // control. Screen sameness is the property that matters, not silence.
+    const shown = [
+      signupResponseFor(decideStaffSignup(GOOD, false)).shown,
+      signupResponseFor(decideStaffSignup(GOOD, true)).shown,
+    ];
+    expect(new Set(shown).size).toBe(1);
+
+    const resetShown = [
+      resetResponseFor(decidePasswordReset(GOOD, { authProvider: "password", isActive: true })).shown,
+      resetResponseFor(decidePasswordReset(GOOD, { authProvider: "microsoft", isActive: true })).shown,
+      resetResponseFor(decidePasswordReset(GOOD, null)).shown,
+    ];
+    expect(new Set(resetShown).size).toBe(1);
+  });
+
+  it("sends NOTHING to an address with no account, since nobody is there", () => {
+    expect(resetResponseFor(decidePasswordReset(GOOD, null)).email).toBe("none");
+  });
+
+  it("sends NOTHING to a suspended or disabled account", () => {
+    // Deliberate. Somebody who has been suspended or has left should not be
+    // walked through getting back in.
+    expect(resetResponseFor(decidePasswordReset(GOOD, { authProvider: "password", isActive: false })).email)
+      .toBe("none");
   });
 });
 

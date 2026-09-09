@@ -201,27 +201,59 @@ export const RESET_ACCEPTED_MESSAGE =
   "Check your WSA email. If that address has an account with a password, a link is on its way, and it " +
   `works for the next ${VERIFICATION_TTL_HOURS} hours. Open it to set a new password.`;
 
-export function signupResponseFor(decision: SignupDecision): { shown: string; sendEmail: boolean } {
-  if (decision.permitted) return { shown: SIGNUP_ACCEPTED_MESSAGE, sendEmail: true };
+/**
+ * Which email leaves, if any.
+ *
+ * THE FIRST VERSION HAD ONLY "a link" AND "nothing", AND THAT WAS A REAL
+ * FAULT, not a theoretical one. Tom already had a Microsoft account, so
+ * signing up refused him as already_registered and resetting refused him as
+ * not_a_password_account. Both showed "check your WSA email" and sent
+ * nothing, so both routes dead-ended with no way to find that out from the
+ * screen. Silence towards a stranger is a control; silence towards the
+ * person who owns the mailbox is a dead end.
+ *
+ * So an address that belongs to somebody always gets an email. Only the
+ * content differs. The form still says the same words to everybody, which is
+ * what actually blocks enumeration: somebody fishing for staff addresses
+ * sees one response and receives nothing, because the email goes to a
+ * mailbox they do not control.
+ */
+export type OutboundEmail =
+  /** The signup or reset link. */
+  | "link"
+  /** You already have an account. Here is how to get in. */
+  | "already_has_account"
+  /** Your account signs in with Microsoft or Google, so there is no password here. */
+  | "signs_in_with_sso"
+  /** Nothing leaves. Nobody is there to read it. */
+  | "none";
+
+export function signupResponseFor(decision: SignupDecision): { shown: string; email: OutboundEmail } {
+  if (decision.permitted) return { shown: SIGNUP_ACCEPTED_MESSAGE, email: "link" };
   if (decision.code === "already_registered") {
-    // Same words as success, and no email. The person who genuinely owns the
-    // address already has an account and can sign in or reset; the person
-    // fishing learns nothing.
-    return { shown: SIGNUP_ACCEPTED_MESSAGE, sendEmail: false };
+    // Same words on screen, different email. The person who owns the address
+    // is told they already have an account and how to sign in; the person
+    // fishing sees the same screen and receives nothing.
+    return { shown: SIGNUP_ACCEPTED_MESSAGE, email: "already_has_account" };
   }
-  return { shown: decision.reason ?? "That signup could not be completed.", sendEmail: false };
+  return { shown: decision.reason ?? "That signup could not be completed.", email: "none" };
 }
 
-export function resetResponseFor(decision: ResetDecision): { shown: string; sendEmail: boolean } {
-  if (decision.permitted) return { shown: RESET_ACCEPTED_MESSAGE, sendEmail: true };
-  if (
-    decision.code === "no_account" ||
-    decision.code === "not_a_password_account" ||
-    decision.code === "account_inactive"
-  ) {
-    return { shown: RESET_ACCEPTED_MESSAGE, sendEmail: false };
+export function resetResponseFor(decision: ResetDecision): { shown: string; email: OutboundEmail } {
+  if (decision.permitted) return { shown: RESET_ACCEPTED_MESSAGE, email: "link" };
+  if (decision.code === "not_a_password_account") {
+    // The case that dead-ended. Somebody with a Microsoft account asking to
+    // reset a password needs to be told they do not have one, and the only
+    // place it is safe to tell them is their own inbox.
+    return { shown: RESET_ACCEPTED_MESSAGE, email: "signs_in_with_sso" };
   }
-  return { shown: decision.reason ?? "That request could not be completed.", sendEmail: false };
+  if (decision.code === "no_account" || decision.code === "account_inactive") {
+    // Nothing leaves. For no_account there is nobody to read it. For a
+    // disabled account, mail is deliberately withheld: somebody who has been
+    // suspended or has left should not be walked through getting back in.
+    return { shown: RESET_ACCEPTED_MESSAGE, email: "none" };
+  }
+  return { shown: decision.reason ?? "That request could not be completed.", email: "none" };
 }
 
 /**
