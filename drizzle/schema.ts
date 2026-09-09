@@ -193,6 +193,12 @@ export const staffAccessColumns = {
 export const staffUsers = mysqlTable("staff_users", {
   id: int("id").autoincrement().primaryKey(),
   /**
+   * Per-user session invalidation. Every token carries the version current
+   * when it was minted; a request whose token no longer matches this fails.
+   * Incrementing it ends every session for this one account. Added 0014.
+   */
+  sessionVersion: int("sessionVersion").notNull().default(1),
+  /**
    * Which route this person signs in by. Microsoft accounts are gated by
    * WSA's Entra tenant and the email domain; Google accounts are gated only
    * by staffApprovedEmails, so the two are never interchangeable.

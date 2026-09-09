@@ -61,6 +61,7 @@ const activeStaffUser = {
   email: "named.staff@worldstudentadvisors.com",
   displayName: "Named Staff",
   isActive: 1,
+  sessionVersion: 1,
   createdAt: new Date(),
   updatedAt: new Date(),
   lastLoginAt: new Date(),

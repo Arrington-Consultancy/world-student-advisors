@@ -60,6 +60,7 @@ import {
 } from "../shared/staffSignup";
 import { sendGraphMail } from "./_core/graphMail";
 import { mintStaffIdentityToken } from "./staffIdentityAuth";
+import { endSessionsFor } from "./access/sessionRevocation";
 import { ENV } from "./_core/env";
 
 const PASSWORD_ROUNDS = 12;
@@ -307,6 +308,15 @@ export async function setPasswordFromLink(token: string, password: string): Prom
       .update(staffUsers)
       .set({ passwordHash, lastLoginAt: new Date() })
       .where(eq(staffUsers.id, user.id));
+
+    // Every session opened under the old password dies now. The usual reason
+    // to reset is that somebody else might know the old one, so leaving those
+    // sessions running would defeat the point of resetting.
+    await endSessionsFor(user.id, "password_reset");
+
+    // Read back AFTER the bump, so the token this person is handed carries
+    // the new version. Minting before it would hand them a session the very
+    // next request rejects.
     const refreshed = await db.select().from(staffUsers).where(eq(staffUsers.id, user.id)).limit(1);
     return { ok: true, token: await mintStaffIdentityToken(refreshed[0]) };
   }

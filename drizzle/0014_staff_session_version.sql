@@ -1,0 +1,34 @@
+-- Staff Portal: per-user session invalidation.
+--
+-- Tom Arrington's instruction of 9 September 2026: a general staff security
+-- control, not something tied only to forgotten passwords.
+--
+-- WHAT THIS ENFORCES. The Staff Portal Access Control Standard v1.0
+-- (APPROVED, 30 August 2026) section 9 already requires that "Access must be
+-- removed or changed promptly when staff role, employment, team or
+-- responsibilities change" and that "Permission denial must fail closed".
+-- Before this column, a signed staff token stayed valid for its full twelve
+-- hours whatever happened to the account behind it, so "promptly" held for
+-- anything re-read from the database on each request and did not hold for
+-- the session itself. This closes that gap. No access level, functional
+-- scope, case scope, sensitive overlay or SSO rule changes.
+--
+-- HOW IT WORKS. Every token carries the version current when it was minted.
+-- Every authenticated request compares it against this column and fails if
+-- it no longer matches. Incrementing the column ends every session for that
+-- one account and touches nobody else, because the comparison is per row.
+--
+-- BACKWARDS SAFETY FOR THE THREE EXISTING ACCOUNTS. NOT NULL with a default
+-- of 1, so every existing row is given a defined version by the ALTER itself
+-- and no row is left null. Nothing else about those rows is read or written.
+-- Their currently live tokens carry no version claim at all and will be
+-- refused once, which is the deliberate fail-closed reading: treating a
+-- missing claim as exempt would leave exactly the sessions this control
+-- exists to cut running unchallenged. The cost is that anybody signed in at
+-- the moment of deployment signs in once more.
+--
+-- One statement, so no statement-breakpoint marker is needed. A marker is
+-- required only between statements; migration 0009 failed for the opposite
+-- reason, several statements with none between them.
+
+ALTER TABLE `staff_users` ADD COLUMN `sessionVersion` INT NOT NULL DEFAULT 1;

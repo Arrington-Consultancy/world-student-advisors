@@ -25,6 +25,7 @@ import { getDb } from "./db";
 import { staffUsers, type StaffUser } from "../drizzle/schema";
 import { isCurrentlyApproved, readApprovals } from "./access/staffApprovalStore";
 import { decideStaffSignIn } from "../shared/staffSignIn";
+import { decideSessionVersion, SESSION_ENDED_MESSAGE } from "../shared/sessionVersion";
 
 const ALLOWED_EMAIL_DOMAIN = "worldstudentadvisors.com";
 const STAFF_IDENTITY_JWT_SECRET = new TextEncoder().encode(ENV.cookieSecret + "-staff-identity");
@@ -222,6 +223,9 @@ export async function mintStaffIdentityToken(staffUser: StaffUser): Promise<stri
     staffUserId: staffUser.id,
     email: staffUser.email,
     displayName: staffUser.displayName,
+    // Per-user session invalidation. Bumping staff_users.sessionVersion ends
+    // every session minted before the bump, for this account only.
+    sessionVersion: staffUser.sessionVersion,
   })
     .setProtectedHeader({ alg: "HS256" })
     .setExpirationTime(STAFF_IDENTITY_TOKEN_EXPIRY)
@@ -232,6 +236,12 @@ export interface StaffIdentityTokenPayload {
   staffUserId: number;
   email: string;
   displayName: string;
+  /**
+   * Undefined for a token minted before 0014. Carried through rather than
+   * defaulted, so requireActiveStaffIdentity can refuse it: defaulting here
+   * would silently exempt exactly the sessions this control exists to cut.
+   */
+  sessionVersion?: number;
 }
 
 /** Verifies the WSA-signed session token only — does not re-check DB active state. Use requireActiveStaffIdentity for that. Never throws. */
@@ -240,7 +250,12 @@ export async function verifyStaffIdentityToken(token: string): Promise<StaffIden
     const { payload } = await jose.jwtVerify(token, STAFF_IDENTITY_JWT_SECRET);
     if (payload.purpose !== "staff_identity") return null;
     if (typeof payload.staffUserId !== "number" || typeof payload.email !== "string" || typeof payload.displayName !== "string") return null;
-    return { staffUserId: payload.staffUserId, email: payload.email, displayName: payload.displayName };
+    return {
+      staffUserId: payload.staffUserId,
+      email: payload.email,
+      displayName: payload.displayName,
+      sessionVersion: typeof payload.sessionVersion === "number" ? payload.sessionVersion : undefined,
+    };
   } catch {
     return null;
   }
@@ -267,6 +282,18 @@ export async function requireActiveStaffIdentity(token: string): Promise<{ staff
   const staffUser = rows[0];
   if (!staffUser || staffUser.isActive !== 1) {
     throw new Error("This Staff Portal account is not active. Please contact an administrator.");
+  }
+
+  // Per-user session invalidation (Access Control Standard v1.0 §9, "Access
+  // must be removed or changed promptly"). The token carries the version
+  // current when it was minted; this row carries the version now. They must
+  // match exactly. A password reset, a suspension or an administrator
+  // revocation bumps the row, and every session minted before that bump dies
+  // here on its next request. The comparison is per row, so one person's
+  // revocation never touches anybody else's sessions.
+  const versionDecision = decideSessionVersion(payload.sessionVersion, staffUser.sessionVersion);
+  if (!versionDecision.valid) {
+    throw new Error(versionDecision.reason ?? SESSION_ENDED_MESSAGE);
   }
 
   // A Google session's whole authority is its address being on the approval

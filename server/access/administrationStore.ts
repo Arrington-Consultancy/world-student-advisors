@@ -32,6 +32,7 @@ import {
   FIRST_ADMINISTRATOR_REASON,
   FIRST_ADMINISTRATOR_SCOPES,
 } from "./firstAdministratorProfile";
+import { endSessionsFor } from "./sessionRevocation";
 
 export interface StaffSummary {
   staffUserId: number;
@@ -139,6 +140,15 @@ export async function applyAssignment(
           isNull(staffAccessGrants.revokedAt),
         ),
       );
+  }
+
+  // Access Control Standard v1.0 §9: "Access must be removed or changed
+  // promptly when staff role, employment, team or responsibilities change."
+  // A suspended or disabled account keeps a working session until its token
+  // expires unless the sessions are ended here, so this is what makes
+  // "promptly" true rather than "within twelve hours".
+  if (proposed.accessStatus !== "active") {
+    await endSessionsFor(proposed.targetStaffUserId, "account_status_change");
   }
 
   for (const line of approval.auditLines) {

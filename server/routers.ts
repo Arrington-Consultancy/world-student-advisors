@@ -94,6 +94,7 @@ import {
   applyAssignment,
   bootstrapFirstAdministrator,
 } from "./access/administrationStore";
+import { revokeSessionsAsAdministrator } from "./access/sessionRevocation";
 import { recordAuditEvent } from "./workforce/audit";
 import { listWorkers, getWorker } from "./workforce/registry";
 import { evaluateStaffPortalExecutionPermission } from "./workforce/permissions";
@@ -732,6 +733,47 @@ export const appRouter = router({
         const result = await applyAssignment(decision, proposed, staffUserId);
         if (!result.applied) return { applied: false as const, reason: result.reason };
         return { applied: true as const, changes: decision.auditLines.length };
+      }),
+
+    /**
+     * An administrator ends every session for one staff account.
+     *
+     * Gated on credential_admin inside a technical_administration scope, not
+     * on seniority. Access Control Standard v1.0 §6 defines CREDENTIAL ADMIN
+     * as managing "API keys, passwords, tokens, MFA or secrets" and says it
+     * "is never inherited from ordinary Level 1 business access", and §3
+     * forbids Level 1 being a magic flag. Ending a session is token
+     * management, so it is that permission and nothing else grants it.
+     * Nobody holds it today, so this refuses everyone until Tom assigns it.
+     *
+     * A shared-password session can never do this: the action must be
+     * attributable to a named person for the audit line to mean anything.
+     */
+    revokeStaffSessions: publicProcedure
+      .input(
+        z.object({
+          token: z.string().min(1),
+          targetStaffUserId: z.number().int().positive(),
+          reason: z.string().min(1).max(500),
+        }),
+      )
+      .mutation(async ({ input }) => {
+        const session = await resolveStaffSession(input.token);
+        const staffUserId = session.authMethod === "shared_password" ? null : session.staffUserId;
+        if (staffUserId === null) {
+          return {
+            revoked: false as const,
+            reason: "Revoking sessions needs an individual staff identity, not a shared sign-in.",
+          };
+        }
+        const result = await revokeSessionsAsAdministrator(
+          staffUserId,
+          input.targetStaffUserId,
+          input.reason,
+        );
+        return result.revoked
+          ? { revoked: true as const }
+          : { revoked: false as const, reason: result.reason };
       }),
 
     /**

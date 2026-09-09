@@ -232,13 +232,21 @@ describe("Microsoft SSO configuration gate", () => {
 });
 
 describe("staff identity session token", () => {
-  const staffUser = { id: 42, entraObjectId: "oid-1", email: "genuine.staff@worldstudentadvisors.com", displayName: "Genuine Staff", isActive: 1, createdAt: new Date(), updatedAt: new Date(), lastLoginAt: new Date() };
+  const staffUser = { id: 42, entraObjectId: "oid-1", email: "genuine.staff@worldstudentadvisors.com", displayName: "Genuine Staff", isActive: 1, sessionVersion: 1, createdAt: new Date(), updatedAt: new Date(), lastLoginAt: new Date() };
 
   it("round-trips: mint then verify returns the same identity", async () => {
     const { mintStaffIdentityToken, verifyStaffIdentityToken } = await import("./staffIdentityAuth");
     const token = await mintStaffIdentityToken(staffUser as any);
     const result = await verifyStaffIdentityToken(token);
-    expect(result).toEqual({ staffUserId: 42, email: "genuine.staff@worldstudentadvisors.com", displayName: "Genuine Staff" });
+    // sessionVersion round-trips too: it is what requireActiveStaffIdentity
+    // compares against the account, so a token that lost it on the way back
+    // would be refused on every request.
+    expect(result).toEqual({
+      staffUserId: 42,
+      email: "genuine.staff@worldstudentadvisors.com",
+      displayName: "Genuine Staff",
+      sessionVersion: 1,
+    });
   });
 
   it("rejects a garbage token, never throws", async () => {
@@ -287,7 +295,7 @@ describe("stateless sign-in transaction (state param carries the nonce)", () => 
 });
 
 describe("requireActiveStaffIdentity", () => {
-  const activeUser = { id: 1, entraObjectId: "oid-active", email: "active@worldstudentadvisors.com", displayName: "Active Staff", isActive: 1, createdAt: new Date(), updatedAt: new Date(), lastLoginAt: new Date() };
+  const activeUser = { id: 1, entraObjectId: "oid-active", email: "active@worldstudentadvisors.com", displayName: "Active Staff", isActive: 1, sessionVersion: 1, createdAt: new Date(), updatedAt: new Date(), lastLoginAt: new Date() };
   const inactiveUser = { ...activeUser, id: 2, isActive: 0 };
 
   function mockSelectReturning(rows: unknown[]) {
