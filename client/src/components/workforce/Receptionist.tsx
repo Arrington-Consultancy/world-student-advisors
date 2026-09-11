@@ -26,11 +26,30 @@ type Worker = RouterOutputs["workforce"]["listWorkers"]["workers"][number];
  * renders what the register said and never picks a specialist itself.
  */
 
+/**
+ * Examples of real WSA work, not invented ones.
+ *
+ * The first version of this list asked "What English courses are available?".
+ * WSA does not offer English courses. Tom caught it on the live homepage on
+ * 11 September 2026, and it was the same fault as inventing a university
+ * portal link: plausible, confident, and false about the business.
+ *
+ * These four are drawn from what WSA actually places students into, which
+ * the public Study Options page states: A Levels, Foundation, International
+ * Year One, Undergraduate, Pre-Master's and Top-Up, Master's and Doctoral,
+ * Sport Pathways and Online Learning.
+ *
+ * Each was run through routeStaffRequest before being put here, because an
+ * example that does not route is worse than no example: it is the first
+ * thing a new staff member clicks. They reach James, Amelia, Harper and Nia
+ * respectively. Two earlier candidates were dropped for failing that check,
+ * not for reading badly.
+ */
 const EXAMPLES = [
-  "What English courses are available?",
-  "Check this student's UK visa evidence",
-  "How much are the tuition fees?",
-  "What should we post on LinkedIn this week?",
+  "Is this application ready to send?",
+  "What are the entry requirements for a pre-master's?",
+  "Is there any scholarship funding for this student?",
+  "Write a social media post about the January intake",
 ];
 
 function initials(name: string): string {
