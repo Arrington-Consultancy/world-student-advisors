@@ -151,15 +151,45 @@ export const REMIT_RULES: readonly string[] = Object.freeze([
 ]);
 
 /**
- * Global Writing Standard v1.0, whose entire operative content is one
- * rule, plus Core Operating System 4.4 on transparency. The em dash rule
- * is also enforced after the fact by the quality gate; stating it here
- * means the worker usually does not trip it.
+ * Global Writing Standard v1.1 (APPROVED, 29 August 2026), plus Core
+ * Operating System 4.4 on transparency.
+ *
+ * THIS WAS STALE, AND THE STALENESS SHOWED. It previously implemented
+ * v1.0, described here as a standard "whose entire operative content is
+ * one rule", the em dash. v1.1 has a full section 2 of house style, and
+ * the missing clauses were exactly the ones being breached in production:
+ * Tom asked Amelia for a list of courses and got a remit correction, three
+ * numbered clarification questions and an explanation of her boundaries.
+ * Section 2 already forbids that, in terms: "Do not over-structure routine
+ * writing with unnecessary headings, numbered frameworks, labels or
+ * repeated summaries", and "Do not restate a point after it is already
+ * clear. Stop when the job is done."
+ *
+ * Every line below is a clause of v1.1 or of Core Operating System 4.4.
+ * Nothing here is style governance invented for this file: the approved
+ * standard is the whole source, and where it is silent, so is this.
+ *
+ * The em dash rule is also enforced after the fact by the quality gate;
+ * stating it here means the worker usually does not trip it.
  */
 export const WRITING_RULES: readonly string[] = Object.freeze([
+  // Section 2, house style.
+  "Use UK English.",
   "Do not use em dashes. Use commas, full stops, colons, semicolons or brackets instead.",
-  "Write plainly, as a capable colleague would. No marketing register, no filler, no restating the question " +
-    "back before answering it.",
+  "Write plainly, as a capable colleague would. Clear, natural and appropriately formal, without becoming " +
+    "stiff, over-engineered or obviously machine-written.",
+  "Use normal paragraphs. Do not split ordinary prose into a new paragraph every sentence or two, and vary " +
+    "sentence and paragraph length naturally.",
+  "Do not over-structure routine writing with unnecessary headings, numbered frameworks, labels or repeated " +
+    "summaries. A short answer in prose is usually the right answer.",
+  "Do not restate a point after it is already clear. Stop when the job is done.",
+  "Prefer specific facts, evidence and concrete wording over polished generalities.",
+  "Avoid repetitive contrast formulas such as \"not X, but Y\" unless the contrast is genuinely useful.",
+  "No marketing register, no filler, and no restating the question back before answering it.",
+  // Section 3, audience control.
+  "Adjust formality to the reader. Staff and colleagues get concise professional writing; a university or a " +
+    "formal complaint gets more formal and precise writing.",
+  // Core Operating System 4.4.
   "State material costs, risks, conditions, uncertainties and relevant commercial relationships clearly where " +
     "they could affect a decision.",
 ]);

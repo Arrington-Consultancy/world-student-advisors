@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from "react";
+import { useState, useEffect, useRef, type FormEvent } from "react";
 import { CornerDownLeft, FileText } from "lucide-react";
 import { trpc } from "@/lib/trpc";
 
@@ -33,15 +33,38 @@ interface Turn {
   briefReference?: string | null;
 }
 
-export function WorkerChat({ token, workerId, workerName }: { token: string; workerId: string; workerName: string }) {
+export function WorkerChat({
+  token,
+  workerId,
+  workerName,
+  initialRequest,
+}: {
+  token: string;
+  workerId: string;
+  workerName: string;
+  /**
+   * What the staff member typed into Reception, verbatim.
+   *
+   * Sent once on mount so that one Ask is one Ask. Reception previously
+   * identified the right worker and then dropped the request on the floor,
+   * leaving the person to type it again into an empty box.
+   *
+   * VERBATIM MATTERS. This is the text the person actually wrote, never a
+   * tidied or summarised version, because it is what the audit trail
+   * records as the request. The structured reason the router matched is
+   * carried separately by the routing result and shown above this
+   * component; it is deliberately not spliced into the request text, which
+   * would make the audit record something nobody actually said.
+   */
+  initialRequest?: string;
+}) {
   const [text, setText] = useState("");
   const [turns, setTurns] = useState<Turn[]>([]);
   const [conversationId, setConversationId] = useState<string | undefined>(undefined);
   const ask = trpc.workforce.ask.useMutation();
 
-  const submit = (e: FormEvent) => {
-    e.preventDefault();
-    const trimmed = text.trim();
+  const send = (raw: string) => {
+    const trimmed = raw.trim();
     if (!trimmed || ask.isPending) return;
 
     ask.mutate(
@@ -64,6 +87,25 @@ export function WorkerChat({ token, workerId, workerName }: { token: string; wor
       },
     );
   };
+
+  const submit = (e: FormEvent) => {
+    e.preventDefault();
+    send(text);
+  };
+
+  // The handoff. Fires once for a given request, and the ref is what makes
+  // "once" true: without it React's double-invoked effects in development,
+  // and any re-render while the answer is in flight, would ask the worker
+  // the same question twice and bill two model calls for one Ask.
+  const sentRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (!initialRequest) return;
+    if (sentRef.current === initialRequest) return;
+    sentRef.current = initialRequest;
+    send(initialRequest);
+    // Deliberately keyed on the request rather than on every render value:
+    // a new request from Reception is a new question, the same one is not.
+  }, [initialRequest]);
 
   const result = ask.data;
   const showRefusal = result && result.outcome !== "answered";

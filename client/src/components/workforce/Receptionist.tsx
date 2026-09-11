@@ -145,6 +145,12 @@ export function Receptionist({ token }: { token: string }) {
 
       {result?.matched && (
         <article className="mt-6 overflow-hidden rounded-2xl border border-wsa-navy/12 bg-white shadow-sm">
+          {/* What was asked, shown verbatim above the answer. The person
+              already pressed Ask once, so this is a record of the handoff
+              rather than a prompt to do it again. */}
+          <p className="border-b border-wsa-navy/10 bg-wsa-warm-white px-5 py-3 text-sm text-gray-600">
+            You asked: <span className="text-wsa-navy">“{submitted}”</span>
+          </p>
           <div className="flex items-start gap-4 p-5">
             <div
               className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-wsa-navy text-base font-semibold text-white"
@@ -187,6 +193,17 @@ export function Receptionist({ token }: { token: string }) {
               token={token}
               workerId={result.responsibleWorkerId}
               workerName={result.responsibleWorkerName?.split(",")[0] ?? "this specialist"}
+              // The handoff. `submitted` is what the person typed, verbatim,
+              // and is the same string the router was given. Reception used
+              // to identify the right specialist and then hand over nothing,
+              // so one Ask became two.
+              //
+              // This carries no case or student context. It is the request
+              // text and nothing else, and workforce.ask re-resolves the
+              // signed-in member's permissions on every call, so routing
+              // cannot become a way to put anything in front of a worker
+              // that this person could not reach directly.
+              initialRequest={submitted}
             />
           )}
         </article>
