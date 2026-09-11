@@ -457,7 +457,7 @@ async function main(): Promise<void> {
     targetSystem: "staff_portal",
     targetResource: `service world-student-advisors (production); app "${MANAGED_SHAREPOINT_APP_DISPLAY_NAME}"`,
     permissionDecision: "allowed",
-    permissionReason: "Provisioning completed: app verified, credential rotated, variables written, deployment SUCCESS. Consent and site grant remain human actions; connector-sharepoint-acceptance.yml is the check.",
+    permissionReason: "Provisioning completed: app verified, credential rotated, variables written, deployment SUCCESS. Admin consent and the site grant are human steps; the connector acceptance workflow is the check.",
     success: 1,
     errorCategory: "none",
     deploymentId: deploymentOutcome.deploymentId ?? null,
