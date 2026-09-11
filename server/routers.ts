@@ -84,6 +84,7 @@ import {
 } from "./resources/universityPortals";
 import { buildCommunicationsView } from "./communications/access";
 import { runQualityCheck } from "./operating/qualityCheck";
+import { reviewWriting } from "./operating/writingReview";
 import {
   ACCESS_LEVEL_NAMES,
   FUNCTIONAL_SCOPES,
@@ -1435,6 +1436,11 @@ export const appRouter = router({
           workerBoundaryBreaches: [],
           evidenceInsufficient: false,
         });
+        // Layer 2. Never blocks, and never touches result.passed: the
+        // approved standard makes none of these a release gate, so the
+        // count is reported and the decision stays with the writer.
+        const warnings = reviewWriting(input.text);
+
         return {
           passed: result.passed,
           findings: result.findings.map(f => ({
@@ -1446,6 +1452,18 @@ export const appRouter = router({
             rule: f.rule,
             remedy: f.remedy,
             excerpt: f.excerpt,
+          })),
+          writingWarnings: warnings.map(w => ({
+            category: w.category,
+            phrase: w.phrase,
+            why: w.why,
+            plainer: w.plainer ?? null,
+            // Whether an approved clause stands behind this warning, and
+            // which one. A warning with no approved rule says so rather
+            // than borrowing the authority of the ones that have.
+            approved: w.authority.approved,
+            authority: w.authority.approved ? w.authority.clause : w.authority.principle,
+            needsApproval: w.authority.approved ? null : w.authority.needs,
           })),
           blockingCount: result.blocking.length,
         };
