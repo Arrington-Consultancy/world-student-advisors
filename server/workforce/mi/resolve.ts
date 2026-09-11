@@ -71,7 +71,20 @@ export interface InformationResolution {
   question: InformationQuestion | null;
 }
 
+/**
+ * Where the evidence comes from, decided before any answer. The route
+ * endpoint supplies the reporting mirror first (manifest checked, fresh,
+ * consistent) and the live CRM only as a fallback; a source that is not
+ * usable says why and when it was last good, so the staff member is never
+ * shown stale figures as current.
+ */
+export type MiSource =
+  | { ok: true; reader: MiReader; sourceName: string; sourceLabel: string }
+  | { ok: false; reason: string; lastSuccessfulSyncAt: string | null };
+
 export interface ResolveDeps {
+  /** Preferred: an async source check. When present, reader and isReaderConfigured are ignored. */
+  source?: () => Promise<MiSource>;
   reader?: MiReader;
   isReaderConfigured?: () => boolean;
   now?: Date;
@@ -206,21 +219,40 @@ export async function resolveInformationQuestion(input: ResolveInput, deps: Reso
     });
   }
 
-  // 2. Is the read path there at all?
-  const configured = (deps.isReaderConfigured ?? defaultReaderConfigured)();
-  if (!configured || !deps.reader) {
-    return finish({
-      outcome: "connector_unavailable", gapType: "connector_gap",
-      answer: `I tried to check the CRM but the WSA Pipedrive connection for the workforce is not authorised yet, so I cannot pull the figure. I have recorded it for ${MI_HUMAN_OWNER}; once the connection is live, ask me again and I will run it.`,
-      coverage: null, sourcesChecked: [], evidenceAttempted: false, humanOwner: MI_HUMAN_OWNER,
-    });
+  // 2. Is the read path there at all, and is it current?
+  let reader: MiReader;
+  let sourceName = "Pipedrive";
+  let sourceLabel = "Pipedrive, checked just now";
+  if (deps.source) {
+    const source = await deps.source();
+    if (!source.ok) {
+      const lastGood = source.lastSuccessfulSyncAt ? ` The last complete copy of the figures is from ${fmtDateTime(new Date(source.lastSuccessfulSyncAt))}, and I will not present that as current.` : "";
+      return finish({
+        outcome: "connector_unavailable", gapType: "connector_gap",
+        answer: `I tried to check the CRM figures but cannot right now: ${source.reason}${lastGood} I have recorded it for ${MI_HUMAN_OWNER}; ask me again once the connection is back and I will run it.`,
+        coverage: null, sourcesChecked: [], evidenceAttempted: false, humanOwner: MI_HUMAN_OWNER,
+      });
+    }
+    reader = source.reader;
+    sourceName = source.sourceName;
+    sourceLabel = source.sourceLabel;
+  } else {
+    const configured = (deps.isReaderConfigured ?? defaultReaderConfigured)();
+    if (!configured || !deps.reader) {
+      return finish({
+        outcome: "connector_unavailable", gapType: "connector_gap",
+        answer: `I tried to check the CRM but the WSA Pipedrive connection for the workforce is not authorised yet, so I cannot pull the figure. I have recorded it for ${MI_HUMAN_OWNER}; once the connection is live, ask me again and I will run it.`,
+        coverage: null, sourcesChecked: [], evidenceAttempted: false, humanOwner: MI_HUMAN_OWNER,
+      });
+    }
+    reader = deps.reader;
   }
 
   // 3. Look, then speak.
-  const evidence = await gatherEvidence(deps.reader);
+  const evidence = await gatherEvidence(reader);
   const pool = selectRecords(evidence.records, q);
   const base = {
-    sourcesChecked: evidence.sourcesChecked,
+    sourcesChecked: evidence.sourcesChecked.map(sc => sc.replace(/^Pipedrive /, `${sourceName} `)),
     evidenceAttempted: true,
   };
   const assumed = q.period.assumed ? ` I have taken that as ${q.period.label}, ${fmt(q.period.from)} to ${fmt(q.period.to)}.` : "";
@@ -232,7 +264,7 @@ export async function resolveInformationQuestion(input: ResolveInput, deps: Reso
     const total = known + by.unknown;
     if (total === 0) {
       return finish({ ...base, outcome: "unavailable", gapType: "reporting_gap", coverage: cov(q, null), humanOwner: MI_HUMAN_OWNER,
-        answer: `I checked Pipedrive. There are no ${q.subject} recorded in ${q.period.label}, so there is nothing to rank.${assumed} If that seems wrong, the records may be somewhere I cannot see; I have noted it for ${MI_HUMAN_OWNER}.` });
+        answer: `I checked ${sourceName}. There are no ${q.subject} recorded in ${q.period.label}, so there is nothing to rank.${assumed} If that seems wrong, the records may be somewhere I cannot see; I have noted it for ${MI_HUMAN_OWNER}.` });
     }
     const ranked = (["website", "referral", "partner"] as const).map(c => [c, by[c]] as const).sort((a, b) => b[1] - a[1]);
     const lead = ranked[0];
@@ -241,7 +273,7 @@ export async function resolveInformationQuestion(input: ResolveInput, deps: Reso
     const outcome = gap === "none" ? "answered" : "partial";
     return finish({ ...base, outcome, gapType: gap, coverage: cov(q, null), humanOwner: gap === "none" ? null : MI_HUMAN_OWNER,
       answer:
-        `I checked Pipedrive for ${q.period.label}.${assumed} Of ${total} ${q.subject}, the biggest recorded source is ${lead[0]} with ${lead[1]}` +
+        `I checked ${sourceName} for ${q.period.label}.${assumed} Of ${total} ${q.subject}, the biggest recorded source is ${lead[0]} with ${lead[1]}` +
         (ranked[1][1] > 0 ? `, then ${ranked[1][0]} with ${ranked[1][1]}` : "") +
         (ranked[2][1] > 0 ? ` and ${ranked[2][0]} with ${ranked[2][1]}` : "") +
         `.` +
@@ -264,7 +296,7 @@ export async function resolveInformationQuestion(input: ResolveInput, deps: Reso
     const gap: GapType = coverage && coverage.unknownBeforeReliable > 0 ? "data_quality_gap" : "none";
     return finish({ ...base, outcome: gap === "none" ? "answered" : "partial", gapType: gap, coverage: cov(q, coverage?.reliableFrom ?? null), humanOwner: gap === "none" ? null : MI_HUMAN_OWNER,
       answer:
-        `I checked Pipedrive. ${cap(subjectNoun(q, 2))}: ${recent} between ${fmt(recentFrom)} and ${fmt(q.period.to)}, against ${prior} in the ${Math.round(windowMs / 86400000)} days before that, so ${direction}.${anchorNote}` +
+        `I checked ${sourceName}. ${cap(subjectNoun(q, 2))}: ${recent} between ${fmt(recentFrom)} and ${fmt(q.period.to)}, against ${prior} in the ${Math.round(windowMs / 86400000)} days before that, so ${direction}.${anchorNote}` +
         (gap !== "none" ? ` A caution: the source of an enquiry is only reliably recorded from ${coverage!.reliableFrom ? fmtMonth(coverage!.reliableFrom) : "part way through"}, so the earlier figure understates ${q.channel} enquiries. I have recorded that as a reporting gap for ${MI_HUMAN_OWNER}.` : "") + notes });
   }
 
@@ -272,25 +304,25 @@ export async function resolveInformationQuestion(input: ResolveInput, deps: Reso
   if (!q.channel) {
     const n = countIn(pool, q, q.period.from, q.period.to);
     return finish({ ...base, outcome: "answered", gapType: "none", coverage: cov(q, null), humanOwner: null,
-      answer: `We had ${n} ${subjectNoun(q, n)} between ${fmt(q.period.from)} and ${fmt(q.period.to)}.${assumed} Source: Pipedrive, checked just now.${notes}` });
+      answer: `We had ${n} ${subjectNoun(q, n)} between ${fmt(q.period.from)} and ${fmt(q.period.to)}.${assumed} Source: ${sourceLabel}.${notes}` });
   }
 
   const coverage = assessChannelCoverage(pool, q);
   if (coverage.totalInPeriod === 0) {
     return finish({ ...base, outcome: "unavailable", gapType: "reporting_gap", coverage: cov(q, null), humanOwner: MI_HUMAN_OWNER,
-      answer: `I checked Pipedrive. There are no ${q.subject} recorded at all for ${q.period.label}, so I cannot give you a ${q.channel} figure.${assumed} If they should be there, they are being recorded somewhere I cannot see; I have noted it for ${MI_HUMAN_OWNER}.` });
+      answer: `I checked ${sourceName}. There are no ${q.subject} recorded at all for ${q.period.label}, so I cannot give you a ${q.channel} figure.${assumed} If they should be there, they are being recorded somewhere I cannot see; I have noted it for ${MI_HUMAN_OWNER}.` });
   }
   if (!coverage.reliableFrom) {
     return finish({ ...base, outcome: "unavailable", gapType: "reporting_gap", coverage: cov(q, null), humanOwner: MI_HUMAN_OWNER,
       answer:
-        `I checked Pipedrive. It does not currently preserve where an enquiry came from in a way that answers this: ${coverage.unknownInPeriod} of the ${coverage.totalInPeriod} ${q.subject} in ${q.period.label} have no source recorded, so I cannot give you a defensible ${q.channel} figure.${assumed} ` +
+        `I checked ${sourceName}. It does not currently preserve where an enquiry came from in a way that answers this: ${coverage.unknownInPeriod} of the ${coverage.totalInPeriod} ${q.subject} in ${q.period.label} have no source recorded, so I cannot give you a defensible ${q.channel} figure.${assumed} ` +
         `I have recorded the missing source data as a reporting gap for ${MI_HUMAN_OWNER}.${notes}` });
   }
   const fullCoverage = coverage.unknownBeforeReliable === 0;
   if (fullCoverage) {
     const n = countIn(pool, q, q.period.from, q.period.to);
     return finish({ ...base, outcome: "answered", gapType: "none", coverage: cov(q, coverage.reliableFrom), humanOwner: null,
-      answer: `We had ${n} ${subjectNoun(q, n)} between ${fmt(q.period.from)} and ${fmt(q.period.to)}.${assumed} Source: Pipedrive, checked just now.${notes}` });
+      answer: `We had ${n} ${subjectNoun(q, n)} between ${fmt(q.period.from)} and ${fmt(q.period.to)}.${assumed} Source: ${sourceLabel}.${notes}` });
   }
   const n = countIn(pool, q, coverage.reliableFrom, q.period.to);
   return finish({ ...base, outcome: "partial", gapType: "data_quality_gap", coverage: cov(q, coverage.reliableFrom), humanOwner: MI_HUMAN_OWNER,
@@ -302,6 +334,9 @@ export async function resolveInformationQuestion(input: ResolveInput, deps: Reso
 
 function cov(q: InformationQuestion, reliableFrom: Date | null) {
   return { from: q.period.from.toISOString(), to: q.period.to.toISOString(), reliableFrom: reliableFrom ? reliableFrom.toISOString() : null };
+}
+function fmtDateTime(d: Date): string {
+  return d.toLocaleString("en-GB", { day: "numeric", month: "long", year: "numeric", hour: "2-digit", minute: "2-digit", timeZone: "Europe/London" });
 }
 function cap(s: string): string { return s.charAt(0).toUpperCase() + s.slice(1); }
 

@@ -226,6 +226,8 @@ export function createPipedriveReaderWithAuth(auth: PipedriveAuth) {
     listLeadsRaw: () => listAll("/leads?archived_status=all", 500, 40, auth),
     listDealsRaw: () => listAll("/deals?status=all_not_deleted", 500, 40, auth),
     listPersonsRaw: () => listAll("/persons", 500, 40, auth),
+    /** The company's users, for owner id to name resolution in the reporting mirror. GET only. */
+    listUsersRaw: async () => ((await pipedriveGet("/users", auth))?.data ?? []) as Array<Record<string, unknown>>,
   };
 }
 

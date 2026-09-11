@@ -127,6 +127,13 @@
       "when": 1788820000000,
       "tag": "0017_connector_oauth_grants",
       "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "5",
+      "when": 1788830000000,
+      "tag": "0018_mirror_sync_runs",
+      "breakpoints": true
     }
   ]
 }

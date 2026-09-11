@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { ShieldCheck, AlertTriangle } from "lucide-react";
 import { GoogleApprovals } from "./GoogleApprovals";
 import { PipedriveConnection } from "./PipedriveConnection";
+import { ReportingMirror } from "./ReportingMirror";
 
 /**
  * Assigning staff access, without editing the database by hand.
@@ -292,6 +293,7 @@ export function AccessAdmin({ token }: { token: string }) {
       )}
       <GoogleApprovals token={token} />
       <PipedriveConnection token={token} />
+      <ReportingMirror token={token} />
     </div>
   );
 }

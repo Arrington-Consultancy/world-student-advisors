@@ -73,6 +73,10 @@ import { recordRoutingGap, isGap, recordReview, recordStaffNextAction, reviewGap
 import { REMITS, OUTCOMES, UNOWNED_OUTCOMES } from "./workforce/remit";
 import { getPipedriveStatus } from "./workforce/connectors/pipedrive";
 import { buildAuthoriseUrl, describePipedriveGrant, oauthConfig, signState, PIPEDRIVE_OAUTH_SCOPES } from "./crm/pipedriveOAuth";
+import { miSource } from "./workforce/mi/source";
+import { buildDriveAuthoriseUrl, describeDriveMirrorGrant, driveOAuthConfig, signDriveState, DRIVE_MIRROR_SCOPE } from "./mirror/driveMirrorOAuth";
+import { mirrorConfigState, mirrorTokenSource, recentMirrorRuns, runMirrorSync } from "./mirror/sync";
+import { readMirror } from "./mirror/reader";
 import { getSharePointStatus } from "./workforce/connectors/sharepoint";
 import { getGoogleDriveStatus } from "./workforce/connectors/googleDrive";
 import { WORKER_CRM_SCOPE } from "./workforce/crmScope";
@@ -81,7 +85,6 @@ import { connectorScopeGrants } from "./workforce/connectorScope";
 import { CONTROLLED_BASELINE, LAST_RECONCILED, ROUTING_MODEL_VERSION } from "./workforce/provenance";
 import { resolveStaffAccessProfile } from "./access/identity";
 import { resolveInformationQuestion } from "./workforce/mi/resolve";
-import { liveMiReader, liveMiReaderConfigured } from "./workforce/mi/liveReader";
 import { WORKER_FUNCTIONAL_SCOPE } from "./access/workerScope";
 import {
   MAY_INTAKE_RECORDS, MAY_INTAKE_PROVENANCE,
@@ -1229,6 +1232,53 @@ export const appRouter = router({
         return { permitted: true as const, configured: true as const, url: buildAuthoriseUrl(cfg, state), scopes: [...PIPEDRIVE_OAUTH_SCOPES] };
       }),
 
+    /**
+     * The WSA AI Reporting Mirror: Google Drive grant (drive.file only),
+     * sync state and a manual run. access_admin only. No token or record
+     * content is ever returned.
+     */
+    driveMirrorOAuthStart: publicProcedure
+      .input(z.object({ token: z.string() }))
+      .mutation(async ({ input }) => {
+        const admin = await requireAccessAdmin(input.token);
+        if (!admin.allowed) return { permitted: false as const, reason: admin.reason };
+        const cfg = driveOAuthConfig();
+        if (!cfg) return { permitted: true as const, configured: false as const, reason: "GOOGLE_MIRROR_CLIENT_ID, GOOGLE_MIRROR_CLIENT_SECRET and the connector token key must all be set on the service first." };
+        const state = await signDriveState(admin.staffUserId, cfg.tokenKey);
+        return { permitted: true as const, configured: true as const, url: buildDriveAuthoriseUrl(cfg, state), scope: DRIVE_MIRROR_SCOPE };
+      }),
+
+    driveMirrorStatus: publicProcedure
+      .input(z.object({ token: z.string() }))
+      .query(async ({ input }) => {
+        const admin = await requireAccessAdmin(input.token);
+        if (!admin.allowed) return { permitted: false as const, reason: admin.reason };
+        const [grant, config, runs] = await Promise.all([describeDriveMirrorGrant(), mirrorConfigState(), recentMirrorRuns(8)]);
+        let mirror: { status: string; detail: string; ageMinutes: number | null; lastSuccessfulSyncAt: string | null; counts: { leads: number; deals: number; persons: number } | null; coverage: { from: string | null; to: string } | null } | null = null;
+        if (grant.status === "operational") {
+          try {
+            const m = await readMirror();
+            mirror = { status: m.status, detail: m.detail, ageMinutes: m.ageMinutes, lastSuccessfulSyncAt: m.manifest?.lastSuccessfulSyncAt ?? null, counts: m.manifest?.recordCounts ?? null, coverage: m.manifest?.coveragePeriod ?? null };
+          } catch (error) {
+            mirror = { status: "error", detail: String((error as Error)?.message ?? error).slice(0, 200), ageMinutes: null, lastSuccessfulSyncAt: null, counts: null, coverage: null };
+          }
+        }
+        return {
+          permitted: true as const,
+          grant, config, tokenSource: mirrorTokenSource(), scope: DRIVE_MIRROR_SCOPE, mirror,
+          runs: runs.map(r => ({ id: r.id, startedAt: r.startedAt, finishedAt: r.finishedAt, status: r.status, reason: r.reason, trigger: r.trigger, leadCount: r.leadCount, dealCount: r.dealCount, personCount: r.personCount })),
+        };
+      }),
+
+    driveMirrorSyncNow: publicProcedure
+      .input(z.object({ token: z.string() }))
+      .mutation(async ({ input }) => {
+        const admin = await requireAccessAdmin(input.token);
+        if (!admin.allowed) return { permitted: false as const, reason: admin.reason };
+        const r = await runMirrorSync("manual");
+        return { permitted: true as const, ...r };
+      }),
+
     pipedriveOAuthStatus: publicProcedure
       .input(z.object({ token: z.string() }))
       .query(async ({ input }) => {
@@ -1251,7 +1301,7 @@ export const appRouter = router({
           const profile = staffUserId === null ? null : await resolveStaffAccessProfile(staffUserId).then(r => (r.resolved ? r.profile : null));
           const resolution = await resolveInformationQuestion(
             { requestText: input.request, staffUserId, authMethod: session.authMethod, profile },
-            { reader: liveMiReader, isReaderConfigured: liveMiReaderConfigured },
+            { source: miSource },
           );
           if (resolution.outcome !== "not_information") {
             result = {
@@ -1417,7 +1467,7 @@ export const appRouter = router({
             },
             {
               connector: "google_drive",
-              credential: { state: getGoogleDriveStatus(), variables: ["WORKFORCE_DRIVE_SERVICE_ACCOUNT_JSON", "WORKFORCE_DRIVE_ALLOWED_FOLDER_IDS"], note: "Not proposed while Drive ownership sits with an Arrington Consultancy account." },
+              credential: { state: getGoogleDriveStatus(), variables: ["WORKFORCE_DRIVE_SERVICE_ACCOUNT_JSON", "WORKFORCE_DRIVE_ALLOWED_FOLDER_IDS"], note: "Withdrawn from every worker (Matrix v0.3 section 4). The only Drive use is the WSA AI Reporting Mirror: one folder, written and read by the platform under Tom Arrington's approved exception of 11 September 2026, through a dedicated drive.file credential (GOOGLE_MIRROR_CLIENT_ID, GOOGLE_MIRROR_CLIENT_SECRET)." },
               permission: { workersGranted: driveGranted, of: workers.length, authority: "connectorScope.ts, Access Matrix v0.2 Google Drive column." },
             },
           ],

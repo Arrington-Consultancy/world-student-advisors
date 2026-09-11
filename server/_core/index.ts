@@ -10,6 +10,8 @@ import { serveStatic, setupVite } from "./vite";
 import { registerGoogleAuthRoutes } from "../portal-google-auth";
 import { registerPipedriveOAuthRoutes } from "../crm/pipedriveOAuthRoutes";
 import { warmPipedriveOAuth } from "../crm/pipedriveOAuth";
+import { registerDriveMirrorRoutes } from "../mirror/driveMirrorRoutes";
+import { startMirrorScheduler } from "../mirror/scheduler";
 
 function isPortAvailable(port: number): Promise<boolean> {
   return new Promise(resolve => {
@@ -48,6 +50,8 @@ async function startServer() {
   registerGoogleAuthRoutes(app);
   // WSA Pipedrive OAuth application: the consent redirect for the workforce's read-only CRM credential.
   registerPipedriveOAuthRoutes(app);
+  // WSA AI Reporting Mirror: the Google Drive consent redirect (drive.file only).
+  registerDriveMirrorRoutes(app);
   // Legacy Squarespace-slug 301s must run before the SPA/static handling
   // below, so a redirect always wins outright instead of ever falling
   // through to a 404 or chaining through another handler first.
@@ -72,6 +76,8 @@ async function startServer() {
   // Establish the WSA Pipedrive OAuth grant state so the connector gate,
   // which checks state synchronously, does not refuse the first request.
   void warmPipedriveOAuth().then(status => console.log(`[Pipedrive OAuth] Grant state at start: ${status}`));
+  // Reporting mirror: hourly, skips itself while unconfigured.
+  startMirrorScheduler();
 }
 
 startServer().catch(console.error);

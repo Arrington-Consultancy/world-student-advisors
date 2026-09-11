@@ -714,3 +714,34 @@ export const connectorOauthGrants = mysqlTable("connector_oauth_grants", {
   revokedAt: timestamp("revokedAt"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
+
+/**
+ * One row per run of the Pipedrive to Google Drive reporting mirror.
+ * Tom Arrington, 11 September 2026: Pipedrive stays the source of truth;
+ * the WSA service exports sanitised reporting files hourly into one
+ * dedicated Drive folder; a failed run never overwrites the last good data;
+ * the manifest must show last successful sync, coverage, fields, counts and
+ * complete / partial / failed with the reason. This table is the durable
+ * record of every attempt, including the ones that never reached Drive.
+ */
+export const mirrorSyncRuns = mysqlTable("mirror_sync_runs", {
+  id: int("id").autoincrement().primaryKey(),
+  startedAt: timestamp("startedAt").notNull(),
+  finishedAt: timestamp("finishedAt"),
+  status: mysqlEnum("status", ["running", "complete", "partial", "failed"]).notNull(),
+  /** Plain reason for a partial or failed run. Never a token or record content. */
+  reason: varchar("reason", { length: 400 }),
+  trigger: mysqlEnum("trigger", ["schedule", "manual", "acceptance"]).notNull(),
+  tokenSource: varchar("tokenSource", { length: 20 }),
+  leadCount: int("leadCount"),
+  dealCount: int("dealCount"),
+  personCount: int("personCount"),
+  coverageFrom: timestamp("coverageFrom"),
+  coverageTo: timestamp("coverageTo"),
+  folderId: varchar("folderId", { length: 100 }),
+  manifestFileId: varchar("manifestFileId", { length: 100 }),
+  /** JSON: per-file name, Drive id, md5 and row count as written. */
+  filesJson: text("filesJson"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+export type MirrorSyncRun = typeof mirrorSyncRuns.$inferSelect;
