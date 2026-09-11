@@ -50,8 +50,27 @@ export const MANAGED_SSO_APP_DISPLAY_NAME = "WSA Staff Portal Authentication";
 export const MANAGED_SHAREPOINT_APP_DISPLAY_NAME = "WSA Worker SharePoint Access";
 /** Microsoft Graph application permission id for Sites.Selected. */
 export const SITES_SELECTED_APP_ROLE_ID = "883ea226-0bf2-4a8f-9f9d-92c9162a727d";
-/** The two display names this automation may ever create or manage. */
-export const MANAGED_APP_DISPLAY_NAMES = Object.freeze([MANAGED_SSO_APP_DISPLAY_NAME, MANAGED_SHAREPOINT_APP_DISPLAY_NAME] as const);
+/**
+ * The temporary application that performs the one-off Sites.Selected site
+ * grant for the worker application, because the grant call itself needs
+ * Sites.FullControl.All and nothing WSA keeps may hold that permission.
+ *
+ * Tom Arrington, 11 September 2026, phone-only: create a temporary
+ * WSA-only grant application, consent to it by hand, use it server-side
+ * once, delete it immediately, prove only Sites.Selected remains on the
+ * worker application. It is created WITHOUT a secret; the secret is minted
+ * in memory by the run that uses it and dies with the application in the
+ * same run. It is never written to Railway or anywhere else.
+ */
+export const MANAGED_SITE_GRANT_APP_DISPLAY_NAME = "WSA Site Grant (temporary)";
+/** Microsoft Graph application permission id for Sites.FullControl.All. Verified at runtime against the roles claim before use. */
+export const SITES_FULLCONTROL_APP_ROLE_ID = "a82116e5-55eb-4c41-a434-62fe8a61c773";
+/** The three display names this automation may ever create or manage. */
+export const MANAGED_APP_DISPLAY_NAMES = Object.freeze([
+  MANAGED_SSO_APP_DISPLAY_NAME,
+  MANAGED_SHAREPOINT_APP_DISPLAY_NAME,
+  MANAGED_SITE_GRANT_APP_DISPLAY_NAME,
+] as const);
 /** The ONLY variable names this automation may write for worker SharePoint access. */
 export const SHAREPOINT_VARIABLE_NAMES = Object.freeze([
   "SHAREPOINT_GRAPH_TENANT_ID",
@@ -232,6 +251,85 @@ export function buildSharePointApplicationCreatePayload(): Record<string, unknow
       },
     ],
   };
+}
+
+/**
+ * The temporary grant application: single tenant, no sign-in surface, and
+ * exactly one application permission, Sites.FullControl.All. It exists to
+ * make one POST and is deleted by the run that makes it.
+ */
+export function buildSiteGrantApplicationCreatePayload(): Record<string, unknown> {
+  return {
+    displayName: MANAGED_SITE_GRANT_APP_DISPLAY_NAME,
+    signInAudience: "AzureADMyOrg",
+    notes: "Temporary. Exists only to grant WSA Worker SharePoint Access read on the WSA site, then is deleted by the automation in the same run.",
+    requiredResourceAccess: [
+      {
+        resourceAppId: GRAPH_RESOURCE_APP_ID,
+        resourceAccess: [{ id: SITES_FULLCONTROL_APP_ROLE_ID, type: "Role" }],
+      },
+    ],
+  };
+}
+
+/** The exact site permission the worker application receives: read, and nothing else. */
+export function buildSitePermissionGrantBody(workerAppId: string): Record<string, unknown> {
+  return {
+    roles: ["read"],
+    grantedToIdentities: [{ application: { id: workerAppId, displayName: MANAGED_SHAREPOINT_APP_DISPLAY_NAME } }],
+  };
+}
+
+export interface SitePermissionEntry {
+  id: string;
+  roles?: string[];
+  grantedToIdentities?: Array<{ application?: { id?: string; displayName?: string } }>;
+  grantedToIdentitiesV2?: Array<{ application?: { id?: string; displayName?: string } }>;
+}
+
+/**
+ * Whether the site's permission list holds exactly one entry for the
+ * worker application and that entry is read-only. Anything wider than read
+ * is a failure, not a partial success.
+ */
+export function evaluateSiteGrant(
+  permissions: readonly SitePermissionEntry[],
+  workerAppId: string,
+): { ok: true; permissionId: string } | { ok: false; reason: string } {
+  const forWorker = permissions.filter(p =>
+    (p.grantedToIdentitiesV2 ?? p.grantedToIdentities ?? []).some(g => g.application?.id === workerAppId),
+  );
+  if (forWorker.length === 0) return { ok: false, reason: "no permission entry for the worker application on the site" };
+  if (forWorker.length > 1) return { ok: false, reason: `${forWorker.length} permission entries for the worker application; expected exactly one` };
+  const roles = [...(forWorker[0].roles ?? [])].sort();
+  if (roles.length !== 1 || roles[0] !== "read") {
+    return { ok: false, reason: `worker application holds roles [${roles.join(", ")}] on the site; only [read] is approved` };
+  }
+  return { ok: true, permissionId: forWorker[0].id };
+}
+
+/** The roles claim a token must carry, exactly, for the run to proceed. */
+export function rolesClaimIsExactly(accessToken: string, expected: readonly string[]): { ok: boolean; held: string[] } {
+  const parts = accessToken.split(".");
+  if (parts.length < 2) return { ok: false, held: [] };
+  let payload: { roles?: unknown };
+  try {
+    payload = JSON.parse(Buffer.from(parts[1], "base64url").toString("utf8"));
+  } catch {
+    return { ok: false, held: [] };
+  }
+  const held = Array.isArray(payload.roles) ? (payload.roles as string[]).slice().sort() : [];
+  const want = [...expected].sort();
+  return { ok: held.length === want.length && held.every((r, i) => r === want[i]), held };
+}
+
+/** The worker application must declare Sites.Selected on Microsoft Graph and nothing else, anywhere. */
+export function declaresOnlySitesSelected(
+  requiredResourceAccess: ReadonlyArray<{ resourceAppId: string; resourceAccess: ReadonlyArray<{ id: string; type: string }> }> | undefined,
+): { ok: boolean; declared: string[] } {
+  const declared = (requiredResourceAccess ?? []).flatMap(r => r.resourceAccess.map(a => `${r.resourceAppId}:${a.type}:${a.id}`));
+  const only = `${GRAPH_RESOURCE_APP_ID}:Role:${SITES_SELECTED_APP_ROLE_ID}`;
+  return { ok: declared.length === 1 && declared[0] === only, declared };
 }
 
 /** Creation payload for the managed app: single tenant, exact redirect, OIDC scopes only. */

@@ -251,3 +251,101 @@ describe("durable audit gate", () => {
     expect(() => buildAuditEvent({ ...base, targetResource: "app prefix 3cd481de…" })).not.toThrow();
   });
 });
+
+import {
+  GRAPH_RESOURCE_APP_ID,
+  MANAGED_SHAREPOINT_APP_DISPLAY_NAME,
+  SITES_SELECTED_APP_ROLE_ID,
+  MANAGED_SITE_GRANT_APP_DISPLAY_NAME,
+  SITES_FULLCONTROL_APP_ROLE_ID,
+  buildSiteGrantApplicationCreatePayload,
+  buildSitePermissionGrantBody,
+  declaresOnlySitesSelected,
+  evaluateSiteGrant,
+  rolesClaimIsExactly,
+} from "./automation";
+
+/**
+ * The temporary grant application. Tom Arrington, 11 September 2026: it
+ * exists to make one call and is deleted by the run that makes it. These
+ * tests pin what it may declare, what it may grant, and what counts as
+ * proof afterwards.
+ */
+describe("temporary site-grant application", () => {
+  it("declares Sites.FullControl.All on Microsoft Graph and nothing else, with no sign-in surface", () => {
+    const p = buildSiteGrantApplicationCreatePayload() as { displayName: string; signInAudience: string; web?: unknown; requiredResourceAccess: Array<{ resourceAppId: string; resourceAccess: Array<{ id: string; type: string }> }> };
+    expect(p.displayName).toBe(MANAGED_SITE_GRANT_APP_DISPLAY_NAME);
+    expect(p.signInAudience).toBe("AzureADMyOrg");
+    expect(p.web).toBeUndefined();
+    expect(p.requiredResourceAccess).toHaveLength(1);
+    expect(p.requiredResourceAccess[0].resourceAppId).toBe(GRAPH_RESOURCE_APP_ID);
+    expect(p.requiredResourceAccess[0].resourceAccess).toEqual([{ id: SITES_FULLCONTROL_APP_ROLE_ID, type: "Role" }]);
+  });
+
+  it("is a managed name, so selection accepts it, and an unmanaged name is still refused", () => {
+    expect(() => selectManagedApplication([], undefined, MANAGED_SITE_GRANT_APP_DISPLAY_NAME)).not.toThrow();
+    expect(() => selectManagedApplication([], undefined, "WSA Site Grant" as never)).toThrow(AutomationAuthorityError);
+  });
+
+  it("grants read only, to the worker application only", () => {
+    const body = buildSitePermissionGrantBody("app-1") as { roles: string[]; grantedToIdentities: Array<{ application: { id: string; displayName: string } }> };
+    expect(body.roles).toEqual(["read"]);
+    expect(body.grantedToIdentities).toHaveLength(1);
+    expect(body.grantedToIdentities[0].application.id).toBe("app-1");
+    expect(body.grantedToIdentities[0].application.displayName).toBe(MANAGED_SHAREPOINT_APP_DISPLAY_NAME);
+  });
+});
+
+describe("site grant verification", () => {
+  const entry = (id: string, appId: string, roles: string[]) => ({ id, roles, grantedToIdentitiesV2: [{ application: { id: appId } }] });
+
+  it("passes only for exactly one read-only entry for the worker", () => {
+    expect(evaluateSiteGrant([entry("p1", "worker", ["read"]), entry("p2", "someone-else", ["write"])], "worker")).toEqual({ ok: true, permissionId: "p1" });
+  });
+  it("fails when the worker has no entry", () => {
+    expect(evaluateSiteGrant([entry("p2", "someone-else", ["read"])], "worker").ok).toBe(false);
+  });
+  it("fails when the worker's entry is wider than read", () => {
+    const r = evaluateSiteGrant([entry("p1", "worker", ["read", "write"])], "worker");
+    expect(r.ok).toBe(false);
+    expect((r as { reason: string }).reason).toContain("only [read] is approved");
+  });
+  it("fails when the worker has two entries, even if both are read", () => {
+    expect(evaluateSiteGrant([entry("p1", "worker", ["read"]), entry("p2", "worker", ["read"])], "worker").ok).toBe(false);
+  });
+  it("reads the older grantedToIdentities shape too", () => {
+    expect(evaluateSiteGrant([{ id: "p1", roles: ["read"], grantedToIdentities: [{ application: { id: "worker" } }] }], "worker").ok).toBe(true);
+  });
+});
+
+describe("token roles claim must be exact", () => {
+  const token = (roles: unknown) => `h.${Buffer.from(JSON.stringify({ roles })).toString("base64url")}.s`;
+  it("accepts exactly the expected set regardless of order", () => {
+    expect(rolesClaimIsExactly(token(["Sites.FullControl.All"]), ["Sites.FullControl.All"]).ok).toBe(true);
+  });
+  it("rejects a superset: consent to more than the declared permission stops the run", () => {
+    const r = rolesClaimIsExactly(token(["Sites.FullControl.All", "Directory.Read.All"]), ["Sites.FullControl.All"]);
+    expect(r.ok).toBe(false);
+    expect(r.held).toContain("Directory.Read.All");
+  });
+  it("rejects an empty claim: consent not yet granted", () => {
+    expect(rolesClaimIsExactly(token(undefined), ["Sites.FullControl.All"]).ok).toBe(false);
+  });
+  it("rejects garbage", () => {
+    expect(rolesClaimIsExactly("not-a-jwt", ["x"]).ok).toBe(false);
+  });
+});
+
+describe("worker application must still declare only Sites.Selected afterwards", () => {
+  it("passes for exactly the one Graph role", () => {
+    expect(declaresOnlySitesSelected([{ resourceAppId: GRAPH_RESOURCE_APP_ID, resourceAccess: [{ id: SITES_SELECTED_APP_ROLE_ID, type: "Role" }] }]).ok).toBe(true);
+  });
+  it("fails if FullControl was ever added to the worker application", () => {
+    expect(declaresOnlySitesSelected([{ resourceAppId: GRAPH_RESOURCE_APP_ID, resourceAccess: [{ id: SITES_SELECTED_APP_ROLE_ID, type: "Role" }, { id: SITES_FULLCONTROL_APP_ROLE_ID, type: "Role" }] }]).ok).toBe(false);
+  });
+  it("fails if a delegated scope or another resource appears", () => {
+    expect(declaresOnlySitesSelected([{ resourceAppId: GRAPH_RESOURCE_APP_ID, resourceAccess: [{ id: SITES_SELECTED_APP_ROLE_ID, type: "Scope" }] }]).ok).toBe(false);
+    expect(declaresOnlySitesSelected([]).ok).toBe(false);
+    expect(declaresOnlySitesSelected(undefined).ok).toBe(false);
+  });
+});

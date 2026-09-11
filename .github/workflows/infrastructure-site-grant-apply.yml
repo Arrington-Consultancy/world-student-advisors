@@ -1,0 +1,64 @@
+name: WSA Infrastructure Automation - apply site grant and delete temporary application
+
+# Manual-only. Mints an in-memory secret for the temporary grant application, grants 'WSA Worker SharePoint Access' READ on the WSA site, verifies, tests the worker credential inside and outside the site, then DELETES and purges the temporary application. Runs inside the Railway service so the worker credential and site id are available for the tests.
+# Authority boundaries are enforced in server/infrastructure/automation.ts.
+# Microsoft limits the identity to owned applications (Application.ReadWrite.OwnedBy).
+on:
+  workflow_dispatch: {}
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Refuse to run from anything but main
+        if: github.ref != 'refs/heads/main'
+        run: |
+          echo "This controlled workflow runs only from main (the federated credential is pinned to it)."
+          exit 1
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Install Railway CLI
+        run: npm install -g @railway/cli
+      - name: Discover the MySQL public-URL variable NAME (key only, value never printed)
+        id: discover
+        env:
+          RAILWAY_TOKEN: ${{ secrets.githubactionsprod }}
+        run: |
+          KEYS=$(railway variables --service "MySQL" --environment "production" --json | jq -r 'keys[]')
+          PUBLIC_KEY=$(echo "$KEYS" | grep -i -E '^(MYSQL_PUBLIC_URL|DATABASE_PUBLIC_URL)$' | head -n1)
+          if [ -z "$PUBLIC_KEY" ]; then echo "No public-URL-shaped variable found on MySQL. Stopping."; exit 1; fi
+          echo "public_key=$PUBLIC_KEY" >> "$GITHUB_OUTPUT"
+      - name: Set a temporary audit database URL reference on the app service
+        env:
+          RAILWAY_TOKEN: ${{ secrets.githubactionsprod }}
+          PUBLIC_KEY: ${{ steps.discover.outputs.public_key }}
+        run: |
+          REF=$(printf '\044{{%s.%s}}' "MySQL" "$PUBLIC_KEY")
+          railway variables --service "world-student-advisors" --environment "production" \
+            --set "INFRA_AUDIT_DATABASE_URL=${REF}" --skip-deploys
+      - name: Run the flow
+        env:
+          RAILWAY_TOKEN: ${{ secrets.githubactionsprod }}
+          WSA_INFRA_TENANT_ID: ${{ vars.WSA_INFRA_TENANT_ID || secrets.WSA_INFRA_TENANT_ID || 'c38df7da-1bbc-4132-9f64-4b5f50517249' }}
+          WSA_INFRA_CLIENT_ID: ${{ vars.WSA_INFRA_CLIENT_ID || secrets.WSA_INFRA_CLIENT_ID || 'fba4d0d9-c8e0-48d5-b81f-d1931869656e' }}
+          GITHUB_RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          railway run --service "world-student-advisors" --environment "production" -- \
+            sh -c 'DATABASE_URL="$INFRA_AUDIT_DATABASE_URL" pnpm exec tsx scripts/infra/apply-site-grant.ts'
+      - name: Remove the temporary audit database URL variable
+        if: always()
+        env:
+          RAILWAY_TOKEN: ${{ secrets.githubactionsprod }}
+        run: |
+          railway variables --service "world-student-advisors" --environment "production" \
+            --set "INFRA_AUDIT_DATABASE_URL=" --skip-deploys
