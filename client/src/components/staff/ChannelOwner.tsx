@@ -45,15 +45,15 @@ export function ChannelOwner({ token }: { token: string }) {
       <div className="min-w-0">
         <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
           <h3 className="font-semibold text-wsa-navy">{owner.canonicalName}</h3>
-          <span className="text-xs text-gray-500">{owner.roleTitle}</span>
+          <span className="text-sm text-gray-500">{owner.roleTitle}</span>
           {!owner.canOpenForLiveExecution && (
-            <span className="rounded-full border border-gray-200 bg-gray-50 px-2 py-0.5 text-xs text-gray-600">
+            <span className="rounded-full border border-gray-200 bg-gray-50 px-2 py-0.5 text-sm text-gray-600">
               In design, not yet running
             </span>
           )}
         </div>
-        <p className="mt-1 text-sm text-gray-700">{owner.personality.summary}</p>
-        <p className="mt-1 text-xs text-gray-500">
+        <p className="mt-1 text-base text-gray-700">{owner.personality.summary}</p>
+        <p className="mt-1 text-sm text-gray-500">
           Owns WSA's organic social once approved. Nobody is working these accounts on WSA's behalf today.
         </p>
       </div>

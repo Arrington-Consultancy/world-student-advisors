@@ -27,8 +27,8 @@ export function SocialMediaPanel({ token }: { token: string }) {
   const brain = trpc.workforce.socialBrain.useQuery({ token });
   const workers = trpc.workforce.listWorkers.useQuery({ token });
 
-  if (brain.isLoading || workers.isLoading) return <p className="text-sm text-gray-500">Loading…</p>;
-  if (brain.error || workers.error) return <p className="text-sm text-red-600">Could not load the social area.</p>;
+  if (brain.isLoading || workers.isLoading) return <p className="text-base text-gray-500">Loading…</p>;
+  if (brain.error || workers.error) return <p className="text-base text-red-600">Could not load the social area.</p>;
   if (!brain.data || !workers.data) return null;
 
   const owner: Worker | undefined = workers.data.workers.find((w: Worker) => w.id === brain.data.ownerWorkerId);
@@ -47,16 +47,16 @@ export function SocialMediaPanel({ token }: { token: string }) {
             <div className="min-w-0">
               <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
                 <h2 className="text-xl font-semibold text-wsa-navy">{owner.canonicalName}</h2>
-                <span className="text-sm text-gray-500">{owner.roleTitle}</span>
-                <span className="rounded-full border border-gray-200 bg-gray-50 px-2 py-0.5 text-xs text-gray-600">
+                <span className="text-base text-gray-500">{owner.roleTitle}</span>
+                <span className="rounded-full border border-gray-200 bg-gray-50 px-2 py-0.5 text-sm text-gray-600">
                   Not approved, no publishing authority
                 </span>
               </div>
-              <p className="mt-2 text-sm text-gray-700">{owner.personality.summary}</p>
-              <p className="mt-2 text-sm text-gray-600">
+              <p className="mt-2 text-base text-gray-700">{owner.personality.summary}</p>
+              <p className="mt-2 text-base text-gray-600">
                 <span className="font-medium">For:</span> {owner.personality.whatFor}
               </p>
-              <p className="mt-1 text-xs text-gray-500">
+              <p className="mt-1 text-sm text-gray-500">
                 <span className="font-medium">Not for:</span> {owner.personality.whatNotFor}
               </p>
             </div>
@@ -64,10 +64,10 @@ export function SocialMediaPanel({ token }: { token: string }) {
 
           {owner.materialBlockers.length > 0 && (
             <div className="mt-4 border-t border-wsa-navy/5 pt-3">
-              <p className="mb-1 text-xs font-medium text-gray-700">Before she can act:</p>
+              <p className="mb-1 text-sm font-medium text-gray-700">Before she can act:</p>
               <ul className="space-y-0.5">
                 {owner.materialBlockers.map((b: string, i: number) => (
-                  <li key={i} className="text-xs text-gray-500">{b}</li>
+                  <li key={i} className="text-sm text-gray-500">{b}</li>
                 ))}
               </ul>
             </div>
@@ -81,8 +81,8 @@ export function SocialMediaPanel({ token }: { token: string }) {
           {brain.data.remembers.map((c: Remembered) => (
             <div key={c.question} className="rounded-lg border border-wsa-navy/10 bg-white p-4">
               <h4 className="font-semibold text-wsa-navy">{c.question}</h4>
-              <p className="mt-1 text-sm text-gray-600">{c.answer}</p>
-              <p className="mt-2 text-xs text-gray-400">{c.sources}</p>
+              <p className="mt-1 text-base text-gray-600">{c.answer}</p>
+              <p className="mt-2 text-sm text-gray-400">{c.sources}</p>
             </div>
           ))}
         </div>
@@ -90,13 +90,13 @@ export function SocialMediaPanel({ token }: { token: string }) {
 
       <div className="mb-4 flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
         <h3 className="text-lg font-semibold text-wsa-navy">The Social Brain</h3>
-        <span className="text-xs text-gray-400">{brain.data.source}</span>
+        <span className="text-sm text-gray-400">{brain.data.source}</span>
       </div>
 
       {!brain.data.populated && (
-        <div className="mb-5 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
+        <div className="mb-5 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-base text-amber-900">
           <p>{brain.data.emptyNote}</p>
-          <p className="mt-1 text-xs text-amber-800">{brain.data.toPopulate}</p>
+          <p className="mt-1 text-sm text-amber-800">{brain.data.toPopulate}</p>
         </div>
       )}
 
@@ -105,14 +105,14 @@ export function SocialMediaPanel({ token }: { token: string }) {
           <div key={r.id} className="rounded-lg border border-wsa-navy/10 bg-white p-4">
             <div className="mb-1 flex items-baseline justify-between gap-3">
               <h4 className="font-semibold text-wsa-navy">
-                <span className="mr-1.5 text-xs font-normal text-gray-400">§{r.section}</span>
+                <span className="mr-1.5 text-sm font-normal text-gray-400">§{r.section}</span>
                 {r.name}
               </h4>
-              <span className="shrink-0 text-xs text-gray-400">
+              <span className="shrink-0 text-sm text-gray-400">
                 {r.recorded === 0 ? "nothing recorded" : `${r.recorded} recorded`}
               </span>
             </div>
-            <p className="text-sm text-gray-600">{r.holds}</p>
+            <p className="text-base text-gray-600">{r.holds}</p>
           </div>
         ))}
       </div>
@@ -120,29 +120,29 @@ export function SocialMediaPanel({ token }: { token: string }) {
       <section className="mt-6 rounded-lg border border-wsa-navy/10 bg-white p-4">
         <div className="mb-1 flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
           <h4 className="font-semibold text-wsa-navy">
-            <span className="mr-1.5 text-xs font-normal text-gray-400">{brain.data.hookFormatLibrary.section}</span>
+            <span className="mr-1.5 text-sm font-normal text-gray-400">{brain.data.hookFormatLibrary.section}</span>
             {brain.data.hookFormatLibrary.name}
           </h4>
-          <span className="shrink-0 text-xs text-gray-400">nothing recorded</span>
+          <span className="shrink-0 text-sm text-gray-400">nothing recorded</span>
         </div>
-        <p className="text-sm text-gray-600">{brain.data.hookFormatLibrary.holds}</p>
-        <p className="mt-2 text-xs text-gray-500">{brain.data.hookFormatLibrary.emptyReason}</p>
+        <p className="text-base text-gray-600">{brain.data.hookFormatLibrary.holds}</p>
+        <p className="mt-2 text-sm text-gray-500">{brain.data.hookFormatLibrary.emptyReason}</p>
       </section>
 
       <section className="mt-6 rounded-lg border border-wsa-navy/10 bg-white p-4">
         <h4 className="font-semibold text-wsa-navy">Connecting an account</h4>
-        <p className="mt-1 text-sm text-gray-600">{brain.data.connection.note}</p>
+        <p className="mt-1 text-base text-gray-600">{brain.data.connection.note}</p>
         <ol className="mt-3 space-y-1.5">
           {brain.data.connection.flow.map((step: string, i: number) => (
-            <li key={i} className="flex gap-2.5 text-sm text-gray-700">
-              <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-wsa-navy/5 text-xs font-medium text-wsa-navy">
+            <li key={i} className="flex gap-2.5 text-base text-gray-700">
+              <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-wsa-navy/5 text-sm font-medium text-wsa-navy">
                 {i + 1}
               </span>
               <span className="leading-relaxed">{step}</span>
             </li>
           ))}
         </ol>
-        <p className="mt-3 border-t border-wsa-navy/5 pt-2.5 text-xs text-gray-500">
+        <p className="mt-3 border-t border-wsa-navy/5 pt-2.5 text-sm text-gray-500">
           <span className="font-medium">Never asked for or stored:</span>{" "}
           {brain.data.connection.neverCollected.join(", ").toLowerCase()}.
         </p>
@@ -150,32 +150,32 @@ export function SocialMediaPanel({ token }: { token: string }) {
 
       <section className="mt-6 rounded-lg border border-wsa-navy/10 bg-gray-50 p-4">
         <h4 className="font-semibold text-wsa-navy">The social accounts</h4>
-        <p className="mt-1 text-sm text-gray-600">{brain.data.accounts.statement}</p>
-        <p className="mt-2 text-xs text-gray-500">
+        <p className="mt-1 text-base text-gray-600">{brain.data.accounts.statement}</p>
+        <p className="mt-2 text-sm text-gray-500">
           <span className="font-medium">Open decision:</span> {brain.data.accounts.openDecision}
         </p>
-        <p className="mt-1 text-xs text-gray-500">
+        <p className="mt-1 text-sm text-gray-500">
           This is a continuity question, not a connection one. It does not block:{" "}
           {brain.data.accounts.openDecisionDoesNotBlock.toLowerCase()}
         </p>
       </section>
 
-      <p className="mt-5 flex items-start gap-2 text-xs text-gray-400">
+      <p className="mt-5 flex items-start gap-2 text-sm text-gray-400">
         <Database className="mt-0.5 h-3 w-3 shrink-0" aria-hidden />
         {brain.data.authorityNote}
       </p>
 
       {brain.data.unreconciled.length > 0 && (
         <section className="mt-6 rounded-lg border border-amber-200 bg-amber-50/60 p-4">
-          <h4 className="text-sm font-semibold text-amber-900">
+          <h4 className="text-base font-semibold text-amber-900">
             Where the Control Pack and her brief do not agree
           </h4>
-          <p className="mt-1 text-xs text-amber-800">
+          <p className="mt-1 text-sm text-amber-800">
             Two controlled records, two lists. Reconciling them is a records decision, not something this page settles.
           </p>
           <ul className="mt-2 space-y-1.5">
             {brain.data.unreconciled.map((u: Unreconciled) => (
-              <li key={u.brief + u.pack} className="text-xs text-amber-900">
+              <li key={u.brief + u.pack} className="text-sm text-amber-900">
                 <span className="font-medium">{u.brief}</span> vs <span className="font-medium">{u.pack}</span>
                 <span className="text-amber-800">. {u.note}</span>
               </li>
@@ -186,12 +186,12 @@ export function SocialMediaPanel({ token }: { token: string }) {
 
       <section className="mt-8 border-t border-wsa-navy/10 pt-6">
         <h3 className="mb-1 text-lg font-semibold text-wsa-navy">Not hers to answer</h3>
-        <p className="mb-2 text-xs text-gray-500">
+        <p className="mb-2 text-sm text-gray-500">
           <span className="font-medium">On paid:</span> {brain.data.paidBoundary.mayRecord} She may reference{" "}
           {brain.data.paidBoundary.owner}'s evidence where permissions allow, and never becomes the source of truth
           for it.
         </p>
-        <p className="mb-3 text-sm text-gray-600">
+        <p className="mb-3 text-base text-gray-600">
           Ask her these and she will point you at the right person rather than guess.
         </p>
         <ul className="space-y-3">
@@ -199,11 +199,11 @@ export function SocialMediaPanel({ token }: { token: string }) {
             <li key={e.subject} className="rounded-lg border border-wsa-navy/10 bg-gray-50 p-4">
               <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
                 <span className="font-medium text-wsa-navy">{e.subject}</span>
-                <span className="rounded-full border border-gray-200 bg-white px-2 py-0.5 text-xs text-gray-600">
+                <span className="rounded-full border border-gray-200 bg-white px-2 py-0.5 text-sm text-gray-600">
                   {e.owner}
                 </span>
               </div>
-              <p className="mt-1 text-sm text-gray-600">{e.why}</p>
+              <p className="mt-1 text-base text-gray-600">{e.why}</p>
             </li>
           ))}
         </ul>

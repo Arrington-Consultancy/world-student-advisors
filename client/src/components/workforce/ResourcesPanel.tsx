@@ -19,17 +19,17 @@ function Awaiting({ suppliedBy, awaiting, openQuestions }: {
 }) {
   return (
     <div className="rounded-lg border border-amber-200 bg-amber-50 p-4">
-      <p className="flex items-center gap-2 text-sm font-medium text-amber-900">
+      <p className="flex items-center gap-2 text-base font-medium text-amber-900">
         <Inbox className="h-4 w-4 shrink-0" aria-hidden />
         Nothing to show yet {suppliedBy ? `, to be supplied by ${suppliedBy}` : ", supplier not yet named"}
       </p>
-      <p className="mt-2 text-sm leading-relaxed text-amber-900">{awaiting}</p>
+      <p className="mt-2 text-base leading-relaxed text-amber-900">{awaiting}</p>
       {openQuestions.length > 0 && (
         <>
-          <p className="mt-3 text-xs font-medium uppercase tracking-wide text-amber-800">Still open</p>
+          <p className="mt-3 text-sm font-medium uppercase tracking-wide text-amber-800">Still open</p>
           <ul className="mt-1 space-y-1">
             {openQuestions.map((q, i) => (
-              <li key={i} className="text-sm leading-relaxed text-amber-900">• {q}</li>
+              <li key={i} className="text-base leading-relaxed text-amber-900">• {q}</li>
             ))}
           </ul>
         </>
@@ -50,7 +50,7 @@ function Area({ icon, title, blurb, children }: {
         {icon}
         {title}
       </h3>
-      <p className="mb-4 mt-1 text-sm leading-relaxed text-gray-600">{blurb}</p>
+      <p className="mb-4 mt-1 text-base leading-relaxed text-gray-600">{blurb}</p>
       {children}
     </section>
   );
@@ -59,12 +59,12 @@ function Area({ icon, title, blurb, children }: {
 export function ResourcesPanel({ token }: { token: string }) {
   const query = trpc.workforce.resources.useQuery({ token }, { enabled: !!token });
 
-  if (query.isLoading) return <p className="text-sm text-gray-500">Loading…</p>;
-  if (!query.data) return <p className="text-sm text-gray-500">Resources could not be loaded.</p>;
+  if (query.isLoading) return <p className="text-base text-gray-500">Loading…</p>;
+  if (!query.data) return <p className="text-base text-gray-500">Resources could not be loaded.</p>;
 
   if (!query.data.permitted) {
     return (
-      <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+      <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-base text-amber-900">
         {query.data.reason}
       </div>
     );
@@ -94,7 +94,7 @@ export function ResourcesPanel({ token }: { token: string }) {
           : null}
         <div className="mt-4 flex items-start gap-2 rounded-lg border border-wsa-navy/10 bg-wsa-stone/40 px-3 py-2.5">
           <ShieldAlert className="mt-0.5 h-4 w-4 shrink-0 text-wsa-navy" aria-hidden />
-          <p className="text-xs leading-relaxed text-gray-700">
+          <p className="text-sm leading-relaxed text-gray-700">
             Links only. This area must never hold {partners.mustNotHold.join(", ")}. There is no field
             for any of them, so they cannot be added here later.
           </p>
@@ -112,13 +112,13 @@ export function ResourcesPanel({ token }: { token: string }) {
       </Area>
 
       <section className="rounded-xl border border-wsa-navy/10 bg-wsa-stone/40 p-5">
-        <h3 className="text-sm font-semibold text-wsa-navy">Requested and deliberately not built yet</h3>
-        <p className="mb-3 mt-1 text-xs leading-relaxed text-gray-600">
+        <h3 className="text-base font-semibold text-wsa-navy">Requested and deliberately not built yet</h3>
+        <p className="mb-3 mt-1 text-sm leading-relaxed text-gray-600">
           Recorded here so these read as decisions rather than omissions.
         </p>
         <ul className="space-y-1.5">
           {deferred.map((item: string, i: number) => (
-            <li key={i} className="text-sm leading-relaxed text-gray-700">• {item}</li>
+            <li key={i} className="text-base leading-relaxed text-gray-700">• {item}</li>
           ))}
         </ul>
       </section>

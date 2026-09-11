@@ -71,8 +71,8 @@ export function AccessBanner({ token }: { token: string }) {
       <div className="flex gap-3">
         <ShieldAlert className="mt-0.5 h-5 w-5 shrink-0 text-wsa-red" aria-hidden />
         <div>
-          <p className="text-sm font-semibold text-wsa-navy">{explanation.title}</p>
-          <p className="mt-1.5 text-sm leading-relaxed text-gray-700">{explanation.detail}</p>
+          <p className="text-base font-semibold text-wsa-navy">{explanation.title}</p>
+          <p className="mt-1.5 text-base leading-relaxed text-gray-700">{explanation.detail}</p>
         </div>
       </div>
     </div>

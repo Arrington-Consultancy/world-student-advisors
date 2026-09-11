@@ -76,6 +76,12 @@ import {
   MESSAGE_TEMPLATES, TRAINING_RESOURCES, TEMPLATES_PROVENANCE,
   DEFERRED_BY_STAFF_REQUEST,
 } from "./resources/controlledResources";
+import {
+  UNIVERSITY_PORTALS,
+  UNIVERSITY_PORTAL_PROVENANCE,
+  PORTAL_AREA_MUST_NOT_HOLD,
+  usablePortals,
+} from "./resources/universityPortals";
 import { buildCommunicationsView } from "./communications/access";
 import { runQualityCheck } from "./operating/qualityCheck";
 import {
@@ -1265,6 +1271,14 @@ export const appRouter = router({
             institutions: PARTNER_INSTITUTIONS,
             provenance: PARTNER_PROVENANCE,
             mustNotHold: PARTNER_AREA_MUST_NOT_HOLD,
+          },
+          // Only records that pass the link check are ever sent to a browser,
+          // so an unusable link is stopped on the server rather than rendered
+          // and clicked. Today the list is empty either way.
+          universityPortals: {
+            portals: usablePortals(UNIVERSITY_PORTALS),
+            provenance: UNIVERSITY_PORTAL_PROVENANCE,
+            mustNotHold: PORTAL_AREA_MUST_NOT_HOLD,
           },
           templates: {
             messageTemplates: MESSAGE_TEMPLATES,

@@ -1,5 +1,8 @@
 import { useState, useEffect, type FormEvent } from "react";
-import { Lock, LogOut, Eye, EyeOff } from "lucide-react";
+import {
+  Lock, LogOut, Eye, EyeOff, ArrowLeft,
+  MessageSquareText, GraduationCap, Users, Share2, Radio, FileCheck2, FolderOpen, ShieldCheck,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { trpc } from "@/lib/trpc";
@@ -12,6 +15,7 @@ import { AccessBanner } from "@/components/workforce/AccessBanner";
 import { AccessAdmin } from "@/components/workforce/AccessAdmin";
 import { StudentLookup } from "@/components/workforce/StudentLookup";
 import { ResourcesPanel } from "@/components/workforce/ResourcesPanel";
+import { UniversityPortalsPanel } from "@/components/workforce/UniversityPortalsPanel";
 
 const PENDING_PROVIDER_KEY = "wsa-staff-pending-provider";
 const STORAGE_KEY = "staff_portal_token";
@@ -492,88 +496,191 @@ export default function StaffPortal() {
  * actually reports — this component has no local notion of who is
  * "ready"; it only renders what workforce.listWorkers returns.
  */
-type StaffTab = "reception" | "students" | "social" | "channels" | "team" | "content" | "resources" | "access";
-
-const TABS: { id: StaffTab; label: string }[] = [
-  { id: "reception", label: "Reception" },
-  { id: "students", label: "Students" },
-  { id: "social", label: "Social media" },
-  { id: "channels", label: "Channels" },
-  { id: "team", label: "The AI team" },
-  { id: "content", label: "Content check" },
-  { id: "resources", label: "Resources" },
-  { id: "access", label: "Staff access" },
-];
+type StaffSection =
+  | "reception"
+  | "uniportals"
+  | "students"
+  | "social"
+  | "channels"
+  | "team"
+  | "content"
+  | "resources"
+  | "access";
 
 /**
- * The Staff Portal.
+ * The Staff Portal home, rebuilt on 11 September 2026.
  *
- * Reception is the front door and the landing tab, because that is how
- * staff are meant to use this: describe what you need, get pointed at
- * whoever owns it. Everything else is a place you go deliberately, so
- * everything else is a tab rather than another wall of boxes on the way
- * past.
+ * WHAT WAS WRONG. Eight sections sat in one row of 14px tabs. On a phone,
+ * which is where Eldah and Glenice actually opened this, that row ran off
+ * the screen, and the labels were single words with nothing to say what any
+ * of them did. Tom's words were "looks crap", "text is too small" and "not
+ * intuitive", and all three were fair.
+ *
+ * WHAT REPLACED IT. A home screen of large cards, each naming a section and
+ * saying in one line what it is for, and a section view with an obvious way
+ * back. It reads like an app launcher because that is the mental model
+ * staff already have, and because a card with a sentence on it answers
+ * "which one do I want" in a way a one-word tab never can.
+ *
+ * Sizes are deliberate rather than decorative. Body text is 16px, the
+ * minimum that is comfortable at arm's length and the size below which iOS
+ * zooms a form on focus. Every tap target is at least 48px high, which is
+ * the smallest reliably hittable with a thumb. Cards go one per row on a
+ * phone and three across on a desktop.
+ *
+ * Reception stays first because it is the front door: say what you need and
+ * be pointed at whoever owns it.
  */
+const SECTIONS: {
+  id: StaffSection;
+  label: string;
+  blurb: string;
+  icon: typeof MessageSquareText;
+}[] = [
+  {
+    id: "reception",
+    label: "Reception",
+    blurb: "Not sure who does what? Say what you need and get pointed at the right place.",
+    icon: MessageSquareText,
+  },
+  {
+    id: "uniportals",
+    label: "University portals",
+    blurb: "Every university application portal in one place, with the instructions for each.",
+    icon: GraduationCap,
+  },
+  {
+    id: "students",
+    label: "Find a student",
+    blurb: "Look up a student by phone, email or name across the CRM.",
+    icon: Users,
+  },
+  {
+    id: "social",
+    label: "Social media",
+    blurb: "Draft and check posts for the WSA channels.",
+    icon: Share2,
+  },
+  {
+    id: "channels",
+    label: "Channels",
+    blurb: "Who owns which channel, and what each one is for.",
+    icon: Radio,
+  },
+  {
+    id: "team",
+    label: "The AI team",
+    blurb: "Who each AI worker is, what they can do, and what they cannot.",
+    icon: FileCheck2,
+  },
+  {
+    id: "content",
+    label: "Content check",
+    blurb: "Run wording past the WSA writing standard before it goes out.",
+    icon: FileCheck2,
+  },
+  {
+    id: "resources",
+    label: "Resources",
+    blurb: "Intakes, partner institutions, templates and training.",
+    icon: FolderOpen,
+  },
+  {
+    id: "access",
+    label: "Staff access",
+    blurb: "Who can see what, and who approved it.",
+    icon: ShieldCheck,
+  },
+];
+
 function WorkforceHome({ token, onLogout }: { token: string; onLogout: () => void }) {
-  const [tab, setTab] = useState<StaffTab>("reception");
+  // null means the home screen. A section is somewhere you go deliberately,
+  // and coming back is one obvious control rather than hunting the tab you
+  // were on before.
+  const [section, setSection] = useState<StaffSection | null>(null);
+  const current = SECTIONS.find(s => s.id === section) ?? null;
 
   return (
-    <div className="min-h-screen bg-wsa-warm-white pt-32 pb-20 lg:pt-40 lg:pb-28">
+    <div className="min-h-screen bg-wsa-warm-white pt-28 pb-20 lg:pt-36 lg:pb-28">
       <main className="container max-w-5xl">
-        <div className="mb-6 flex items-start justify-between gap-6">
-          <div>
-            <p className="mb-1 text-xs font-medium uppercase tracking-[0.2em] text-wsa-red">Staff Portal</p>
-            <h1 className="text-3xl font-semibold leading-tight text-wsa-navy md:text-4xl">World Student Advisors</h1>
+        {/* Stacks below the sm breakpoint. Side by side, the title cannot
+            shrink below its longest word and the Sign out button is
+            shrink-0, so on a narrow phone the pair has no room to give. A
+            full-width button under the title avoids the question entirely
+            and is a bigger tap target, which is the point on mobile. */}
+        <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between sm:gap-6">
+          <div className="min-w-0">
+            <p className="mb-1.5 text-sm font-semibold uppercase tracking-[0.18em] text-wsa-red">
+              Staff Portal
+            </p>
+            <h1 className="text-3xl font-semibold leading-tight text-wsa-navy md:text-4xl">
+              World Student Advisors
+            </h1>
           </div>
           <Button
             variant="outline"
-            size="sm"
             onClick={onLogout}
-            className="shrink-0 border-wsa-navy/20 text-wsa-navy hover:border-wsa-red hover:text-wsa-red"
+            className="min-h-[48px] w-full shrink-0 border-wsa-navy/20 px-4 text-base text-wsa-navy hover:border-wsa-red hover:text-wsa-red sm:w-auto"
           >
-            <LogOut className="mr-1 h-4 w-4" /> Sign out
+            <LogOut className="mr-2 h-5 w-5" /> Sign out
           </Button>
         </div>
 
         <AccessBanner token={token} />
 
-        <nav className="mb-8 flex gap-1 border-b border-wsa-navy/10" aria-label="Staff Portal sections">
-          {TABS.map(t => (
+        {current === null ? (
+          <>
+            <h2 className="mb-5 mt-8 text-xl font-semibold text-wsa-navy">What do you need?</h2>
+            <ul className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              {SECTIONS.map(s => {
+                const Icon = s.icon;
+                return (
+                  <li key={s.id}>
+                    <button
+                      type="button"
+                      onClick={() => setSection(s.id)}
+                      className="flex h-full w-full flex-col items-start rounded-xl border border-wsa-navy/10 bg-white p-5 text-left transition-colors hover:border-wsa-red focus:border-wsa-red focus:outline-none focus:ring-2 focus:ring-wsa-red/20"
+                    >
+                      <span className="mb-3 flex h-12 w-12 items-center justify-center rounded-lg bg-wsa-navy/5 text-wsa-navy">
+                        <Icon className="h-6 w-6" aria-hidden />
+                      </span>
+                      <span className="text-lg font-semibold text-wsa-navy">{s.label}</span>
+                      <span className="mt-1.5 text-base leading-relaxed text-gray-600">{s.blurb}</span>
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
+          </>
+        ) : (
+          <>
             <button
-              key={t.id}
               type="button"
-              onClick={() => setTab(t.id)}
-              aria-current={tab === t.id ? "page" : undefined}
-              className={`-mb-px border-b-2 px-4 py-2.5 text-sm font-medium transition-colors ${
-                tab === t.id
-                  ? "border-wsa-red text-wsa-red"
-                  : "border-transparent text-gray-500 hover:text-wsa-navy"
-              }`}
+              onClick={() => setSection(null)}
+              className="mb-6 inline-flex min-h-[48px] items-center gap-2 text-base font-semibold text-wsa-navy transition-colors hover:text-wsa-red"
             >
-              {t.label}
+              <ArrowLeft className="h-5 w-5" aria-hidden />
+              All sections
             </button>
-          ))}
-        </nav>
 
-        {tab === "reception" && (
-          <div className="mx-auto max-w-2xl">
-            <div className="mb-7 text-center">
-              <h2 className="text-3xl font-semibold tracking-tight text-wsa-navy">How can we help?</h2>
-              <p className="mx-auto mt-2 max-w-lg text-sm leading-relaxed text-gray-600">
-                Say what you need. Reception finds who owns that kind of work and whether they can take it.
-              </p>
-            </div>
-            <Receptionist token={token} />
-          </div>
+            <h2 className="text-2xl font-semibold text-wsa-navy md:text-3xl">{current.label}</h2>
+            <p className="mb-7 mt-2 text-base leading-relaxed text-gray-600">{current.blurb}</p>
+
+            {section === "reception" && (
+              <div className="mx-auto max-w-2xl">
+                <Receptionist token={token} />
+              </div>
+            )}
+            {section === "uniportals" && <UniversityPortalsPanel token={token} />}
+            {section === "students" && <StudentLookup token={token} />}
+            {section === "social" && <SocialMediaPanel token={token} />}
+            {section === "channels" && <ChannelsPanel token={token} />}
+            {section === "team" && <TeamPanel token={token} />}
+            {section === "content" && <ContentCheckPanel token={token} />}
+            {section === "resources" && <ResourcesPanel token={token} />}
+            {section === "access" && <AccessAdmin token={token} />}
+          </>
         )}
-
-        {tab === "students" && <StudentLookup token={token} />}
-        {tab === "social" && <SocialMediaPanel token={token} />}
-        {tab === "channels" && <ChannelsPanel token={token} />}
-        {tab === "team" && <TeamPanel token={token} />}
-        {tab === "content" && <ContentCheckPanel token={token} />}
-        {tab === "resources" && <ResourcesPanel token={token} />}
-        {tab === "access" && <AccessAdmin token={token} />}
       </main>
     </div>
   );

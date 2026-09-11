@@ -52,7 +52,7 @@ export function GoogleApprovals({ token }: { token: string }) {
   return (
     <section className="mt-8 rounded-lg border border-wsa-navy/10 bg-white p-5">
       <h3 className="text-base font-semibold text-wsa-navy">Google sign-in approvals</h3>
-      <p className="mt-1 text-sm text-gray-600">
+      <p className="mt-1 text-base text-gray-600">
         Staff with a personal Google account can sign in only if their exact address is on this list.
         Revoking takes effect on their next click, not their next sign-in.
       </p>
@@ -64,7 +64,7 @@ export function GoogleApprovals({ token }: { token: string }) {
           value={email}
           onChange={e => setEmail(e.target.value)}
           placeholder="colleague@gmail.com"
-          className="flex-1 rounded-lg border border-wsa-navy/20 px-3 py-2 text-sm focus:border-wsa-red focus:outline-none"
+          className="flex-1 rounded-lg border border-wsa-navy/20 px-3 py-2 text-base focus:border-wsa-red focus:outline-none"
         />
         <input
           type="text"
@@ -73,30 +73,30 @@ export function GoogleApprovals({ token }: { token: string }) {
           value={reason}
           onChange={e => setReason(e.target.value)}
           placeholder="Why this person"
-          className="flex-1 rounded-lg border border-wsa-navy/20 px-3 py-2 text-sm focus:border-wsa-red focus:outline-none"
+          className="flex-1 rounded-lg border border-wsa-navy/20 px-3 py-2 text-base focus:border-wsa-red focus:outline-none"
         />
         <button
           type="submit"
           disabled={approve.isPending || !email.trim() || reason.trim().length < 5}
-          className="rounded-lg bg-wsa-red px-4 py-2 text-sm font-medium text-white transition hover:bg-wsa-red/90 disabled:opacity-40"
+          className="rounded-lg bg-wsa-red px-4 py-2 text-base font-medium text-white transition hover:bg-wsa-red/90 disabled:opacity-40"
         >
           {approve.isPending ? "Approving…" : "Approve"}
         </button>
       </form>
 
-      {message && <p className="mt-3 text-sm text-wsa-navy">{message}</p>}
+      {message && <p className="mt-3 text-base text-wsa-navy">{message}</p>}
 
       <ul className="mt-4 divide-y divide-wsa-navy/10">
         {live.length === 0 && revoked.length === 0 && (
-          <li className="py-3 text-sm text-gray-500">Nobody is approved yet. Google sign-in admits nobody until you add an address.</li>
+          <li className="py-3 text-base text-gray-500">Nobody is approved yet. Google sign-in admits nobody until you add an address.</li>
         )}
         {live.map(a => (
           <li key={a.email} className="flex flex-wrap items-center justify-between gap-2 py-3">
             <div className="flex items-start gap-2">
               <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600" aria-hidden />
               <div>
-                <p className="text-sm font-medium text-wsa-navy">{a.email}</p>
-                <p className="text-xs text-gray-500">{a.reason}</p>
+                <p className="text-base font-medium text-wsa-navy">{a.email}</p>
+                <p className="text-sm text-gray-500">{a.reason}</p>
               </div>
             </div>
             <button
@@ -106,7 +106,7 @@ export function GoogleApprovals({ token }: { token: string }) {
                 const why = window.prompt(`Why is access for ${a.email} being withdrawn?`);
                 if (why && why.trim().length >= 5) revoke.mutate({ token, email: a.email, reason: why.trim() });
               }}
-              className="rounded-lg border border-wsa-navy/20 px-3 py-1.5 text-xs text-wsa-navy transition hover:bg-wsa-stone/50 disabled:opacity-40"
+              className="rounded-lg border border-wsa-navy/20 px-3 py-1.5 text-sm text-wsa-navy transition hover:bg-wsa-stone/50 disabled:opacity-40"
             >
               Revoke
             </button>
@@ -116,8 +116,8 @@ export function GoogleApprovals({ token }: { token: string }) {
           <li key={a.email} className="flex items-start gap-2 py-3 opacity-60">
             <ShieldOff className="mt-0.5 h-4 w-4 shrink-0 text-gray-400" aria-hidden />
             <div>
-              <p className="text-sm text-gray-600 line-through">{a.email}</p>
-              <p className="text-xs text-gray-500">Withdrawn: {a.revocationReason}</p>
+              <p className="text-base text-gray-600 line-through">{a.email}</p>
+              <p className="text-sm text-gray-500">Withdrawn: {a.revocationReason}</p>
             </div>
           </li>
         ))}

@@ -23,14 +23,14 @@ export function WorkerCard({ worker, onOpen }: { worker: WorkforceWorker; onOpen
         <div className="flex items-start justify-between gap-3">
           <div>
             <p className="text-lg font-semibold text-wsa-navy">{worker.canonicalName}</p>
-            <p className="text-sm text-gray-500">{worker.roleTitle}</p>
+            <p className="text-base text-gray-500">{worker.roleTitle}</p>
           </div>
-          <span className={`shrink-0 rounded-md border px-2 py-0.5 text-xs font-medium ${STATUS_TONE_CLASSES[status.tone]}`}>
+          <span className={`shrink-0 rounded-md border px-2 py-0.5 text-sm font-medium ${STATUS_TONE_CLASSES[status.tone]}`}>
             {status.label}
           </span>
         </div>
       </CardHeader>
-      <CardContent className="space-y-3 text-sm">
+      <CardContent className="space-y-3 text-base">
         <p className="text-gray-700">{worker.personality.summary}</p>
         <div>
           <p className="text-gray-500">
@@ -43,14 +43,14 @@ export function WorkerCard({ worker, onOpen }: { worker: WorkforceWorker; onOpen
           </p>
         </div>
         {worker.materialBlockers.length > 0 && (
-          <p className="text-xs text-amber-700">
+          <p className="text-sm text-amber-700">
             {worker.materialBlockers.length} open governance item{worker.materialBlockers.length === 1 ? "" : "s"} pending Tom Arrington's decision.
           </p>
         )}
         <button
           type="button"
           onClick={() => onOpen(worker)}
-          className="text-sm font-medium text-wsa-red hover:underline"
+          className="text-base font-medium text-wsa-red hover:underline"
         >
           {worker.canOpenForLiveExecution ? "Open workspace" : "View status"}
         </button>

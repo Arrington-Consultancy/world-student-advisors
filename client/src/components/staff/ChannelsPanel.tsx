@@ -44,7 +44,7 @@ function ChannelCard({ channel }: { channel: Channel }) {
         <BrandIcon channelId={channel.id} className="h-7 w-7 shrink-0" />
         <div className="min-w-0 flex-1">
           <h4 className="font-semibold text-wsa-navy">{channel.name}</h4>
-          <p className="truncate text-xs text-gray-500" title={channel.accountIdentity}>
+          <p className="truncate text-sm text-gray-500" title={channel.accountIdentity}>
             {channel.accountIdentity}
           </p>
         </div>
@@ -53,7 +53,7 @@ function ChannelCard({ channel }: { channel: Channel }) {
             href={channel.externalUrl}
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex shrink-0 items-center gap-1 rounded-md border border-wsa-navy/15 px-2.5 py-1.5 text-xs font-medium text-wsa-navy hover:border-wsa-red hover:text-wsa-red"
+            className="inline-flex shrink-0 items-center gap-1 rounded-md border border-wsa-navy/15 px-2.5 py-1.5 text-sm font-medium text-wsa-navy hover:border-wsa-red hover:text-wsa-red"
           >
             Open <ExternalLink className="h-3 w-3" aria-hidden />
           </a>
@@ -64,7 +64,7 @@ function ChannelCard({ channel }: { channel: Channel }) {
         type="button"
         onClick={() => setOpen(o => !o)}
         aria-expanded={open}
-        className="flex w-full items-center gap-1 border-t border-wsa-navy/5 px-4 py-2 text-left text-xs text-gray-500 hover:text-wsa-navy"
+        className="flex w-full items-center gap-1 border-t border-wsa-navy/5 px-4 py-2 text-left text-sm text-gray-500 hover:text-wsa-navy"
       >
         {open ? <ChevronDown className="h-3 w-3" aria-hidden /> : <ChevronRight className="h-3 w-3" aria-hidden />}
         What you can do here ({allowed} of {channel.actions.length})
@@ -73,7 +73,7 @@ function ChannelCard({ channel }: { channel: Channel }) {
       {open && (
         <ul className="space-y-1.5 px-4 pb-4">
           {channel.actions.map((action: Channel["actions"][number], i: number) => (
-            <li key={i} className="flex items-start gap-1.5 text-xs">
+            <li key={i} className="flex items-start gap-1.5 text-sm">
               {action.allowed
                 ? <Check className="mt-0.5 h-3 w-3 shrink-0 text-green-600" aria-hidden />
                 : <Lock className="mt-0.5 h-3 w-3 shrink-0 text-gray-400" aria-hidden />}
@@ -94,8 +94,8 @@ function ChannelCard({ channel }: { channel: Channel }) {
 export function ChannelsPanel({ token }: { token: string }) {
   const query = trpc.workforce.communications.useQuery({ token });
 
-  if (query.isLoading) return <p className="text-sm text-gray-500">Loading channels…</p>;
-  if (query.error) return <p className="text-sm text-red-600">Could not load the WSA channels.</p>;
+  if (query.isLoading) return <p className="text-base text-gray-500">Loading channels…</p>;
+  if (query.error) return <p className="text-base text-red-600">Could not load the WSA channels.</p>;
   if (!query.data) return null;
 
   const { channels, withheldCount, checkedAndNotFound, identityResolved, identityNote } = query.data;
@@ -105,7 +105,7 @@ export function ChannelsPanel({ token }: { token: string }) {
       <ChannelOwner token={token} />
 
       {!identityResolved && identityNote && (
-        <p className="mb-6 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
+        <p className="mb-6 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-base text-amber-900">
           {identityNote}
         </p>
       )}
@@ -117,7 +117,7 @@ export function ChannelsPanel({ token }: { token: string }) {
         return (
           <section key={group} className="mb-10">
             <h3 className="text-lg font-semibold text-wsa-navy">{meta.title}</h3>
-            <p className="mb-4 text-sm text-gray-600">{meta.blurb}</p>
+            <p className="mb-4 text-base text-gray-600">{meta.blurb}</p>
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
               {inGroup.map(c => <ChannelCard key={c.id} channel={c} />)}
             </div>
@@ -125,7 +125,7 @@ export function ChannelsPanel({ token }: { token: string }) {
         );
       })}
 
-      <div className="border-t border-wsa-navy/10 pt-4 text-xs text-gray-400">
+      <div className="border-t border-wsa-navy/10 pt-4 text-sm text-gray-400">
         {withheldCount > 0 && (
           <p className="mb-1">
             {withheldCount} channel{withheldCount === 1 ? "" : "s"} not shown. Their content is not public and you do

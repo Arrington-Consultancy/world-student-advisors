@@ -70,9 +70,9 @@ export function AccessAdmin({ token }: { token: string }) {
   if (!query.data.canAdminister) {
     return (
       <div className="border border-border/70 bg-white p-6">
-        <p className="text-sm font-semibold text-wsa-navy">Access administration</p>
-        <p className="mt-2 text-sm leading-relaxed text-gray-600">{query.data.reason}</p>
-        <p className="mt-4 text-xs leading-relaxed text-gray-500">
+        <p className="text-base font-semibold text-wsa-navy">Access administration</p>
+        <p className="mt-2 text-base leading-relaxed text-gray-600">{query.data.reason}</p>
+        <p className="mt-4 text-sm leading-relaxed text-gray-500">
           If no administrator exists yet, one can be established from the account named in this deployment's
           ACCESS_BOOTSTRAP_EMAIL setting. It works once and closes itself afterwards.
         </p>
@@ -85,7 +85,7 @@ export function AccessAdmin({ token }: { token: string }) {
         >
           {bootstrap.isPending ? "Checking…" : "Establish the first administrator"}
         </Button>
-        {result && <p className="mt-3 text-sm text-gray-700">{result}</p>}
+        {result && <p className="mt-3 text-base text-gray-700">{result}</p>}
       </div>
     );
   }
@@ -103,17 +103,17 @@ export function AccessAdmin({ token }: { token: string }) {
     <div className="space-y-6">
       <div className="flex items-start gap-3 border-l-2 border-wsa-navy bg-wsa-navy/5 p-4">
         <ShieldCheck className="mt-0.5 h-5 w-5 shrink-0 text-wsa-navy" aria-hidden />
-        <p className="text-sm leading-relaxed text-gray-700">
+        <p className="text-base leading-relaxed text-gray-700">
           You can grant only what you hold yourself, and you cannot change your own access. Every change records
           who, what, when and why, as the Access Control Standard requires.
         </p>
       </div>
 
       <div>
-        <p className="mb-2 text-sm font-semibold text-wsa-navy">Who</p>
+        <p className="mb-2 text-base font-semibold text-wsa-navy">Who</p>
         <div className="divide-y divide-border/70 border border-border/70">
           {data.staff.length === 0 && (
-            <p className="p-4 text-sm text-gray-500">
+            <p className="p-4 text-base text-gray-500">
               Nobody has signed in yet. A staff record is created on a person's first Microsoft sign-in, and
               access can only be given to an identity that has authenticated.
             </p>
@@ -128,10 +128,10 @@ export function AccessAdmin({ token }: { token: string }) {
               }`}
             >
               <span>
-                <span className="block text-sm font-medium text-wsa-navy">{person.displayName}</span>
-                <span className="block text-xs text-gray-500">{person.email}</span>
+                <span className="block text-base font-medium text-wsa-navy">{person.displayName}</span>
+                <span className="block text-sm text-gray-500">{person.email}</span>
               </span>
-              <span className="text-xs text-gray-500">
+              <span className="text-sm text-gray-500">
                 {person.baseAccessLevel ? `Level ${person.baseAccessLevel}` : "No access"}
               </span>
             </button>
@@ -142,14 +142,14 @@ export function AccessAdmin({ token }: { token: string }) {
       {target && (
         <>
           <div>
-            <p className="mb-2 text-sm font-semibold text-wsa-navy">Level</p>
+            <p className="mb-2 text-base font-semibold text-wsa-navy">Level</p>
             <div className="space-y-1">
               {[1, 2, 3, 4, 5].map(l => {
                 const tooHigh = l < data.administratorLevel;
                 return (
                   <label
                     key={l}
-                    className={`flex items-center gap-2 text-sm ${tooHigh ? "text-gray-400" : "text-gray-700"}`}
+                    className={`flex items-center gap-2 text-base ${tooHigh ? "text-gray-400" : "text-gray-700"}`}
                   >
                     <input
                       type="radio"
@@ -158,7 +158,7 @@ export function AccessAdmin({ token }: { token: string }) {
                       onChange={() => setLevel(l)}
                     />
                     Level {l}: {LEVEL_NAMES[l]}
-                    {tooHigh && <span className="text-xs">(above your own)</span>}
+                    {tooHigh && <span className="text-sm">(above your own)</span>}
                   </label>
                 );
               })}
@@ -166,10 +166,10 @@ export function AccessAdmin({ token }: { token: string }) {
           </div>
 
           <div>
-            <p className="mb-2 text-sm font-semibold text-wsa-navy">Which cases they can see</p>
+            <p className="mb-2 text-base font-semibold text-wsa-navy">Which cases they can see</p>
             <div className="space-y-1">
               {data.caseScopes.map(s => (
-                <label key={s} className="flex items-center gap-2 text-sm text-gray-700">
+                <label key={s} className="flex items-center gap-2 text-base text-gray-700">
                   <input type="radio" checked={caseScope === s} onChange={() => setCaseScope(s)} />
                   {SCOPE_LABEL(s)}
                 </label>
@@ -178,10 +178,10 @@ export function AccessAdmin({ token }: { token: string }) {
           </div>
 
           <div>
-            <p className="mb-2 text-sm font-semibold text-wsa-navy">Areas of work</p>
+            <p className="mb-2 text-base font-semibold text-wsa-navy">Areas of work</p>
             <div className="grid grid-cols-2 gap-1 sm:grid-cols-3">
               {data.grantableScopes.map(s => (
-                <label key={s} className="flex items-center gap-2 text-sm text-gray-700">
+                <label key={s} className="flex items-center gap-2 text-base text-gray-700">
                   <input type="checkbox" checked={scopes.includes(s)} onChange={() => toggle(scopes, setScopes, s)} />
                   {SCOPE_LABEL(s)}
                 </label>
@@ -190,14 +190,14 @@ export function AccessAdmin({ token }: { token: string }) {
           </div>
 
           <div>
-            <p className="mb-2 text-sm font-semibold text-wsa-navy">What they may do</p>
+            <p className="mb-2 text-base font-semibold text-wsa-navy">What they may do</p>
             <div className="grid grid-cols-2 gap-1 sm:grid-cols-3">
               {data.grantableActions.map(a => {
                 const consequential = data.consequentialActions.includes(a);
                 return (
                   <label
                     key={a}
-                    className={`flex items-center gap-2 text-sm ${consequential ? "text-wsa-red" : "text-gray-700"}`}
+                    className={`flex items-center gap-2 text-base ${consequential ? "text-wsa-red" : "text-gray-700"}`}
                   >
                     <input type="checkbox" checked={actions.includes(a)} onChange={() => toggle(actions, setActions, a)} />
                     {SCOPE_LABEL(a)}
@@ -206,7 +206,7 @@ export function AccessAdmin({ token }: { token: string }) {
                 );
               })}
             </div>
-            <p className="mt-2 text-xs text-gray-500">
+            <p className="mt-2 text-sm text-gray-500">
               Marked permissions are consequential. They are never implied by a level and should be given one at a
               time, on purpose.
             </p>
@@ -214,14 +214,14 @@ export function AccessAdmin({ token }: { token: string }) {
 
           {data.grantableOverlays.length > 0 && (
             <div>
-              <p className="mb-2 text-sm font-semibold text-wsa-navy">Sensitive information</p>
+              <p className="mb-2 text-base font-semibold text-wsa-navy">Sensitive information</p>
               <div className="grid grid-cols-2 gap-1 sm:grid-cols-3">
                 {data.grantableOverlays.map(o => {
                   const blocked = overlayBlocked(o);
                   return (
                     <label
                       key={o}
-                      className={`flex items-center gap-2 text-sm ${blocked ? "text-gray-400" : "text-gray-700"}`}
+                      className={`flex items-center gap-2 text-base ${blocked ? "text-gray-400" : "text-gray-700"}`}
                     >
                       <input
                         type="checkbox"
@@ -231,7 +231,7 @@ export function AccessAdmin({ token }: { token: string }) {
                       />
                       {SCOPE_LABEL(o)}
                       {blocked && (
-                        <span className="text-xs">
+                        <span className="text-sm">
                           (needs Level {(data.overlayMinimumLevels as Record<string, number>)[o]})
                         </span>
                       )}
@@ -243,10 +243,10 @@ export function AccessAdmin({ token }: { token: string }) {
           )}
 
           <div>
-            <p className="mb-2 text-sm font-semibold text-wsa-navy">Account status</p>
+            <p className="mb-2 text-base font-semibold text-wsa-navy">Account status</p>
             <div className="flex gap-4">
               {["active", "suspended", "disabled"].map(s => (
-                <label key={s} className="flex items-center gap-2 text-sm text-gray-700">
+                <label key={s} className="flex items-center gap-2 text-base text-gray-700">
                   <input type="radio" checked={status === s} onChange={() => setStatus(s)} />
                   {s}
                 </label>
@@ -255,13 +255,13 @@ export function AccessAdmin({ token }: { token: string }) {
           </div>
 
           <div>
-            <p className="mb-2 text-sm font-semibold text-wsa-navy">Why</p>
+            <p className="mb-2 text-base font-semibold text-wsa-navy">Why</p>
             <Input
               value={reason}
               onChange={e => setReason(e.target.value)}
               placeholder="Why this person needs this access"
             />
-            <p className="mt-1 text-xs text-gray-500">Recorded against the change. Required, and at least a sentence.</p>
+            <p className="mt-1 text-sm text-gray-500">Recorded against the change. Required, and at least a sentence.</p>
           </div>
 
           <div className="flex items-center gap-4">
@@ -285,7 +285,7 @@ export function AccessAdmin({ token }: { token: string }) {
             >
               {assign.isPending ? "Saving…" : `Save access for ${target.displayName}`}
             </Button>
-            {result && <p className="text-sm text-gray-700">{result}</p>}
+            {result && <p className="text-base text-gray-700">{result}</p>}
           </div>
         </>
       )}

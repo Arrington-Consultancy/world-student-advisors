@@ -75,15 +75,15 @@ export function WorkerChat({ token, workerId, workerName }: { token: string; wor
           {turns.map((turn, i) =>
             turn.role === "staff" ? (
               <div key={i} className="flex justify-end">
-                <p className="max-w-[85%] whitespace-pre-wrap rounded-lg rounded-br-sm bg-wsa-navy px-3.5 py-2.5 text-sm leading-relaxed text-white">
+                <p className="max-w-[85%] whitespace-pre-wrap rounded-lg rounded-br-sm bg-wsa-navy px-3.5 py-2.5 text-base leading-relaxed text-white">
                   {turn.content}
                 </p>
               </div>
             ) : (
               <div key={i} className="rounded-lg border border-wsa-navy/10 bg-wsa-stone/50 p-4">
-                <p className="whitespace-pre-wrap text-sm leading-relaxed text-wsa-navy">{turn.content}</p>
+                <p className="whitespace-pre-wrap text-base leading-relaxed text-wsa-navy">{turn.content}</p>
                 {turn.briefReference && (
-                  <p className="mt-3 flex items-start gap-1.5 border-t border-wsa-navy/10 pt-2.5 text-xs text-gray-500">
+                  <p className="mt-3 flex items-start gap-1.5 border-t border-wsa-navy/10 pt-2.5 text-sm text-gray-500">
                     <FileText className="mt-0.5 h-3 w-3 shrink-0" aria-hidden />
                     Answered under {turn.briefReference}
                   </p>
@@ -95,7 +95,7 @@ export function WorkerChat({ token, workerId, workerName }: { token: string; wor
       )}
 
       <form onSubmit={submit}>
-        <label htmlFor={`ask-${workerId}`} className="mb-1.5 block text-xs font-medium text-gray-600">
+        <label htmlFor={`ask-${workerId}`} className="mb-1.5 block text-sm font-medium text-gray-600">
           {turns.length === 0 ? `Ask ${workerName}` : `Reply to ${workerName}`}
         </label>
         <div className="flex gap-2">
@@ -110,12 +110,12 @@ export function WorkerChat({ token, workerId, workerName }: { token: string; wor
                 ? `Describe the enquiry for ${workerName}…`
                 : `Reply to ${workerName}. She has this conversation so far.`
             }
-            className="flex-1 rounded-lg border border-wsa-navy/20 p-2.5 text-sm focus:border-wsa-red focus:outline-none"
+            className="flex-1 rounded-lg border border-wsa-navy/20 p-2.5 text-base focus:border-wsa-red focus:outline-none"
           />
           <button
             type="submit"
             disabled={text.trim().length === 0 || ask.isPending}
-            className="h-fit shrink-0 rounded-lg bg-wsa-red px-4 py-2.5 text-sm font-medium text-white transition hover:bg-wsa-red/90 disabled:opacity-40"
+            className="h-fit shrink-0 rounded-lg bg-wsa-red px-4 py-2.5 text-base font-medium text-white transition hover:bg-wsa-red/90 disabled:opacity-40"
           >
             {ask.isPending ? "Working…" : <span className="flex items-center gap-1.5">Send <CornerDownLeft className="h-3.5 w-3.5" aria-hidden /></span>}
           </button>
@@ -123,17 +123,17 @@ export function WorkerChat({ token, workerId, workerName }: { token: string; wor
       </form>
 
       {ask.error && (
-        <p className="mt-3 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800">
+        <p className="mt-3 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-base text-red-800">
           Could not reach {workerName}. Try again in a moment.
         </p>
       )}
 
       {showRefusal && (
-        <div className="mt-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2.5 text-sm text-amber-900">
+        <div className="mt-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2.5 text-base text-amber-900">
           <p className="font-medium">{workerName} did not answer this.</p>
           <p className="mt-1 leading-relaxed">{result.reason}</p>
           {turns.length > 0 && (
-            <p className="mt-2 text-xs text-amber-800">
+            <p className="mt-2 text-sm text-amber-800">
               The conversation above is unchanged. {workerName} will not remember this message.
             </p>
           )}

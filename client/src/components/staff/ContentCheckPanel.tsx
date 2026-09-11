@@ -45,7 +45,7 @@ function FindingCard({ finding, blocking }: { finding: Finding; blocking: boolea
         blocking ? "border-wsa-red" : "border-gray-300"
       }`}
     >
-      <p className="text-sm leading-relaxed text-wsa-navy">
+      <p className="text-base leading-relaxed text-wsa-navy">
         <span
           className={`mr-2 inline-block px-1.5 py-0.5 align-middle text-[10px] font-semibold uppercase tracking-wider ${
             blocking ? "bg-wsa-red/10 text-wsa-red" : "bg-gray-100 text-gray-600"
@@ -57,15 +57,15 @@ function FindingCard({ finding, blocking }: { finding: Finding; blocking: boolea
         <span className="text-gray-500">: {finding.detail}</span>
       </p>
 
-      <p className="mt-2 text-sm leading-relaxed text-gray-700">{finding.remedy}</p>
+      <p className="mt-2 text-base leading-relaxed text-gray-700">{finding.remedy}</p>
 
       {finding.excerpt && (
-        <pre className="mt-2.5 overflow-x-auto whitespace-pre-wrap break-words bg-gray-50 p-2.5 font-mono text-xs leading-relaxed text-gray-700">
+        <pre className="mt-2.5 overflow-x-auto whitespace-pre-wrap break-words bg-gray-50 p-2.5 font-mono text-sm leading-relaxed text-gray-700">
           {finding.excerpt}
         </pre>
       )}
 
-      <p className="mt-2 text-xs text-gray-400">{finding.rule}</p>
+      <p className="mt-2 text-sm text-gray-400">{finding.rule}</p>
     </li>
   );
 }
@@ -81,7 +81,7 @@ export function ContentCheckPanel({ token }: { token: string }) {
 
   return (
     <div className="max-w-3xl">
-      <p className="mb-4 text-sm leading-relaxed text-gray-600">
+      <p className="mb-4 text-base leading-relaxed text-gray-600">
         Paste anything before it goes out. It looks for the tells of machine-written prose: em dashes, guarantee
         language, corporate filler, relentless bullets and headings, and paragraphs that all run to one sentence.
         The same gate applies to the AI workers, so this is the standard either way.
@@ -95,7 +95,7 @@ export function ContentCheckPanel({ token }: { token: string }) {
         rows={10}
         maxLength={20000}
         placeholder="Paste a draft email, post or letter…"
-        className="w-full border border-wsa-navy/20 p-3 text-sm focus:border-wsa-red focus:outline-none"
+        className="w-full border border-wsa-navy/20 p-3 text-base focus:border-wsa-red focus:outline-none"
       />
 
       <div className="mt-3 flex items-center gap-3">
@@ -106,15 +106,15 @@ export function ContentCheckPanel({ token }: { token: string }) {
         >
           {check.isPending ? "Checking…" : "Check the writing"}
         </Button>
-        <span className="text-xs text-gray-400">{text.length} characters</span>
+        <span className="text-sm text-gray-400">{text.length} characters</span>
       </div>
 
-      {check.error && <p className="mt-4 text-sm text-red-600">Could not run the check.</p>}
+      {check.error && <p className="mt-4 text-base text-red-600">Could not run the check.</p>}
 
       {check.data && (
         <div className="mt-6">
           {blocking.length > 0 && (
-            <p className="mb-4 border-l-2 border-wsa-red bg-wsa-red/5 px-4 py-3 text-sm font-semibold text-wsa-red">
+            <p className="mb-4 border-l-2 border-wsa-red bg-wsa-red/5 px-4 py-3 text-base font-semibold text-wsa-red">
               {blocking.length === 1
                 ? "1 thing must be fixed before this can go out."
                 : `${blocking.length} things must be fixed before this can go out.`}
@@ -122,21 +122,21 @@ export function ContentCheckPanel({ token }: { token: string }) {
           )}
 
           {blocking.length === 0 && advisory.length === 0 && (
-            <p className="flex items-center gap-2 border-l-2 border-green-600 bg-green-50 px-4 py-3 text-sm text-green-900">
+            <p className="flex items-center gap-2 border-l-2 border-green-600 bg-green-50 px-4 py-3 text-base text-green-900">
               <ThumbsUp className="h-4 w-4 shrink-0" aria-hidden />
               Nothing flagged. This reads like a person wrote it.
             </p>
           )}
 
           {blocking.length === 0 && advisory.length > 0 && (
-            <p className="mb-4 border-l-2 border-green-600 bg-green-50 px-4 py-3 text-sm text-green-900">
+            <p className="mb-4 border-l-2 border-green-600 bg-green-50 px-4 py-3 text-base text-green-900">
               Nothing blocking. The notes below are worth a look but none of them stops this going out.
             </p>
           )}
 
           {blocking.length > 0 && (
             <section className="mb-6">
-              <h3 className="mb-2 flex items-center gap-1.5 text-sm font-semibold text-wsa-navy">
+              <h3 className="mb-2 flex items-center gap-1.5 text-base font-semibold text-wsa-navy">
                 <AlertTriangle className="h-4 w-4 text-wsa-red" aria-hidden />
                 Must fix ({blocking.length})
               </h3>
@@ -150,7 +150,7 @@ export function ContentCheckPanel({ token }: { token: string }) {
 
           {advisory.length > 0 && (
             <section>
-              <h3 className="mb-2 flex items-center gap-1.5 text-sm font-semibold text-wsa-navy">
+              <h3 className="mb-2 flex items-center gap-1.5 text-base font-semibold text-wsa-navy">
                 <Info className="h-4 w-4 text-gray-400" aria-hidden />
                 Worth a look ({advisory.length})
               </h3>
@@ -163,7 +163,7 @@ export function ContentCheckPanel({ token }: { token: string }) {
           )}
 
           {checkedText !== text && (
-            <p className="mt-4 text-xs text-gray-400">
+            <p className="mt-4 text-sm text-gray-400">
               You have edited the text since this check ran. Check it again before relying on the result.
             </p>
           )}

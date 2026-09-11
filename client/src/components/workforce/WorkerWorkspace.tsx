@@ -27,9 +27,9 @@ export function WorkerWorkspace({ worker, open, onOpenChange }: { worker: Workfo
           <DialogDescription>{worker.personality.summary}</DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-4 text-sm">
+        <div className="space-y-4 text-base">
           <div className="flex items-center gap-2">
-            <span className={`rounded-md border px-2 py-0.5 text-xs font-medium ${STATUS_TONE_CLASSES[status.tone]}`}>{status.label}</span>
+            <span className={`rounded-md border px-2 py-0.5 text-sm font-medium ${STATUS_TONE_CLASSES[status.tone]}`}>{status.label}</span>
           </div>
 
           {!worker.canOpenForLiveExecution && (
@@ -63,7 +63,7 @@ export function WorkerWorkspace({ worker, open, onOpenChange }: { worker: Workfo
             <p className="font-medium text-gray-700">Connector intent (not granted access)</p>
             <p className="text-gray-600">SharePoint: {worker.connectorIntent.sharePoint}</p>
             <p className="text-gray-600">Google Drive: {worker.connectorIntent.googleDrive}</p>
-            <p className="mt-1 text-xs text-gray-500">Hard boundary: {worker.connectorIntent.hardBoundary}</p>
+            <p className="mt-1 text-sm text-gray-500">Hard boundary: {worker.connectorIntent.hardBoundary}</p>
           </div>
         </div>
       </DialogContent>

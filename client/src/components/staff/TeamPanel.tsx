@@ -34,13 +34,13 @@ const STATUS_LABEL: Record<string, string> = {
 export function TeamPanel({ token }: { token: string }) {
   const query = trpc.workforce.listWorkers.useQuery({ token });
 
-  if (query.isLoading) return <p className="text-sm text-gray-500">Loading the team…</p>;
-  if (query.error) return <p className="text-sm text-red-600">Could not load the team.</p>;
+  if (query.isLoading) return <p className="text-base text-gray-500">Loading the team…</p>;
+  if (query.error) return <p className="text-base text-red-600">Could not load the team.</p>;
   if (!query.data) return null;
 
   return (
     <div>
-      <p className="mb-6 max-w-2xl text-sm text-gray-600">
+      <p className="mb-6 max-w-2xl text-base text-gray-600">
         Who covers what. You do not need this page to get work done. Ask reception and it will point you at the
         right specialist. This is here for when you want to know how the team is organised.
       </p>
@@ -50,16 +50,16 @@ export function TeamPanel({ token }: { token: string }) {
           <article key={w.id} className="flex flex-col gap-2 p-4 sm:flex-row sm:items-baseline sm:gap-6">
             <div className="sm:w-56 sm:shrink-0">
               <h3 className="font-semibold text-wsa-navy">{w.canonicalName}</h3>
-              <p className="text-xs text-gray-500">{w.roleTitle}</p>
+              <p className="text-sm text-gray-500">{w.roleTitle}</p>
             </div>
             <div className="min-w-0 flex-1">
-              <p className="text-sm text-gray-700">{w.personality.whatFor}</p>
-              <p className="mt-1 text-xs text-gray-500">
+              <p className="text-base text-gray-700">{w.personality.whatFor}</p>
+              <p className="mt-1 text-sm text-gray-500">
                 <span className="font-medium">Not for:</span> {w.personality.whatNotFor}
               </p>
             </div>
             <span
-              className={`shrink-0 self-start rounded-full border px-2.5 py-0.5 text-xs font-medium ${
+              className={`shrink-0 self-start rounded-full border px-2.5 py-0.5 text-sm font-medium ${
                 STATUS_STYLE[w.specificationStatus] ?? STATUS_STYLE.not_approved
               }`}
             >
@@ -69,7 +69,7 @@ export function TeamPanel({ token }: { token: string }) {
         ))}
       </div>
 
-      <p className="mt-4 text-xs text-gray-400">
+      <p className="mt-4 text-sm text-gray-400">
         Statuses come from the controlled WSA AI Worker Register. Approval is Tom Arrington's decision, recorded
         there, and it is not something this portal can grant.
       </p>
