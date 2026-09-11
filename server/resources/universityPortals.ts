@@ -73,9 +73,9 @@ export const UNIVERSITY_PORTALS: readonly UniversityPortal[] = Object.freeze([])
 export const UNIVERSITY_PORTAL_PROVENANCE: ResourceProvenance = Object.freeze({
   suppliedBy: "Tim Hunt",
   awaiting:
-    "The list of universities, their student application portal links, and the WSA instructions for each. " +
-    "Nothing is shown because no list has been supplied, and no university name or portal URL has been " +
-    "added from any other source.",
+    "Tim is sending the list: each university, the link to its student application portal, and the link " +
+    "to the instructions for using it. Nothing is shown until that arrives, and no university or portal " +
+    "link has been added from anywhere else.",
   openQuestions: Object.freeze([
     "Whether the instructions link points at a SharePoint document, a Drive folder or a page in this portal.",
     "Who re-checks the portal links, since university portals move and rebrand.",

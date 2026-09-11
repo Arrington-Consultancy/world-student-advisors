@@ -47,12 +47,11 @@ export function UniversityPortalsPanel({ token }: { token: string }) {
     ? portals
     : portals.filter(p => p.university.toLowerCase().includes(needle));
 
+  // No intro line here: the section header above already carries the
+  // one-line description, and repeating it only pushes the useful part
+  // further down the screen.
   return (
     <div className="space-y-5">
-      <p className="text-base leading-relaxed text-gray-600">
-        Every university application portal in one place, with the WSA instructions for each one beside it.
-      </p>
-
       {portals.length > 0 && (
         <div className="relative">
           <Search className="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-gray-400" aria-hidden />
@@ -71,8 +70,9 @@ export function UniversityPortalsPanel({ token }: { token: string }) {
         <div className="rounded-xl border border-amber-200 bg-amber-50 p-5">
           <p className="flex items-center gap-2 text-base font-semibold text-amber-900">
             <Inbox className="h-5 w-5 shrink-0" aria-hidden />
-            Nothing to show yet
-            {provenance.suppliedBy ? `, to be supplied by ${provenance.suppliedBy}` : ""}
+            {provenance.suppliedBy
+              ? `Waiting for ${provenance.suppliedBy} to send the links`
+              : "Waiting for the links"}
           </p>
           <p className="mt-2 text-base leading-relaxed text-amber-900">{provenance.awaiting}</p>
           {provenance.openQuestions.length > 0 && (
