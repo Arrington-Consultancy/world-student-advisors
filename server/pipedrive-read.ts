@@ -9,6 +9,14 @@ const PIPEDRIVE_BASE = "https://api.pipedrive.com/v1";
  * portal's read-only boundary is visible at the file level, not just by
  * convention.
  */
+/**
+ * Whether a CRM credential is present at all. Presence only; it says
+ * nothing about what the credential may see, which the gates decide.
+ */
+export function isPipedriveReadConfigured(): boolean {
+  return Boolean(ENV.pipedriveApiToken);
+}
+
 async function pipedriveGet(endpoint: string): Promise<any> {
   const url = `${PIPEDRIVE_BASE}${endpoint}${endpoint.includes("?") ? "&" : "?"}api_token=${ENV.pipedriveApiToken}`;
   const response = await fetch(url);

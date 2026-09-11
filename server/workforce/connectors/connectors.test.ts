@@ -29,12 +29,12 @@ describe("SharePoint connector — honest current state", () => {
     expect(getSharePointStatus()).toBe("unconfigured");
   });
 
-  it("still refuses to call it operational even with SharePoint-specific env vars present, pending an actual tested permission grant", () => {
+  it("reports operational with the four SharePoint-specific variables present; consent is proven or refused on the call itself", () => {
     process.env.SHAREPOINT_GRAPH_CLIENT_ID = "x";
     process.env.SHAREPOINT_GRAPH_CLIENT_SECRET = "x";
     process.env.SHAREPOINT_GRAPH_TENANT_ID = "x";
     process.env.SHAREPOINT_GRAPH_SITE_ID = "x";
-    expect(getSharePointStatus()).toBe("permission_missing");
+    expect(getSharePointStatus()).toBe("operational");
   });
 
   it("search/read/write all fail honestly for any worker today, without ever claiming success", async () => {

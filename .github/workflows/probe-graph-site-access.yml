@@ -1,0 +1,60 @@
+name: Probe Graph access to the WSA SharePoint site
+
+# Manual only, READ ONLY. Answers one question from evidence: can the
+# Microsoft Graph application production already holds (the Mail.Send app,
+# MICROSOFT_* variables) see the WSA SharePoint site, and with which
+# application permissions?
+#
+# Tom Arrington, 11 September 2026: separate credential problems from
+# permission problems, and do not treat absence of worker permission as
+# absence of a platform connection. This is how that is established rather
+# than assumed.
+#
+# WRITES NOTHING. No database, no variables, no audit rows, no file content
+# read. Runs inside the app service so the secret never travels and is
+# never printed on any path. Output is permission NAMES, the WSA site id
+# (an identifier), and HTTP statuses.
+#
+# Auth: githubactionsprod, the same production-scoped Railway Project Token
+# the other production workflows use.
+on:
+  workflow_dispatch:
+    inputs:
+      service_name:
+        description: "Railway app service name"
+        required: true
+        default: "world-student-advisors"
+      environment_name:
+        description: "Railway environment name"
+        required: true
+        default: "production"
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    env:
+      APP_SERVICE_NAME: ${{ github.event.inputs.service_name }}
+      APP_ENV_NAME: ${{ github.event.inputs.environment_name }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Install Railway CLI
+        run: npm install -g @railway/cli
+
+      - name: Probe Graph with the existing Microsoft app, read-only
+        timeout-minutes: 5
+        env:
+          RAILWAY_TOKEN: ${{ secrets.githubactionsprod }}
+        run: |
+          railway run --service "$APP_SERVICE_NAME" --environment "$APP_ENV_NAME" -- \
+            node scripts/probe-graph-site-access.mjs

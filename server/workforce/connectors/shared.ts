@@ -39,13 +39,20 @@ export interface ConnectorActionResult {
   message: string;
   /** Present only when success is false after the permitted retry — where the intended write should have landed, and the work to preserve. */
   copyableHandoff?: { intendedDestination: string; preservedWork: string };
+  /**
+   * What a successful READ returned, already projected to the fields the
+   * controlled record allows. Never raw; a connector that returned a raw
+   * record here would be handing the model something the staff member is
+   * not cleared to see. Absent on failure and on every write.
+   */
+  data?: unknown;
 }
 
 /** A connector's live-state check: does it have configured, tested credentials for this operation? Implemented per connector — never assumes yes. */
 export type ConnectorStateCheck = () => ConnectorState;
 
 /** A connector's actual attempt at the action, once permission and configuration are confirmed. Implemented per connector; may throw. */
-export type ConnectorAttempt = (request: ConnectorActionRequest) => Promise<{ success: boolean; message: string }>;
+export type ConnectorAttempt = (request: ConnectorActionRequest) => Promise<{ success: boolean; message: string; data?: unknown }>;
 
 /**
  * The signed-in staff member's own access check (Access Control Standard

@@ -71,6 +71,12 @@ async function requireAccessAdmin(
 import { resolveStaffSession } from "./staffSession";
 import { recordRoutingGap, isGap, recordReview, recordStaffNextAction, reviewGaps } from "./workforce/routingGap";
 import { REMITS, OUTCOMES, UNOWNED_OUTCOMES } from "./workforce/remit";
+import { getPipedriveStatus } from "./workforce/connectors/pipedrive";
+import { getSharePointStatus } from "./workforce/connectors/sharepoint";
+import { getGoogleDriveStatus } from "./workforce/connectors/googleDrive";
+import { WORKER_CRM_SCOPE } from "./workforce/crmScope";
+import { WORKER_SHAREPOINT_LOCATIONS } from "./workforce/sharePointLocations";
+import { connectorScopeGrants } from "./workforce/connectorScope";
 import { CONTROLLED_BASELINE, LAST_RECONCILED, ROUTING_MODEL_VERSION } from "./workforce/provenance";
 import { resolveStaffAccessProfile } from "./access/identity";
 import { WORKER_FUNCTIONAL_SCOPE } from "./access/workerScope";
@@ -1314,6 +1320,47 @@ export const appRouter = router({
             outcomes: OUTCOMES.map(o => ({ id: o.id, description: o.description })),
             unowned: UNOWNED_OUTCOMES.map(u => ({ outcome: u.outcome, source: `${u.source.record} (${u.source.clause})` })),
           },
+        };
+      }),
+
+    /**
+     * Connector readiness, stated as two separate facts per system.
+     *
+     * Tom, 11 September 2026: separate credential and configuration
+     * problems from governance and permission problems, and never read the
+     * absence of one as the absence of the other. So each connector reports
+     * whether production holds a usable credential AND, separately, how
+     * many workers the controlled record currently grants anything on it.
+     * Variable NAMES only; no value is ever read here.
+     */
+    connectorReadiness: publicProcedure
+      .input(z.object({ token: z.string() }))
+      .query(async ({ input }) => {
+        const gate = await requireAccessAdmin(input.token);
+        if (!gate.allowed) return { permitted: false as const, reason: gate.reason };
+        const workers = listWorkers();
+        const crmGranted = workers.filter(w => WORKER_CRM_SCOPE[w.id] !== null).map(w => w.id);
+        const spGranted = workers.filter(w => WORKER_SHAREPOINT_LOCATIONS[w.id].length > 0 && connectorScopeGrants(w.id, "sharepoint", "read")).map(w => w.id);
+        const driveGranted = workers.filter(w => connectorScopeGrants(w.id, "google_drive", "read")).map(w => w.id);
+        return {
+          permitted: true as const,
+          connectors: [
+            {
+              connector: "pipedrive",
+              credential: { state: getPipedriveStatus(), variables: ["PIPEDRIVE_API_TOKEN"], note: "The read-only module Find a student already uses. Workers read through it; the write client is never imported." },
+              permission: { workersGranted: crmGranted, of: workers.length, authority: "crmScope.ts, transcribed from the Access Matrix. No CRM column exists yet." },
+            },
+            {
+              connector: "sharepoint",
+              credential: { state: getSharePointStatus(), variables: ["SHAREPOINT_GRAPH_CLIENT_ID", "SHAREPOINT_GRAPH_CLIENT_SECRET", "SHAREPOINT_GRAPH_TENANT_ID", "SHAREPOINT_GRAPH_SITE_ID"], note: "Separate names from the Mail.Send app on purpose." },
+              permission: { workersGranted: spGranted, of: workers.length, authority: "sharePointLocations.ts per-worker allowlist plus connectorScope.ts grant." },
+            },
+            {
+              connector: "google_drive",
+              credential: { state: getGoogleDriveStatus(), variables: ["WORKFORCE_DRIVE_SERVICE_ACCOUNT_JSON", "WORKFORCE_DRIVE_ALLOWED_FOLDER_IDS"], note: "Not proposed while Drive ownership sits with an Arrington Consultancy account." },
+              permission: { workersGranted: driveGranted, of: workers.length, authority: "connectorScope.ts, Access Matrix v0.2 Google Drive column." },
+            },
+          ],
         };
       }),
 

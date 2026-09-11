@@ -1,0 +1,55 @@
+name: Inventory the WSA Pipedrive schema, read only
+
+# Manual only, READ ONLY. Lists the WSA Pipedrive schema: field keys, names,
+# types and option labels for persons, deals and leads, plus pipelines and
+# stages. Fetches no record data. Prints no token.
+#
+# Tom Arrington, 11 September 2026: worker field projections are to be
+# built from the actual schema and each worker's approved remit, not from
+# the seven-field staff lookup by default. This is the inspection that
+# decision needs. Uses the existing token for a one-off schema read only;
+# workers will not use that token.
+#
+# Auth: githubactionsprod, the same production-scoped Railway Project Token
+# the other production workflows use.
+on:
+  workflow_dispatch:
+    inputs:
+      service_name:
+        description: "Railway app service name"
+        required: true
+        default: "world-student-advisors"
+      environment_name:
+        description: "Railway environment name"
+        required: true
+        default: "production"
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    env:
+      APP_SERVICE_NAME: ${{ github.event.inputs.service_name }}
+      APP_ENV_NAME: ${{ github.event.inputs.environment_name }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Install Railway CLI
+        run: npm install -g @railway/cli
+
+      - name: List Pipedrive field keys, names, types and stages
+        timeout-minutes: 5
+        env:
+          RAILWAY_TOKEN: ${{ secrets.githubactionsprod }}
+        run: |
+          railway run --service "$APP_SERVICE_NAME" --environment "$APP_ENV_NAME" -- \
+            node scripts/pipedrive-schema-inventory.mjs
