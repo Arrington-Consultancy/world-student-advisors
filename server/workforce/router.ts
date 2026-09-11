@@ -14,6 +14,9 @@ import { getWorker, listWorkers } from "./registry";
 import { evaluateStaffPortalExecutionPermission } from "./permissions";
 import { tokenise, scoreTerms } from "./routing";
 import { routeWithAssistant } from "./routerAssistant";
+import { routeByRemit, type CaseContext, type RemitRoutingDecision, type RoutingFailureType, type RoutingConfidence, type PriorityLevel } from "./remitRouter";
+import { ROUTING_MODEL_VERSION } from "./provenance";
+import type { OutcomeId } from "./remit";
 import type { WorkerId } from "./types";
 
 interface RoutingDomain {
@@ -129,29 +132,57 @@ export interface RoutingResult {
   status: string;
   blocker?: string;
   safeNextAction: string;
+  /**
+   * The remit model's reading of the request, carried for the Routing
+   * Gap Log and for the "Wrong specialist?" correction. `outcome` is the
+   * interpreted intent; `candidates` are the workers considered;
+   * `failure` is the classified reason where nobody could take it.
+   */
+  outcome: OutcomeId | null;
+  outcomeDescription: string | null;
+  candidates: WorkerId[];
+  confidence: RoutingConfidence;
+  decidedAt: PriorityLevel;
+  failure: RoutingFailureType | null;
+  /** Set where the subject owner may not conclude. The worker is still the destination. */
+  humanGate: string | null;
+  modelVersion: string;
 }
 
 /** How the owner was identified, so a routed answer stays auditable. */
-export type RoutedBy = "keywords" | "assistant" | "none";
+export type RoutedBy = "remit" | "keywords" | "assistant" | "none";
 
 /**
  * Routes a plain-language staff request to its responsible worker. Never
  * silently substitutes an available worker for the correct-but-unavailable
  * one, and never invents ownership for a request that matches nothing.
  */
-function unmatched(note: string): RoutingResult {
+function unmatched(
+  note: string,
+  extra: Partial<RoutingResult> = {},
+  safeNextAction =
+    "Escalate to the current authorised human process. Do not guess an owner or attempt this as a general-purpose assistant.",
+): RoutingResult {
   return {
     matched: false,
     routedBy: "none",
     availability: "not_available_for_live_case_work",
     status: note,
-    safeNextAction:
-      "Escalate to the current authorised human process. Do not guess an owner or attempt this as a general-purpose assistant.",
+    safeNextAction,
+    outcome: null,
+    outcomeDescription: null,
+    candidates: [],
+    confidence: "none",
+    decidedAt: "unresolved",
+    failure: "no_recognised_intent",
+    humanGate: null,
+    modelVersion: ROUTING_MODEL_VERSION,
+    ...extra,
   };
 }
 
 /** Build the result for a worker the register says owns this work. */
-function resultFor(workerId: WorkerId, routedBy: RoutedBy): RoutingResult {
+function resultFor(workerId: WorkerId, routedBy: RoutedBy, decision?: RemitRoutingDecision): RoutingResult {
   const worker = getWorker(workerId);
   const executionPermission = evaluateStaffPortalExecutionPermission(worker.id);
   const availability: RoutingResult["availability"] = executionPermission.allowed
@@ -163,35 +194,80 @@ function resultFor(workerId: WorkerId, routedBy: RoutedBy): RoutingResult {
     routedBy,
     responsibleWorkerId: worker.id,
     responsibleWorkerName: `${worker.canonicalName}, WSA ${worker.roleTitle} Specialist`,
-    ownershipReason: `${worker.canonicalName} owns ${worker.roleTitle} work: ${worker.personality.whatFor}`,
+    ownershipReason: decision?.outcomeDescription
+      ? `${worker.canonicalName} owns this: ${decision.outcomeDescription.toLowerCase()}. ${worker.personality.whatFor}`
+      : `${worker.canonicalName} owns ${worker.roleTitle} work: ${worker.personality.whatFor}`,
     availability,
     status:
-      availability === "available"
-        ? "Available."
-        : `Not available for live case work (specificationStatus: ${worker.specificationStatus}).`,
+      availability !== "available"
+        ? `Not available for live case work (specificationStatus: ${worker.specificationStatus}).`
+        : decision?.humanGate ?? "Available.",
     blocker: availability === "available" ? undefined : worker.currentNextControl,
     safeNextAction:
-      availability === "available"
-        ? `Open ${worker.canonicalName}'s workspace.`
-        : `Route to the current authorised human process or await approval, per controlled WSA governance. Escalation: ${worker.escalationRoute}.`,
+      availability !== "available"
+        ? `Route to the current authorised human process or await approval, per controlled WSA governance. Escalation: ${worker.escalationRoute}.`
+        : decision?.safeNextAction ?? `Open ${worker.canonicalName}'s workspace.`,
+    outcome: decision?.outcome ?? null,
+    outcomeDescription: decision?.outcomeDescription ?? null,
+    candidates: decision?.candidates ?? [workerId],
+    confidence: decision?.confidence ?? "low",
+    decidedAt: decision?.decidedAt ?? "keyword_tiebreak",
+    failure: null,
+    humanGate: decision?.humanGate ?? null,
+    modelVersion: ROUTING_MODEL_VERSION,
   };
 }
 
-/**
- * The keyword pass. Deterministic, free and instant, and it settles the
- * large majority of requests without a model call.
- */
-export function routeStaffRequest(requestText: string): RoutingResult {
+/** The legacy keyword pass. Level 5 only: supporting evidence when the remit model found no outcome at all. */
+function routeByKeywords(requestText: string): WorkerId | null {
   const tokens = tokenise(requestText);
-
   let best: { workerId: WorkerId; score: number } | null = null;
   for (const domain of ROUTING_DOMAINS) {
     const score = scoreTerms(tokens, domain.keywords);
     if (score > 0 && (!best || score > best.score)) best = { workerId: domain.workerId, score };
   }
+  return best?.workerId ?? null;
+}
 
-  if (!best) return unmatched("No controlled worker could be confidently identified for this request.");
-  return resultFor(best.workerId, "keywords");
+/**
+ * The deterministic front door.
+ *
+ * Remit first. The remit model reads what the person wants to end up
+ * holding and decides ownership from approved remits and exclusions, in
+ * the five-level order set out in remitRouter.ts. It also carries the
+ * operational state, so a recognised remit whose worker or capability
+ * cannot take the job is reported as exactly that rather than as "no one
+ * owns it".
+ *
+ * Keywords only where the remit model recognised no intent at all, and
+ * marked low confidence when they do, because a word overlap is evidence
+ * and not ownership.
+ */
+export function routeStaffRequest(requestText: string, context: CaseContext = {}): RoutingResult {
+  const decision = routeByRemit(requestText, context);
+
+  if (decision.matched && decision.responsibleWorkerId) {
+    return resultFor(decision.responsibleWorkerId, "remit", decision);
+  }
+
+  // The remit model recognised what was asked and established that nobody
+  // can take it. That is a finding, and it is reported as one, with the
+  // classification the Routing Gap Log needs.
+  if (decision.failure && decision.failure !== "no_recognised_intent") {
+    return unmatched(decision.status, {
+      outcome: decision.outcome,
+      outcomeDescription: decision.outcomeDescription,
+      candidates: decision.candidates,
+      confidence: decision.confidence,
+      decidedAt: decision.decidedAt,
+      failure: decision.failure,
+    }, decision.safeNextAction);
+  }
+
+  const byKeyword = routeByKeywords(requestText);
+  if (byKeyword) return resultFor(byKeyword, "keywords");
+
+  return unmatched("I could not work out what you are asking for.");
 }
 
 /**
@@ -206,13 +282,18 @@ export async function routeStaffRequestAssisted(
   requestText: string,
   assistantTimeoutMs?: number,
 ): Promise<RoutingResult> {
-  const byKeyword = routeStaffRequest(requestText);
-  if (byKeyword.matched) return byKeyword;
+  const deterministic = routeStaffRequest(requestText);
+  if (deterministic.matched) return deterministic;
+  // A classified failure is an answer. The assistant only sees requests the
+  // remit model could not read at all, never ones it read and found unowned
+  // or blocked, because a model guessing an owner for an unowned outcome is
+  // exactly the invented remit this whole layer exists to prevent.
+  if (deterministic.failure && deterministic.failure !== "no_recognised_intent") return deterministic;
 
   const assisted = await routeWithAssistant(requestText, assistantTimeoutMs);
   if (assisted.workerId) return resultFor(assisted.workerId, "assistant");
   return unmatched(
-    assisted.note || "No controlled worker could be confidently identified for this request.",
+    assisted.note || "I could not work out what you are asking for.",
   );
 }
 

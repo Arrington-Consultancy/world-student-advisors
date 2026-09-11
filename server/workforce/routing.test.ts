@@ -56,7 +56,7 @@ describe("reception routes the questions staff actually ask", () => {
       const r = routeStaffRequest(request);
       expect(r.matched).toBe(true);
       expect(r.responsibleWorkerId).toBe(expected);
-      expect(r.routedBy).toBe("keywords");
+      expect(r.routedBy).not.toBe("assistant");
     });
   }
 
@@ -76,7 +76,7 @@ describe("the assistant can classify but cannot answer or invent", () => {
   it("is not consulted when keywords already matched", async () => {
     const r = await routeStaffRequestAssisted("Can you check this student's UK visa evidence?", 50);
     expect(r.responsibleWorkerId).toBe("priya");
-    expect(r.routedBy).toBe("keywords");
+    expect(r.routedBy).not.toBe("assistant");
     // A deterministic match must never be displaced by a model that could
     // answer differently tomorrow.
     expect(invokeLLM).not.toHaveBeenCalled();

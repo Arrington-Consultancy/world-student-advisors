@@ -585,3 +585,71 @@ export const staffSignupRequests = mysqlTable("staff_signup_requests", {
   /** Set when the link is followed, making it single use. */
   consumedAt: timestamp("consumedAt"),
 });
+
+/**
+ * The Routing Gap Log.
+ *
+ * Tom's instruction of 11 September 2026: whenever Reception cannot
+ * confidently route a genuine staff request, or routes it only to find
+ * that no approved worker owns the requested outcome, record the gap. Do
+ * not silently discard failed requests. Also record every staff
+ * correction ("Wrong specialist?"), because a correction is evidence about
+ * the router and not a fact about the remit.
+ *
+ * WHAT THIS TABLE IS NOT. It is not a learning mechanism. Nothing reads
+ * these rows back into routing. A recurring gap is reviewed by a person
+ * and becomes one of four things: a router defect fixed in code, a
+ * worker/tool/access defect, a confirmed out-of-scope request, or a
+ * governance proposal for Tom. The row that records the gap and the code
+ * that fixes it are joined by routerVersion, so a later reader can tell
+ * whether a correction worked.
+ *
+ * DATA MINIMISATION. requestText is the exact staff wording because that
+ * is the evidence; staff are asked to phrase requests around a case
+ * reference rather than a name, and the same field already exists in the
+ * conversation table under the same rule. caseReference is an identifier
+ * only. No student record, name, email or phone is ever written here, and
+ * the writer refuses a caseReference longer than an identifier can be.
+ */
+export const routingGapLog = mysqlTable("routing_gap_log", {
+  id: int("id").autoincrement().primaryKey(),
+  /** Exact original staff wording. Never tidied, summarised or truncated. */
+  requestText: text("requestText").notNull(),
+  /** The signed-in staff member. Null only for a shared session, never guessed. */
+  staffUserId: int("staffUserId"),
+  authMethod: mysqlEnum("authMethod", ["entra_sso", "shared_password", "shared_executive"]).notNull(),
+  /** Identifier already legitimately in context. A reference, never the record. */
+  caseReference: varchar("caseReference", { length: 60 }),
+  /** The router's interpreted intent (an OutcomeId), or null where none was recognised. */
+  interpretedIntent: varchar("interpretedIntent", { length: 60 }),
+  /** Workers considered, as a comma-separated list of worker ids. */
+  candidateWorkerIds: varchar("candidateWorkerIds", { length: 255 }).notNull(),
+  confidence: mysqlEnum("confidence", ["high", "medium", "low", "none"]).notNull(),
+  failureType: mysqlEnum("failureType", [
+    "no_recognised_intent",
+    "subject_without_approved_remit",
+    "remit_but_worker_inactive",
+    "remit_but_capability_closed",
+    "permission_failure",
+    "connector_failure",
+    "ambiguity_needs_clarification",
+    "router_misclassification_corrected",
+  ]).notNull(),
+  /** The router's own account of why, in the words it gave the staff member. */
+  failureReason: text("failureReason").notNull(),
+  /** Where the router sent it, before any correction. Null where it sent it nowhere. */
+  originalWorkerId: varchar("originalWorkerId", { length: 40 }),
+  /** Where the staff member said it should have gone. Null unless corrected. */
+  correctedWorkerId: varchar("correctedWorkerId", { length: 40 }),
+  /** What the staff member did next, where the portal could see it. */
+  staffNextAction: varchar("staffNextAction", { length: 40 }),
+  /** The remit model version that made the decision. */
+  routerVersion: varchar("routerVersion", { length: 40 }).notNull(),
+  /** Set by the review: router_defect, worker_or_access_defect, out_of_scope, governance_proposal. */
+  reviewOutcome: varchar("reviewOutcome", { length: 40 }),
+  reviewedAt: timestamp("reviewedAt"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type RoutingGapRow = typeof routingGapLog.$inferSelect;
+export type InsertRoutingGapRow = typeof routingGapLog.$inferInsert;
