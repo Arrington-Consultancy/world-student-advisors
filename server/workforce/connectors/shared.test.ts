@@ -18,9 +18,9 @@ beforeEach(() => {
   // boundary (sharePointLocations.ts) and, like the boundary, there is
   // deliberately no way to override it — no worker has a designated
   // location, so a SharePoint request can no longer reach getState or
-  // attempt at all. Drive has no such gate, so it is the connector that
-  // still exercises the state, attempt and retry machinery end to end.
-  process.env.WORKFORCE_DRIVE_ALLOWED_FOLDER_IDS = "wsa-legacy";
+  // attempt at all. Drive has its own folder gate by ID; Ethan's designated
+  // root is used so the state, attempt and retry machinery still runs end
+  // to end.
 });
 
 afterEach(() => {
@@ -38,10 +38,10 @@ const baseRequest = {
 
 /** Inside the WSA boundary and past every gate, so the machinery runs. */
 const driveRequest = {
-  workerId: "sophie" as const,
+  workerId: "ethan" as const,
   connector: "google_drive" as const,
   operation: "read" as const,
-  resourceScope: "wsa-legacy/website/old-sitemap.xml",
+  resourceScope: "root/1NfrRjUKTDsG1YiHzLpR8sHPmuuK18Zux/file/old-sitemap",
   staffUserId: 1,
   authMethod: "entra_sso",
 };

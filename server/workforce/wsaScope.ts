@@ -20,6 +20,7 @@
  * no convenience is worth that.
  */
 import type { ConnectorName } from "./types";
+import { allDesignatedDriveRoots, parseDriveScope } from "./driveLocations";
 
 export interface ScopeDecision {
   withinWsaScope: boolean;
@@ -53,23 +54,24 @@ function sharePointScope(resourceId: string): ScopeDecision {
 }
 
 /**
- * Google Drive: an explicit folder allowlist. The Access Matrix is clear
- * that Drive is not a second WSA source of truth and that no worker gets
- * whole-Drive access, so this is an allowlist rather than a denylist —
- * anything not named is out.
+ * Google Drive: the designated WSA folders, by ID, from driveLocations.ts.
+ * Tom Arrington approved selected-folder access on 11 September 2026. A
+ * scope names its root folder (root/<id>...); it is within WSA scope only
+ * when that ID is one of the designated roots. Anything else, including a
+ * folder that happens to be shared with the service account but is not
+ * designated, is out. Names are never matched, only IDs.
  */
 function driveScope(resourceId: string): ScopeDecision {
-  const folders = allowlist("WORKFORCE_DRIVE_ALLOWED_FOLDER_IDS");
-  if (folders.length === 0) {
-    return { withinWsaScope: false, reason: "No WSA Drive folder is allowlisted, so nothing is in scope." };
+  const parsed = parseDriveScope(resourceId);
+  if (!parsed) {
+    return { withinWsaScope: false, reason: "Google Drive requests must name a designated root folder by ID (root/<id>...), so this is not in scope." };
   }
-  const folder = resourceId.split("/")[0];
-  if (folders.includes(folder)) {
-    return { withinWsaScope: true, reason: "Within an allowlisted WSA Drive folder." };
+  if (allDesignatedDriveRoots().some(r => r.id === parsed.rootId)) {
+    return { withinWsaScope: true, reason: "Within a designated WSA Drive folder." };
   }
   return {
     withinWsaScope: false,
-    reason: "Outside the allowlisted WSA Drive folders. Personal, Arrington Consultancy and Scott-project content are never in scope.",
+    reason: "Outside the designated WSA Drive folders. Personal, Arrington Consultancy and archive content are never in scope.",
   };
 }
 

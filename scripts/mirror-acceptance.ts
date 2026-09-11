@@ -22,6 +22,8 @@ import { DriveClient } from "../server/mirror/driveClient";
 import { LEAD_COLUMNS, DEAL_COLUMNS, PERSON_COLUMNS, NEVER_MIRRORED } from "../server/mirror/sanitise";
 import { MIRROR_FOLDER_NAME } from "../server/mirror/manifest";
 import { gatherEvidence } from "../server/workforce/mi/evidence";
+import { runCrmBackup, recentBackupRuns, BACKUP_FOLDER_NAME } from "../server/mirror/backup";
+import { workforceDriveIdentity } from "../server/workforce/connectors/googleDrive";
 
 let failures = 0;
 const check = (ok: boolean, label: string, detail = "") => { if (!ok) failures += 1; console.log(`  ${ok ? "ok  " : "FAIL"} ${label}${detail ? `  ${detail}` : ""}`); };
@@ -49,10 +51,22 @@ if (access.ok) {
   const everything = await client.listAll();
   const names = everything.map(f => f.name).sort();
   console.log(`  unfiltered listing: ${everything.length} item(s): ${names.join(", ")}`);
-  check(everything.length === 5, "exactly the folder and four files are visible", `${everything.length}`);
-  check(names.includes(MIRROR_FOLDER_NAME), "the mirror folder is present");
+  const mirrorItems = everything.filter(f => f.name === MIRROR_FOLDER_NAME || everything.some(p => p.name === MIRROR_FOLDER_NAME && f.parents?.includes(p.id)));
+  check(mirrorItems.length === 5, "exactly the mirror folder and its four files", `${mirrorItems.length}`);
+  const backupRoot = everything.filter(f => f.name === BACKUP_FOLDER_NAME);
+  const unexpected = everything.filter(f => !mirrorItems.includes(f) && f.name !== BACKUP_FOLDER_NAME && !backupRoot.some(b => f.parents?.includes(b.id)) && !everything.some(s => backupRoot.some(b => s.parents?.includes(b.id)) && f.parents?.includes(s.id)) && f.name !== "latest.json");
+  check(unexpected.length === 0, "nothing beyond the mirror and backup folders is visible to the writer credential", unexpected.map(u => u.name).join(", "));
   const folder = everything.find(f => f.name === MIRROR_FOLDER_NAME);
-  check(everything.filter(f => f.id !== folder?.id).every(f => f.parents?.includes(folder?.id ?? "")), "every file sits inside the mirror folder");
+  check(Boolean(folder), "the mirror folder is present");
+  const identity = workforceDriveIdentity();
+  if (identity && folder) {
+    const perms = await (await fetch(`https://www.googleapis.com/drive/v3/files/${folder.id}/permissions?fields=permissions(emailAddress,role)`, { headers: { Authorization: `Bearer ${access.accessToken}` } })).json() as { permissions?: Array<{ emailAddress?: string; role?: string }> };
+    check((perms.permissions ?? []).some(p => p.emailAddress === identity && p.role === "reader"), "mirror folder shared read-only with the workforce identity", identity);
+    if (backupRoot[0]) {
+      const bp = await (await fetch(`https://www.googleapis.com/drive/v3/files/${backupRoot[0].id}/permissions?fields=permissions(emailAddress,role)`, { headers: { Authorization: `Bearer ${access.accessToken}` } })).json() as { permissions?: Array<{ emailAddress?: string }> };
+      check(!(bp.permissions ?? []).some(p => p.emailAddress === identity), "backup folder NOT shared with the workforce identity");
+    }
+  }
 }
 
 console.log("\n=== 4. Manifest and files ===");
@@ -79,5 +93,12 @@ if (mirror.files) {
   console.log(`  channels: ${Object.entries(byChannel).map(([k, v]) => `${k} ${v}`).join(", ")}`);
 }
 
-console.log(`\nRESULT: ${failures === 0 ? "every proof holds; the reporting mirror is accepted" : `${failures} proof(s) failed`}.`);
+console.log("\n=== 6. Daily backup snapshot ===");
+const backup = await runCrmBackup("acceptance");
+check(backup.status === "complete", "backup run status", `${backup.status}${backup.reason ? `: ${backup.reason}` : ""}${backup.snapshotLabel ? ` snapshot ${backup.snapshotLabel}` : ""}`);
+if (backup.counts) console.log(`  counts: ${Object.entries(backup.counts).map(([k, v]) => `${k} ${v}`).join(", ")}`);
+const backupRuns = await recentBackupRuns(1);
+check(backupRuns.length === 1 && backupRuns[0].status === "complete", "backup run recorded in crm_backup_runs", backupRuns[0] ? `id ${backupRuns[0].id} ${backupRuns[0].status}` : "no row");
+
+console.log(`\nRESULT: ${failures === 0 ? "every proof holds; the reporting mirror and backup are accepted" : `${failures} proof(s) failed`}.`);
 process.exit(failures === 0 ? 0 : 1);

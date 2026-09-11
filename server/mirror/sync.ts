@@ -30,6 +30,7 @@ import { getDriveMirrorAccess } from "./driveMirrorOAuth";
 import { DriveClient } from "./driveClient";
 import { dealRow, leadRow, personRow, ownerNameMap, toCsv, LEAD_COLUMNS, DEAL_COLUMNS, PERSON_COLUMNS, NEVER_MIRRORED, type Row } from "./sanitise";
 import { MIRROR_FILE_NAMES, MIRROR_FOLDER_NAME, type MirrorManifest, type MirrorFileEntry } from "./manifest";
+import { workforceDriveIdentity } from "../workforce/connectors/googleDrive";
 
 export type MirrorTokenSource = "website_token" | "dedicated";
 
@@ -119,8 +120,13 @@ async function doRun(trigger: "schedule" | "manual" | "acceptance", deps: { fetc
   try {
     const folder = (await client.findFolder(MIRROR_FOLDER_NAME)) ?? (await client.createFolder(MIRROR_FOLDER_NAME));
     folderId = folder.id;
+    // Tom Arrington, 11 September 2026: give the reporting capability access
+    // to the mirror folder. The workforce service account is granted reader
+    // on this one folder. The backup folder is never shared.
+    const identity = workforceDriveIdentity();
+    if (identity) await client.shareReader(folderId, identity);
   } catch (error) {
-    return failed(`Could not find or create the mirror folder: ${String((error as Error)?.message ?? error)}`);
+    return failed(`Could not find, create or share the mirror folder: ${String((error as Error)?.message ?? error)}`);
   }
   const written: MirrorFileEntry[] = [];
   for (const f of files) {

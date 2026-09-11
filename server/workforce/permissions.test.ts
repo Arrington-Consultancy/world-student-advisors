@@ -3,19 +3,21 @@ import { denyUnlessCrmGranted, evaluateConnectorPermission, evaluateStaffPortalE
 import { getWorker, listWorkers } from "./registry";
 import { WORKER_CRM_SCOPE, type CrmScope } from "./crmScope";
 import { WORKER_SHAREPOINT_LOCATIONS } from "./sharePointLocations";
+import { WORKER_DRIVE_ROOTS } from "./driveLocations";
 import { NO_CONTROLLED_CRM_DECISION, CRM_READ_INTENT_APPROVED } from "./types";
 import type { ConnectorOperation, WorkerId } from "./types";
 
 describe("permission engine — deny by default", () => {
-  it("denies every write on every connector, denies Google Drive to everyone, and allows SharePoint read only where a location is designated", () => {
+  it("denies every write on every connector, and allows SharePoint or Drive read only where a location is designated", () => {
     // Approved 11 September 2026: six workers hold SharePoint read of
-    // designated locations. Nothing else on these connectors is open.
+    // designated locations and three hold Google Drive read of designated
+    // folders. Nothing else on these connectors is open.
     for (const w of listWorkers()) {
       for (const connector of ["sharepoint", "google_drive"] as const) {
         for (const operation of ["search", "read", "create", "update", "delete", "external_send"] as const) {
           const decision = evaluateConnectorPermission({ workerId: w.id, connector, operation, resourceScope: "irrelevant" });
-          const designated = WORKER_SHAREPOINT_LOCATIONS[w.id].length > 0;
-          const expected = connector === "sharepoint" && (operation === "read" || operation === "search") && designated;
+          const designated = connector === "sharepoint" ? WORKER_SHAREPOINT_LOCATIONS[w.id].length > 0 : WORKER_DRIVE_ROOTS[w.id].length > 0;
+          const expected = (operation === "read" || operation === "search") && designated;
           expect(decision.allowed).toBe(expected);
         }
       }

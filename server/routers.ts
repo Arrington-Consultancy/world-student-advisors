@@ -76,6 +76,9 @@ import { buildAuthoriseUrl, describePipedriveGrant, oauthConfig, signState, PIPE
 import { miSource } from "./workforce/mi/source";
 import { buildDriveAuthoriseUrl, describeDriveMirrorGrant, driveOAuthConfig, signDriveState, DRIVE_MIRROR_SCOPE } from "./mirror/driveMirrorOAuth";
 import { mirrorConfigState, mirrorTokenSource, recentMirrorRuns, runMirrorSync } from "./mirror/sync";
+import { recentBackupRuns, runCrmBackup } from "./mirror/backup";
+import { workforceDriveIdentity } from "./workforce/connectors/googleDrive";
+import { allDesignatedDriveRoots, DRIVE_NOT_DESIGNATED, WORKER_DRIVE_ROOTS } from "./workforce/driveLocations";
 import { readMirror } from "./mirror/reader";
 import { getSharePointStatus } from "./workforce/connectors/sharepoint";
 import { getGoogleDriveStatus } from "./workforce/connectors/googleDrive";
@@ -1253,7 +1256,7 @@ export const appRouter = router({
       .query(async ({ input }) => {
         const admin = await requireAccessAdmin(input.token);
         if (!admin.allowed) return { permitted: false as const, reason: admin.reason };
-        const [grant, config, runs] = await Promise.all([describeDriveMirrorGrant(), mirrorConfigState(), recentMirrorRuns(8)]);
+        const [grant, config, runs, backups] = await Promise.all([describeDriveMirrorGrant(), mirrorConfigState(), recentMirrorRuns(8), recentBackupRuns(8)]);
         let mirror: { status: string; detail: string; ageMinutes: number | null; lastSuccessfulSyncAt: string | null; counts: { leads: number; deals: number; persons: number } | null; coverage: { from: string | null; to: string } | null } | null = null;
         if (grant.status === "operational") {
           try {
@@ -1267,7 +1270,24 @@ export const appRouter = router({
           permitted: true as const,
           grant, config, tokenSource: mirrorTokenSource(), scope: DRIVE_MIRROR_SCOPE, mirror,
           runs: runs.map(r => ({ id: r.id, startedAt: r.startedAt, finishedAt: r.finishedAt, status: r.status, reason: r.reason, trigger: r.trigger, leadCount: r.leadCount, dealCount: r.dealCount, personCount: r.personCount })),
+          backups: backups.map(b => ({ id: b.id, startedAt: b.startedAt, finishedAt: b.finishedAt, status: b.status, reason: b.reason, trigger: b.trigger, snapshotLabel: b.snapshotLabel, counts: b.countsJson ? (JSON.parse(b.countsJson) as Record<string, number>) : null, totalBytes: b.totalBytes })),
+          // The workforce Drive identity (an email, not a secret) and the folders it should be given, for the sharing step.
+          workforceDrive: {
+            identity: workforceDriveIdentity(),
+            designatedFolders: allDesignatedDriveRoots(),
+            notDesignated: [...DRIVE_NOT_DESIGNATED],
+            workers: Object.entries(WORKER_DRIVE_ROOTS).filter(([, roots]) => roots.length > 0).map(([id, roots]) => ({ workerId: id, folders: roots.map(r => r.name) })),
+          },
         };
+      }),
+
+    crmBackupNow: publicProcedure
+      .input(z.object({ token: z.string() }))
+      .mutation(async ({ input }) => {
+        const admin = await requireAccessAdmin(input.token);
+        if (!admin.allowed) return { permitted: false as const, reason: admin.reason };
+        const r = await runCrmBackup("manual");
+        return { permitted: true as const, ...r };
       }),
 
     driveMirrorSyncNow: publicProcedure
@@ -1467,7 +1487,7 @@ export const appRouter = router({
             },
             {
               connector: "google_drive",
-              credential: { state: getGoogleDriveStatus(), variables: ["WORKFORCE_DRIVE_SERVICE_ACCOUNT_JSON", "WORKFORCE_DRIVE_ALLOWED_FOLDER_IDS"], note: "Withdrawn from every worker (Matrix v0.3 section 4). The only Drive use is the WSA AI Reporting Mirror: one folder, written and read by the platform under Tom Arrington's approved exception of 11 September 2026, through a dedicated drive.file credential (GOOGLE_MIRROR_CLIENT_ID, GOOGLE_MIRROR_CLIENT_SECRET)." },
+              credential: { state: getGoogleDriveStatus(), variables: ["WORKFORCE_DRIVE_SERVICE_ACCOUNT_JSON"], note: "Selected WSA folders in Tom Arrington's Drive, read only, by folder ID (Matrix v0.5 section 4, approved 11 September 2026), through a dedicated workforce service account that sees only what is shared with it. The reporting mirror and backup are written by the platform through a separate drive.file credential (GOOGLE_MIRROR_CLIENT_ID, GOOGLE_MIRROR_CLIENT_SECRET)." },
               permission: { workersGranted: driveGranted, of: workers.length, authority: "connectorScope.ts, Access Matrix v0.2 Google Drive column." },
             },
           ],

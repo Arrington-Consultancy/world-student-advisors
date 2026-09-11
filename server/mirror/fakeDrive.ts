@@ -9,6 +9,8 @@ export interface FakeFile { id: string; name: string; mimeType: string; parents:
 
 export class FakeDrive {
   files = new Map<string, FakeFile>();
+  /** fileId -> reader emails granted. */
+  permissions = new Map<string, string[]>();
   requests: Array<{ method: string; url: string; auth: string | null }> = [];
   failUploadsNamed = new Set<string>();
   private seq = 0;
@@ -37,9 +39,17 @@ export class FakeDrive {
       if (parent) list = list.filter(f => f.parents.includes(parent));
       return json({ files: list.map(f => this.meta(f)) });
     }
+    const perm = /^\/drive\/v3\/files\/([^/]+)\/permissions$/.exec(url.pathname);
+    if (perm && method === "GET") return json({ permissions: (this.permissions.get(perm[1]) ?? []).map(e => ({ id: e, emailAddress: e, role: "reader", type: "user" })) });
+    if (perm && method === "POST") {
+      const body = JSON.parse(String(init.body)) as { emailAddress: string; role: string };
+      if (body.role !== "reader") return json({ error: "only reader expected in tests" }, 400);
+      this.permissions.set(perm[1], [...(this.permissions.get(perm[1]) ?? []), body.emailAddress]);
+      return json({ id: body.emailAddress });
+    }
     if (url.pathname === "/drive/v3/files" && method === "POST") {
-      const body = JSON.parse(String(init.body)) as { name: string; mimeType: string };
-      const f: FakeFile = { id: `folder-${++this.seq}`, name: body.name, mimeType: body.mimeType, parents: [], content: "" };
+      const body = JSON.parse(String(init.body)) as { name: string; mimeType: string; parents?: string[] };
+      const f: FakeFile = { id: `folder-${++this.seq}`, name: body.name, mimeType: body.mimeType, parents: body.parents ?? [], content: "" };
       this.files.set(f.id, f);
       return json(this.meta(f));
     }

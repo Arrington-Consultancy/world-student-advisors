@@ -17,6 +17,7 @@ import { recordAuditEvent, type AuditAuthMethod } from "../audit";
 import { getWorker } from "../registry";
 import { evaluateWsaScope } from "../wsaScope";
 import { decideSharePointLocation } from "../sharePointLocations";
+import { decideDriveLocation } from "../driveLocations";
 import type { ConnectorName, ConnectorOperation, ConnectorState, WorkerId } from "../types";
 import type { PermissionDecision } from "../permissions";
 import type { SensitiveOverlay } from "../../access/accessControl";
@@ -192,6 +193,33 @@ export async function runConnectorAction(
   // a second SharePoint code path cannot be added that forgets it.
   if (request.connector === "sharepoint") {
     const location = decideSharePointLocation(request.workerId, request.resourceScope);
+    if (!location.permitted) {
+      recordAuditEvent({
+        staffUserId: request.staffUserId,
+        authMethod: request.authMethod,
+        workerId: request.workerId,
+        workerSpecificationVersion: worker.specificationVersion,
+        caseId: request.caseId,
+        requestedCapability: `${request.connector}:${request.operation}`,
+        permissionDecision: "denied",
+        permissionReason: location.reason,
+        connector: request.connector,
+        connectorOperation: request.operation,
+        success: null,
+        targetResourceId: request.resourceScope,
+        errorCategory: "permission_denied",
+      });
+      return { success: false, connectorState: "unconfigured", message: location.reason };
+    }
+  }
+
+  // The per-worker Google Drive folder gate, by folder ID. Tom Arrington,
+  // 11 September 2026: workers may read selected WSA folders in his Drive
+  // and nothing else there. The service account sees only what he shared;
+  // this establishes that the folder named is one designated to THIS
+  // worker, and that it is not a folder never designated to anyone.
+  if (request.connector === "google_drive") {
+    const location = decideDriveLocation(request.workerId, request.resourceScope);
     if (!location.permitted) {
       recordAuditEvent({
         staffUserId: request.staffUserId,

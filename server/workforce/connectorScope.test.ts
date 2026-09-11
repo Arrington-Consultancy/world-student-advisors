@@ -84,9 +84,13 @@ describe("SharePoint grants are transcribed from Access Matrix v0.2 section 2", 
     }
   });
 
-  it("Google Drive is granted to nobody: withdrawn from every worker on 11 September 2026 (Matrix v0.3 section 4)", () => {
+  it("Google Drive read and search are granted to exactly Ethan, Alex and Maya (Matrix v0.5 section 4, approved 11 September 2026), and no Drive write to anyone", () => {
+    const granted = new Set(["ethan", "alex", "maya"]);
     for (const w of listWorkers()) {
-      for (const op of OPERATIONS) expect(connectorScopeGrants(w.id, "google_drive", op)).toBe(false);
+      for (const op of OPERATIONS) {
+        const expected = granted.has(w.id) && (op === "read" || op === "search");
+        expect(connectorScopeGrants(w.id, "google_drive", op)).toBe(expected);
+      }
     }
   });
 
@@ -124,9 +128,10 @@ describe("a grant is a permission, and a permission is still not access", () => 
     expect(decision.reason).toContain("no designated SharePoint location");
   });
 
-  it("exactly twelve SharePoint read/search permissions are open across the workforce, and nothing else on these connectors", () => {
-    // Six designated workers, read and search each. Every write, every
-    // Drive operation and every social channel is denied for everyone.
+  it("exactly eighteen read/search permissions are open across the workforce (twelve SharePoint, six Drive), and nothing else on these connectors", () => {
+    // Six SharePoint-designated workers and three Drive-designated
+    // workers, read and search each. Every write and every social channel
+    // is denied for everyone.
     let permitted = 0;
     for (const w of listWorkers()) {
       for (const c of CONNECTORS) {
@@ -135,6 +140,6 @@ describe("a grant is a permission, and a permission is still not access", () => 
         }
       }
     }
-    expect(permitted).toBe(12);
+    expect(permitted).toBe(18);
   });
 });

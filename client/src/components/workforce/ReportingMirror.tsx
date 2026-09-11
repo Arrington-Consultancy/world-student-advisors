@@ -52,6 +52,14 @@ export function ReportingMirror({ token }: { token: string }) {
     },
     onError: () => setMessage("Could not start the Google authorisation. Try again."),
   });
+  const backup = trpc.workforce.crmBackupNow.useMutation({
+    onSuccess: r => {
+      if (!r.permitted) { setMessage(r.reason); return; }
+      setMessage(r.status === "complete" ? `Backup complete: snapshot ${r.snapshotLabel}.` : `Backup ${r.status}${r.reason ? `: ${r.reason}` : ""}.`);
+      status.refetch();
+    },
+    onError: () => setMessage("The backup could not be started. Try again."),
+  });
   const sync = trpc.workforce.driveMirrorSyncNow.useMutation({
     onSuccess: r => {
       if (!r.permitted) { setMessage(r.reason); return; }
@@ -117,10 +125,16 @@ export function ReportingMirror({ token }: { token: string }) {
           </Button>
         )}
         {connected && s.config === "ready" && (
-          <Button type="button" variant="outline" onClick={() => { setMessage(null); sync.mutate({ token }); }} disabled={sync.isPending}>
-            <RefreshCw className={`mr-2 h-4 w-4 ${sync.isPending ? "animate-spin" : ""}`} aria-hidden />
-            {sync.isPending ? "Syncing…" : "Sync now"}
-          </Button>
+          <>
+            <Button type="button" variant="outline" onClick={() => { setMessage(null); sync.mutate({ token }); }} disabled={sync.isPending}>
+              <RefreshCw className={`mr-2 h-4 w-4 ${sync.isPending ? "animate-spin" : ""}`} aria-hidden />
+              {sync.isPending ? "Syncing…" : "Sync mirror now"}
+            </Button>
+            <Button type="button" variant="outline" onClick={() => { setMessage(null); backup.mutate({ token }); }} disabled={backup.isPending}>
+              <RefreshCw className={`mr-2 h-4 w-4 ${backup.isPending ? "animate-spin" : ""}`} aria-hidden />
+              {backup.isPending ? "Backing up…" : "Back up now"}
+            </Button>
+          </>
         )}
         <p className="text-sm text-gray-500">Sign in with the Google account that will hold the folder. The credential is limited to files this service creates.</p>
       </div>
@@ -137,6 +151,37 @@ export function ReportingMirror({ token }: { token: string }) {
                   <td className={`py-1 pr-3 ${r.status === "complete" ? "text-green-700" : r.status === "running" ? "text-gray-500" : "text-amber-700"}`}>{r.status}</td>
                   <td className="py-1 pr-3 whitespace-nowrap">{r.leadCount ?? "–"} / {r.dealCount ?? "–"} / {r.personCount ?? "–"}</td>
                   <td className="py-1">{r.reason ?? ""}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      <div className="mt-4 rounded-md border border-wsa-navy/10 p-3 text-sm text-gray-700">
+        <p className="font-medium text-wsa-navy">Workforce Drive identity (read only, selected folders)</p>
+        {s.workforceDrive.identity ? (
+          <p className="mt-1">Share these folders, view only, with <span className="font-mono">{s.workforceDrive.identity}</span>: {s.workforceDrive.designatedFolders.map(f => f.name).join(", ")}.</p>
+        ) : (
+          <p className="mt-1">Not configured: WORKFORCE_DRIVE_SERVICE_ACCOUNT_JSON is absent on the service.</p>
+        )}
+        <p className="mt-1">Workers: {s.workforceDrive.workers.map(w => `${w.workerId} (${w.folders.join(", ")})`).join("; ")}.</p>
+        <p className="mt-1">Never shared or designated: {s.workforceDrive.notDesignated.map(f => f.name).join(", ")}. The backup folder is never shared.</p>
+      </div>
+
+      {s.backups.length > 0 && (
+        <div className="mt-4 overflow-x-auto">
+          <p className="text-sm font-medium text-wsa-navy">Daily backup snapshots</p>
+          <table className="w-full text-sm">
+            <thead><tr className="text-left text-gray-500"><th className="py-1 pr-3">Started</th><th className="py-1 pr-3">Snapshot</th><th className="py-1 pr-3">Status</th><th className="py-1 pr-3">Records</th><th className="py-1">Reason</th></tr></thead>
+            <tbody>
+              {s.backups.map(b => (
+                <tr key={b.id} className="border-t border-wsa-navy/10 text-gray-700">
+                  <td className="py-1 pr-3 whitespace-nowrap">{when(b.startedAt)}</td>
+                  <td className="py-1 pr-3 font-mono">{b.snapshotLabel ?? ""}</td>
+                  <td className={`py-1 pr-3 ${b.status === "complete" ? "text-green-700" : b.status === "running" ? "text-gray-500" : "text-amber-700"}`}>{b.status}</td>
+                  <td className="py-1 pr-3 whitespace-nowrap">{b.counts ? Object.values(b.counts).reduce((a, n) => a + n, 0) : "–"}</td>
+                  <td className="py-1">{b.reason ?? ""}</td>
                 </tr>
               ))}
             </tbody>

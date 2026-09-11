@@ -94,7 +94,7 @@ export const WORKER_CONNECTOR_SCOPE: Readonly<Record<WorkerId, ConnectorGrant>> 
    * Drive: "Read access where current website/Search Console legacy
    * evidence is stored in Drive; no student-case data."
    */
-  ethan: Object.freeze({ sharepoint: READ }),
+  ethan: Object.freeze({ sharepoint: READ, google_drive: READ }),
   /**
    * "Records-control scope across authorised SharePoint locations."
    * A scope is the right to look across authorised locations. It is not a
@@ -103,13 +103,13 @@ export const WORKER_CONNECTOR_SCOPE: Readonly<Record<WorkerId, ConnectorGrant>> 
    * Drive: "Read/migration access only when moving or reconciling
    * authorised legacy records."
    */
-  maya: Object.freeze({ sharepoint: READ }),
+  maya: Object.freeze({ sharepoint: READ, google_drive: READ }),
   /**
    * "Paid-media governance, approved measurement evidence and authorised
    * campaign records." No write verb.
    * Drive: "Read access to relevant legacy marketing/website evidence only."
    */
-  alex: Object.freeze({ sharepoint: READ }),
+  alex: Object.freeze({ sharepoint: READ, google_drive: READ }),
   /**
    * Not present in Access Matrix v0.2, which predates her. Worker Register
    * v0.42 also records her as NOT APPROVED with NO LIVE PUBLISHING
@@ -132,13 +132,15 @@ export const WORKER_CONNECTOR_SCOPE: Readonly<Record<WorkerId, ConnectorGrant>> 
 });
 
 /**
- * Google Drive: withdrawn from every worker on 11 September 2026 (Worker
- * Personality and Connector Access Matrix v0.3, section 4). The Drive WSA's
- * handovers sit in is owned by an Arrington Consultancy account, and that
- * is a business-separation boundary rather than a design question. The
- * v0.2 read entries for Ethan, Maya and Alex are gone from the table above.
+ * Google Drive: selected-folder read access, approved by Tom Arrington on
+ * 11 September 2026 (Worker Personality and Connector Access Matrix v0.5,
+ * section 4; Change Entry 091). Read and search only, on folders named by
+ * ID in driveLocations.ts and shared by Tom with the dedicated workforce
+ * service account. This replaces the withdrawal recorded in v0.3 section
+ * 4; the v0.2 read entries for Ethan, Maya and Alex return, now by folder
+ * ID rather than by name.
  */
-export const GOOGLE_DRIVE_WITHDRAWN = "Google Drive access was withdrawn from every WSA worker on 11 September 2026 (Access Matrix v0.3 section 4).";
+export const GOOGLE_DRIVE_SOURCE = "Selected-folder Google Drive read access approved by Tom Arrington on 11 September 2026 (Access Matrix v0.5 section 4). Folders are designated by ID in driveLocations.ts.";
 
 export const NO_CONNECTOR_GRANT =
   "No controlled record grants this worker a scope on this connector. " +

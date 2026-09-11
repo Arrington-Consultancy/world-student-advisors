@@ -44,18 +44,21 @@ describe("SharePoint is bounded to the one configured WSA site", () => {
   });
 });
 
-describe("Google Drive is bounded to an explicit folder allowlist", () => {
-  it("allows only allowlisted folders", () => {
-    process.env.WORKFORCE_DRIVE_ALLOWED_FOLDER_IDS = "wsa-marketing,wsa-seo";
-    expect(evaluateWsaScope("google_drive", "wsa-marketing/report.pdf").withinWsaScope).toBe(true);
-    expect(evaluateWsaScope("google_drive", "wsa-seo").withinWsaScope).toBe(true);
+describe("Google Drive is bounded to the designated WSA folders, by ID", () => {
+  // Tom Arrington, 11 September 2026: selected-folder access, by folder
+  // ID, never by name. The roots are named in driveLocations.ts.
+  it("allows only a scope that names a designated root by ID", () => {
+    expect(evaluateWsaScope("google_drive", "root/1NfrRjUKTDsG1YiHzLpR8sHPmuuK18Zux/file/abc").withinWsaScope).toBe(true);
+    expect(evaluateWsaScope("google_drive", "root/1S9Qep2_IqUiKoyqfwvXXpHzeOxVXP5pd").withinWsaScope).toBe(true);
+    expect(evaluateWsaScope("google_drive", "root/1Dq2LmA30-aCbbNvQcwenugPZCjTd7PWQ/search/plan").withinWsaScope).toBe(true);
   });
 
-  it("denies personal, Arrington and Scott-project folders", () => {
-    process.env.WORKFORCE_DRIVE_ALLOWED_FOLDER_IDS = "wsa-marketing";
-    for (const folder of ["personal-folder", "arrington-clients", "scott-project"]) {
-      expect(evaluateWsaScope("google_drive", `${folder}/file`).withinWsaScope).toBe(false);
+  it("denies the undesignated, the Arrington, the archive and the parent folders, and a name where an ID is required", () => {
+    for (const id of ["16gt8iUovwFbZR6nGwRaUwgQVeWXFKycm", "1ciKTYlcEHbsmJWJKaUkLpyb2v9HZsJbJ", "1JPSP1iP6DFMX6fHzYm6jd5mTpzUg1wdT", "1412YWKbu9du6IkXlyvbrU7d8XckLEmW1", "1MGq-bJCB0QliuGh22JgUHPGGYmONQL0o", "personal-folder"]) {
+      expect(evaluateWsaScope("google_drive", `root/${id}/file/x`).withinWsaScope).toBe(false);
     }
+    expect(evaluateWsaScope("google_drive", "WSA Website Operating System/file").withinWsaScope).toBe(false);
+    expect(evaluateWsaScope("google_drive", "1NfrRjUKTDsG1YiHzLpR8sHPmuuK18Zux/file").withinWsaScope).toBe(false);
   });
 });
 
@@ -100,7 +103,6 @@ describe("credential material is ring-fenced from every worker", () => {
     // Deliberately the WIDEST possible configuration. The ring-fence must
     // hold even when every allowlist would otherwise permit the read.
     process.env.SHAREPOINT_GRAPH_SITE_ID = "wsa-site";
-    process.env.WORKFORCE_DRIVE_ALLOWED_FOLDER_IDS = "wsa-marketing,Password";
     process.env.WORKFORCE_LINKEDIN_ALLOWED_ACCOUNTS = "world-student-advisors";
   });
 
@@ -124,9 +126,8 @@ describe("credential material is ring-fenced from every worker", () => {
     expect(evaluateWsaScope("sharepoint", "wsa-site/notes/Passwords.xlsx").withinWsaScope).toBe(false);
   });
 
-  it("beats an allowlist that would otherwise permit it", () => {
-    // "Password" is explicitly in the Drive allowlist above, and it still fails.
-    expect(evaluateWsaScope("google_drive", "Password/list.xlsx").withinWsaScope).toBe(false);
+  it("beats a designated root when the scope itself names a ring-fenced item", () => {
+    expect(evaluateWsaScope("google_drive", "root/1NfrRjUKTDsG1YiHzLpR8sHPmuuK18Zux/search/Password").withinWsaScope).toBe(false);
   });
 
   it("covers credential material beyond the word password", () => {
@@ -152,6 +153,6 @@ describe("credential material is ring-fenced from every worker", () => {
   it("still allows ordinary WSA records — the fence is not so broad it blocks the job", () => {
     expect(evaluateWsaScope("sharepoint", "wsa-site/01_ADMIN_&_GOVERNANCE/WSA_Change_Log_v0.71.docx").withinWsaScope).toBe(true);
     expect(evaluateWsaScope("sharepoint", "wsa-site/07_MARKETING_IMAGES/logo.png").withinWsaScope).toBe(true);
-    expect(evaluateWsaScope("google_drive", "wsa-marketing/campaign.pdf").withinWsaScope).toBe(true);
+    expect(evaluateWsaScope("google_drive", "root/1S9Qep2_IqUiKoyqfwvXXpHzeOxVXP5pd/file/campaign").withinWsaScope).toBe(true);
   });
 });

@@ -228,6 +228,12 @@ export function createPipedriveReaderWithAuth(auth: PipedriveAuth) {
     listPersonsRaw: () => listAll("/persons", 500, 40, auth),
     /** The company's users, for owner id to name resolution in the reporting mirror. GET only. */
     listUsersRaw: async () => ((await pipedriveGet("/users", auth))?.data ?? []) as Array<Record<string, unknown>>,
+    /**
+     * Any collection endpoint, paginated where Pipedrive paginates it, for
+     * the disaster-recovery backup. Still GET only: pipedriveGet has no
+     * method argument. The endpoint must start with "/" and carry no token.
+     */
+    listCollectionRaw: (endpoint: string, paginated = true) => (paginated ? listAll(endpoint.includes("?") ? endpoint : `${endpoint}?`, 500, 200, auth) : pipedriveGet(endpoint, auth).then(r => (r?.data ?? []) as Array<Record<string, unknown>>)),
   };
 }
 

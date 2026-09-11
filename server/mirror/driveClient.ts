@@ -49,6 +49,19 @@ export class DriveClient {
     return (await r.json()) as DriveFile;
   }
 
+  async createFolderIn(parentId: string, name: string): Promise<DriveFile> {
+    const r = await this.call(`${API}/files?fields=id,name`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name, mimeType: "application/vnd.google-apps.folder", parents: [parentId] }) });
+    return (await r.json()) as DriveFile;
+  }
+
+  /** Grant a reader permission on a file this application created. Used only for the mirror folder, never the backup. */
+  async shareReader(fileId: string, emailAddress: string): Promise<void> {
+    const existing = await this.call(`${API}/files/${fileId}/permissions?fields=permissions(id,emailAddress,role,type)`);
+    const perms = ((await existing.json()) as { permissions?: Array<{ emailAddress?: string; role?: string }> }).permissions ?? [];
+    if (perms.some(p => p.emailAddress?.toLowerCase() === emailAddress.toLowerCase() && p.role === "reader")) return;
+    await this.call(`${API}/files/${fileId}/permissions?sendNotificationEmail=false&fields=id`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ role: "reader", type: "user", emailAddress }) });
+  }
+
   async findInFolder(folderId: string, name: string): Promise<DriveFile | null> {
     const files = await this.listAll(`'${folderId}' in parents and name='${name.replace(/'/g, "\\'")}' and trashed=false`);
     return files[0] ?? null;

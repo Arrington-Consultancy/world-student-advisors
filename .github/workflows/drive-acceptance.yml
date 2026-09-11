@@ -1,0 +1,32 @@
+name: Connector acceptance - selected-folder Google Drive (read only)
+
+# Manual only. Proves what the workforce Drive identity can see (exactly
+# the designated WSA folders and the reporting mirror), that the
+# never-designated folders, the backup folder and anything named Arrington
+# are invisible, and that the worker gates refuse the wrong worker, the
+# wrong root and a shared-password session. Prints names, IDs, counts and
+# statuses only. Never prints a token and never prints file content.
+# Auth: githubactionsprod, the production-scoped Railway Project Token.
+on:
+  workflow_dispatch: {}
+
+jobs:
+  accept:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Install Railway CLI
+        run: npm install -g @railway/cli
+      - name: Run the acceptance inside the service variables (read only)
+        timeout-minutes: 5
+        env:
+          RAILWAY_TOKEN: ${{ secrets.githubactionsprod }}
+        run: |
+          railway run --service "world-student-advisors" --environment "production" -- pnpm exec tsx scripts/drive-acceptance.ts

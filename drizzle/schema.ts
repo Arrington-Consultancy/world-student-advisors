@@ -745,3 +745,27 @@ export const mirrorSyncRuns = mysqlTable("mirror_sync_runs", {
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
 export type MirrorSyncRun = typeof mirrorSyncRuns.$inferSelect;
+
+/**
+ * One row per run of the daily Pipedrive disaster-recovery backup into the
+ * Google Drive backup folder. Tom Arrington, 11 September 2026: a daily
+ * timestamped snapshot; never overwrite the last good backup after a
+ * failed export; a manifest with export time, record counts, coverage and
+ * success or failure. The backup folder is never worker-readable.
+ */
+export const crmBackupRuns = mysqlTable("crm_backup_runs", {
+  id: int("id").autoincrement().primaryKey(),
+  startedAt: timestamp("startedAt").notNull(),
+  finishedAt: timestamp("finishedAt"),
+  status: mysqlEnum("status", ["running", "complete", "partial", "failed"]).notNull(),
+  reason: varchar("reason", { length: 400 }),
+  trigger: mysqlEnum("trigger", ["schedule", "manual", "acceptance"]).notNull(),
+  tokenSource: varchar("tokenSource", { length: 20 }),
+  snapshotLabel: varchar("snapshotLabel", { length: 40 }),
+  snapshotFolderId: varchar("snapshotFolderId", { length: 100 }),
+  /** JSON: entity name to record count. */
+  countsJson: text("countsJson"),
+  totalBytes: int("totalBytes"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+export type CrmBackupRun = typeof crmBackupRuns.$inferSelect;
