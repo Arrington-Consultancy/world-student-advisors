@@ -69,7 +69,11 @@ async function requireAccessAdmin(
   return { allowed: true, staffUserId, reason: "Holds access_admin." };
 }
 import { resolveStaffSession } from "./staffSession";
+import { recordRoutingGap, isGap, recordReview, recordStaffNextAction, reviewGaps } from "./workforce/routingGap";
+import { REMITS, OUTCOMES, UNOWNED_OUTCOMES } from "./workforce/remit";
+import { CONTROLLED_BASELINE, LAST_RECONCILED, ROUTING_MODEL_VERSION } from "./workforce/provenance";
 import { resolveStaffAccessProfile } from "./access/identity";
+import { WORKER_FUNCTIONAL_SCOPE } from "./access/workerScope";
 import {
   MAY_INTAKE_RECORDS, MAY_INTAKE_PROVENANCE,
   PARTNER_INSTITUTIONS, PARTNER_PROVENANCE, PARTNER_AREA_MUST_NOT_HOLD,
@@ -105,7 +109,7 @@ import { revokeSessionsAsAdministrator } from "./access/sessionRevocation";
 import { recordAuditEvent } from "./workforce/audit";
 import { listWorkers, getWorker } from "./workforce/registry";
 import { evaluateStaffPortalExecutionPermission } from "./workforce/permissions";
-import { routeStaffRequestAssisted } from "./workforce/router";
+import { routeStaffRequestAssisted, routeStaffRequest } from "./workforce/router";
 import { executeWorker } from "./execution/execute";
 import { readConversation, recordExchange } from "./execution/conversation";
 import { orchestrateCaseRequest } from "./execution/orchestrate";
@@ -1000,6 +1004,14 @@ export const appRouter = router({
       .input(z.object({ token: z.string() }))
       .query(async ({ input }) => {
         const session = await resolveStaffSession(input.token);
+        // Which workers THIS person may reach, decided here from the same
+        // profile every request re-resolves. The client uses it only to
+        // decide how a directory card looks; a card that lies about it
+        // still meets the real check on the ask that follows.
+        const staffUserId = session.authMethod === "shared_password" ? null : session.staffUserId;
+        const resolution = await resolveStaffAccessProfile(staffUserId);
+        const scopes = resolution.resolved && resolution.profile.status === "active"
+          ? new Set(resolution.profile.functionalScopes) : new Set<string>();
         return {
           session: {
             authMethod: session.authMethod,
@@ -1007,6 +1019,7 @@ export const appRouter = router({
           },
           workers: listWorkers().map(w => ({
             id: w.id,
+            reachableByYou: scopes.has(WORKER_FUNCTIONAL_SCOPE[w.id]),
             canonicalName: w.canonicalName,
             roleTitle: w.roleTitle,
             specificationVersion: w.specificationVersion,
@@ -1195,6 +1208,14 @@ export const appRouter = router({
       .query(async ({ input }) => {
         const session = await resolveStaffSession(input.token);
         const result = await routeStaffRequestAssisted(input.request);
+        // A gap is anything Reception could not confidently place with a
+        // worker who can take it. It is recorded, never discarded, with
+        // the exact wording, because the wording is the evidence. The row
+        // id comes back so a "Wrong specialist?" correction can attach.
+        const staffUserId = session.authMethod === "shared_password" ? null : session.staffUserId;
+        const gapId = isGap(result)
+          ? await recordRoutingGap(input.request, result, { staffUserId, authMethod: session.authMethod })
+          : null;
         // Routing is a meaningful action, so it is audited with the
         // resolved principal — but deliberately WITHOUT the request's free
         // text, which staff may phrase around a named student. Only the
@@ -1214,7 +1235,110 @@ export const appRouter = router({
           success: true,
           errorCategory: "none",
         });
-        return result;
+        return { ...result, gapId };
+      }),
+
+    /**
+     * "Wrong specialist?" A staff member says Reception picked the wrong
+     * worker, or said nobody owns something that somebody does.
+     *
+     * This records evidence about the router. It grants nothing, teaches
+     * the router nothing, and changes no remit: a correction is a possible
+     * routing defect for a person to review, and the person clicking is
+     * not making a governance decision. If they name a worker, the client
+     * opens that worker's own page through the same server-side checks as
+     * a direct visit.
+     */
+    routingCorrect: publicProcedure
+      .input(z.object({
+        token: z.string(),
+        request: z.string().min(1).max(500),
+        originalWorkerId: z.string().max(40).nullable(),
+        correctedWorkerId: z.string().max(40).nullable(),
+        gapId: z.number().int().nullable(),
+      }))
+      .mutation(async ({ input }) => {
+        const session = await resolveStaffSession(input.token);
+        const staffUserId = session.authMethod === "shared_password" ? null : session.staffUserId;
+        const known = new Set(listWorkers().map(w => w.id as string));
+        const corrected = input.correctedWorkerId && known.has(input.correctedWorkerId)
+          ? (input.correctedWorkerId as WorkerId) : null;
+        // Re-run the deterministic router so the row records what the
+        // router actually said, not what the browser claims it said.
+        const result = routeStaffRequest(input.request);
+        const id = await recordRoutingGap(
+          input.request, result, { staffUserId, authMethod: session.authMethod },
+          corrected ? { kind: "staff_corrected", correctedWorkerId: corrected } : { kind: "staff_says_owned", correctedWorkerId: null },
+        );
+        if (input.gapId) await recordStaffNextAction(input.gapId, corrected ? `corrected:${corrected}` : "said_owned");
+        recordAuditEvent({
+          staffUserId,
+          authMethod: session.authMethod,
+          workerId: "staff_receptionist",
+          workerSpecificationVersion: getWorker("staff_receptionist").specificationVersion,
+          requestedCapability: "receptionist:correction",
+          permissionDecision: "allowed",
+          permissionReason: corrected
+            ? `Staff corrected route from ${input.originalWorkerId ?? "nobody"} to ${corrected}.`
+            : "Staff said a worker owns a request the router called unowned.",
+          success: true,
+          errorCategory: "none",
+        });
+        return { recorded: id !== null, correctedWorkerId: corrected };
+      }),
+
+    /**
+     * The admin review of recurring gaps. access_admin only, because it
+     * shows every staff member's failed requests grouped, and that is a
+     * management view of how the team works, not a personal one.
+     */
+    routingGaps: publicProcedure
+      .input(z.object({ token: z.string() }))
+      .query(async ({ input }) => {
+        const gate = await requireAccessAdmin(input.token);
+        if (!gate.allowed) return { permitted: false as const, reason: gate.reason };
+        const groups = await reviewGaps();
+        return {
+          permitted: true as const,
+          groups,
+          model: {
+            version: ROUTING_MODEL_VERSION,
+            lastReconciled: LAST_RECONCILED,
+            baseline: CONTROLLED_BASELINE,
+            remits: REMITS.map(r => ({
+              workerId: r.workerId,
+              produces: r.produces,
+              source: `${r.source.record} (${r.source.clause})`,
+              approval: `${r.approvalSource.record} (${r.approvalSource.clause})`,
+            })),
+            outcomes: OUTCOMES.map(o => ({ id: o.id, description: o.description })),
+            unowned: UNOWNED_OUTCOMES.map(u => ({ outcome: u.outcome, source: `${u.source.record} (${u.source.clause})` })),
+          },
+        };
+      }),
+
+    routingGapReview: publicProcedure
+      .input(z.object({
+        token: z.string(),
+        gapId: z.number().int(),
+        outcome: z.enum(["router_defect", "worker_or_access_defect", "out_of_scope", "governance_proposal"]),
+      }))
+      .mutation(async ({ input }) => {
+        const gate = await requireAccessAdmin(input.token);
+        if (!gate.allowed) throw new TRPCError({ code: "FORBIDDEN", message: gate.reason });
+        const ok = await recordReview(input.gapId, input.outcome);
+        recordAuditEvent({
+          staffUserId: gate.staffUserId,
+          authMethod: "entra_sso",
+          workerId: "staff_receptionist",
+          workerSpecificationVersion: getWorker("staff_receptionist").specificationVersion,
+          requestedCapability: "receptionist:gap_review",
+          permissionDecision: "allowed",
+          permissionReason: `Gap ${input.gapId} reviewed as ${input.outcome}. No remit changed.`,
+          success: ok,
+          errorCategory: ok ? "none" : "connector_error",
+        });
+        return { recorded: ok };
       }),
 
     /**

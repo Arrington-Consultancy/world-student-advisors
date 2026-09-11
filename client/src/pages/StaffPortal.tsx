@@ -1,6 +1,6 @@
 import { useState, useEffect, type FormEvent } from "react";
 import {
-  Lock, LogOut, Eye, EyeOff, ArrowLeft, ChevronRight, UserRound,
+  Lock, LogOut, Eye, EyeOff, ArrowLeft, ChevronRight, UserRound, Search,
   GraduationCap, Users, Share2, Radio, FileCheck2, ShieldCheck, Sparkles,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -13,6 +13,7 @@ import { SocialMediaPanel } from "@/components/staff/SocialMediaPanel";
 import { Receptionist } from "@/components/workforce/Receptionist";
 import { AccessBanner } from "@/components/workforce/AccessBanner";
 import { AccessAdmin } from "@/components/workforce/AccessAdmin";
+import { RoutingGaps } from "@/components/workforce/RoutingGaps";
 import { StudentLookup } from "@/components/workforce/StudentLookup";
 import { ResourcesPanel } from "@/components/workforce/ResourcesPanel";
 import { UniversityPortalsPanel } from "@/components/workforce/UniversityPortalsPanel";
@@ -506,7 +507,8 @@ type StaffSection =
   | "team"
   | "channels"
   | "resources"
-  | "access";
+  | "access"
+  | "routing";
 
 /**
  * The Staff Portal home, rebuilt to Tom's brief of 11 September 2026.
@@ -723,6 +725,17 @@ function WorkforceHome({ token, onLogout }: { token: string; onLogout: () => voi
                       Staff access
                     </button>
                   )}
+                  {isAccessAdmin && (
+                    <button
+                      type="button"
+                      role="menuitem"
+                      onClick={() => openSection("routing")}
+                      className="flex w-full items-center gap-2 rounded-lg px-3 py-2.5 text-left text-base text-wsa-navy hover:bg-wsa-navy/5"
+                    >
+                      <Search className="h-4 w-4" aria-hidden />
+                      Routing gaps
+                    </button>
+                  )}
                   <button
                     type="button"
                     role="menuitem"
@@ -825,6 +838,15 @@ function WorkforceHome({ token, onLogout }: { token: string; onLogout: () => voi
                   Who can see what, and who approved it.
                 </p>
                 <AccessAdmin token={token} />
+              </>
+            )}
+            {section === "routing" && (
+              <>
+                <h1 className="text-2xl font-semibold text-wsa-navy md:text-3xl">Routing gaps</h1>
+                <p className="mb-7 mt-1.5 text-base leading-relaxed text-gray-600">
+                  Requests Reception could not place, grouped so patterns show. Nothing here changes a remit.
+                </p>
+                <RoutingGaps token={token} />
               </>
             )}
           </>
