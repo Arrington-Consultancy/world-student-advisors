@@ -102,3 +102,62 @@ describe("the destination worker still re-checks access on the server", () => {
     expect(reception).toMatch(/<WorkerChat/);
   });
 });
+
+/**
+ * The second half of "one Ask is one Ask".
+ *
+ * Handing the request over was not enough on its own. While the worker is
+ * thinking, the only thing on screen was an empty compose box reading
+ * "Describe the enquiry for Nia", and a staff member reads that as an
+ * instruction, because that is what it is. Tom, 11 September 2026: the
+ * routing is working but the text should not have to be retyped.
+ *
+ * So the request has to be visible from the moment it is sent, and it has
+ * to come back to the person if it is refused or the call fails. An empty
+ * box is only ever offered for a question that has not been asked yet.
+ */
+describe("a request that has been sent is visible without being retyped", () => {
+  it("holds the in-flight request separately from the stored conversation", () => {
+    // Separate because it is not a turn: a refused or failed request never
+    // becomes part of what the server stored, and showing it as one would
+    // promise the worker remembers it.
+    expect(chat).toMatch(/const \[inFlight, setInFlight\] = useState<string \| null>\(null\)/);
+    expect(chat).toMatch(/setInFlight\(trimmed\)/);
+  });
+
+  it("renders the in-flight request text and says the worker is working", () => {
+    const block = chat.slice(chat.indexOf("{inFlight && ("), chat.indexOf("<form onSubmit={submit}>"));
+    expect(block).toContain("{inFlight}");
+    expect(block).toContain("is working on this");
+    // Announced, because a staff member using a screen reader gets no
+    // benefit from a spinner they cannot see.
+    expect(block).toMatch(/aria-live="polite"/);
+  });
+
+  it("clears the in-flight request on an answer, a refusal and an error", () => {
+    // Three exits. If any one of them is missed the spinner runs forever
+    // on a request that is already finished.
+    expect((chat.match(/setInFlight\(null\)/g) ?? []).length).toBeGreaterThanOrEqual(2);
+    expect(chat).toMatch(/onError: \(\) => \{\s*setInFlight\(null\);/);
+  });
+
+  it("puts a refused or failed request back in the box rather than losing it", () => {
+    // The person typed it once, or Reception sent it on their behalf and
+    // they never typed it at all. Either way, retyping it is not their job.
+    const success = chat.slice(chat.indexOf("onSuccess: result =>"), chat.indexOf("onError:"));
+    expect(success).toMatch(/setText\(trimmed\)/);
+    const error = chat.slice(chat.indexOf("onError:"));
+    expect(error).toMatch(/setText\(trimmed\)/);
+  });
+
+  it("never offers an empty box for a question already asked", () => {
+    // The label and the placeholder follow the thread, and the thread
+    // begins when a request is sent rather than when one is answered.
+    expect(chat).toMatch(/const hasThread = turns\.length > 0 \|\| inFlight !== null;/);
+    expect(chat).toMatch(/\{hasThread \? `Reply to \$\{workerName\}` : `Ask \$\{workerName\}`\}/);
+    expect(chat).toMatch(/hasThread\s*\n\s*\? `Reply to/);
+    // The old condition asked whether an answer had arrived, which is a
+    // different question and the one that produced the defect.
+    expect(chat).not.toMatch(/turns\.length === 0\s*$/m);
+  });
+});

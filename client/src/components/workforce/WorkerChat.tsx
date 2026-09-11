@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, type FormEvent } from "react";
-import { CornerDownLeft, FileText } from "lucide-react";
+import { CornerDownLeft, FileText, Loader2 } from "lucide-react";
 import { trpc } from "@/lib/trpc";
 
 /**
@@ -61,16 +61,34 @@ export function WorkerChat({
   const [text, setText] = useState("");
   const [turns, setTurns] = useState<Turn[]>([]);
   const [conversationId, setConversationId] = useState<string | undefined>(undefined);
+  /**
+   * The request that has been sent and has no answer yet.
+   *
+   * Held separately from `turns` because it is not part of the
+   * conversation the server stored: if it is refused or the call fails, it
+   * never becomes a turn. It exists so the screen can show the request
+   * during the seconds the worker takes, which is the whole difference
+   * between "this has gone" and "nothing happened, type it again".
+   */
+  const [inFlight, setInFlight] = useState<string | null>(null);
   const ask = trpc.workforce.ask.useMutation();
 
   const send = (raw: string) => {
     const trimmed = raw.trim();
     if (!trimmed || ask.isPending) return;
 
+    // Shown before the answer exists. Reception hands the request straight
+    // to the worker without it ever passing through the box below, so
+    // without this the screen for those seconds is an empty compose field
+    // reading "Describe the enquiry for Nia", which is exactly the "you
+    // have to type it again" that the handoff was built to remove.
+    setInFlight(trimmed);
+
     ask.mutate(
       { token, workerId, request: trimmed, conversationId },
       {
         onSuccess: result => {
+          setInFlight(null);
           // The thread only grows on an answer, matching what the server
           // stored. Showing a refused turn as part of the conversation
           // would imply the worker will remember it next time; it will not.
@@ -82,7 +100,18 @@ export function WorkerChat({
             ]);
             if (result.conversationId) setConversationId(result.conversationId);
             setText("");
+            return;
           }
+          // Refused, so it is not part of the conversation. It goes back
+          // into the box instead, where the person can rework it. Nobody
+          // should have to retype what they have already written in order
+          // to try again, and that applies to a request Reception sent on
+          // their behalf just as much as to one they typed here.
+          setText(trimmed);
+        },
+        onError: () => {
+          setInFlight(null);
+          setText(trimmed);
         },
       },
     );
@@ -109,6 +138,10 @@ export function WorkerChat({
 
   const result = ask.data;
   const showRefusal = result && result.outcome !== "answered";
+  // A thread exists from the moment a request is sent, not from the moment
+  // one is answered. The label and placeholder follow it, so the box never
+  // invites somebody to describe an enquiry they have already made.
+  const hasThread = turns.length > 0 || inFlight !== null;
 
   return (
     <div className="border-t border-wsa-navy/10 bg-white px-5 py-4">
@@ -136,9 +169,23 @@ export function WorkerChat({
         </div>
       )}
 
+      {inFlight && (
+        <div className="mb-4 space-y-2.5" role="status" aria-live="polite">
+          <div className="flex justify-end">
+            <p className="max-w-[85%] whitespace-pre-wrap rounded-lg rounded-br-sm bg-wsa-navy px-3.5 py-2.5 text-base leading-relaxed text-white">
+              {inFlight}
+            </p>
+          </div>
+          <p className="flex items-center gap-2 text-base text-gray-500">
+            <Loader2 className="h-4 w-4 shrink-0 animate-spin" aria-hidden />
+            {workerName} is working on this.
+          </p>
+        </div>
+      )}
+
       <form onSubmit={submit}>
         <label htmlFor={`ask-${workerId}`} className="mb-1.5 block text-sm font-medium text-gray-600">
-          {turns.length === 0 ? `Ask ${workerName}` : `Reply to ${workerName}`}
+          {hasThread ? `Reply to ${workerName}` : `Ask ${workerName}`}
         </label>
         <div className="flex gap-2">
           <textarea
@@ -148,9 +195,9 @@ export function WorkerChat({
             rows={3}
             maxLength={4000}
             placeholder={
-              turns.length === 0
-                ? `Describe the enquiry for ${workerName}…`
-                : `Reply to ${workerName}. She has this conversation so far.`
+              hasThread
+                ? `Reply to ${workerName}. She has this conversation so far.`
+                : `Describe the enquiry for ${workerName}…`
             }
             className="flex-1 rounded-lg border border-wsa-navy/20 p-2.5 text-base focus:border-wsa-red focus:outline-none"
           />
