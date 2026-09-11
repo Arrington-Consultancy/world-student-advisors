@@ -156,6 +156,18 @@ export function assertAuthorisedVariableNames(
  * whole write is refused — the caller must truncate or summarise, never
  * paste. Full deployment IDs belong in the dedicated deploymentId column.
  */
+/**
+ * Make free text safe for an audit row: GUIDs and any long opaque token
+ * become placeholders. Used on error messages, which can carry object ids
+ * and would otherwise be refused by the guard below, leaving no failure
+ * record at all, which is the worst outcome.
+ */
+export function redactForAudit(text: string): string {
+  return text
+    .replace(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/gi, "<guid>")
+    .replace(/[a-z0-9~._-]{32,}/gi, "<token>");
+}
+
 export function assertNoSecretLikeContent(field: string, value: string): void {
   if (SECRET_LIKE.test(value)) {
     throw new AutomationAuthorityError(

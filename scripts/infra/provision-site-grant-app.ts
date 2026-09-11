@@ -26,6 +26,7 @@ import {
   buildAuditEvent,
   buildGraphTokenRequest,
   buildSiteGrantApplicationCreatePayload,
+  redactForAudit,
   selectManagedApplication,
   type AuditEventInput,
   type GraphApplication,
@@ -147,7 +148,7 @@ async function main(): Promise<void> {
 main().catch(async error => {
   const message = String(error?.message ?? error);
   try {
-    await recordAudit({ action: "provision_site_grant_app", phase: "result", targetSystem: "microsoft_entra", targetResource: "run aborted", permissionDecision: "allowed", permissionReason: `Run failed: ${message.slice(0, 300)}`, success: 0, errorCategory: "run_failed" });
+    await recordAudit({ action: "provision_site_grant_app", phase: "result", targetSystem: "microsoft_entra", targetResource: "run aborted", permissionDecision: "allowed", permissionReason: `Run failed: ${redactForAudit(message).slice(0, 300)}`, success: 0, errorCategory: "run_failed" });
   } catch (auditError) {
     console.error(`CRITICAL: run failed AND the durable failure record could not be written: ${String((auditError as Error)?.message ?? auditError)}`);
   }

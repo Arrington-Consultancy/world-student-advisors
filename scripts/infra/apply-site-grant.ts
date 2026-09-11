@@ -42,6 +42,7 @@ import {
   buildGraphTokenRequest,
   buildSitePermissionGrantBody,
   declaresOnlySitesSelected,
+  redactForAudit,
   evaluateSiteGrant,
   rolesClaimIsExactly,
   selectManagedApplication,
@@ -108,7 +109,7 @@ async function clientCredentialsToken(clientId: string, secret: string): Promise
 async function main(): Promise<void> {
   await recordAudit({
     action: "apply_site_grant", phase: "intent", targetSystem: "microsoft_entra",
-    targetResource: `grant read on ${WSA_HOST}${WSA_SITE_PATH} to "${MANAGED_SHAREPOINT_APP_DISPLAY_NAME}" via "${MANAGED_SITE_GRANT_APP_DISPLAY_NAME}", then delete the latter`,
+    targetResource: `grant read on the WSA SharePoint site to "${MANAGED_SHAREPOINT_APP_DISPLAY_NAME}" via "${MANAGED_SITE_GRANT_APP_DISPLAY_NAME}", then delete the latter`,
     permissionDecision: "allowed",
     permissionReason: "Approved use: one read grant on the WSA site; the temporary FullControl application is deleted in this run whatever happens.",
     success: null, errorCategory: "none", humanApprovalReference: HUMAN_APPROVAL_REFERENCE,
@@ -290,7 +291,7 @@ async function main(): Promise<void> {
   }
   await recordAudit({
     action: "apply_site_grant", phase: "result", targetSystem: "microsoft_entra",
-    targetResource: `read-only grant verified on the exact WSA site (${WSA_HOST}${WSA_SITE_PATH}) for appId prefix ${workerApp.appId.slice(0, 8)}…; temporary application, service principal and consent gone; worker declares Sites.Selected only`,
+    targetResource: `read-only grant verified on the exact WSA SharePoint site (sites/WSASharePoint) for appId prefix ${workerApp.appId.slice(0, 8)}…; temporary application, service principal and consent gone; worker declares Sites.Selected only`,
     permissionDecision: "allowed",
     permissionReason: "Grant applied and verified as read only on the WSA site only; worker read test passed; worker refused on the tenant root and a different site; temporary FullControl application deleted, purged and proven absent; no secret recorded anywhere.",
     success: 1, errorCategory: "none", humanApprovalReference: HUMAN_APPROVAL_REFERENCE,
@@ -302,7 +303,7 @@ async function main(): Promise<void> {
 main().catch(async error => {
   const message = String(error?.message ?? error);
   try {
-    await recordAudit({ action: "apply_site_grant", phase: "result", targetSystem: "microsoft_entra", targetResource: "run aborted", permissionDecision: "allowed", permissionReason: `Run failed: ${message.slice(0, 300)}`, success: 0, errorCategory: "run_failed" });
+    await recordAudit({ action: "apply_site_grant", phase: "result", targetSystem: "microsoft_entra", targetResource: "run aborted", permissionDecision: "allowed", permissionReason: `Run failed: ${redactForAudit(message).slice(0, 300)}`, success: 0, errorCategory: "run_failed" });
   } catch (auditError) {
     console.error(`CRITICAL: run failed AND the durable failure record could not be written: ${String((auditError as Error)?.message ?? auditError)}`);
   }

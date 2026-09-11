@@ -349,3 +349,45 @@ describe("worker application must still declare only Sites.Selected afterwards",
     expect(declaresOnlySitesSelected(undefined).ok).toBe(false);
   });
 });
+
+import { readFileSync } from "fs";
+import { assertNoSecretLikeContent, redactForAudit } from "./automation";
+
+/**
+ * Run B failed at its first line on 11 September 2026 because an audit
+ * row named the WSA SharePoint hostname, which is long enough to look
+ * like a secret to the guard. The guard is right; the wording was wrong.
+ * These tests keep every fixed audit fragment in the two scripts inside
+ * the guard, and make failure messages safe before they are written.
+ */
+describe("site-grant scripts write audit text the guard accepts", () => {
+  const scripts = ["scripts/infra/provision-site-grant-app.ts", "scripts/infra/apply-site-grant.ts"];
+  it("every fixed fragment of targetResource and permissionReason passes the secret guard", () => {
+    for (const path of scripts) {
+      const src = readFileSync(path, "utf8");
+      const fields = [...src.matchAll(/(targetResource|permissionReason):\s*(`[^`]*`|"[^"]*")/g)];
+      expect(fields.length).toBeGreaterThan(5);
+      for (const [, field, literal] of fields) {
+        // Strip interpolations; what remains is the fixed text the row always carries.
+        const fixed = literal.slice(1, -1).replace(/\$\{[^}]*\}/g, " x ");
+        expect(() => assertNoSecretLikeContent(field, fixed), `${path}: ${fixed.slice(0, 60)}`).not.toThrow();
+      }
+    }
+  });
+  it("neither script places the SharePoint hostname in an audit field", () => {
+    for (const path of scripts) {
+      const src = readFileSync(path, "utf8");
+      for (const m of src.matchAll(/(targetResource|permissionReason):\s*`([^`]*)`/g)) {
+        expect(m[2]).not.toContain("${WSA_HOST}");
+      }
+    }
+  });
+  it("redactForAudit removes GUIDs and long tokens so a failure message can always be recorded", () => {
+    const msg = "Graph DELETE /applications/3f2504e0-4f89-11d3-9a0c-0305e82c3301 failed: HTTP 403 worldstudentadvisors123.sharepoint.com";
+    const out = redactForAudit(msg);
+    expect(() => assertNoSecretLikeContent("permissionReason", out)).not.toThrow();
+    expect(out).toContain("<guid>");
+    expect(out).toContain("<token>");
+    expect(() => assertNoSecretLikeContent("permissionReason", msg)).toThrow();
+  });
+});
