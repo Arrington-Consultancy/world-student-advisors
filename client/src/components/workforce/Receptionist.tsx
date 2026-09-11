@@ -76,13 +76,13 @@ export function Receptionist({ token }: { token: string }) {
             aria-hidden
           />
           <label htmlFor="reception-request" className="sr-only">
-            Describe what you need
+            Ask WSA what you need
           </label>
           <input
             id="reception-request"
             value={request}
             onChange={e => setRequest(e.target.value)}
-            placeholder="Describe what you need…"
+            placeholder="Ask WSA what you need…"
             autoComplete="off"
             className="w-full bg-transparent py-4 pl-12 pr-32 text-base text-wsa-navy placeholder:text-gray-400 focus:outline-none sm:text-lg"
           />
@@ -95,6 +95,12 @@ export function Receptionist({ token }: { token: string }) {
             {!routeQuery.isFetching && <CornerDownLeft className="h-3.5 w-3.5" aria-hidden />}
           </button>
         </div>
+        {/* Says what the box is for before somebody has to guess. The whole
+            point of Reception is that staff do not need to know which
+            specialist owns a job. */}
+        <p className="mt-2 px-1 text-sm text-gray-500">
+          Not sure who handles it? We will point you to the right place.
+        </p>
       </form>
 
       {!result && !routeQuery.isFetching && (

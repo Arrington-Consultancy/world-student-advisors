@@ -1,7 +1,7 @@
 import { useState, useEffect, type FormEvent } from "react";
 import {
-  Lock, LogOut, Eye, EyeOff, ArrowLeft,
-  MessageSquareText, GraduationCap, Users, Share2, Radio, FileCheck2, FolderOpen, ShieldCheck,
+  Lock, LogOut, Eye, EyeOff, ArrowLeft, ChevronRight, UserRound,
+  GraduationCap, Users, Share2, Radio, FileCheck2, ShieldCheck, Sparkles,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -17,6 +17,7 @@ import { StudentLookup } from "@/components/workforce/StudentLookup";
 import { ResourcesPanel } from "@/components/workforce/ResourcesPanel";
 import { UniversityPortalsPanel } from "@/components/workforce/UniversityPortalsPanel";
 
+const WSA_LOGO = "/manus-storage/wsa_logo_beb199d6.png";
 const PENDING_PROVIDER_KEY = "wsa-staff-pending-provider";
 const STORAGE_KEY = "staff_portal_token";
 
@@ -501,155 +502,282 @@ type StaffSection =
   | "uniportals"
   | "students"
   | "social"
-  | "channels"
-  | "team"
   | "content"
+  | "team"
+  | "channels"
   | "resources"
   | "access";
 
 /**
- * The Staff Portal home, rebuilt on 11 September 2026.
+ * The Staff Portal home, rebuilt to Tom's brief of 11 September 2026.
  *
- * WHAT WAS WRONG. Eight sections sat in one row of 14px tabs. On a phone,
- * which is where Eldah and Glenice actually opened this, that row ran off
- * the screen, and the labels were single words with nothing to say what any
- * of them did. Tom's words were "looks crap", "text is too small" and "not
- * intuitive", and all three were fair.
+ * WHAT CHANGED AND WHY. The previous version made every section an equal
+ * card, which said that finding a student and reading the channel list are
+ * the same kind of thing. They are not. Reception is the front door: a
+ * staff member who does not know who owns something types it and gets
+ * pointed somewhere. So Reception is now the page's main interaction,
+ * sitting at the top as a single wide Ask box, and the cards below are the
+ * places you go when you already know where you are going.
  *
- * WHAT REPLACED IT. A home screen of large cards, each naming a section and
- * saying in one line what it is for, and a section view with an obvious way
- * back. It reads like an app launcher because that is the mental model
- * staff already have, and because a card with a sentence on it answers
- * "which one do I want" in a way a one-word tab never can.
+ * The branding block came down with it. A logo and the company name at
+ * 36px told a signed-in member of staff something they already knew, and
+ * took the space the useful part needed.
  *
- * Sizes are deliberate rather than decorative. Body text is 16px, the
- * minimum that is comfortable at arm's length and the size below which iOS
- * zooms a form on focus. Every tap target is at least 48px high, which is
- * the smallest reliably hittable with a thumb. Cards go one per row on a
- * phone and three across on a desktop.
- *
- * Reception stays first because it is the front door: say what you need and
- * be pointed at whoever owns it.
+ * WHERE THE OLD CARDS WENT, all of them still reachable and none of their
+ * permissions touched:
+ *   Writing check  stays on the homepage under Daily work, renamed from
+ *                  "Content check" because checking writing is what it does.
+ *   Resources      moves to the header. It is reference material, not a
+ *                  daily task.
+ *   Staff access   moves to the account menu and is shown only to somebody
+ *                  holding access_admin. The server already refuses
+ *                  everybody else; hiding it as well stops it reading as a
+ *                  door that is locked rather than one that is not yours.
  */
-const SECTIONS: {
-  id: StaffSection;
-  label: string;
-  blurb: string;
-  icon: typeof MessageSquareText;
-}[] = [
+const DAILY_WORK: { id: StaffSection; label: string; blurb: string; icon: typeof Users; tint: string }[] = [
   {
-    id: "reception",
-    label: "Reception",
-    blurb: "Not sure who does what? Say what you need and get pointed at the right place.",
-    icon: MessageSquareText,
+    id: "students",
+    label: "Find a student",
+    blurb: "Search the WSA CRM by name, email or phone.",
+    icon: Users,
+    tint: "bg-sky-50 text-sky-700",
   },
   {
     id: "uniportals",
     label: "University portals",
-    blurb: "Every university application portal in one place, with the instructions for each.",
+    blurb: "Application links and guidance for each university.",
     icon: GraduationCap,
-  },
-  {
-    id: "students",
-    label: "Find a student",
-    blurb: "Look up a student by phone, email or name across the CRM.",
-    icon: Users,
+    tint: "bg-violet-50 text-violet-700",
   },
   {
     id: "social",
     label: "Social media",
-    blurb: "Draft and check posts for the WSA channels.",
+    blurb: "Create, improve and check posts for WSA channels.",
     icon: Share2,
+    tint: "bg-rose-50 text-rose-700",
+  },
+  {
+    id: "content",
+    label: "Writing check",
+    blurb: "Check wording against the WSA writing standard.",
+    icon: FileCheck2,
+    tint: "bg-amber-50 text-amber-700",
+  },
+];
+
+const WSA_INFORMATION: { id: StaffSection; label: string; blurb: string; icon: typeof Users; tint: string }[] = [
+  {
+    id: "team",
+    label: "AI specialists",
+    blurb: "Work with WSA's specialist AI team.",
+    icon: Sparkles,
+    tint: "bg-emerald-50 text-emerald-700",
   },
   {
     id: "channels",
     label: "Channels",
-    blurb: "Who owns which channel, and what each one is for.",
+    blurb: "Who owns each channel and what each one is for.",
     icon: Radio,
-  },
-  {
-    id: "team",
-    label: "The AI team",
-    blurb: "Who each AI worker is, what they can do, and what they cannot.",
-    icon: FileCheck2,
-  },
-  {
-    id: "content",
-    label: "Content check",
-    blurb: "Run wording past the WSA writing standard before it goes out.",
-    icon: FileCheck2,
-  },
-  {
-    id: "resources",
-    label: "Resources",
-    blurb: "Intakes, partner institutions, templates and training.",
-    icon: FolderOpen,
-  },
-  {
-    id: "access",
-    label: "Staff access",
-    blurb: "Who can see what, and who approved it.",
-    icon: ShieldCheck,
+    tint: "bg-slate-100 text-slate-700",
   },
 ];
 
+const ALL_SECTIONS = [...DAILY_WORK, ...WSA_INFORMATION];
+
+/** Greeting by local clock. Nothing is stored and nothing is sent anywhere. */
+function greeting(now: Date = new Date()): string {
+  const h = now.getHours();
+  if (h < 12) return "Good morning";
+  if (h < 18) return "Good afternoon";
+  return "Good evening";
+}
+
+/** The part of a display name a colleague would actually say out loud. */
+function firstName(displayName: string | null): string | null {
+  if (!displayName) return null;
+  const first = displayName.trim().split(/[\s.]+/)[0];
+  if (!first) return null;
+  return first.charAt(0).toUpperCase() + first.slice(1);
+}
+
+function SectionCard({
+  card,
+  onOpen,
+}: {
+  card: { label: string; blurb: string; icon: typeof Users; tint: string };
+  onOpen: () => void;
+}) {
+  const Icon = card.icon;
+  return (
+    <button
+      type="button"
+      onClick={onOpen}
+      className="group flex w-full items-center gap-4 rounded-xl border border-wsa-navy/10 bg-white p-4 text-left transition-colors hover:border-wsa-red/40 focus:border-wsa-red focus:outline-none focus:ring-2 focus:ring-wsa-red/20"
+    >
+      <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg ${card.tint}`}>
+        <Icon className="h-5 w-5" aria-hidden />
+      </span>
+      <span className="min-w-0 flex-1">
+        <span className="block text-base font-semibold text-wsa-navy">{card.label}</span>
+        {/* Not truncated. The blurb is the half that tells somebody which
+            card they want, and clipping it to "Search the WSA CRM by name,
+            email or pho..." costs more than the extra line it saves. */}
+        <span className="block text-sm leading-snug text-gray-600">{card.blurb}</span>
+      </span>
+      <ChevronRight
+        className="h-5 w-5 shrink-0 text-gray-300 transition-colors group-hover:text-wsa-red"
+        aria-hidden
+      />
+    </button>
+  );
+}
+
 function WorkforceHome({ token, onLogout }: { token: string; onLogout: () => void }) {
-  // null means the home screen. A section is somewhere you go deliberately,
-  // and coming back is one obvious control rather than hunting the tab you
-  // were on before.
   const [section, setSection] = useState<StaffSection | null>(null);
-  const current = SECTIONS.find(s => s.id === section) ?? null;
+  const [menuOpen, setMenuOpen] = useState(false);
+  const current = ALL_SECTIONS.find(s => s.id === section) ?? null;
+
+  const me = trpc.staffPortal.me.useQuery({ token }, { enabled: !!token });
+  const access = trpc.staffPortal.myAccess.useQuery({ token }, { enabled: !!token });
+
+  // Visibility only. server/routers.ts already refuses accessAdmin to
+  // anybody without access_admin, so this hides a door rather than locking
+  // one, and a client that lied about its own permissions would still be
+  // refused by the server.
+  const isAccessAdmin =
+    access.data?.assigned === true && access.data.actionPermissions.includes("access_admin");
+
+  const name = firstName(me.data?.displayName ?? null);
+
+  const openSection = (id: StaffSection) => {
+    setSection(id);
+    setMenuOpen(false);
+  };
 
   return (
-    <div className="min-h-screen bg-wsa-warm-white pt-28 pb-20 lg:pt-36 lg:pb-28">
-      <main className="container max-w-5xl">
-        {/* Stacks below the sm breakpoint. Side by side, the title cannot
-            shrink below its longest word and the Sign out button is
-            shrink-0, so on a narrow phone the pair has no room to give. A
-            full-width button under the title avoids the question entirely
-            and is a bigger tap target, which is the point on mobile. */}
-        <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between sm:gap-6">
-          <div className="min-w-0">
-            <p className="mb-1.5 text-sm font-semibold uppercase tracking-[0.18em] text-wsa-red">
-              Staff Portal
-            </p>
-            <h1 className="text-3xl font-semibold leading-tight text-wsa-navy md:text-4xl">
-              World Student Advisors
-            </h1>
-          </div>
-          <Button
-            variant="outline"
-            onClick={onLogout}
-            className="min-h-[48px] w-full shrink-0 border-wsa-navy/20 px-4 text-base text-wsa-navy hover:border-wsa-red hover:text-wsa-red sm:w-auto"
+    <div className="min-h-screen bg-wsa-warm-white pb-20">
+      {/* Compact header. The logo stays but at a size that identifies the
+          page rather than announcing it to somebody already signed in. */}
+      <header className="border-b border-wsa-navy/10 bg-white">
+        <div className="container flex max-w-5xl items-center justify-between gap-4 py-3">
+          <button
+            type="button"
+            onClick={() => openSection("reception" as StaffSection)}
+            className="flex items-center gap-2.5"
+            aria-label="Staff Portal home"
           >
-            <LogOut className="mr-2 h-5 w-5" /> Sign out
-          </Button>
-        </div>
+            <img src={WSA_LOGO} alt="" className="h-7 w-auto" />
+            <span className="text-sm font-semibold text-wsa-navy">Staff Portal</span>
+          </button>
 
-        <AccessBanner token={token} />
+          <nav className="flex items-center gap-1" aria-label="Staff Portal">
+            <button
+              type="button"
+              onClick={() => openSection("resources")}
+              className="rounded-lg px-3 py-2 text-sm font-medium text-gray-600 transition-colors hover:text-wsa-red"
+            >
+              Resources
+            </button>
+            <a
+              href="/student-support-library"
+              className="hidden rounded-lg px-3 py-2 text-sm font-medium text-gray-600 transition-colors hover:text-wsa-red sm:block"
+            >
+              Support library
+            </a>
 
-        {current === null ? (
-          <>
-            <h2 className="mb-5 mt-8 text-xl font-semibold text-wsa-navy">What do you need?</h2>
-            <ul className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              {SECTIONS.map(s => {
-                const Icon = s.icon;
-                return (
-                  <li key={s.id}>
+            <div className="relative">
+              <button
+                type="button"
+                onClick={() => setMenuOpen(o => !o)}
+                aria-expanded={menuOpen}
+                aria-haspopup="menu"
+                className="flex h-10 w-10 items-center justify-center rounded-full bg-wsa-navy/5 text-sm font-semibold text-wsa-navy transition-colors hover:bg-wsa-navy/10"
+                aria-label="Account menu"
+              >
+                {name ? name.charAt(0) : <UserRound className="h-5 w-5" aria-hidden />}
+              </button>
+
+              {menuOpen && (
+                <div
+                  role="menu"
+                  className="absolute right-0 z-20 mt-2 w-56 rounded-xl border border-wsa-navy/10 bg-white p-1.5 shadow-lg"
+                >
+                  {me.data?.displayName && (
+                    <p className="truncate px-3 py-2 text-sm text-gray-500">{me.data.displayName}</p>
+                  )}
+                  <a
+                    href="/student-support-library"
+                    className="block rounded-lg px-3 py-2.5 text-base text-wsa-navy hover:bg-wsa-navy/5 sm:hidden"
+                    role="menuitem"
+                  >
+                    Support library
+                  </a>
+                  {isAccessAdmin && (
                     <button
                       type="button"
-                      onClick={() => setSection(s.id)}
-                      className="flex h-full w-full flex-col items-start rounded-xl border border-wsa-navy/10 bg-white p-5 text-left transition-colors hover:border-wsa-red focus:border-wsa-red focus:outline-none focus:ring-2 focus:ring-wsa-red/20"
+                      role="menuitem"
+                      onClick={() => openSection("access")}
+                      className="flex w-full items-center gap-2 rounded-lg px-3 py-2.5 text-left text-base text-wsa-navy hover:bg-wsa-navy/5"
                     >
-                      <span className="mb-3 flex h-12 w-12 items-center justify-center rounded-lg bg-wsa-navy/5 text-wsa-navy">
-                        <Icon className="h-6 w-6" aria-hidden />
-                      </span>
-                      <span className="text-lg font-semibold text-wsa-navy">{s.label}</span>
-                      <span className="mt-1.5 text-base leading-relaxed text-gray-600">{s.blurb}</span>
+                      <ShieldCheck className="h-4 w-4" aria-hidden />
+                      Staff access
                     </button>
-                  </li>
-                );
-              })}
+                  )}
+                  <button
+                    type="button"
+                    role="menuitem"
+                    onClick={onLogout}
+                    className="flex w-full items-center gap-2 rounded-lg px-3 py-2.5 text-left text-base text-wsa-navy hover:bg-wsa-navy/5"
+                  >
+                    <LogOut className="h-4 w-4" aria-hidden />
+                    Sign out
+                  </button>
+                </div>
+              )}
+            </div>
+          </nav>
+        </div>
+      </header>
+
+      <main className="container max-w-5xl pt-8">
+        <AccessBanner token={token} />
+
+        {current === null && section !== "reception" ? (
+          <>
+            <div className="mt-2">
+              <h1 className="text-2xl font-semibold text-wsa-navy md:text-3xl">
+                {greeting()}{name ? `, ${name}` : ""}
+              </h1>
+              <p className="mt-1 text-base text-gray-600">What do you need help with?</p>
+            </div>
+
+            {/* Reception, promoted from one card among many to the thing the
+                page is for. Routing and access controls are unchanged: this
+                renders the same Receptionist component as before. */}
+            <div className="mt-5">
+              <Receptionist token={token} />
+            </div>
+
+            <h2 className="mb-3 mt-10 text-sm font-semibold uppercase tracking-wider text-gray-500">
+              Daily work
+            </h2>
+            <ul className="grid gap-3 sm:grid-cols-2">
+              {DAILY_WORK.map(card => (
+                <li key={card.id}>
+                  <SectionCard card={card} onOpen={() => openSection(card.id)} />
+                </li>
+              ))}
+            </ul>
+
+            <h2 className="mb-3 mt-8 text-sm font-semibold uppercase tracking-wider text-gray-500">
+              WSA information
+            </h2>
+            <ul className="grid gap-3 sm:grid-cols-2">
+              {WSA_INFORMATION.map(card => (
+                <li key={card.id}>
+                  <SectionCard card={card} onOpen={() => openSection(card.id)} />
+                </li>
+              ))}
             </ul>
           </>
         ) : (
@@ -657,14 +785,18 @@ function WorkforceHome({ token, onLogout }: { token: string; onLogout: () => voi
             <button
               type="button"
               onClick={() => setSection(null)}
-              className="mb-6 inline-flex min-h-[48px] items-center gap-2 text-base font-semibold text-wsa-navy transition-colors hover:text-wsa-red"
+              className="mb-6 mt-2 inline-flex min-h-[44px] items-center gap-2 text-base font-semibold text-wsa-navy transition-colors hover:text-wsa-red"
             >
               <ArrowLeft className="h-5 w-5" aria-hidden />
-              All sections
+              Home
             </button>
 
-            <h2 className="text-2xl font-semibold text-wsa-navy md:text-3xl">{current.label}</h2>
-            <p className="mb-7 mt-2 text-base leading-relaxed text-gray-600">{current.blurb}</p>
+            {current && (
+              <>
+                <h1 className="text-2xl font-semibold text-wsa-navy md:text-3xl">{current.label}</h1>
+                <p className="mb-7 mt-1.5 text-base leading-relaxed text-gray-600">{current.blurb}</p>
+              </>
+            )}
 
             {section === "reception" && (
               <div className="mx-auto max-w-2xl">
@@ -677,8 +809,24 @@ function WorkforceHome({ token, onLogout }: { token: string; onLogout: () => voi
             {section === "channels" && <ChannelsPanel token={token} />}
             {section === "team" && <TeamPanel token={token} />}
             {section === "content" && <ContentCheckPanel token={token} />}
-            {section === "resources" && <ResourcesPanel token={token} />}
-            {section === "access" && <AccessAdmin token={token} />}
+            {section === "resources" && (
+              <>
+                <h1 className="text-2xl font-semibold text-wsa-navy md:text-3xl">Resources</h1>
+                <p className="mb-7 mt-1.5 text-base leading-relaxed text-gray-600">
+                  Intakes, partner institutions, templates and training.
+                </p>
+                <ResourcesPanel token={token} />
+              </>
+            )}
+            {section === "access" && (
+              <>
+                <h1 className="text-2xl font-semibold text-wsa-navy md:text-3xl">Staff access</h1>
+                <p className="mb-7 mt-1.5 text-base leading-relaxed text-gray-600">
+                  Who can see what, and who approved it.
+                </p>
+                <AccessAdmin token={token} />
+              </>
+            )}
           </>
         )}
       </main>
