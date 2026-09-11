@@ -2,6 +2,8 @@ import { describe, it, expect } from "vitest";
 import { listWorkers, getWorker, deriveAuthorisation } from "./registry";
 import { evaluateStaffPortalExecutionPermission, evaluateConnectorPermission } from "./permissions";
 import { getStatusDisplay } from "../../client/src/components/workforce/statusDisplay";
+import { WORKER_CRM_SCOPE } from "./crmScope";
+import { WORKER_SHAREPOINT_LOCATIONS } from "./sharePointLocations";
 
 const CASE_WORKERS = [
   "sophie", "daniel", "amelia", "oliver", "james", "priya",
@@ -9,20 +11,16 @@ const CASE_WORKERS = [
 ] as const;
 
 describe("execution authority and connector authority are separate questions", () => {
-  it("lets an approved worker execute with every connector still closed", () => {
-    // The conflation this fixes: the whole estate read as unusable
-    // because no connector credential exists, when Sophie's approved
-    // function runs from staff input and controlled evidence.
+  it("lets an approved worker execute; connectors open only where a controlled record grants them", () => {
+    // Sophie executes from staff input. Since 11 September 2026 she also
+    // holds CRM read (a controlled grant); SharePoint and Drive stay shut.
     expect(evaluateStaffPortalExecutionPermission("sophie").allowed).toBe(true);
-    for (const connector of ["sharepoint", "google_drive", "pipedrive"] as const) {
-      const d = evaluateConnectorPermission({
-        workerId: "sophie",
-        connector,
-        operation: "read",
-        resourceScope: "test",
-      });
+    for (const connector of ["sharepoint", "google_drive"] as const) {
+      const d = evaluateConnectorPermission({ workerId: "sophie", connector, operation: "read", resourceScope: "test" });
       expect(d.allowed).toBe(false);
     }
+    expect(evaluateConnectorPermission({ workerId: "sophie", connector: "pipedrive", operation: "read", resourceScope: "person/1" }).allowed).toBe(true);
+    expect(evaluateConnectorPermission({ workerId: "sophie", connector: "pipedrive", operation: "update", resourceScope: "person/1" }).allowed).toBe(false);
   });
 
   it("execution follows the register exactly, for every worker", () => {
@@ -36,9 +34,9 @@ describe("execution authority and connector authority are separate questions", (
     }
   });
 
-  it("grants no worker any connector or write authority", () => {
+  it("grants connector authority exactly where a controlled record does, and write authority to nobody", () => {
     for (const w of listWorkers()) {
-      expect(w.connectorUseAuthorised).toBe(false);
+      expect(w.connectorUseAuthorised).toBe(WORKER_CRM_SCOPE[w.id] !== null || WORKER_SHAREPOINT_LOCATIONS[w.id].length > 0);
       expect(w.writesAuthorised).toBe(false);
     }
   });
@@ -46,11 +44,11 @@ describe("execution authority and connector authority are separate questions", (
   it("requires both halves: approval alone does not authorise execution", () => {
     // Tested directly, because Sophie is the only approved worker and a
     // rule that happens to agree with her single row is not a rule.
-    expect(deriveAuthorisation("approved", "staff_portal_authorised").staffPortalExecutionAuthorised).toBe(true);
-    expect(deriveAuthorisation("approved", "pending_channel_decision").staffPortalExecutionAuthorised).toBe(false);
-    expect(deriveAuthorisation("approved", "prohibited").staffPortalExecutionAuthorised).toBe(false);
-    expect(deriveAuthorisation("not_approved", "staff_portal_authorised").staffPortalExecutionAuthorised).toBe(false);
-    expect(deriveAuthorisation("approval_blocked", "staff_portal_authorised").staffPortalExecutionAuthorised).toBe(false);
+    expect(deriveAuthorisation("sophie", "approved", "staff_portal_authorised").staffPortalExecutionAuthorised).toBe(true);
+    expect(deriveAuthorisation("sophie", "approved", "pending_channel_decision").staffPortalExecutionAuthorised).toBe(false);
+    expect(deriveAuthorisation("sophie", "approved", "prohibited").staffPortalExecutionAuthorised).toBe(false);
+    expect(deriveAuthorisation("sophie", "not_approved", "staff_portal_authorised").staffPortalExecutionAuthorised).toBe(false);
+    expect(deriveAuthorisation("sophie", "approval_blocked", "staff_portal_authorised").staffPortalExecutionAuthorised).toBe(false);
   });
 
   it("never derives connector authority from execution authority", () => {

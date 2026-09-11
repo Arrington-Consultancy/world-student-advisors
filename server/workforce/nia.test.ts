@@ -3,6 +3,7 @@ import { getWorker, listWorkers } from "./registry";
 import { evaluateConnectorPermission, evaluateStaffPortalExecutionPermission } from "./permissions";
 import { connectorScopeGrants } from "./connectorScope";
 import { WORKER_CRM_SCOPE } from "./crmScope";
+import { WORKER_SHAREPOINT_LOCATIONS } from "./sharePointLocations";
 import { WORKER_FUNCTIONAL_SCOPE } from "../access/workerScope";
 import { routeStaffRequest } from "./router";
 import type { ConnectorName, ConnectorOperation } from "./types";
@@ -29,13 +30,15 @@ describe("Nia is transcribed exactly as the Register records her", () => {
     expect(getWorker("nia").gatekeeperReview).toBe("pending");
   });
 
-  it("has NO LIVE PUBLISHING AUTHORITY — no connector grant on any social channel", () => {
-    for (const c of ["linkedin", "facebook", "youtube", "whatsapp", "sharepoint", "google_drive"] as ConnectorName[]) {
-      for (const op of ["search", "read", "create", "update", "delete", "external_send"] as ConnectorOperation[]) {
-        expect(connectorScopeGrants("nia", c, op)).toBe(false);
-        expect(evaluateConnectorPermission({ workerId: "nia", connector: c, operation: op, resourceScope: "x" }).allowed).toBe(false);
+  it("has NO LIVE PUBLISHING AUTHORITY: no grant on any social channel and no write anywhere", () => {
+    const nia = getWorker("nia");
+    expect(nia.writesAuthorised).toBe(false);
+    for (const channel of ["linkedin", "facebook", "youtube", "whatsapp"] as const) {
+      for (const op of ["read", "create", "update", "delete", "external_send"] as const) {
+        expect(connectorScopeGrants("nia", channel, op)).toBe(false);
       }
     }
+    expect(evaluateConnectorPermission({ workerId: "nia", connector: "sharepoint", operation: "update", resourceScope: "x" }).allowed).toBe(false);
   });
 
   it("cannot publish even though publishing is what she is for", () => {
@@ -109,11 +112,13 @@ describe("Reception routes social work to Nia and nothing else to her", () => {
 });
 
 describe("the estate remains closed apart from the one authorised worker", () => {
-  it("opened execution for the approved workers and a connector for nobody", () => {
+  it("opened execution for the approved workers on 31 August, and connectors only where a controlled record granted them on 11 September", () => {
     for (const w of listWorkers()) {
       // Execution opened under recorded decisions on 31 August. Connector
-      // authority did not, and that separation is the point.
-      expect(w.connectorUseAuthorised, w.id).toBe(false);
+      // authority opened on 11 September 2026 exactly where a controlled
+      // grant exists, and that separation is still the point.
+      const granted = WORKER_CRM_SCOPE[w.id] !== null || WORKER_SHAREPOINT_LOCATIONS[w.id].length > 0;
+      expect(w.connectorUseAuthorised, w.id).toBe(granted);
       expect(w.writesAuthorised, w.id).toBe(false);
     }
     expect(listWorkers()).toHaveLength(16);

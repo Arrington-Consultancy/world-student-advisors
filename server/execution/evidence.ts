@@ -1,0 +1,114 @@
+/**
+ * Connector evidence for a worker's request.
+ *
+ * Tom Arrington, 11 September 2026: this approval gives existing workers
+ * the information required to perform their existing jobs. So when a staff
+ * member asks a CRM-granted worker about a student and names an email,
+ * phone number or CRM person id, the worker is handed that person's
+ * approved record before it answers, and when a SharePoint-granted worker
+ * is asked about one of its designated locations, it is handed the listing.
+ *
+ * EVERYTHING GOES THROUGH runConnectorAction. That is the chokepoint with
+ * the worker grant, the staff member's own access, the WSA boundary and the
+ * location allowlist, and every call is audited whether it succeeds or is
+ * refused. Nothing here opens a second path.
+ *
+ * WHAT REACHES THE MODEL. Only `data` from a successful connector result,
+ * which is already the projected shape (WorkerCrmRecord, SharePointRead).
+ * No raw Pipedrive or Graph object exists at this layer, and no token or
+ * variable name is read here: the connectors hold their credentials and
+ * this module holds none.
+ *
+ * A refused or failed retrieval is reported to the worker as a one-line
+ * fact ("CRM lookup by email was refused: ...") so it can say so rather than
+ * guess, which is what Universal Worker Instructions section 6 requires.
+ */
+import { readPipedriveRecord, searchPipedrive } from "../workforce/connectors/pipedrive";
+import { readSharePointRecord } from "../workforce/connectors/sharepoint";
+import { WORKER_CRM_SCOPE } from "../workforce/crmScope";
+import { WORKER_SHAREPOINT_LOCATIONS } from "../workforce/sharePointLocations";
+import type { AuditAuthMethod } from "../workforce/audit";
+import type { WorkerId } from "../workforce/types";
+
+export interface EvidenceBlock {
+  /** Where it came from, for the worker to cite and for the reader to check. */
+  source: "pipedrive" | "sharepoint";
+  label: string;
+  /** Projected connector data, never raw. */
+  data: unknown;
+}
+
+export interface EvidenceNote {
+  source: "pipedrive" | "sharepoint";
+  /** What was attempted and why it did not produce evidence. */
+  note: string;
+}
+
+export interface GatheredEvidence {
+  blocks: EvidenceBlock[];
+  notes: EvidenceNote[];
+}
+
+const EMAIL = /[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/g;
+/** Phone-like runs of 9 to 15 digits allowing spaces, dashes and a leading +. */
+const PHONE = /(?:\+?\d[\d\s-]{8,14}\d)/g;
+const PERSON_ID = /\b(?:crm|pipedrive|person)\s*(?:id\s*)?#?\s*(\d{1,9})\b/gi;
+
+export function extractIdentifiers(text: string): { emails: string[]; phones: string[]; personIds: number[] } {
+  const emails = Array.from(new Set(text.match(EMAIL) ?? [])).slice(0, 3);
+  const phones = Array.from(new Set((text.match(PHONE) ?? []).map(p => p.replace(/[\s-]/g, "")))).filter(p => p.replace("+", "").length >= 9).slice(0, 3);
+  const personIds = Array.from(new Set(Array.from(text.matchAll(PERSON_ID)).map(m => Number(m[1])))).slice(0, 3);
+  return { emails, phones, personIds };
+}
+
+/** Designated locations this request names, by their first path segment. */
+export function mentionedLocations(text: string, workerId: WorkerId): string[] {
+  const lower = text.toLowerCase();
+  return WORKER_SHAREPOINT_LOCATIONS[workerId].filter(location => {
+    const leaf = location.split("/").pop() ?? location;
+    const stem = leaf.replace(/^\d+_/, "").replace(/[_&-]+/g, " ").toLowerCase().trim();
+    return lower.includes(leaf.toLowerCase()) || (stem.length > 3 && lower.includes(stem));
+  });
+}
+
+export async function gatherConnectorEvidence(input: {
+  workerId: WorkerId;
+  requestText: string;
+  staffUserId: number | null;
+  authMethod: AuditAuthMethod;
+  caseId?: string;
+}): Promise<GatheredEvidence> {
+  const blocks: EvidenceBlock[] = [];
+  const notes: EvidenceNote[] = [];
+  const base = { workerId: input.workerId, staffUserId: input.staffUserId, authMethod: input.authMethod, caseId: input.caseId };
+
+  // CRM: only where the controlled record grants anything, and only for an
+  // identifier the staff member actually typed. No identifier, no call.
+  if (WORKER_CRM_SCOPE[input.workerId]) {
+    const ids = extractIdentifiers(input.requestText);
+    for (const personId of ids.personIds) {
+      const r = await readPipedriveRecord({ ...base, resourceScope: `person/${personId}` });
+      if (r.success && r.data !== undefined) blocks.push({ source: "pipedrive", label: `CRM person ${personId}`, data: r.data });
+      else notes.push({ source: "pipedrive", note: `CRM read of person ${personId} did not return a record: ${r.message}` });
+    }
+    for (const [field, values] of [["email", ids.emails], ["phone", ids.phones]] as const) {
+      for (const value of values) {
+        const r = await searchPipedrive({ ...base, resourceScope: `person/search/${field}/${encodeURIComponent(value)}` });
+        if (r.success && r.data !== undefined) blocks.push({ source: "pipedrive", label: `CRM lookup by ${field}`, data: r.data });
+        else notes.push({ source: "pipedrive", note: `CRM lookup by ${field} was not possible: ${r.message}` });
+      }
+    }
+  }
+
+  // SharePoint: a designated location the request names, listed.
+  const siteId = process.env.SHAREPOINT_GRAPH_SITE_ID;
+  if (siteId && WORKER_SHAREPOINT_LOCATIONS[input.workerId].length > 0) {
+    for (const location of mentionedLocations(input.requestText, input.workerId).slice(0, 2)) {
+      const r = await readSharePointRecord({ ...base, resourceScope: `${siteId}/${location}` });
+      if (r.success && r.data !== undefined) blocks.push({ source: "sharepoint", label: `SharePoint ${location}`, data: r.data });
+      else notes.push({ source: "sharepoint", note: `SharePoint ${location} could not be read: ${r.message}` });
+    }
+  }
+
+  return { blocks, notes };
+}

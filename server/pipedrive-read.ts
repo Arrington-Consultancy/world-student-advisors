@@ -17,8 +17,15 @@ export function isPipedriveReadConfigured(): boolean {
   return Boolean(ENV.pipedriveApiToken);
 }
 
-async function pipedriveGet(endpoint: string): Promise<any> {
-  const url = `${PIPEDRIVE_BASE}${endpoint}${endpoint.includes("?") ? "&" : "?"}api_token=${ENV.pipedriveApiToken}`;
+/**
+ * The token used by the module-level functions below: the Student Portal's
+ * own. A different credential can be bound with createPipedriveReader,
+ * which is how the AI workforce reads with its dedicated token instead.
+ */
+let boundToken: () => string = () => ENV.pipedriveApiToken;
+
+async function pipedriveGet(endpoint: string, tokenFor: () => string = boundToken): Promise<any> {
+  const url = `${PIPEDRIVE_BASE}${endpoint}${endpoint.includes("?") ? "&" : "?"}api_token=${tokenFor()}`;
   const response = await fetch(url);
   if (!response.ok) {
     const errorText = await response.text();
@@ -141,5 +148,44 @@ export async function getPerson(personId: number): Promise<PipedrivePersonSummar
     ownerEmail: owner && typeof owner.email === "string" ? owner.email : null,
     ownerName: owner && typeof owner.name === "string" ? owner.name : null,
     updateTime: typeof p.update_time === "string" ? p.update_time : "",
+  };
+}
+
+
+/**
+ * A reader bound to a different credential.
+ *
+ * The AI workforce must not read with the Student Portal's token (Tom
+ * Arrington, 11 September 2026: dedicated WSA worker connector credentials;
+ * do not reuse the public contact-form Pipedrive token). This returns the
+ * same GET-only functions bound to the token supplied, so the read logic
+ * exists once and the credential boundary is the argument.
+ *
+ * Every call re-reads the token through the supplied function, so a
+ * rotation takes effect without a restart. Nothing here can issue anything
+ * but a GET: pipedriveGet has no method argument.
+ */
+export function createPipedriveReader(tokenFor: () => string) {
+  const previous = boundToken;
+  const withToken = async <T>(fn: () => Promise<T>): Promise<T> => {
+    boundToken = tokenFor;
+    try {
+      return await fn();
+    } finally {
+      boundToken = previous;
+    }
+  };
+  return {
+    searchPersonIds: (term: string, field: PersonSearchField) => withToken(() => searchPersonIds(term, field)),
+    getPerson: (personId: number) => withToken(() => getPerson(personId)),
+    getOpenDealForPerson: (personId: number) => withToken(() => getOpenDealForPerson(personId)),
+    getOpenLeadForPerson: (personId: number) => withToken(() => getOpenLeadForPerson(personId)),
+    /**
+     * Raw records, for the worker connector's per-remit field projection
+     * and nothing else. Still GET only. The caller projects immediately and
+     * the raw object goes no further; a test in connectors/ asserts that.
+     */
+    getPersonRaw: (personId: number) => withToken(async () => ((await pipedriveGet(`/persons/${personId}`))?.data ?? null) as Record<string, unknown> | null),
+    getDealRaw: (dealId: number) => withToken(async () => ((await pipedriveGet(`/deals/${dealId}`))?.data ?? null) as Record<string, unknown> | null),
   };
 }

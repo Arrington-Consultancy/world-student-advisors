@@ -211,10 +211,10 @@ describe("5. no edit, delete or worker CRM access is introduced", () => {
     }
   });
 
-  it("every worker's CRM scope is still null: no worker gained Pipedrive access", () => {
+  it("no worker's CRM scope carries a write, and the staff lookup does not depend on any worker grant", () => {
     const values = Object.values(WORKER_CRM_SCOPE);
     expect(values).toHaveLength(16);
-    expect(values.every(v => v === null)).toBe(true);
+    for (const v of values) if (v) expect(v.operations.has("update")).toBe(false);
   });
 
   it("the lookup is recorded as the platform, not as a worker", async () => {

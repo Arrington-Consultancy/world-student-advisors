@@ -78,6 +78,15 @@ export type StaffPortalExecutionStatus =
  * permission engine compares against it by identity, so a worker cannot be
  * granted CRM access by someone rewording its intent line.
  */
+/**
+ * The intent text a worker carries once a controlled record HAS granted it
+ * CRM read access. Like the sentinel below it is a shared constant compared
+ * by identity, so the grant cannot be conjured by rewording an intent line:
+ * the permission engine requires this text AND a non-null crmScope entry.
+ */
+export const CRM_READ_INTENT_APPROVED =
+  "Read-only CRM access approved by Tom Arrington, 11 September 2026. Recorded in the Worker Personality and Connector Access Matrix v0.3 and WSA Change Log Change Entry 087.";
+
 export const NO_CONTROLLED_CRM_DECISION =
   "No controlled CRM decision. The Worker Personality and Connector Access Matrix v0.2 defines SharePoint and Google Drive only and expressly does not grant a CRM permission.";
 

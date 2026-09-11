@@ -4,6 +4,8 @@ import { composeSystemPrompt } from "./prompt";
 import { UNIVERSAL_SOURCES, ETHICAL_BOUNDARIES, DECISION_PRIORITY } from "./universalInstructions";
 import { listWorkers, getWorker } from "../workforce/registry";
 import type { WorkerId } from "../workforce/types";
+import { WORKER_CRM_SCOPE } from "../workforce/crmScope";
+import { WORKER_SHAREPOINT_LOCATIONS } from "../workforce/sharePointLocations";
 
 const CASE_WORKERS: WorkerId[] = [
   "sophie", "daniel", "amelia", "oliver", "james", "priya",
@@ -79,9 +81,9 @@ describe("a brief is not an authorisation", () => {
     }
   });
 
-  it("no worker gained connector or write authority from having a brief", () => {
+  it("a brief grants no connector or write authority: connector use follows the controlled grants of 11 September 2026, writes stay closed", () => {
     for (const w of listWorkers()) {
-      expect(w.connectorUseAuthorised).toBe(false);
+      expect(w.connectorUseAuthorised).toBe(WORKER_CRM_SCOPE[w.id] !== null || WORKER_SHAREPOINT_LOCATIONS[w.id].length > 0);
       expect(w.writesAuthorised).toBe(false);
     }
   });

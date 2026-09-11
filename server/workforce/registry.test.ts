@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { WORKER_REGISTRY, listWorkers, getWorker, ESTATE_LEVEL_NEXT_CONTROL } from "./registry";
+import { WORKER_CRM_SCOPE } from "./crmScope";
+import { WORKER_SHAREPOINT_LOCATIONS } from "./sharePointLocations";
 import type { WorkerId } from "./types";
 
 const EXPECTED_IDS: WorkerId[] = [
@@ -98,13 +100,17 @@ describe("approval status comes from the controlled record, not from code", () =
     }
   });
 
-  it("no worker has connector or write authorisation, whatever its approval status", () => {
-    // The activation opened execution. It opened no credential, and this
-    // is the test that would fail if a future change conflated them again.
+  it("connector authorisation follows the controlled grants exactly, and no worker has write authorisation", () => {
+    // The activation opened execution. Connector use opened on 11 September
+    // 2026 only where a controlled record grants a CRM scope or designates
+    // a SharePoint location, and nowhere else. Writes stay closed.
     for (const w of listWorkers()) {
-      expect(w.connectorUseAuthorised, `${w.id}`).toBe(false);
+      const granted = WORKER_CRM_SCOPE[w.id] !== null || WORKER_SHAREPOINT_LOCATIONS[w.id].length > 0;
+      expect(w.connectorUseAuthorised, `${w.id}`).toBe(granted);
       expect(w.writesAuthorised, `${w.id}`).toBe(false);
     }
+    const authorised = listWorkers().filter(w => w.connectorUseAuthorised).map(w => w.id).sort();
+    expect(authorised).toEqual(["alex", "amelia", "daniel", "ethan", "grace", "harper", "james", "maya", "nia", "oliver", "olivia", "priya", "sophie"]);
   });
 
   it("Priya is approved for a bounded scope, with regulated advice still shut", () => {

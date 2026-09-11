@@ -1,0 +1,110 @@
+name: WSA Infrastructure Automation - provision worker SharePoint application
+
+# Manual-only. Runs the controlled provisioning flow for the Staff Portal
+# SSO configuration under the WSA Infrastructure Automation identity:
+#   GitHub OIDC -> federated Microsoft Graph token (no stored MS secret)
+#   -> verify/create the OWNED app "WSA Staff Portal Authentication"
+#   -> rotate its client secret (value masked; memory -> Railway API only)
+#   -> write the four STAFF_SSO_* variables to the authorised service
+#   -> wait for production deployment SUCCESS
+#   -> run the existing identity acceptance checks
+#   -> durable audit rows in infrastructure_audit_events throughout.
+#
+# Authority boundaries are enforced in server/infrastructure/automation.ts
+# (exact Railway IDs, variable-name allowlist, single managed app,
+# ambiguity stops). Microsoft additionally limits the identity to owned
+# applications via Application.ReadWrite.OwnedBy.
+#
+# Bootstrap prerequisites (one-time, see
+# WSA-Infrastructure-Automation-Bootstrap.md):
+#   - repo variables WSA_INFRA_TENANT_ID and WSA_INFRA_CLIENT_ID
+#   - the automation app's federated credential + admin consent in Entra
+#   - the existing production-scoped Railway project token secret
+#     (githubactionsprod) and migration 0006 applied for the audit table.
+on:
+  workflow_dispatch: {}
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  provision:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Refuse to run from anything but main
+        if: github.ref != 'refs/heads/main'
+        run: |
+          echo "This controlled workflow runs only from main (the federated credential is pinned to it)."
+          exit 1
+
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Install Railway CLI
+        run: npm install -g @railway/cli
+
+      # The audit store is the production MySQL, reachable from a GitHub
+      # runner only via its public proxy: discover the public-URL variable
+      # NAME on the MySQL service (never the value), reference it into a
+      # temporary variable on the app service, run under `railway run`,
+      # remove the temporary variable in always().
+      - name: Discover the MySQL public-URL variable NAME (key only, value never printed)
+        id: discover
+        env:
+          RAILWAY_TOKEN: ${{ secrets.githubactionsprod }}
+        run: |
+          KEYS=$(railway variables --service "MySQL" --environment "production" --json | jq -r 'keys[]')
+          PUBLIC_KEY=$(echo "$KEYS" | grep -i -E '^(MYSQL_PUBLIC_URL|DATABASE_PUBLIC_URL)$' | head -n1)
+          if [ -z "$PUBLIC_KEY" ]; then
+            echo "No public-URL-shaped variable found on MySQL. Stopping - not guessing further."
+            exit 1
+          fi
+          echo "public_key=$PUBLIC_KEY" >> "$GITHUB_OUTPUT"
+
+      - name: Set a temporary audit database URL reference on the app service
+        env:
+          RAILWAY_TOKEN: ${{ secrets.githubactionsprod }}
+          PUBLIC_KEY: ${{ steps.discover.outputs.public_key }}
+        run: |
+          REF=$(printf '\044{{%s.%s}}' "MySQL" "$PUBLIC_KEY")
+          railway variables --service "world-student-advisors" --environment "production" \
+            --set "INFRA_AUDIT_DATABASE_URL=${REF}" --skip-deploys
+
+      - name: Run the provisioning flow
+        env:
+          RAILWAY_TOKEN: ${{ secrets.githubactionsprod }}
+          RAILWAY_PROJECT_TOKEN: ${{ secrets.githubactionsprod }}
+          # Repository VARIABLES are the documented home for these two
+          # non-secret identifiers, but accept repository SECRETS with the
+          # same names as a fallback — the GitHub UI puts the two tabs side
+          # by side and storing an identifier as a secret is harmless.
+          # The verified identifiers of the bootstrapped automation app are
+          # committed here as defaults: both are NON-secret (the client ID
+          # appears in every sign-in URL, the tenant ID in every token
+          # issuer), and the flow's only Microsoft credential is the
+          # federated GitHub trust, which these merely name. Repository
+          # variables/secrets of the same names still override if ever set.
+          WSA_INFRA_TENANT_ID: ${{ vars.WSA_INFRA_TENANT_ID || secrets.WSA_INFRA_TENANT_ID || 'c38df7da-1bbc-4132-9f64-4b5f50517249' }}
+          WSA_INFRA_CLIENT_ID: ${{ vars.WSA_INFRA_CLIENT_ID || secrets.WSA_INFRA_CLIENT_ID || 'fba4d0d9-c8e0-48d5-b81f-d1931869656e' }}
+          GITHUB_RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          railway run --service "world-student-advisors" --environment "production" -- \
+            sh -c 'DATABASE_URL="$INFRA_AUDIT_DATABASE_URL" pnpm exec tsx scripts/infra/provision-worker-sharepoint.ts'
+
+      - name: Remove the temporary audit database URL variable
+        if: always()
+        env:
+          RAILWAY_TOKEN: ${{ secrets.githubactionsprod }}
+        run: |
+          railway variables --service "world-student-advisors" --environment "production" \
+            --set "INFRA_AUDIT_DATABASE_URL=" --skip-deploys

@@ -14,7 +14,8 @@
 import { getWorker } from "./registry";
 import { WORKER_CRM_SCOPE, NO_CRM_COLUMN_IN_ACCESS_MATRIX, type CrmScope } from "./crmScope";
 import { connectorScopeGrants, NO_CONNECTOR_GRANT } from "./connectorScope";
-import { NO_CONTROLLED_CRM_DECISION } from "./types";
+import { WORKER_SHAREPOINT_LOCATIONS, NO_LOCATION_DESIGNATED } from "./sharePointLocations";
+import { NO_CONTROLLED_CRM_DECISION, CRM_READ_INTENT_APPROVED } from "./types";
 import type { ConnectorName, ConnectorOperation, WorkerRegistryEntry, WorkerId } from "./types";
 
 const WRITE_OPERATIONS: ReadonlySet<ConnectorOperation> = new Set<ConnectorOperation>([
@@ -68,6 +69,18 @@ export function evaluateConnectorPermission(request: ConnectorPermissionRequest)
     return {
       allowed: false,
       reason: `${worker.canonicalName} has no ${request.connector}:${request.operation} scope. ${NO_CONNECTOR_GRANT}`,
+    };
+  }
+
+  // SharePoint additionally needs a designated location. A scope from
+  // Access Matrix v0.2 said what kind of records a worker was FOR; the
+  // designation (v0.3, 11 September 2026) says which folders it may reach.
+  // Without one the scope is intent with nowhere to point, and the
+  // permission is refused here so it never reads as open.
+  if (request.connector === "sharepoint" && WORKER_SHAREPOINT_LOCATIONS[request.workerId].length === 0) {
+    return {
+      allowed: false,
+      reason: `${worker.canonicalName} has no designated SharePoint location. ${NO_LOCATION_DESIGNATED}`,
     };
   }
 

@@ -19,6 +19,7 @@ import { evaluateWsaScope } from "../wsaScope";
 import { decideSharePointLocation } from "../sharePointLocations";
 import type { ConnectorName, ConnectorOperation, ConnectorState, WorkerId } from "../types";
 import type { PermissionDecision } from "../permissions";
+import type { SensitiveOverlay } from "../../access/accessControl";
 
 export interface ConnectorActionRequest {
   workerId: WorkerId;
@@ -30,6 +31,13 @@ export interface ConnectorActionRequest {
   /** From the verified staff session — never client-supplied. Null for a shared-password session, which carries no individual identity. */
   staffUserId: number | null;
   authMethod: AuditAuthMethod;
+  /**
+   * A section 7 sensitive category the material falls in, so the staff
+   * member's overlay is checked as well as their scope. Set by the
+   * connector from the worker's remit (Priya's CRM reads are visa_regulated),
+   * never by the caller: a caller that could omit it could omit the check.
+   */
+  sensitiveCategory?: SensitiveOverlay;
 }
 
 export interface ConnectorActionResult {
@@ -70,6 +78,7 @@ const checkStaffAccessForConnectorAction: StaffAccessCheck = async request => {
   const outcome = await checkAccessForStaffUser(request.staffUserId, {
     action: CONNECTOR_OPERATION_ACTION[request.operation],
     functionalScope: WORKER_FUNCTIONAL_SCOPE[request.workerId],
+    ...(request.sensitiveCategory ? { sensitiveCategory: request.sensitiveCategory } : {}),
   });
   return { allowed: outcome.allowed, reason: outcome.reason };
 };
@@ -256,13 +265,13 @@ export async function runConnectorAction(
     };
   }
 
-  return { success: true, connectorState: state, message: attemptResult.message };
+  return { success: true, connectorState: state, message: attemptResult.message, data: attemptResult.data };
 }
 
 async function attemptOnceWithRetry(
   attempt: ConnectorAttempt,
   request: ConnectorActionRequest,
-): Promise<{ success: boolean; message: string }> {
+): Promise<{ success: boolean; message: string; data?: unknown }> {
   try {
     const first = await attempt(request);
     if (first.success) return first;

@@ -41,17 +41,36 @@ export interface CrmScope {
 export const NO_CRM_COLUMN_IN_ACCESS_MATRIX =
   "WSA_Worker_Personality_Connector_Access_Matrix_v0.2 defines no CRM column, so no worker has an evidenced Pipedrive scope. Adding one is a controlled-record change, not a code change.";
 
+/** The approval every grant below cites. One string so a grant cannot cite a different authority by accident. */
+export const CRM_GRANT_AUTHORITY =
+  "Tom Arrington approval, 11 September 2026, of the WSA Worker Connector Matrix. Recorded in the Worker Personality and Connector Access Matrix v0.3 (CRM column) and WSA Change Log Change Entry 087. Read-only first rollout; no write operation granted.";
+
+const READ: CrmScope = Object.freeze({ operations: new Set<ConnectorOperation>(["read"]), evidence: CRM_GRANT_AUTHORITY });
+const SEARCH_READ: CrmScope = Object.freeze({ operations: new Set<ConnectorOperation>(["search", "read"]), evidence: CRM_GRANT_AUTHORITY });
+
+/**
+ * Granted 11 September 2026 on Tom Arrington's approval of the connector
+ * matrix. Every grant is a read; the first rollout is read-only and
+ * James's stage update is held for a later approval. The per-worker
+ * constraints that make these least-privilege (Sophie's exact-identifier
+ * lookup, Olivia's confirmed-student condition, Priya's visa_regulated
+ * overlay on the staff member, Grace's audit-sample limit) are enforced
+ * in connectors/pipedrive.ts, which is the only path these grants open.
+ *
+ * Amelia, Ethan, Alex, Maya and Nia are null as approved: none of their
+ * remits concerns a student record.
+ */
 export const WORKER_CRM_SCOPE: Readonly<Record<WorkerId, CrmScope | null>> = Object.freeze({
   wsa_core_brain: null,
-  sophie: null,
-  daniel: null,
+  sophie: SEARCH_READ,
+  daniel: READ,
   amelia: null,
-  oliver: null,
-  james: null,
-  priya: null,
-  harper: null,
-  olivia: null,
-  grace: null,
+  oliver: READ,
+  james: READ,
+  priya: READ,
+  harper: READ,
+  olivia: READ,
+  grace: SEARCH_READ,
   ethan: null,
   maya: null,
   alex: null,

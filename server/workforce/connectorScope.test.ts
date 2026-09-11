@@ -68,9 +68,11 @@ describe("SharePoint grants are transcribed from Access Matrix v0.2 section 2", 
     }
   });
 
-  it("Nia holds nothing on any connector, because Matrix v0.2 predates her", () => {
+  it("Nia holds SharePoint read only, granted 11 September 2026 to the extent of her approved drafting scope", () => {
     for (const c of CONNECTORS) {
-      for (const op of OPERATIONS) expect(connectorScopeGrants("nia", c, op)).toBe(false);
+      for (const op of OPERATIONS) {
+        expect(connectorScopeGrants("nia", c, op)).toBe(c === "sharepoint" && (op === "read" || op === "search"));
+      }
     }
   });
 
@@ -82,14 +84,9 @@ describe("SharePoint grants are transcribed from Access Matrix v0.2 section 2", 
     }
   });
 
-  it("Google Drive is read-only wherever the Matrix grants it, and absent otherwise", () => {
-    const driveReaders: WorkerId[] = ["wsa_core_brain", "ethan", "maya", "alex", "wsa_governance_assurance"];
+  it("Google Drive is granted to nobody: withdrawn from every worker on 11 September 2026 (Matrix v0.3 section 4)", () => {
     for (const w of listWorkers()) {
-      const expected = driveReaders.includes(w.id);
-      expect(connectorScopeGrants(w.id, "google_drive", "read")).toBe(expected);
-      for (const op of ["create", "update", "delete", "external_send"] as const) {
-        expect(connectorScopeGrants(w.id, "google_drive", op)).toBe(false);
-      }
+      for (const op of OPERATIONS) expect(connectorScopeGrants(w.id, "google_drive", op)).toBe(false);
     }
   });
 
@@ -98,35 +95,38 @@ describe("SharePoint grants are transcribed from Access Matrix v0.2 section 2", 
   });
 });
 
-describe("a grant is still not access", () => {
-  it("Maya is refused today, because no credential exists and connector use is unauthorised", () => {
+describe("a grant is a permission, and a permission is still not access", () => {
+  it("Maya passes the permission engine for SharePoint read since 11 September 2026; the location gate, the WSA boundary and the credential are checked after it", () => {
     const decision = evaluateConnectorPermission({
       workerId: "maya", connector: "sharepoint", operation: "read", resourceScope: "wsa-site/x",
     });
-    expect(decision.allowed).toBe(false);
-    expect(getWorker("maya").connectorUseAuthorised).toBe(false);
+    expect(decision.allowed).toBe(true);
+    expect(getWorker("maya").connectorUseAuthorised).toBe(true);
+    expect(getWorker("maya").writesAuthorised).toBe(false);
   });
 
   it("a worker with no grant is refused for that reason specifically, before the flags", () => {
-    // Nia is now the worker with no SharePoint grant, and the reason names
-    // the controlled record rather than her authorisation flags.
+    // Nia holds no Google Drive grant, and the reason names the controlled
+    // record rather than her authorisation flags.
     const decision = evaluateConnectorPermission({
-      workerId: "nia", connector: "sharepoint", operation: "read", resourceScope: "wsa-site/x",
+      workerId: "nia", connector: "google_drive", operation: "read", resourceScope: "folder/x",
     });
     expect(decision.allowed).toBe(false);
-    expect(decision.reason).toContain("no sharepoint:read scope");
+    expect(decision.reason).toContain("no google_drive:read scope");
     expect(decision.reason).toContain("not a code change");
   });
 
-  it("a granted worker is refused on the authorisation flag, which names what is actually blocking", () => {
+  it("a worker with a v0.2 SharePoint scope but no designated location is refused for that reason, which names what is actually blocking", () => {
     const decision = evaluateConnectorPermission({
       workerId: "sophie", connector: "sharepoint", operation: "read", resourceScope: "wsa-site/x",
     });
     expect(decision.allowed).toBe(false);
-    expect(decision.reason).toContain("not authorised for any connector action");
+    expect(decision.reason).toContain("no designated SharePoint location");
   });
 
-  it("every worker is still denied every connector operation", () => {
+  it("exactly twelve SharePoint read/search permissions are open across the workforce, and nothing else on these connectors", () => {
+    // Six designated workers, read and search each. Every write, every
+    // Drive operation and every social channel is denied for everyone.
     let permitted = 0;
     for (const w of listWorkers()) {
       for (const c of CONNECTORS) {
@@ -135,6 +135,6 @@ describe("a grant is still not access", () => {
         }
       }
     }
-    expect(permitted).toBe(0);
+    expect(permitted).toBe(12);
   });
 });

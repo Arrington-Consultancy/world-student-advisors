@@ -64,17 +64,27 @@ export const WORKER_SHAREPOINT_LOCATIONS: Readonly<Record<WorkerId, readonly Sha
   wsa_core_brain: Object.freeze([]),
   sophie: Object.freeze([]),
   daniel: Object.freeze([]),
-  amelia: Object.freeze([]),
+  // Institution and programme evidence. Approved 11 September 2026.
+  amelia: Object.freeze(["08_PARTNERS- ORGANISATIONS"]),
   oliver: Object.freeze([]),
   james: Object.freeze([]),
   priya: Object.freeze([]),
   harper: Object.freeze([]),
   olivia: Object.freeze([]),
-  grace: Object.freeze([]),
-  ethan: Object.freeze([]),
-  maya: Object.freeze([]),
-  alex: Object.freeze([]),
-  nia: Object.freeze([]),
+  // Controlled governance evidence for audit. Approved 11 September 2026.
+  grace: Object.freeze(["17_Senior Management Team/AI_Operating_System"]),
+  // Website and SEO governance evidence. Approved 11 September 2026.
+  ethan: Object.freeze(["16_WEBSITE_Ai"]),
+  // Records control across the governance and management areas. The HR
+  // sub-folder under 01_ADMIN is caught by NEVER_DESIGNATED regardless.
+  // Approved 11 September 2026.
+  maya: Object.freeze(["01_ADMIN_&_GOVERNANCE", "17_Senior Management Team"]),
+  // Campaign assets only. Approved 11 September 2026.
+  alex: Object.freeze(["07_MARKETING_IMAGES"]),
+  // Social, brand and evidence records, to the extent of her approved
+  // drafting and critique scope (Consolidated Approval Record v1.0 s5).
+  // Approved 11 September 2026.
+  nia: Object.freeze(["11_SOCIAL_MEDIA", "07_MARKETING_IMAGES", "09_PODCASTS and WEBINARS"]),
   wsa_governance_assurance: Object.freeze([]),
   staff_receptionist: Object.freeze([]),
 });
@@ -105,10 +115,15 @@ export const NEVER_DESIGNATED: readonly SharePointLocation[] = Object.freeze([
   "05_HUB/17_Job Seekers",
   "01_ADMIN_&_GOVERNANCE/04_HR_&_People Governance",
   "Mary Obeng",
+  // Read from the live root on 11 September 2026: a temporary download
+  // folder is nobody's record class, and a loose file at the root has no
+  // record class at all (the root itself is refused separately).
+  "000_Temp download",
+  "00_Temp download",
 ]);
 
 export const NO_LOCATION_DESIGNATED =
-  "No SharePoint location is designated for this worker. The Worker Personality and Connector Access Matrix v0.2 " +
+  "No SharePoint location is designated for this worker. The Worker Personality and Connector Access Matrix v0.3 " +
   "section 3 requires read and write to follow designated record locations, and section 5 requires the deployment " +
   "owner to verify permitted SharePoint locations before a worker is connector-ready. Designating one is a " +
   "controlled decision, not a code change.";

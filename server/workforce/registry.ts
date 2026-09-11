@@ -21,8 +21,10 @@
  * flip any of these without a corresponding update to the controlled
  * Worker Register.
  */
+import { WORKER_CRM_SCOPE } from "./crmScope";
+import { WORKER_SHAREPOINT_LOCATIONS } from "./sharePointLocations";
 import type { WorkerId, WorkerRegistryEntry } from "./types";
-import { NO_CONTROLLED_CRM_DECISION } from "./types";
+import { NO_CONTROLLED_CRM_DECISION, CRM_READ_INTENT_APPROVED } from "./types";
 
 const SHAREPOINT_SITE = "https://worldstudentadvisors123.sharepoint.com/sites/WSASharePoint/Shared Documents";
 /**
@@ -61,6 +63,7 @@ const TOM_ARRINGTON = "Tom Arrington (WSA policy owner and approval authority)";
  * coincidental.
  */
 export function deriveAuthorisation(
+  id: WorkerId,
   specificationStatus: WorkerRegistryEntry["specificationStatus"],
   staffPortalExecutionStatus: WorkerRegistryEntry["staffPortalExecutionStatus"],
 ): { staffPortalExecutionAuthorised: boolean; connectorUseAuthorised: boolean; writesAuthorised: boolean } {
@@ -81,7 +84,13 @@ export function deriveAuthorisation(
   const staffPortalExecutionAuthorised =
     specificationStatus === "approved" && staffPortalExecutionStatus === "staff_portal_authorised";
 
-  return { staffPortalExecutionAuthorised, connectorUseAuthorised: false, writesAuthorised: false };
+  // Connector use follows the controlled grants, never a flag set here: a
+  // worker may use a connector only if it is executable AND some controlled
+  // record grants it a CRM scope or a designated SharePoint location
+  // (Tom Arrington, 11 September 2026). Writes remain closed for everyone.
+  const connectorUseAuthorised =
+    staffPortalExecutionAuthorised && (WORKER_CRM_SCOPE[id] !== null || WORKER_SHAREPOINT_LOCATIONS[id].length > 0);
+  return { staffPortalExecutionAuthorised, connectorUseAuthorised, writesAuthorised: false };
 }
 
 function entry(
@@ -90,7 +99,7 @@ function entry(
     "staffPortalExecutionAuthorised" | "connectorUseAuthorised" | "writesAuthorised"
   >,
 ): WorkerRegistryEntry {
-  return { ...base, ...deriveAuthorisation(base.specificationStatus, base.staffPortalExecutionStatus) };
+  return { ...base, ...deriveAuthorisation(base.id, base.specificationStatus, base.staffPortalExecutionStatus) };
 }
 
 const REGISTRY_LIST: WorkerRegistryEntry[] = [
@@ -141,7 +150,7 @@ const REGISTRY_LIST: WorkerRegistryEntry[] = [
     connectorIntent: {
       sharePoint: "Relevant enquiry/triage records; designated triage write-back.",
       googleDrive: "None by default.",
-      pipedrive: NO_CONTROLLED_CRM_DECISION,
+      pipedrive: CRM_READ_INTENT_APPROVED,
       hardBoundary: "No suitability, admissions or visa advice.",
     },
     evidencedHandoffs: ["daniel"],
@@ -190,7 +199,7 @@ const REGISTRY_LIST: WorkerRegistryEntry[] = [
     connectorIntent: {
       sharePoint: "Discovery profile inputs and designated discovery output.",
       googleDrive: "None by default.",
-      pipedrive: NO_CONTROLLED_CRM_DECISION,
+      pipedrive: CRM_READ_INTENT_APPROVED,
       hardBoundary: "No research conclusions or recommendations.",
     },
     evidencedHandoffs: ["amelia"],
@@ -290,7 +299,7 @@ const REGISTRY_LIST: WorkerRegistryEntry[] = [
     connectorIntent: {
       sharePoint: "QC-passed discovery and research packs; suitability output.",
       googleDrive: "None by default.",
-      pipedrive: NO_CONTROLLED_CRM_DECISION,
+      pipedrive: CRM_READ_INTENT_APPROVED,
       hardBoundary: "No final student decision, application or visa advice.",
     },
     evidencedHandoffs: ["james"],
@@ -331,7 +340,7 @@ const REGISTRY_LIST: WorkerRegistryEntry[] = [
     connectorIntent: {
       sharePoint: "Application evidence, admissions records and authorised application outputs.",
       googleDrive: "None by default.",
-      pipedrive: NO_CONTROLLED_CRM_DECISION,
+      pipedrive: CRM_READ_INTENT_APPROVED,
       hardBoundary: "No unsupported submission or portal action.",
     },
     evidencedHandoffs: [],
@@ -409,7 +418,7 @@ const REGISTRY_LIST: WorkerRegistryEntry[] = [
     connectorIntent: {
       sharePoint: "Minimum necessary visa/compliance case evidence within verified authority.",
       googleDrive: "None by default.",
-      pipedrive: NO_CONTROLLED_CRM_DECISION,
+      pipedrive: CRM_READ_INTENT_APPROVED,
       hardBoundary: "Regulated advice/submission remains authority-gated.",
     },
     evidencedHandoffs: [],
@@ -488,7 +497,7 @@ const REGISTRY_LIST: WorkerRegistryEntry[] = [
     connectorIntent: {
       sharePoint: "Funding profile, verified scholarship evidence and funding-gap outputs.",
       googleDrive: "None by default.",
-      pipedrive: NO_CONTROLLED_CRM_DECISION,
+      pipedrive: CRM_READ_INTENT_APPROVED,
       hardBoundary: "No investment advice, visa financial-evidence advice or unsupported scholarship action.",
     },
     evidencedHandoffs: [],
@@ -539,7 +548,7 @@ const REGISTRY_LIST: WorkerRegistryEntry[] = [
     connectorIntent: {
       sharePoint: "Minimum necessary pre-arrival/student-success records.",
       googleDrive: "None by default.",
-      pipedrive: NO_CONTROLLED_CRM_DECISION,
+      pipedrive: CRM_READ_INTENT_APPROVED,
       hardBoundary: "Safeguarding, payments and consequential actions remain gated.",
     },
     evidencedHandoffs: [],
@@ -580,7 +589,7 @@ const REGISTRY_LIST: WorkerRegistryEntry[] = [
     connectorIntent: {
       sharePoint: "Read access to records needed for authorised audit; controlled QA findings write-back.",
       googleDrive: "None by default.",
-      pipedrive: NO_CONTROLLED_CRM_DECISION,
+      pipedrive: CRM_READ_INTENT_APPROVED,
       hardBoundary: "No rewriting the case simply because she disagrees with style.",
     },
     evidencedHandoffs: [],

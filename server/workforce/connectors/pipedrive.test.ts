@@ -13,13 +13,20 @@ afterEach(() => {
   process.env = { ...ORIGINAL_ENV };
 });
 
-describe("Pipedrive connector — read-only by construction, on the credential staff already read with", () => {
-  it("reports unconfigured when no CRM credential is set", () => {
-    delete process.env.PIPEDRIVE_API_TOKEN;
+describe("Pipedrive connector — read-only by construction, on a dedicated worker credential", () => {
+  it("reports unconfigured when no workforce CRM credential is set", () => {
+    delete process.env.WORKFORCE_PIPEDRIVE_API_TOKEN;
     expect(getPipedriveStatus()).toBe("unconfigured");
   });
-  it("reports operational with the credential present, because the read path is the one Find a student proves daily", () => {
-    process.env.PIPEDRIVE_API_TOKEN = "x";
+  it("does not treat the live website's PIPEDRIVE_API_TOKEN as a workforce credential", () => {
+    // Tom Arrington, 11 September 2026: do not reuse the public contact-form
+    // Pipedrive token. That token writes live Persons and Leads today.
+    process.env.PIPEDRIVE_API_TOKEN = "live-website-token";
+    delete process.env.WORKFORCE_PIPEDRIVE_API_TOKEN;
+    expect(getPipedriveStatus()).toBe("unconfigured");
+  });
+  it("reports operational with the dedicated credential present", () => {
+    process.env.WORKFORCE_PIPEDRIVE_API_TOKEN = "x";
     expect(getPipedriveStatus()).toBe("operational");
   });
   it("never imports the write-capable Pipedrive client", () => {
@@ -31,6 +38,11 @@ describe("Pipedrive connector — read-only by construction, on the credential s
       .replace(/\/\/.*$/gm, "");
     expect(code).not.toMatch(/from\s+["'][^"']*\/pipedrive["']/);
     expect(code).toMatch(/from\s+["'][^"']*\/pipedrive-read["']/);
+    expect(code).not.toContain("pipedriveApiToken");
+    // Negative lookbehind: WORKFORCE_PIPEDRIVE_API_TOKEN contains the
+    // website variable's name as a substring, and is the one we want.
+    expect(code).not.toMatch(/(?<!WORKFORCE_)PIPEDRIVE_API_TOKEN/);
+    expect(code).toContain("WORKFORCE_PIPEDRIVE_API_TOKEN");
     // And the read module it does import issues GETs only.
     const readModule = readFileSync(new URL("../../pipedrive-read.ts", import.meta.url), "utf8")
       .replace(/\/\*[\s\S]*?\*\//g, "")
@@ -42,15 +54,19 @@ describe("Pipedrive connector — read-only by construction, on the credential s
     const writeish = Object.keys(module).filter(name => /create|update|delete|write|send/i.test(name));
     expect(writeish).toEqual([]);
   });
-  it("projects to the seven approved fields and nothing else", () => {
-    const code = readFileSync(new URL("./pipedrive.ts", import.meta.url), "utf8");
+  it("projects to the approved fields and nothing else", () => {
+    // Comments stripped first: the module's own doc comment names the
+    // excluded fields in order to say they are excluded.
+    const code = readFileSync(new URL("./pipedrive.ts", import.meta.url), "utf8")
+      .replace(/\/\*[\s\S]*?\*\//g, "")
+      .replace(/\/\/.*$/gm, "");
     for (const field of ["personId", "name", "email", "phone", "counsellor", "stageLabel", "lastUpdated"]) expect(code).toContain(`${field}:`);
     for (const forbidden of ["ownerEmail:", "ownerId:", "passport", "dateOfBirth", "nationality", "notes:", "address:"]) expect(code).not.toContain(forbidden);
   });
 });
-describe("Pipedrive connector — every worker is denied today", () => {
-  it("search and read fail for every worker, without ever claiming success", async () => {
-    process.env.PIPEDRIVE_API_TOKEN = "x";
+describe("Pipedrive connector — denied wherever a gate is shut", () => {
+  it("with no resolvable staff profile, search and read fail closed for every worker, without ever claiming success", async () => {
+    process.env.WORKFORCE_PIPEDRIVE_API_TOKEN = "x";
     for (const worker of listWorkers()) {
       const base = { workerId: worker.id, resourceScope: "person/1", staffUserId: 1, authMethod: "entra_sso" as const };
       const searchResult = await searchPipedrive(base);
@@ -63,8 +79,9 @@ describe("Pipedrive connector — every worker is denied today", () => {
   it("is refused at the permission gate, before the connector state is ever consulted", async () => {
     // Denied even with a token present: the refusal is the controlled
     // record, not a missing credential.
-    process.env.PIPEDRIVE_API_TOKEN = "x";
-    const result = await readPipedriveRecord({ workerId: "sophie", resourceScope: "person/1", staffUserId: 1, authMethod: "entra_sso" });
+    process.env.WORKFORCE_PIPEDRIVE_API_TOKEN = "x";
+    // Amelia holds no CRM grant, as approved.
+    const result = await readPipedriveRecord({ workerId: "amelia", resourceScope: "person/1", staffUserId: 1, authMethod: "entra_sso" });
     expect(result.success).toBe(false);
     expect(result.message).toContain("no controlled CRM decision");
     const [event] = getAuditLog();

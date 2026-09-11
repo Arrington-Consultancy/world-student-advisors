@@ -7,6 +7,8 @@ import {
   PRIYA_BLOCKERS,
 } from "./priyaScope";
 import { getWorker } from "./registry";
+import { evaluateConnectorPermission } from "./permissions";
+import { WORKER_SHAREPOINT_LOCATIONS } from "./sharePointLocations";
 
 /**
  * These are the tests that decide whether Priya is safe to run at all.
@@ -158,10 +160,14 @@ describe("Priya is live within her boundary", () => {
     expect(priya.staffPortalExecutionAuthorised).toBe(true);
   });
 
-  it("holds no connector or write authority, so she cannot submit anything", () => {
+  it("holds CRM read only, no write and no SharePoint designation, so she cannot submit anything", () => {
     const priya = getWorker("priya");
-    expect(priya.connectorUseAuthorised).toBe(false);
     expect(priya.writesAuthorised).toBe(false);
+    expect(WORKER_SHAREPOINT_LOCATIONS.priya).toEqual([]);
+    for (const operation of ["create", "update", "delete", "external_send"] as const) {
+      expect(evaluateConnectorPermission({ workerId: "priya", connector: "pipedrive", operation, resourceScope: "person/1" }).allowed).toBe(false);
+    }
+    expect(evaluateConnectorPermission({ workerId: "priya", connector: "sharepoint", operation: "read", resourceScope: "x" }).allowed).toBe(false);
   });
 
   it("still names AB-P04 as what keeps regulated advice out", () => {

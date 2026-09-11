@@ -22,24 +22,53 @@ import type { WorkerId } from "./types";
 
 const SITE = "wsa-site";
 
-describe("nothing is designated, and that is the recorded state", () => {
-  it("no worker has a designated location", () => {
-    for (const w of listWorkers()) {
-      expect(WORKER_SHAREPOINT_LOCATIONS[w.id]).toHaveLength(0);
-    }
+describe("the designations are exactly the approved ones, 11 September 2026", () => {
+  it("six workers are designated and ten are not", () => {
+    const designated = listWorkers().filter(w => WORKER_SHAREPOINT_LOCATIONS[w.id].length > 0).map(w => w.id).sort();
+    expect(designated).toEqual(["alex", "amelia", "ethan", "grace", "maya", "nia"]);
   });
 
   it("the map is total over WorkerId", () => {
     expect(Object.keys(WORKER_SHAREPOINT_LOCATIONS)).toHaveLength(listWorkers().length);
   });
 
-  it("every worker is refused every path, and the reason names the missing designation", () => {
+  it("a worker with no designation is refused every path, and the reason names the missing designation", () => {
     for (const w of listWorkers()) {
+      if (WORKER_SHAREPOINT_LOCATIONS[w.id].length > 0) continue;
       const decision = decideSharePointLocation(w.id, `${SITE}/17_Senior Management Team/AI_Operating_System`, SITE);
       expect(decision.permitted).toBe(false);
       expect(decision.reason).toContain("No SharePoint location is designated");
       expect(decision.reason).toContain("Access Matrix");
     }
+  });
+
+  it("the six approved designations are exactly these, and every one is a folder that exists at the live root", () => {
+    expect(WORKER_SHAREPOINT_LOCATIONS.amelia).toEqual(["08_PARTNERS- ORGANISATIONS"]);
+    expect(WORKER_SHAREPOINT_LOCATIONS.grace).toEqual(["17_Senior Management Team/AI_Operating_System"]);
+    expect(WORKER_SHAREPOINT_LOCATIONS.ethan).toEqual(["16_WEBSITE_Ai"]);
+    expect(WORKER_SHAREPOINT_LOCATIONS.maya).toEqual(["01_ADMIN_&_GOVERNANCE", "17_Senior Management Team"]);
+    expect(WORKER_SHAREPOINT_LOCATIONS.alex).toEqual(["07_MARKETING_IMAGES"]);
+    expect(WORKER_SHAREPOINT_LOCATIONS.nia).toEqual(["11_SOCIAL_MEDIA", "07_MARKETING_IMAGES", "09_PODCASTS and WEBINARS"]);
+    // Read from the drive root on 11 September 2026. A designation that
+    // does not exist would point a worker at nothing while looking granted.
+    const liveRoot = ["01_ADMIN_&_GOVERNANCE", "07_MARKETING_IMAGES", "08_PARTNERS- ORGANISATIONS", "09_PODCASTS and WEBINARS", "11_SOCIAL_MEDIA", "16_WEBSITE_Ai", "17_Senior Management Team"];
+    for (const list of Object.values(WORKER_SHAREPOINT_LOCATIONS)) for (const loc of list) expect(liveRoot).toContain(loc.split("/")[0]);
+  });
+
+  it("Priya, Sophie, Daniel, Oliver, James, Olivia and Harper have no designation: the record classes they need do not exist on the site", () => {
+    for (const w of ["priya", "sophie", "daniel", "oliver", "james", "olivia", "harper"] as const) expect(WORKER_SHAREPOINT_LOCATIONS[w]).toEqual([]);
+  });
+
+  it("a designated worker reaches its own location and nothing beside it", () => {
+    expect(decideSharePointLocation("ethan", `${SITE}/16_WEBSITE_Ai/audit.docx`, SITE).permitted).toBe(true);
+    expect(decideSharePointLocation("ethan", `${SITE}/16_WEBSITE_Ai_OLD/audit.docx`, SITE).permitted).toBe(false);
+    expect(decideSharePointLocation("ethan", `${SITE}/11_SOCIAL_MEDIA/post.docx`, SITE).permitted).toBe(false);
+    expect(decideSharePointLocation("nia", `${SITE}/11_SOCIAL_MEDIA/post.docx`, SITE).permitted).toBe(true);
+    expect(decideSharePointLocation("nia", `${SITE}/16_WEBSITE_Ai/audit.docx`, SITE).permitted).toBe(false);
+    // Maya may read the governance area and still never the HR folder inside it.
+    expect(decideSharePointLocation("maya", `${SITE}/01_ADMIN_&_GOVERNANCE/policies.docx`, SITE).permitted).toBe(true);
+    expect(decideSharePointLocation("maya", `${SITE}/01_ADMIN_&_GOVERNANCE/04_HR_&_People Governance/x.docx`, SITE).permitted).toBe(false);
+    expect(decideSharePointLocation("maya", `${SITE}/000_Temp download/x.docx`, SITE).permitted).toBe(false);
   });
 });
 
@@ -54,6 +83,7 @@ describe("the areas no designation could ever reach", () => {
     "05_HUB/17_Job Seekers/cv.pdf",
     "01_ADMIN_&_GOVERNANCE/04_HR_&_People Governance/contracts",
     "Mary Obeng/notes.docx",
+    "000_Temp download/whatever.pdf",
   ];
 
   it("refuses each of them for every worker", () => {
@@ -97,9 +127,10 @@ describe("path containment is a prefix, not a substring", () => {
   it("a sibling folder with the same prefix is a different folder", () => {
     // Guards the classic error: "16_WEBSITE".startsWith equality without
     // the separator would let "16_WEBSITE_PRIVATE" through.
-    const decision = decideSharePointLocation("maya", `${SITE}/03_FAMILY_&_PERSONAL_ARCHIVE/x`, SITE);
-    // Not forbidden by prefix rule, so it falls through to the ordinary
-    // no-designation refusal rather than the never-designated one.
+    // James has no designation, so a path that is not forbidden falls
+    // through to the ordinary no-designation refusal rather than the
+    // never-designated one.
+    const decision = decideSharePointLocation("james", `${SITE}/03_FAMILY_&_PERSONAL_ARCHIVE/x`, SITE);
     expect(decision.permitted).toBe(false);
     expect(decision.reason).toContain("No SharePoint location is designated");
   });
@@ -133,7 +164,7 @@ describe("the forbidden check does not depend on the site id being configured", 
   });
 
   it("still distinguishes a same-prefixed sibling when the site id is absent", () => {
-    const decision = decideSharePointLocation("maya", "wsa-site/03_FAMILY_&_PERSONAL_ARCHIVE/x", undefined);
+    const decision = decideSharePointLocation("james", "wsa-site/03_FAMILY_&_PERSONAL_ARCHIVE/x", undefined);
     expect(decision.permitted).toBe(false);
     expect(decision.reason).toContain("No SharePoint location is designated");
   });

@@ -9,13 +9,15 @@
  * permission logic is the only thing between a worker and genuine student
  * personal data, and this module is built around that.
  *
- * WHICH CREDENTIAL, AND WHY. Tom, 11 September 2026: use what production
- * already holds. This module therefore reads through pipedrive-read.ts,
- * the same read-only module and the same credential that "Find a student"
- * uses for staff. It does not, and must never, import server/pipedrive.ts:
- * that is the write-capable client, and a test forbids the import. The
- * read-only boundary is a fact about which file is imported, visible at
- * the top of this file, rather than a convention.
+ * WHICH CREDENTIAL, AND WHY. Tom Arrington, 11 September 2026: dedicated
+ * WSA worker connector credentials; do not reuse the public contact-form
+ * Pipedrive token. So this module reads with WORKFORCE_PIPEDRIVE_API_TOKEN
+ * and nothing else. It borrows the GET-only functions from pipedrive-read.ts
+ * through createPipedriveReader, bound to that token, so the read logic
+ * exists once and the credential boundary is an argument rather than a
+ * copy. It does not, and must never, import server/pipedrive.ts: that is
+ * the write-capable client, and a test forbids the import. It never reads
+ * the Student Portal's token either, and a test forbids that name too.
  *
  * WHAT A WORKER GETS. Exactly the seven approved fields, through the same
  * projection the staff lookup uses. Nothing about notes, money, documents,
@@ -37,37 +39,56 @@
  */
 import { runConnectorAction, type ConnectorActionRequest, type ConnectorActionResult } from "./shared";
 import type { ConnectorState } from "../types";
-import {
-  getOpenDealForPerson,
-  getOpenLeadForPerson,
-  getPerson,
-  isPipedriveReadConfigured,
-  searchPersonIds,
-  type PersonSearchField,
-} from "../../pipedrive-read";
+import { createPipedriveReader, type PersonSearchField } from "../../pipedrive-read";
 import { resolveStageDisplay } from "../../portal-stages";
 import type { CrmLookupResult } from "../../crm/staffLookup";
+import { projectFieldsFor, type ProjectedValues } from "./crmProjection";
 
 /** The pre-conversion Lead state, matching the student portal's wording. */
 const LEAD_STAGE_LABEL = "Getting to know you";
 
+/** The dedicated worker credential. Read on every call so a rotation takes effect without a restart. */
+const workerToken = () => process.env.WORKFORCE_PIPEDRIVE_API_TOKEN ?? "";
+const reader = createPipedriveReader(workerToken);
+
 function getPipedriveConnectorState(): ConnectorState {
-  // Configured means the read module has a credential. Operational is not
-  // a stronger claim than that here: the read path below is the same one
-  // "Find a student" exercises for staff every day, so it is proven by use.
-  return isPipedriveReadConfigured() ? "operational" : "unconfigured";
+  // Configured means the dedicated worker credential is present. Whether
+  // that credential can see anything is answered by the call itself, and a
+  // Pipedrive 401 is reported as what it is through the honest-failure
+  // path in shared.ts.
+  return workerToken() ? "operational" : "unconfigured";
 }
 
-/** The seven approved fields and nothing else. Same shape as the staff lookup. */
-async function projectPerson(personId: number): Promise<CrmLookupResult | null> {
-  const person = await getPerson(personId);
+/**
+ * What a worker is handed: the seven staff-lookup fields plus the stage
+ * position and a confirmed flag, which Olivia's condition and a worker's
+ * own pipeline reasoning need. Nothing about notes, money, documents,
+ * activity, custom fields, address, date of birth, nationality, passport or
+ * visa; the raw Pipedrive object never leaves this function.
+ */
+export interface WorkerCrmRecord extends CrmLookupResult {
+  stagePosition: number | null;
+  confirmed: boolean;
+  /** The worker's approved remit fields, by Pipedrive label. See crmProjection.ts. */
+  fields: ProjectedValues;
+}
+
+async function projectPerson(personId: number, workerId: string): Promise<WorkerCrmRecord | null> {
+  const person = await reader.getPerson(personId);
   if (!person) return null;
-  const deal = await getOpenDealForPerson(personId);
+  const deal = await reader.getOpenDealForPerson(personId);
+  // Raw records are fetched, projected and dropped inside this block.
+  const rawPerson = await reader.getPersonRaw(personId);
+  const rawDeal = deal ? await reader.getDealRaw(deal.id) : null;
+  const fields = projectFieldsFor(workerId as never, { person: rawPerson, deal: rawDeal });
   let stageLabel: string;
+  let stagePosition: number | null = null;
   if (deal) {
-    stageLabel = resolveStageDisplay(deal.stageId).label;
+    const stage = resolveStageDisplay(deal.stageId);
+    stageLabel = stage.label;
+    stagePosition = stage.position ?? null;
   } else {
-    const lead = await getOpenLeadForPerson(personId);
+    const lead = await reader.getOpenLeadForPerson(personId);
     stageLabel = lead ? LEAD_STAGE_LABEL : "No open enquiry";
   }
   return {
@@ -78,6 +99,9 @@ async function projectPerson(personId: number): Promise<CrmLookupResult | null> 
     counsellor: person.ownerName,
     stageLabel,
     lastUpdated: person.updateTime,
+    stagePosition,
+    confirmed: stagePosition !== null && stagePosition >= CONFIRMED_FROM_POSITION,
+    fields,
   };
 }
 
@@ -100,25 +124,60 @@ function parseScope(scope: string): { kind: "read"; personId: number } | { kind:
 
 const MAX_SEARCH_RESULTS = 5;
 
+/**
+ * What makes each grant least-privilege, per the approved matrix.
+ *
+ * The grant in crmScope.ts says WHICH operations; this says HOW FAR each
+ * one reaches, and it is applied inside the connector so the only path a
+ * grant opens is a constrained one.
+ *
+ *  - Sophie: lookup of an incoming person by the identifiers staff genuinely
+ *    receive, email and telephone. Not by name: a name search is CRM
+ *    browsing, and she is given one enquiry, not a list.
+ *  - Grace: the one justified cross-case search, for audit sampling, by any
+ *    identifier. Still capped, still logged, still one record at a time.
+ *  - Olivia: her remit begins "once a student is confirmed". A read of a
+ *    person whose open deal has not reached the CAS / Visa / Pre-Departure
+ *    stage is refused, because that student is not yet hers.
+ *  - Priya: the staff member must hold the visa_regulated overlay, checked
+ *    by the shared gate, because the material is regulated.
+ */
+const SEARCH_FIELDS: Partial<Record<string, readonly PersonSearchField[]>> = {
+  sophie: ["email", "phone"],
+  grace: ["email", "phone", "name"],
+};
+/** Pipedrive stage position at which a student counts as confirmed for Olivia's remit. */
+const CONFIRMED_FROM_POSITION = 6;
+const CONFIRMED_ONLY = new Set<string>(["olivia"]);
+const SENSITIVE_CATEGORY: Partial<Record<string, "visa_regulated">> = { priya: "visa_regulated" };
+
 async function pipedriveAttempt(request: ConnectorActionRequest): Promise<{ success: boolean; message: string; data?: unknown }> {
   const parsed = parseScope(request.resourceScope);
   if (!parsed) {
     return { success: false, message: `Unrecognised CRM scope "${request.resourceScope}". Expected person/<id> or person/search/<field>/<term>.` };
   }
   if (parsed.kind === "read") {
-    const projected = await projectPerson(parsed.personId);
+    const projected = await projectPerson(parsed.personId, request.workerId);
     if (!projected) return { success: false, message: `No CRM person ${parsed.personId}.` };
-    return { success: true, message: `Read CRM person ${parsed.personId}, seven approved fields.`, data: projected };
+    if (CONFIRMED_ONLY.has(request.workerId) && !projected.confirmed) {
+      return { success: false, message: `CRM person ${parsed.personId} is not a confirmed student yet, so this is outside ${request.workerId}'s remit.` };
+    }
+    return { success: true, message: `Read CRM person ${parsed.personId}, approved fields only.`, data: projected };
   }
-  const ids = (await searchPersonIds(parsed.term, parsed.field)).slice(0, MAX_SEARCH_RESULTS);
-  const results: CrmLookupResult[] = [];
+  const allowedFields = SEARCH_FIELDS[request.workerId];
+  if (!allowedFields) return { success: false, message: `${request.workerId} may not search the CRM; a specific person must already be in context.` };
+  if (!allowedFields.includes(parsed.field)) {
+    return { success: false, message: `${request.workerId} may look up a person by ${allowedFields.join(" or ")}, not by ${parsed.field}.` };
+  }
+  const ids = (await reader.searchPersonIds(parsed.term, parsed.field)).slice(0, MAX_SEARCH_RESULTS);
+  const results: WorkerCrmRecord[] = [];
   for (const id of ids) {
-    const projected = await projectPerson(id);
+    const projected = await projectPerson(id, request.workerId);
     if (projected) results.push(projected);
   }
   return {
     success: true,
-    message: `Found ${results.length} CRM match${results.length === 1 ? "" : "es"} by ${parsed.field}, seven approved fields each.`,
+    message: `Found ${results.length} CRM match${results.length === 1 ? "" : "es"} by ${parsed.field}, approved fields only.`,
     data: results,
   };
 }
@@ -132,11 +191,20 @@ export function getPipedriveStatus(): ConnectorState {
  * are reachable is decided by the staff member's own case scope and the
  * worker's CRM grant in the gates before this, not here.
  */
-export function searchPipedrive(request: Omit<ConnectorActionRequest, "connector" | "operation">): Promise<ConnectorActionResult> {
-  return runConnectorAction({ ...request, connector: "pipedrive", operation: "search" }, getPipedriveConnectorState, pipedriveAttempt);
+export function searchPipedrive(request: Omit<ConnectorActionRequest, "connector" | "operation" | "sensitiveCategory">): Promise<ConnectorActionResult> {
+  return runConnectorAction(
+    { ...request, connector: "pipedrive", operation: "search", sensitiveCategory: SENSITIVE_CATEGORY[request.workerId] },
+    getPipedriveConnectorState, pipedriveAttempt,
+  );
 }
 
 /** Read one CRM record. Same gates as search; read is not a lesser operation where student personal data is concerned. */
-export function readPipedriveRecord(request: Omit<ConnectorActionRequest, "connector" | "operation">): Promise<ConnectorActionResult> {
-  return runConnectorAction({ ...request, connector: "pipedrive", operation: "read" }, getPipedriveConnectorState, pipedriveAttempt);
+export function readPipedriveRecord(request: Omit<ConnectorActionRequest, "connector" | "operation" | "sensitiveCategory">): Promise<ConnectorActionResult> {
+  return runConnectorAction(
+    { ...request, connector: "pipedrive", operation: "read", sensitiveCategory: SENSITIVE_CATEGORY[request.workerId] },
+    getPipedriveConnectorState, pipedriveAttempt,
+  );
 }
+
+/** Exposed for tests: the constraints are the point, so they are asserted directly. */
+export const PIPEDRIVE_WORKER_CONSTRAINTS = Object.freeze({ SEARCH_FIELDS, CONFIRMED_ONLY, CONFIRMED_FROM_POSITION, SENSITIVE_CATEGORY });

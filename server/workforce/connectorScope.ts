@@ -70,7 +70,7 @@ export const WORKER_CONNECTOR_SCOPE: Readonly<Record<WorkerId, ConnectorGrant>> 
    * governance write-back." Drive: "Read only when legacy/migration
    * evidence is materially relevant."
    */
-  wsa_core_brain: Object.freeze({ sharepoint: READ_WRITE, google_drive: READ }),
+  wsa_core_brain: Object.freeze({ sharepoint: READ_WRITE }),
   /** "Relevant enquiry/triage records; designated triage write-back." Drive: "None by default." */
   sophie: Object.freeze({ sharepoint: READ_WRITE }),
   /** "Discovery profile inputs and designated discovery output." No write verb. Drive: "None by default." */
@@ -94,7 +94,7 @@ export const WORKER_CONNECTOR_SCOPE: Readonly<Record<WorkerId, ConnectorGrant>> 
    * Drive: "Read access where current website/Search Console legacy
    * evidence is stored in Drive; no student-case data."
    */
-  ethan: Object.freeze({ sharepoint: READ, google_drive: READ }),
+  ethan: Object.freeze({ sharepoint: READ }),
   /**
    * "Records-control scope across authorised SharePoint locations."
    * A scope is the right to look across authorised locations. It is not a
@@ -103,28 +103,42 @@ export const WORKER_CONNECTOR_SCOPE: Readonly<Record<WorkerId, ConnectorGrant>> 
    * Drive: "Read/migration access only when moving or reconciling
    * authorised legacy records."
    */
-  maya: Object.freeze({ sharepoint: READ, google_drive: READ }),
+  maya: Object.freeze({ sharepoint: READ }),
   /**
    * "Paid-media governance, approved measurement evidence and authorised
    * campaign records." No write verb.
    * Drive: "Read access to relevant legacy marketing/website evidence only."
    */
-  alex: Object.freeze({ sharepoint: READ, google_drive: READ }),
+  alex: Object.freeze({ sharepoint: READ }),
   /**
    * Not present in Access Matrix v0.2, which predates her. Worker Register
    * v0.42 also records her as NOT APPROVED with NO LIVE PUBLISHING
    * AUTHORITY and NIA-G01 to NIA-G07 unresolved. Two independent reasons
    * to hold nothing, and neither is a code question.
    */
-  nia: {},
+  /**
+   * Read of her designated social, brand and evidence locations, granted
+   * 11 September 2026 to the extent of her approved drafting and critique
+   * scope. No write: publishing authority remains closed (NIA-G01 to G07).
+   */
+  nia: Object.freeze({ sharepoint: READ }),
   /** "Read across controlled governance evidence; write authorised assurance records." */
-  wsa_governance_assurance: Object.freeze({ sharepoint: READ_WRITE, google_drive: READ }),
+  wsa_governance_assurance: Object.freeze({ sharepoint: READ_WRITE }),
   /**
    * "Current Worker Register, minimum routing metadata and authorised
    * routing record." No write verb, and its hard boundary is "Routes only."
    */
   staff_receptionist: Object.freeze({ sharepoint: READ }),
 });
+
+/**
+ * Google Drive: withdrawn from every worker on 11 September 2026 (Worker
+ * Personality and Connector Access Matrix v0.3, section 4). The Drive WSA's
+ * handovers sit in is owned by an Arrington Consultancy account, and that
+ * is a business-separation boundary rather than a design question. The
+ * v0.2 read entries for Ethan, Maya and Alex are gone from the table above.
+ */
+export const GOOGLE_DRIVE_WITHDRAWN = "Google Drive access was withdrawn from every WSA worker on 11 September 2026 (Access Matrix v0.3 section 4).";
 
 export const NO_CONNECTOR_GRANT =
   "No controlled record grants this worker a scope on this connector. " +

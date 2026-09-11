@@ -30,6 +30,8 @@ import { runQualityCheck, type QualityCheckResult } from "../operating/qualityCh
 import { getControlledBrief, NO_CONTROLLED_BRIEF } from "./briefs";
 import { checkPreparationOnly, checkRuleStatementsAreSourced, PRIYA_REFUSAL } from "../workforce/priyaScope";
 import { composeSystemPrompt, composeUserMessage, type ContributorInput } from "./prompt";
+import { gatherConnectorEvidence } from "./evidence";
+import type { AuditAuthMethod } from "../workforce/audit";
 import type { WorkerId } from "../workforce/types";
 
 export type ExecutionOutcome =
@@ -45,6 +47,12 @@ export type ExecutionOutcome =
 export interface ExecutionRequest {
   /** From the verified session. Never from request input. */
   staffUserId: number | null;
+  /**
+   * From the verified session, for the connector audit rows. Defaults to
+   * the honest reading of staffUserId: an individual where one exists and
+   * the shared password where none does.
+   */
+  authMethod?: AuditAuthMethod;
   workerId: WorkerId;
   /** What the staff member typed. Always a user message, never system text. */
   requestText: string;
@@ -134,7 +142,18 @@ export async function executeWorker(request: ExecutionRequest): Promise<Executio
     return refuse("refused_no_context", context.deniedReason ?? "Context was refused.", request.workerId, brief.sourceDocument);
   }
 
-  const promptInputs = { brief, context, contributions: request.contributions ?? [] };
+  // 4b. Evidence from WSA systems, through the gated connector path. Every
+  //     call inside is permission-checked and audited; a refusal becomes a
+  //     note the worker can state rather than a gap it might paper over.
+  const evidence = await gatherConnectorEvidence({
+    workerId: request.workerId,
+    requestText: request.requestText,
+    staffUserId: request.staffUserId,
+    authMethod: request.authMethod ?? (request.staffUserId === null ? "shared_password" : "entra_sso"),
+    caseId: request.caseId,
+  });
+
+  const promptInputs = { brief, context, contributions: request.contributions ?? [], evidence };
   const system = composeSystemPrompt(promptInputs);
   const user = composeUserMessage(request.requestText, promptInputs);
 

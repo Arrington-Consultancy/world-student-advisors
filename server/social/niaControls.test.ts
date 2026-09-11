@@ -17,6 +17,7 @@ import { PLATFORM_IMPORT_POSITIONS, HISTORICAL_MEMORY_POSITION, PROHIBITED_BACKF
 import { ACCOUNT_ADMINISTRATION_MAP, VERIFIED_POSITION, DECISION_FOR_TOM } from "./accountAdministration";
 import type { StaffAccessProfile } from "../access/accessControl";
 import { getWorker } from "../workforce/registry";
+import { connectorScopeGrants } from "../workforce/connectorScope";
 
 function profile(over: Partial<StaffAccessProfile> = {}): StaffAccessProfile {
   return {
@@ -138,11 +139,16 @@ describe("Nia may reference Alex's paid evidence but cannot mutate it", () => {
   });
 
   it("releasing evidence to Nia grants her no paid-media authority at all", () => {
-    // The gate opening is about reading Alex's evidence. Nia's own
-    // boundary is unchanged, and this is what would fail if release were
-    // ever confused with authority.
+    // The gate opening is about reading Alex's evidence. Nia's SharePoint
+    // read of her designated locations (11 September 2026) is a separate,
+    // recorded grant; nothing here gives her a write, a social channel or
+    // any paid-media authority.
     const nia = getWorker("nia");
-    expect(nia.connectorUseAuthorised).toBe(false);
+    expect(nia.writesAuthorised).toBe(false);
+    for (const channel of ["linkedin", "facebook", "youtube", "whatsapp"] as const) {
+      expect(connectorScopeGrants("nia", channel, "read")).toBe(false);
+      expect(connectorScopeGrants("nia", channel, "create")).toBe(false);
+    }
     expect(NIA_PAID_BOUNDARY.mayNot).toContain("Set budgets");
     expect(NIA_PAID_BOUNDARY.mayNot).toContain("Spend money");
   });

@@ -39,6 +39,25 @@ export const RAILWAY_GRAPHQL_ENDPOINT = "https://backboard.railway.com/graphql/v
 
 /** The ONLY Entra application this automation may create or manage. */
 export const MANAGED_SSO_APP_DISPLAY_NAME = "WSA Staff Portal Authentication";
+/**
+ * The Entra application this automation manages for worker SharePoint
+ * access. Tom Arrington, 11 September 2026: a dedicated credential, never
+ * the Mail.Send app. It declares exactly one application permission,
+ * Sites.Selected, which reaches nothing until an administrator consents
+ * AND grants it on the WSA site specifically. Those two grants are human
+ * actions this automation cannot perform and does not try to.
+ */
+export const MANAGED_SHAREPOINT_APP_DISPLAY_NAME = "WSA Worker SharePoint Access";
+/** Microsoft Graph application permission id for Sites.Selected. */
+export const SITES_SELECTED_APP_ROLE_ID = "883ea226-0bf2-4a8f-9f9d-92c9162a727d";
+/** The two display names this automation may ever create or manage. */
+export const MANAGED_APP_DISPLAY_NAMES = Object.freeze([MANAGED_SSO_APP_DISPLAY_NAME, MANAGED_SHAREPOINT_APP_DISPLAY_NAME] as const);
+/** The ONLY variable names this automation may write for worker SharePoint access. */
+export const SHAREPOINT_VARIABLE_NAMES = Object.freeze([
+  "SHAREPOINT_GRAPH_TENANT_ID",
+  "SHAREPOINT_GRAPH_CLIENT_ID",
+  "SHAREPOINT_GRAPH_CLIENT_SECRET",
+] as const);
 
 /** The ONLY variable names this automation may write, ever. */
 export const ALLOWED_VARIABLE_NAMES = Object.freeze([
@@ -94,12 +113,15 @@ export function assertAuthorisedRailwayTarget(target: {
   }
 }
 
-export function assertAuthorisedVariableNames(names: readonly string[]): void {
-  const allowed = new Set<string>(ALLOWED_VARIABLE_NAMES);
+export function assertAuthorisedVariableNames(
+  names: readonly string[],
+  allowlist: readonly string[] = ALLOWED_VARIABLE_NAMES,
+): void {
+  const allowed = new Set<string>(allowlist);
   for (const name of names) {
     if (!allowed.has(name)) {
       throw new AutomationAuthorityError(
-        `Refusing variable write: "${name}" is not in the authorised STAFF_SSO_* allowlist.`,
+        `Refusing variable write: "${name}" is not in the authorised allowlist (${allowlist.join(", ")}).`,
       );
     }
   }
@@ -159,18 +181,22 @@ export interface GraphApplication {
 export function selectManagedApplication(
   applications: readonly GraphApplication[],
   pinnedAppId?: string,
+  displayName: (typeof MANAGED_APP_DISPLAY_NAMES)[number] = MANAGED_SSO_APP_DISPLAY_NAME,
 ): { decision: "create" } | { decision: "manage"; application: GraphApplication } {
+  if (!MANAGED_APP_DISPLAY_NAMES.includes(displayName)) {
+    throw new AutomationAuthorityError(`"${displayName}" is not an application this automation may manage.`);
+  }
   if (pinnedAppId) {
     const pinned = applications.find(app => app.appId === pinnedAppId);
     if (pinned) {
-      if (pinned.displayName !== MANAGED_SSO_APP_DISPLAY_NAME) {
+      if (pinned.displayName !== displayName) {
         throw new AutomationAuthorityError(
-          `Pinned application ${pinnedAppId.slice(0, 8)}… no longer carries the controlled name "${MANAGED_SSO_APP_DISPLAY_NAME}". Identifier and name disagree; stopping.`,
+          `Pinned application ${pinnedAppId.slice(0, 8)}… no longer carries the controlled name "${displayName}". Identifier and name disagree; stopping.`,
         );
       }
       return { decision: "manage", application: pinned };
     }
-    const nameAlikes = applications.filter(app => app.displayName === MANAGED_SSO_APP_DISPLAY_NAME);
+    const nameAlikes = applications.filter(app => app.displayName === displayName);
     if (nameAlikes.length > 0) {
       throw new AutomationAuthorityError(
         `Pinned application ${pinnedAppId.slice(0, 8)}… is not among the owned applications, but ${nameAlikes.length} name-alike app(s) exist. Refusing to adopt an unpinned application; resolve manually.`,
@@ -179,12 +205,33 @@ export function selectManagedApplication(
     // Pinned app gone and nothing name-alike: legitimate recreation.
     return { decision: "create" };
   }
-  const matches = applications.filter(app => app.displayName === MANAGED_SSO_APP_DISPLAY_NAME);
+  const matches = applications.filter(app => app.displayName === displayName);
   if (matches.length === 0) return { decision: "create" };
   if (matches.length === 1) return { decision: "manage", application: matches[0] };
   throw new AutomationAuthorityError(
-    `Ambiguous state: ${matches.length} owned applications are named "${MANAGED_SSO_APP_DISPLAY_NAME}". Stopping; resolve manually.`,
+    `Ambiguous state: ${matches.length} owned applications are named "${displayName}". Stopping; resolve manually.`,
   );
+}
+
+/**
+ * The worker SharePoint application: single tenant, no sign-in surface at
+ * all (no redirect URI, no delegated scope), and exactly one application
+ * permission, Sites.Selected. Declaring the permission grants nothing: an
+ * administrator must consent to it and then grant the application on the
+ * WSA site by name. Until both happen, Graph answers 403 and the
+ * connector says so.
+ */
+export function buildSharePointApplicationCreatePayload(): Record<string, unknown> {
+  return {
+    displayName: MANAGED_SHAREPOINT_APP_DISPLAY_NAME,
+    signInAudience: "AzureADMyOrg",
+    requiredResourceAccess: [
+      {
+        resourceAppId: GRAPH_RESOURCE_APP_ID,
+        resourceAccess: [{ id: SITES_SELECTED_APP_ROLE_ID, type: "Role" }],
+      },
+    ],
+  };
 }
 
 /** Creation payload for the managed app: single tenant, exact redirect, OIDC scopes only. */
@@ -262,11 +309,14 @@ export function buildGraphTokenRequest(input: {
 }
 
 /** Railway variableCollectionUpsert for the four authorised variables; guards run first. */
-export function buildRailwayVariablesMutation(variables: Record<string, string>): {
+export function buildRailwayVariablesMutation(
+  variables: Record<string, string>,
+  allowlist: readonly string[] = ALLOWED_VARIABLE_NAMES,
+): {
   query: string;
   variables: { input: Record<string, unknown> };
 } {
-  assertAuthorisedVariableNames(Object.keys(variables));
+  assertAuthorisedVariableNames(Object.keys(variables), allowlist);
   return {
     query: `mutation variableCollectionUpsert($input: VariableCollectionUpsertInput!) {
   variableCollectionUpsert(input: $input)

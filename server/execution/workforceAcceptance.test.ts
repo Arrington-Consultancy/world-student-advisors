@@ -13,6 +13,8 @@ import { getControlledBrief } from "./briefs";
 import { composeSystemPrompt } from "./prompt";
 import { routeStaffRequest } from "../workforce/router";
 import { getWorker, listWorkers } from "../workforce/registry";
+import { WORKER_CRM_SCOPE } from "../workforce/crmScope";
+import { WORKER_SHAREPOINT_LOCATIONS } from "../workforce/sharePointLocations";
 import { evaluateStaffPortalExecutionPermission } from "../workforce/permissions";
 import { buildWorkerContext, type CaseData } from "../workforce/context";
 import type { WorkerId } from "../workforce/types";
@@ -117,9 +119,10 @@ describe.each(WORKERS)("acceptance: $id", ({ id, inScopeRequest, outOfScopeTopic
     expect(context.caseData).toBeNull();
   });
 
-  it("holds no connector or write authority, so it cannot invent an evidenced action", () => {
+  it("holds no write authority, and connector authority only where a controlled record grants it", () => {
     const worker = getWorker(id);
-    expect(worker.connectorUseAuthorised).toBe(false);
+    const granted = WORKER_CRM_SCOPE[id] !== null || WORKER_SHAREPOINT_LOCATIONS[id].length > 0;
+    expect(worker.connectorUseAuthorised).toBe(granted);
     expect(worker.writesAuthorised).toBe(false);
   });
 
