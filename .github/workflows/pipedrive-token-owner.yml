@@ -1,0 +1,24 @@
+name: Pipedrive token owner check (read-only)
+
+# Manual-only. Three GETs with the production PIPEDRIVE_API_TOKEN inside the
+# Railway service's variables: who the token acts as, that user's visibility
+# permissions, and the company's user list. Prints names, emails and flags
+# only. Never prints, rotates or regenerates the token. Writes nothing.
+on:
+  workflow_dispatch: {}
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Install Railway CLI
+        run: npm install -g @railway/cli
+      - name: Run the read-only check
+        env:
+          RAILWAY_TOKEN: ${{ secrets.githubactionsprod }}
+        run: |
+          railway run --service "world-student-advisors" --environment "production" -- node scripts/pipedrive-token-owner.mjs
