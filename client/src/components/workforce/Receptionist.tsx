@@ -170,7 +170,19 @@ export function Receptionist({ token }: { token: string }) {
       {result && !result.matched && (
         <div className="mt-6">
           <div className="rounded-2xl border border-wsa-navy/12 bg-white p-5">
-            <h3 className="text-base font-semibold text-wsa-navy">No one owns that yet</h3>
+            {/* "No one owns that yet" was a claim the software cannot
+                currently support. Two different things reach this branch:
+                the router genuinely established that no approved remit
+                covers the request, and the router simply failed to
+                recognise one. Today it cannot tell them apart, so it makes
+                the weaker, true statement. The stronger wording, "No
+                approved specialist owns this request", is reserved for
+                when the router can actually establish that. Tom's point,
+                11 September 2026: otherwise staff read a software failure
+                as a gap in WSA's processes. */}
+            <h3 className="text-base font-semibold text-wsa-navy">
+              I could not confidently match that to a specialist
+            </h3>
             <p className="mt-1.5 text-base leading-relaxed text-gray-700">{result.status}</p>
             <p className="mt-1.5 text-base leading-relaxed text-gray-600">{result.safeNextAction}</p>
           </div>
