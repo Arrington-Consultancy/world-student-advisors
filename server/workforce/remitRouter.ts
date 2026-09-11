@@ -81,9 +81,17 @@ export type RoutingFailureType =
 
 export type RoutingConfidence = "high" | "medium" | "low" | "none";
 
+export type Resolution = "worker" | "information" | "none";
+
 export interface RemitRoutingDecision {
   /** True only when a worker who can currently take the work was identified. */
   matched: boolean;
+  /**
+   * How the request is resolved. "information": a management-information
+   * question the resolution-first layer answers from the authorised
+   * sources under the staff member's own permissions, rather than a worker.
+   */
+  resolution: Resolution;
   outcome: OutcomeId | null;
   outcomeDescription: string | null;
   responsibleWorkerId: WorkerId | null;
@@ -138,6 +146,7 @@ function unresolved(
 ): RemitRoutingDecision {
   return {
     matched: false,
+    resolution: "none",
     outcome,
     outcomeDescription: outcome ? outcomeDefinition(outcome).description : null,
     responsibleWorkerId: null,
@@ -192,19 +201,37 @@ export function routeByRemit(requestText: string, context: CaseContext = {}): Re
 
   const outcome = outcomes[0];
 
+  // A management-information question. Nobody owns it as a worker and the
+  // router does not pretend otherwise; it is handed to the resolution-first
+  // layer, which checks the authorised sources before saying anything.
+  if (outcome === "management_information") {
+    return {
+      matched: false,
+      resolution: "information",
+      outcome,
+      outcomeDescription: outcomeDefinition(outcome).description,
+      responsibleWorkerId: null,
+      candidates: [],
+      decidedAt: "requested_outcome",
+      confidence: "high",
+      operationalState: null,
+      humanGate: null,
+      failure: null,
+      status: "Let me check the records.",
+      safeNextAction: "",
+      modelVersion: ROUTING_MODEL_VERSION,
+    };
+  }
+
   // An outcome the controlled records show nobody produces. This is the
   // one case where the strong wording is honest, and it is only honest
   // because the remit model can point at the record that says so.
   if (isUnowned(outcome)) {
     const definition = outcomeDefinition(outcome);
-    const nextStep =
-      outcome === "crm_reporting"
-        ? "No specialist is approved to run counts or reports over the CRM yet, so this is recorded for Tom as a workforce gap. For now, Pipedrive Insights gives the figure directly."
-        : "This is a gap in the workforce rather than a gap in what you asked. It has been recorded for Tom to review.";
     return unresolved(
       "subject_without_approved_remit",
       `I understood this as ${definition.description.toLowerCase()}. No approved WSA worker owns that.`,
-      nextStep,
+      "This is a gap in the workforce rather than a gap in what you asked. It has been recorded for Tom to review.",
       outcome,
     );
   }
@@ -322,6 +349,7 @@ export function routeByRemit(requestText: string, context: CaseContext = {}): Re
 
   return {
     matched: true,
+    resolution: "worker",
     outcome,
     outcomeDescription: definition.description,
     responsibleWorkerId,

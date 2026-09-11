@@ -409,7 +409,7 @@ describe("the migrations are applicable, not merely present", () => {
 
   it("the journal has no gap, duplicate or out-of-order entry", () => {
     const entries = journal().entries as { idx: number; tag: string; when: number }[];
-    expect(entries[entries.length - 1].tag).toBe("0015_routing_gap_log");
+    expect(entries[entries.length - 1].tag).toBe("0016_information_resolutions");
     // drizzle orders by idx; a duplicate or a gap means one migration is
     // silently skipped or applied twice.
     entries.forEach((e, i) => expect(e.idx).toBe(i));

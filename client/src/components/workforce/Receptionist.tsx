@@ -259,6 +259,23 @@ export function Receptionist({ token }: { token: string }) {
         </article>
       )}
 
+      {/* An information question, looked into and answered here. Server-composed
+          text from the records the signed-in person is allowed to see; never a
+          raw record and never a governance explanation. */}
+      {result?.informationAnswer && !direct && (
+        <article className="mt-6 overflow-hidden rounded-2xl border border-wsa-navy/12 bg-white shadow-sm">
+          <p className="border-b border-wsa-navy/10 bg-wsa-warm-white px-5 py-3 text-sm text-gray-600">
+            You asked: <span className="text-wsa-navy">“{submitted}”</span>
+          </p>
+          <div className="p-5">
+            <p className="text-base leading-relaxed text-wsa-navy">{result.informationAnswer.answer}</p>
+            {result.informationAnswer.sourcesChecked.length > 0 && (
+              <p className="mt-3 text-sm text-gray-500">Checked: {result.informationAnswer.sourcesChecked.join(", ")}.</p>
+            )}
+          </div>
+        </article>
+      )}
+
       {result?.matched && !direct && (
         <article className="mt-6 overflow-hidden rounded-2xl border border-wsa-navy/12 bg-white shadow-sm">
           <p className="border-b border-wsa-navy/10 bg-wsa-warm-white px-5 py-3 text-sm text-gray-600">
@@ -340,7 +357,7 @@ export function Receptionist({ token }: { token: string }) {
         </article>
       )}
 
-      {result && !result.matched && !direct && (
+      {result && !result.matched && !direct && !result.informationAnswer && (
         <div className="mt-6">
           <div className="rounded-2xl border border-wsa-navy/12 bg-white p-5">
             {/* Two different things reach this branch and the router now

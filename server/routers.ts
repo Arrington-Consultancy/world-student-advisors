@@ -79,6 +79,8 @@ import { WORKER_SHAREPOINT_LOCATIONS } from "./workforce/sharePointLocations";
 import { connectorScopeGrants } from "./workforce/connectorScope";
 import { CONTROLLED_BASELINE, LAST_RECONCILED, ROUTING_MODEL_VERSION } from "./workforce/provenance";
 import { resolveStaffAccessProfile } from "./access/identity";
+import { resolveInformationQuestion } from "./workforce/mi/resolve";
+import { liveMiReader, liveMiReaderConfigured } from "./workforce/mi/liveReader";
 import { WORKER_FUNCTIONAL_SCOPE } from "./access/workerScope";
 import {
   MAY_INTAKE_RECORDS, MAY_INTAKE_PROVENANCE,
@@ -1213,14 +1215,46 @@ export const appRouter = router({
       .input(z.object({ token: z.string(), request: z.string().min(1).max(500) }))
       .query(async ({ input }) => {
         const session = await resolveStaffSession(input.token);
-        const result = await routeStaffRequestAssisted(input.request);
-        // A gap is anything Reception could not confidently place with a
-        // worker who can take it. It is recorded, never discarded, with
-        // the exact wording, because the wording is the evidence. The row
-        // id comes back so a "Wrong specialist?" correction can attach.
+        let result = await routeStaffRequestAssisted(input.request);
         const staffUserId = session.authMethod === "shared_password" ? null : session.staffUserId;
+
+        // Resolution first. A management-information question is answered
+        // here, from the authorised sources, under the signed-in staff
+        // member's own permissions, before anyone is told it is unavailable.
+        if (result.informationRequest) {
+          const profile = staffUserId === null ? null : await resolveStaffAccessProfile(staffUserId).then(r => (r.resolved ? r.profile : null));
+          const resolution = await resolveInformationQuestion(
+            { requestText: input.request, staffUserId, authMethod: session.authMethod, profile },
+            { reader: liveMiReader, isReaderConfigured: liveMiReaderConfigured },
+          );
+          if (resolution.outcome !== "not_information") {
+            result = {
+              ...result,
+              status: resolution.answer,
+              informationAnswer: {
+                outcome: resolution.outcome,
+                answer: resolution.answer,
+                coverage: resolution.coverage,
+                sourcesChecked: resolution.sourcesChecked,
+                gapType: resolution.gapType,
+                humanOwner: resolution.humanOwner,
+                recorded: resolution.recorded,
+              },
+            };
+          }
+        }
+
+        // A gap is anything Reception could not confidently place with a
+        // worker who can take it, or an information question it could not
+        // fully answer. It is recorded, never discarded, with the exact
+        // wording, because the wording is the evidence. The row id comes
+        // back so a "Wrong specialist?" correction can attach.
         const gapId = isGap(result)
-          ? await recordRoutingGap(input.request, result, { staffUserId, authMethod: session.authMethod })
+          ? await recordRoutingGap(
+              input.request,
+              result.informationAnswer ? { ...result, failure: "subject_without_approved_remit" } : result,
+              { staffUserId, authMethod: session.authMethod },
+            )
           : null;
         // Routing is a meaningful action, so it is audited with the
         // resolved principal — but deliberately WITHOUT the request's free

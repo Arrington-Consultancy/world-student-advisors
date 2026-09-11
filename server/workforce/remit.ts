@@ -79,7 +79,7 @@ export type OutcomeId =
   | "social_market_intelligence"
   | "social_account_action"
   | "cold_lead_prospecting"
-  | "crm_reporting";
+  | "management_information";
 
 /**
  * Concepts are the vocabulary the request is reduced to before anything is
@@ -105,7 +105,7 @@ export type Concept =
   | "social" | "post" | "content" | "draft" | "critique" | "platform"
   | "publish" | "schedule" | "reply" | "market" | "audience"
   | "cold" | "prospect" | "outreach"
-  | "count" | "report"
+  | "count" | "report" | "trend" | "most" | "channel_source"
   | "person_specific";
 
 /** An outcome and what has to be present in a request for it to be the one being asked for. */
@@ -302,13 +302,21 @@ export const OUTCOMES: readonly OutcomeDefinition[] = [
     specificity: 9,
   },
   {
-    id: "crm_reporting",
-    description: "A count or report drawn from the records WSA already holds, such as how many enquiries, leads or students in a period or at a stage",
-    // "How many cold leads have we had in the last 12 months" is a question
-    // about records WSA already holds. It is not prospecting, and routing
-    // it there produced a confident wrong refusal on 11 September 2026.
-    // A count outranks the prospecting reading whenever both are present.
-    requires: [["count", "lead"], ["count", "enquiry"], ["count", "student"], ["count", "case"], ["count", "application"], ["report", "lead"], ["report", "enquiry"], ["report", "student"]],
+    id: "management_information",
+    description: "A count, ranking or trend drawn from the records WSA already holds, such as how many enquiries, leads, students or applications, from which source, in a period",
+    // "How many cold leads have we had from the website in the last 12
+    // months" is a question about records WSA already holds. It is not
+    // prospecting, and routing it there produced a confident wrong refusal
+    // on 11 September 2026. Information outranks the prospecting reading
+    // whenever both are present. The resolution-first layer answers it from
+    // the authorised sources; no worker is invented to own it.
+    requires: [
+      ["count", "lead"], ["count", "enquiry"], ["count", "student"], ["count", "case"], ["count", "application"],
+      ["report", "lead"], ["report", "enquiry"], ["report", "student"],
+      ["trend", "enquiry"], ["trend", "lead"], ["trend", "website"],
+      ["most", "enquiry"], ["most", "lead"], ["most", "channel_source"],
+      ["count", "channel_source"],
+    ],
     specificity: 9,
   },
   {
@@ -564,7 +572,7 @@ export const UNOWNED_OUTCOMES: readonly { outcome: OutcomeId; source: Controlled
   // one enquiry by exact identifier, Grace samples for audit; nobody counts.
   // Recorded as unowned so the gap log groups these and Tom can decide who
   // should, rather than the router inventing an owner.
-  { outcome: "crm_reporting", source: HANDOVER_ROLE_SCOPE },
+  { outcome: "management_information", source: HANDOVER_ROLE_SCOPE },
 ];
 
 export function isUnowned(outcome: OutcomeId): boolean {

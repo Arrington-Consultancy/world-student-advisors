@@ -60,6 +60,10 @@ export function acceptableCaseReference(value: string | null | undefined): strin
 
 /** Should this routing result be logged as a gap at all? */
 export function isGap(result: RoutingResult): boolean {
+  // An information question the resolver answered in full is not a gap. One
+  // it could only partly answer, or not at all, is: the demand is evidence
+  // for Tom's decision on a management-information specialist.
+  if (result.informationAnswer) return result.informationAnswer.outcome !== "answered";
   if (!result.matched) return true;
   if (result.availability !== "available") return true;
   // A low-confidence match is not a failure, but it is worth a row: it is

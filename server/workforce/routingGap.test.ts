@@ -66,7 +66,7 @@ describe("every failed route is written, with the fields Tom listed", () => {
     const start = routers.indexOf("    route: publicProcedure");
     const body = routers.slice(start, start + 2500);
     expect(body).toMatch(/isGap\(result\)/);
-    expect(body).toMatch(/recordRoutingGap\(input\.request, result/);
+    expect(body).toMatch(/recordRoutingGap\(\s*input\.request,\s*result/);
     expect(body).toMatch(/staffUserId, authMethod: session\.authMethod/);
   });
   it("the row carries intent, candidates, confidence, failure type, reason and router version", () => {

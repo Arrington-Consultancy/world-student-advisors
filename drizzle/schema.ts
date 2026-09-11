@@ -653,3 +653,37 @@ export const routingGapLog = mysqlTable("routing_gap_log", {
 
 export type RoutingGapRow = typeof routingGapLog.$inferSelect;
 export type InsertRoutingGapRow = typeof routingGapLog.$inferInsert;
+
+
+/**
+ * Management-information resolutions.
+ *
+ * Tom Arrington, 11 September 2026: for an information question no
+ * specialist owns, the portal checks the authorised sources first, answers
+ * what can be proved, states coverage, names the real gap, and records it as
+ * the right kind of gap for a named human owner. This table is that record.
+ * One row per question resolved. requestText is the exact wording, the
+ * evidence; no student record is duplicated here.
+ */
+export const informationResolutions = mysqlTable("information_resolutions", {
+  id: int("id").autoincrement().primaryKey(),
+  requestText: text("requestText").notNull(),
+  staffUserId: int("staffUserId"),
+  authMethod: mysqlEnum("authMethod", ["entra_sso", "shared_password", "shared_executive"]).notNull(),
+  measure: varchar("measure", { length: 20 }),
+  subject: varchar("subject", { length: 20 }),
+  outcome: mysqlEnum("outcome", ["answered", "partial", "unavailable", "permission_denied", "connector_unavailable", "not_information"]).notNull(),
+  gapType: mysqlEnum("gapType", ["none", "router_defect", "workforce_remit_gap", "connector_gap", "data_quality_gap", "reporting_gap", "permission_gap", "out_of_scope"]).notNull(),
+  coverageFrom: timestamp("coverageFrom"),
+  coverageTo: timestamp("coverageTo"),
+  reliableFrom: timestamp("reliableFrom"),
+  sourcesChecked: varchar("sourcesChecked", { length: 255 }).notNull(),
+  humanOwner: varchar("humanOwner", { length: 80 }),
+  answerText: text("answerText").notNull(),
+  routerVersion: varchar("routerVersion", { length: 40 }).notNull(),
+  reviewOutcome: varchar("reviewOutcome", { length: 40 }),
+  reviewedAt: timestamp("reviewedAt"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type InformationResolutionRow = typeof informationResolutions.$inferSelect;

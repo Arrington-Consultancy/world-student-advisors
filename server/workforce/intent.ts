@@ -63,7 +63,7 @@ const ABBREVIATIONS: Record<string, string> = {
   thats: "that is",
   u: "you",
   r: "are",
-  yr: "your",
+  yr: "year",
   b4: "before",
   asap: "urgent",
 };
@@ -188,7 +188,10 @@ const CONCEPT_FORMS: Record<Concept, string[]> = {
   audience: ["audience", "audiences", "followers", "follower", "engagement"],
 
   count: ["how many", "number of", "count", "total", "how much of", "have we had", "did we get", "did we have", "volume of", "stats", "statistics", "figures"],
-  report: ["report", "reporting", "breakdown", "summary of", "over the last", "in the last", "last month", "last year", "this year", "12 months", "this quarter", "per month"],
+  report: ["report", "reporting", "breakdown", "summary of", "over the last", "in the last", "last month", "last year", "this year", "12 months", "this quarter", "last quarter", "per month"],
+  trend: ["increased", "increase", "decreased", "decrease", "gone up", "gone down", "trend", "trending", "growing", "since the new", "compared to", "compared with", "up or down"],
+  most: ["which source", "what source", "which channel", "produced the most", "biggest source", "top source", "most of our"],
+  channel_source: ["source", "sources", "channel", "channels", "came from", "come from", "referral", "referrals", "partner", "partners"],
 
   cold: ["cold", "cold lead", "cold leads", "cold list", "untouched"],
   prospect: ["prospect", "prospects", "prospecting", "business development", "new business"],

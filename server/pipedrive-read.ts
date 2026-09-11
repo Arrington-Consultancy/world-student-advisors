@@ -187,5 +187,29 @@ export function createPipedriveReader(tokenFor: () => string) {
      */
     getPersonRaw: (personId: number) => withToken(async () => ((await pipedriveGet(`/persons/${personId}`))?.data ?? null) as Record<string, unknown> | null),
     getDealRaw: (dealId: number) => withToken(async () => ((await pipedriveGet(`/deals/${dealId}`))?.data ?? null) as Record<string, unknown> | null),
+    /**
+     * Whole-collection listings for management information. Still GET only,
+     * paginated, capped so a runaway collection cannot hold a request open
+     * indefinitely. Used by the resolution-first layer under the signed-in
+     * staff member's own organisation-scope authorisation, never by a worker.
+     */
+    listLeadsRaw: () => withToken(() => listAll("/leads?archived_status=all", 500, 40)),
+    listDealsRaw: () => withToken(() => listAll("/deals?status=all_not_deleted", 500, 40)),
+    listPersonsRaw: () => withToken(() => listAll("/persons", 500, 40)),
   };
+}
+
+async function listAll(endpoint: string, pageSize: number, maxPages: number): Promise<Array<Record<string, unknown>>> {
+  const out: Array<Record<string, unknown>> = [];
+  let start = 0;
+  for (let page = 0; page < maxPages; page += 1) {
+    const result = await pipedriveGet(`${endpoint}&limit=${pageSize}&start=${start}`);
+    const data: unknown = result?.data;
+    if (!Array.isArray(data) || data.length === 0) break;
+    out.push(...(data as Array<Record<string, unknown>>));
+    const more = result?.additional_data?.pagination?.more_items_in_collection === true;
+    if (!more) break;
+    start = Number(result?.additional_data?.pagination?.next_start ?? start + pageSize);
+  }
+  return out;
 }

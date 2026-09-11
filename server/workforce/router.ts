@@ -147,6 +147,21 @@ export interface RoutingResult {
   /** Set where the subject owner may not conclude. The worker is still the destination. */
   humanGate: string | null;
   modelVersion: string;
+  /** A management-information question: answered by the resolution-first layer, not a worker. */
+  informationRequest?: boolean;
+  /** The resolution, attached by the route endpoint after it has checked the authorised sources. */
+  informationAnswer?: InformationAnswerView;
+}
+
+/** What Reception shows for an information question. Server-composed; never a raw record. */
+export interface InformationAnswerView {
+  outcome: "answered" | "partial" | "unavailable" | "permission_denied" | "connector_unavailable";
+  answer: string;
+  coverage: { from: string; to: string; reliableFrom: string | null } | null;
+  sourcesChecked: string[];
+  gapType: string;
+  humanOwner: string | null;
+  recorded: boolean;
 }
 
 /** How the owner was identified, so a routed answer stays auditable. */
@@ -250,6 +265,21 @@ export function routeStaffRequest(requestText: string, context: CaseContext = {}
     return resultFor(decision.responsibleWorkerId, "remit", decision);
   }
 
+  // Resolution first. The route endpoint runs the information resolver with
+  // the signed-in staff member's own authorisation and attaches the answer.
+  if (decision.resolution === "information") {
+    return unmatched(decision.status, {
+      routedBy: "remit",
+      outcome: decision.outcome,
+      outcomeDescription: decision.outcomeDescription,
+      candidates: [],
+      confidence: decision.confidence,
+      decidedAt: decision.decidedAt,
+      failure: null,
+      informationRequest: true,
+    }, "");
+  }
+
   // The remit model recognised what was asked and established that nobody
   // can take it. That is a finding, and it is reported as one, with the
   // classification the Routing Gap Log needs.
@@ -284,6 +314,7 @@ export async function routeStaffRequestAssisted(
 ): Promise<RoutingResult> {
   const deterministic = routeStaffRequest(requestText);
   if (deterministic.matched) return deterministic;
+  if (deterministic.informationRequest) return deterministic;
   // A classified failure is an answer. The assistant only sees requests the
   // remit model could not read at all, never ones it read and found unowned
   // or blocked, because a model guessing an owner for an unowned outcome is
