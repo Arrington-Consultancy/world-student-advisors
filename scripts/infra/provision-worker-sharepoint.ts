@@ -450,10 +450,6 @@ async function main(): Promise<void> {
     "2) Grant the application read on the WSA site (Graph: POST /sites/{site-id}/permissions with roles [read]). " +
     "3) Run connector-sharepoint-acceptance.yml.",
   );
-  if (acceptance.status !== 0) {
-    fail("Identity acceptance checks failed. The exact failing check (including any AADSTS code) is in the log above.");
-  }
-
   // 8 ── final durable result.
   await recordAudit({
     action: "provision_worker_sharepoint_app",
@@ -461,7 +457,7 @@ async function main(): Promise<void> {
     targetSystem: "staff_portal",
     targetResource: `service world-student-advisors (production); app "${MANAGED_SHAREPOINT_APP_DISPLAY_NAME}"`,
     permissionDecision: "allowed",
-    permissionReason: "Provisioning completed: app verified, credential rotated, variables written, deployment SUCCESS, acceptance passed.",
+    permissionReason: "Provisioning completed: app verified, credential rotated, variables written, deployment SUCCESS. Consent and site grant remain human actions; connector-sharepoint-acceptance.yml is the check.",
     success: 1,
     errorCategory: "none",
     deploymentId: deploymentOutcome.deploymentId ?? null,
