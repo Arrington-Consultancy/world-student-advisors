@@ -187,6 +187,9 @@ const CONCEPT_FORMS: Record<Concept, string[]> = {
   market: ["market", "markets", "country", "countries", "nigeria", "kenya", "ghana", "uganda", "tanzania"],
   audience: ["audience", "audiences", "followers", "follower", "engagement"],
 
+  count: ["how many", "number of", "count", "total", "how much of", "have we had", "did we get", "did we have", "volume of", "stats", "statistics", "figures"],
+  report: ["report", "reporting", "breakdown", "summary of", "over the last", "in the last", "last month", "last year", "this year", "12 months", "this quarter", "per month"],
+
   cold: ["cold", "cold lead", "cold leads", "cold list", "untouched"],
   prospect: ["prospect", "prospects", "prospecting", "business development", "new business"],
   outreach: ["outreach", "outbound", "cold call", "cold calling", "cold email", "canvassing"],

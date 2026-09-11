@@ -78,7 +78,8 @@ export type OutcomeId =
   | "social_content_critique"
   | "social_market_intelligence"
   | "social_account_action"
-  | "cold_lead_prospecting";
+  | "cold_lead_prospecting"
+  | "crm_reporting";
 
 /**
  * Concepts are the vocabulary the request is reduced to before anything is
@@ -104,6 +105,7 @@ export type Concept =
   | "social" | "post" | "content" | "draft" | "critique" | "platform"
   | "publish" | "schedule" | "reply" | "market" | "audience"
   | "cold" | "prospect" | "outreach"
+  | "count" | "report"
   | "person_specific";
 
 /** An outcome and what has to be present in a request for it to be the one being asked for. */
@@ -297,6 +299,16 @@ export const OUTCOMES: readonly OutcomeDefinition[] = [
     id: "social_account_action",
     description: "Publish, schedule or reply on a live social account",
     requires: [["publish", "post"], ["schedule", "post"], ["reply", "post"], ["publish", "social"], ["schedule", "social"]],
+    specificity: 9,
+  },
+  {
+    id: "crm_reporting",
+    description: "A count or report drawn from the records WSA already holds, such as how many enquiries, leads or students in a period or at a stage",
+    // "How many cold leads have we had in the last 12 months" is a question
+    // about records WSA already holds. It is not prospecting, and routing
+    // it there produced a confident wrong refusal on 11 September 2026.
+    // A count outranks the prospecting reading whenever both are present.
+    requires: [["count", "lead"], ["count", "enquiry"], ["count", "student"], ["count", "case"], ["count", "application"], ["report", "lead"], ["report", "enquiry"], ["report", "student"]],
     specificity: 9,
   },
   {
@@ -548,6 +560,11 @@ export const REMITS: readonly WorkerRemit[] = [
  */
 export const UNOWNED_OUTCOMES: readonly { outcome: OutcomeId; source: ControlledSource }[] = [
   { outcome: "cold_lead_prospecting", source: HANDOVER_PROSPECTING_GAP },
+  // No worker brief includes aggregate reporting over the CRM. Sophie reads
+  // one enquiry by exact identifier, Grace samples for audit; nobody counts.
+  // Recorded as unowned so the gap log groups these and Tom can decide who
+  // should, rather than the router inventing an owner.
+  { outcome: "crm_reporting", source: HANDOVER_ROLE_SCOPE },
 ];
 
 export function isUnowned(outcome: OutcomeId): boolean {

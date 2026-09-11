@@ -160,10 +160,16 @@ describe("three operational states, from the controlled records", () => {
 });
 
 describe("unowned outcomes are evidenced, not convenient", () => {
-  it("cold leads is the only unowned outcome and cites the handover", () => {
-    expect(UNOWNED_OUTCOMES.map(u => u.outcome)).toEqual(["cold_lead_prospecting"]);
-    expect(UNOWNED_OUTCOMES[0].source.record).toMatch(/Full_Handover_2026-09-05/);
-    expect(UNOWNED_OUTCOMES[0].source.clause).toMatch(/cold leads/);
+  it("exactly two unowned outcomes, each citing the controlled record that shows nobody produces it", () => {
+    expect(UNOWNED_OUTCOMES.map(u => u.outcome).sort()).toEqual(["cold_lead_prospecting", "crm_reporting"]);
+    const prospecting = UNOWNED_OUTCOMES.find(u => u.outcome === "cold_lead_prospecting")!;
+    expect(prospecting.source.record).toMatch(/Full_Handover_2026-09-05/);
+    expect(prospecting.source.clause).toMatch(/cold leads/);
+    // CRM reporting: the per-worker read/write statement of 5 September names
+    // no worker who counts or reports over the CRM.
+    const reporting = UNOWNED_OUTCOMES.find(u => u.outcome === "crm_reporting")!;
+    expect(reporting.source.record).toMatch(/Full_Handover_2026-09-05/);
+    expect(reporting.source.clause).toMatch(/per worker read and write statement/);
   });
 
   it("no remit produces an unowned outcome", () => {
@@ -248,5 +254,33 @@ describe("provenance: the code model cites, it does not decide", () => {
     const out = reconcile([]);
     expect(out.reconciled).toBe(false);
     expect(out.unverified.length).toBe(CONTROLLED_BASELINE.length);
+  });
+});
+
+/**
+ * Tom, 11 September 2026: "how many cold leads have we had in the last 12
+ * months" was refused as prospecting. It is a count over records WSA
+ * already holds. Nobody is approved to answer it either, but the two gaps
+ * are different gaps, they are recorded differently, and the person asking
+ * is told where the figure lives today.
+ */
+describe("a count over existing records is reporting, not prospecting", () => {
+  it("classifies the live question as crm_reporting and never as cold_lead_prospecting", () => {
+    const r = routeByRemit("how many cold leads have we had in the last 12 months");
+    expect(r.outcome).toBe("crm_reporting");
+    expect(r.failure).toBe("subject_without_approved_remit");
+    expect(r.safeNextAction).toContain("Pipedrive Insights");
+  });
+  it("recognises counts of enquiries, students and applications too", () => {
+    expect(routeByRemit("how many enquiries did we get last month").outcome).toBe("crm_reporting");
+    expect(routeByRemit("number of students at the CAS stage").outcome).toBe("crm_reporting");
+    expect(routeByRemit("how many applications went out this year").outcome).toBe("crm_reporting");
+  });
+  it("still treats a request for new cold leads as prospecting", () => {
+    expect(routeByRemit("give me some cold leads").outcome).toBe("cold_lead_prospecting");
+    expect(routeByRemit("find cold leads for the January intake").outcome).toBe("cold_lead_prospecting");
+  });
+  it("routes no reporting question to any worker: the gap is recorded, not papered over", () => {
+    expect(routeByRemit("how many enquiries did we get last month").responsibleWorkerId).toBeNull();
   });
 });

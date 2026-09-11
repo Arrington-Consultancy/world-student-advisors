@@ -197,10 +197,14 @@ export function routeByRemit(requestText: string, context: CaseContext = {}): Re
   // because the remit model can point at the record that says so.
   if (isUnowned(outcome)) {
     const definition = outcomeDefinition(outcome);
+    const nextStep =
+      outcome === "crm_reporting"
+        ? "No specialist is approved to run counts or reports over the CRM yet, so this is recorded for Tom as a workforce gap. For now, Pipedrive Insights gives the figure directly."
+        : "This is a gap in the workforce rather than a gap in what you asked. It has been recorded for Tom to review.";
     return unresolved(
       "subject_without_approved_remit",
       `I understood this as ${definition.description.toLowerCase()}. No approved WSA worker owns that.`,
-      "This is a gap in the workforce rather than a gap in what you asked. It has been recorded for Tom to review.",
+      nextStep,
       outcome,
     );
   }
