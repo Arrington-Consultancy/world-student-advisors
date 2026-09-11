@@ -22,11 +22,44 @@ export function isPipedriveReadConfigured(): boolean {
  * own. A different credential can be bound with createPipedriveReader,
  * which is how the AI workforce reads with its dedicated token instead.
  */
-let boundToken: () => string = () => ENV.pipedriveApiToken;
+/**
+ * How a request is authenticated. Two strategies exist and they are kept
+ * apart on purpose:
+ *   - API token (the public website's own credential, PIPEDRIVE_API_TOKEN):
+ *     query parameter against api.pipedrive.com. Used by Find a student.
+ *   - OAuth (the WSA Pipedrive OAuth application, read scopes only): Bearer
+ *     header against the company's own api_domain. Used by the workforce.
+ * A strategy supplies the base URL and either a header or a query token.
+ */
+export interface PipedriveAuth {
+  baseUrl(): Promise<string>;
+  headers(): Promise<Record<string, string>>;
+  /** The api_token query value, or null for header-authenticated strategies. */
+  queryToken(): Promise<string | null>;
+}
 
-async function pipedriveGet(endpoint: string, tokenFor: () => string = boundToken): Promise<any> {
-  const url = `${PIPEDRIVE_BASE}${endpoint}${endpoint.includes("?") ? "&" : "?"}api_token=${tokenFor()}`;
-  const response = await fetch(url);
+export function apiTokenAuth(tokenFor: () => string): PipedriveAuth {
+  return {
+    baseUrl: async () => PIPEDRIVE_BASE,
+    headers: async () => ({}),
+    queryToken: async () => tokenFor(),
+  };
+}
+
+/**
+ * The website's own strategy, used by the module-level functions below and
+ * by nothing on a worker path. Every internal function takes the strategy
+ * as an argument (defaulting to this one) rather than swapping module
+ * state, so two concurrent requests on different credentials can never
+ * see each other's authentication.
+ */
+const websiteAuth: PipedriveAuth = apiTokenAuth(() => ENV.pipedriveApiToken);
+
+async function pipedriveGet(endpoint: string, auth: PipedriveAuth = websiteAuth): Promise<any> {
+  const base = await auth.baseUrl();
+  const token = await auth.queryToken();
+  const url = `${base}${endpoint}${token ? `${endpoint.includes("?") ? "&" : "?"}api_token=${token}` : ""}`;
+  const response = await fetch(url, { headers: await auth.headers() });
   if (!response.ok) {
     const errorText = await response.text();
     console.error(`[Pipedrive] Read API error (${response.status}) on GET ${endpoint}: ${errorText}`);
@@ -56,8 +89,8 @@ export interface PipedriveDealSummary {
  * resolution without erroring (the first cut of the ownership audit script
  * did exactly this — every Deal came back owner "(none)").
  */
-export async function getOpenDealForPerson(personId: number): Promise<PipedriveDealSummary | null> {
-  const result = await pipedriveGet(`/persons/${personId}/deals?status=open`);
+export async function getOpenDealForPerson(personId: number, auth: PipedriveAuth = websiteAuth): Promise<PipedriveDealSummary | null> {
+  const result = await pipedriveGet(`/persons/${personId}/deals?status=open`, auth);
   const deals: any[] = result?.data ?? [];
   if (!deals.length) return null;
 
@@ -79,8 +112,8 @@ export interface PipedriveLeadSummary {
 }
 
 /** The most-recently-updated non-archived Lead for a Person, or null. */
-export async function getOpenLeadForPerson(personId: number): Promise<PipedriveLeadSummary | null> {
-  const result = await pipedriveGet(`/leads?person_id=${personId}&limit=10`);
+export async function getOpenLeadForPerson(personId: number, auth: PipedriveAuth = websiteAuth): Promise<PipedriveLeadSummary | null> {
+  const result = await pipedriveGet(`/leads?person_id=${personId}&limit=10`, auth);
   const leads: any[] = (result?.data ?? []).filter((lead: any) => !lead.is_archived);
   if (!leads.length) return null;
 
@@ -107,10 +140,11 @@ export type PersonSearchField = "email" | "phone" | "name";
  * comes back is a candidate list only: the case-scope filter in
  * server/crm/staffLookup.ts decides what the staff member may actually see.
  */
-export async function searchPersonIds(term: string, field: PersonSearchField): Promise<number[]> {
+export async function searchPersonIds(term: string, field: PersonSearchField, auth: PipedriveAuth = websiteAuth): Promise<number[]> {
   const exact = field === "name" ? "" : "&exact_match=true";
   const result = await pipedriveGet(
     `/persons/search?term=${encodeURIComponent(term)}&fields=${field}${exact}&limit=10`,
+    auth,
   );
   const items: any[] = result?.data?.items ?? [];
   return items.map(i => i?.item?.id).filter((id): id is number => typeof id === "number");
@@ -135,8 +169,8 @@ function primaryValue(list: unknown): string | null {
 }
 
 /** One person, with only the fields the lookup needs. Null if Pipedrive has no such person. */
-export async function getPerson(personId: number): Promise<PipedrivePersonSummary | null> {
-  const result = await pipedriveGet(`/persons/${personId}`);
+export async function getPerson(personId: number, auth: PipedriveAuth = websiteAuth): Promise<PipedrivePersonSummary | null> {
+  const result = await pipedriveGet(`/persons/${personId}`, auth);
   const p = result?.data;
   if (!p || typeof p.id !== "number") return null;
   const owner = p.owner_id && typeof p.owner_id === "object" ? p.owner_id : null;
@@ -166,44 +200,40 @@ export async function getPerson(personId: number): Promise<PipedrivePersonSummar
  * but a GET: pipedriveGet has no method argument.
  */
 export function createPipedriveReader(tokenFor: () => string) {
-  const previous = boundToken;
-  const withToken = async <T>(fn: () => Promise<T>): Promise<T> => {
-    boundToken = tokenFor;
-    try {
-      return await fn();
-    } finally {
-      boundToken = previous;
-    }
-  };
+  return createPipedriveReaderWithAuth(apiTokenAuth(tokenFor));
+}
+
+/** The same GET-only reader, bound to any authentication strategy. */
+export function createPipedriveReaderWithAuth(auth: PipedriveAuth) {
   return {
-    searchPersonIds: (term: string, field: PersonSearchField) => withToken(() => searchPersonIds(term, field)),
-    getPerson: (personId: number) => withToken(() => getPerson(personId)),
-    getOpenDealForPerson: (personId: number) => withToken(() => getOpenDealForPerson(personId)),
-    getOpenLeadForPerson: (personId: number) => withToken(() => getOpenLeadForPerson(personId)),
+    searchPersonIds: (term: string, field: PersonSearchField) => searchPersonIds(term, field, auth),
+    getPerson: (personId: number) => getPerson(personId, auth),
+    getOpenDealForPerson: (personId: number) => getOpenDealForPerson(personId, auth),
+    getOpenLeadForPerson: (personId: number) => getOpenLeadForPerson(personId, auth),
     /**
      * Raw records, for the worker connector's per-remit field projection
      * and nothing else. Still GET only. The caller projects immediately and
      * the raw object goes no further; a test in connectors/ asserts that.
      */
-    getPersonRaw: (personId: number) => withToken(async () => ((await pipedriveGet(`/persons/${personId}`))?.data ?? null) as Record<string, unknown> | null),
-    getDealRaw: (dealId: number) => withToken(async () => ((await pipedriveGet(`/deals/${dealId}`))?.data ?? null) as Record<string, unknown> | null),
+    getPersonRaw: async (personId: number) => ((await pipedriveGet(`/persons/${personId}`, auth))?.data ?? null) as Record<string, unknown> | null,
+    getDealRaw: async (dealId: number) => ((await pipedriveGet(`/deals/${dealId}`, auth))?.data ?? null) as Record<string, unknown> | null,
     /**
      * Whole-collection listings for management information. Still GET only,
      * paginated, capped so a runaway collection cannot hold a request open
      * indefinitely. Used by the resolution-first layer under the signed-in
      * staff member's own organisation-scope authorisation, never by a worker.
      */
-    listLeadsRaw: () => withToken(() => listAll("/leads?archived_status=all", 500, 40)),
-    listDealsRaw: () => withToken(() => listAll("/deals?status=all_not_deleted", 500, 40)),
-    listPersonsRaw: () => withToken(() => listAll("/persons", 500, 40)),
+    listLeadsRaw: () => listAll("/leads?archived_status=all", 500, 40, auth),
+    listDealsRaw: () => listAll("/deals?status=all_not_deleted", 500, 40, auth),
+    listPersonsRaw: () => listAll("/persons", 500, 40, auth),
   };
 }
 
-async function listAll(endpoint: string, pageSize: number, maxPages: number): Promise<Array<Record<string, unknown>>> {
+async function listAll(endpoint: string, pageSize: number, maxPages: number, auth: PipedriveAuth): Promise<Array<Record<string, unknown>>> {
   const out: Array<Record<string, unknown>> = [];
   let start = 0;
   for (let page = 0; page < maxPages; page += 1) {
-    const result = await pipedriveGet(`${endpoint}&limit=${pageSize}&start=${start}`);
+    const result = await pipedriveGet(`${endpoint}&limit=${pageSize}&start=${start}`, auth);
     const data: unknown = result?.data;
     if (!Array.isArray(data) || data.length === 0) break;
     out.push(...(data as Array<Record<string, unknown>>));

@@ -13,6 +13,16 @@ import { readFileSync } from "node:fs";
  */
 vi.mock("../../access/identity", () => ({ resolveStaffAccessProfile: vi.fn() }));
 vi.mock("../../db", () => ({ getDb: async () => null }));
+// The WSA Pipedrive OAuth grant, stood in for at the module edge: a usable
+// read-only access token against the company's api_domain. The real module
+// is tested in server/crm; here every request must carry it as a Bearer
+// header and nothing else.
+const OAUTH_ACCESS_TOKEN = "oauth-access-token-test-value";
+const OAUTH_API_DOMAIN = "https://worldstudentadvisors.pipedrive.com";
+vi.mock("../../crm/pipedriveOAuth", () => ({
+  pipedriveOAuthStatusSync: () => "operational",
+  getPipedriveOAuthAccess: async () => ({ ok: true, accessToken: OAUTH_ACCESS_TOKEN, apiDomain: OAUTH_API_DOMAIN }),
+}));
 
 const { resolveStaffAccessProfile } = await import("../../access/identity");
 const { searchPipedrive, readPipedriveRecord, PIPEDRIVE_WORKER_CONSTRAINTS } = await import("./pipedrive");
@@ -61,7 +71,7 @@ function fakePipedrive(personStage = 21) {
 
 beforeEach(() => {
   clearAuditLog();
-  process.env.WORKFORCE_PIPEDRIVE_API_TOKEN = "worker-token-test";
+  process.env.PIPEDRIVE_API_TOKEN = "live-website-token-must-never-appear";
   process.env.SHAREPOINT_GRAPH_CLIENT_ID = "c"; process.env.SHAREPOINT_GRAPH_CLIENT_SECRET = "s";
   process.env.SHAREPOINT_GRAPH_TENANT_ID = "t"; process.env.SHAREPOINT_GRAPH_SITE_ID = SITE;
   vi.mocked(resolveStaffAccessProfile).mockImplementation(async id => (id === null ? UNRESOLVED : profile()) as never);
@@ -90,6 +100,25 @@ describe("1. authorised staff + authorised worker + authorised data succeeds", (
     expect(Object.keys((james.data as any).fields)).toContain("Offer Status 1");
     expect(Object.keys((james.data as any).fields)).not.toContain("Confirmed Budget (GBP)");
     expect(Object.keys((harper.data as any).fields)).toContain("Confirmed Budget (GBP)");
+  });
+});
+
+describe("1b. every CRM request rides the WSA OAuth grant and nothing else", () => {
+  it("is a GET against the company api_domain with a Bearer header, no api_token parameter, and never the website token", async () => {
+    const inner = fakePipedrive();
+    const spy = vi.fn(async (url: string, init?: RequestInit) => inner(url));
+    vi.stubGlobal("fetch", spy);
+    const r = await readPipedriveRecord({ ...entra, workerId: "james", resourceScope: "person/501" });
+    expect(r.success).toBe(true);
+    expect(spy.mock.calls.length).toBeGreaterThan(0);
+    for (const [url, init] of spy.mock.calls as unknown as Array<[string, RequestInit | undefined]>) {
+      expect(url.startsWith(`${OAUTH_API_DOMAIN}/api/v1/`)).toBe(true);
+      expect(url).not.toContain("api_token");
+      expect(url).not.toContain("live-website-token");
+      expect(url).not.toContain("api.pipedrive.com");
+      expect((init?.headers as Record<string, string>)?.Authorization).toBe(`Bearer ${OAUTH_ACCESS_TOKEN}`);
+      expect(init?.method ?? "GET").toBe("GET");
+    }
   });
 });
 

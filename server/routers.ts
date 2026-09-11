@@ -72,6 +72,7 @@ import { resolveStaffSession } from "./staffSession";
 import { recordRoutingGap, isGap, recordReview, recordStaffNextAction, reviewGaps } from "./workforce/routingGap";
 import { REMITS, OUTCOMES, UNOWNED_OUTCOMES } from "./workforce/remit";
 import { getPipedriveStatus } from "./workforce/connectors/pipedrive";
+import { buildAuthoriseUrl, describePipedriveGrant, oauthConfig, signState, PIPEDRIVE_OAUTH_SCOPES } from "./crm/pipedriveOAuth";
 import { getSharePointStatus } from "./workforce/connectors/sharepoint";
 import { getGoogleDriveStatus } from "./workforce/connectors/googleDrive";
 import { WORKER_CRM_SCOPE } from "./workforce/crmScope";
@@ -1211,6 +1212,31 @@ export const appRouter = router({
         };
       }),
 
+    /**
+     * Start consent for the WSA Pipedrive OAuth application. access_admin
+     * only. Returns the authorise URL with a signed, ten-minute state
+     * naming the staff member; the browser is sent there by the client.
+     * Scopes are fixed server-side and read only.
+     */
+    pipedriveOAuthStart: publicProcedure
+      .input(z.object({ token: z.string() }))
+      .mutation(async ({ input }) => {
+        const admin = await requireAccessAdmin(input.token);
+        if (!admin.allowed) return { permitted: false as const, reason: admin.reason };
+        const cfg = oauthConfig();
+        if (!cfg) return { permitted: true as const, configured: false as const, reason: "PIPEDRIVE_OAUTH_CLIENT_ID, PIPEDRIVE_OAUTH_CLIENT_SECRET and PIPEDRIVE_OAUTH_TOKEN_KEY must all be set on the service first." };
+        const state = await signState(admin.staffUserId, cfg.tokenKey);
+        return { permitted: true as const, configured: true as const, url: buildAuthoriseUrl(cfg, state), scopes: [...PIPEDRIVE_OAUTH_SCOPES] };
+      }),
+
+    pipedriveOAuthStatus: publicProcedure
+      .input(z.object({ token: z.string() }))
+      .query(async ({ input }) => {
+        const admin = await requireAccessAdmin(input.token);
+        if (!admin.allowed) return { permitted: false as const, reason: admin.reason };
+        return { permitted: true as const, ...(await describePipedriveGrant()), approvedScopes: [...PIPEDRIVE_OAUTH_SCOPES] };
+      }),
+
     route: publicProcedure
       .input(z.object({ token: z.string(), request: z.string().min(1).max(500) }))
       .query(async ({ input }) => {
@@ -1381,7 +1407,7 @@ export const appRouter = router({
           connectors: [
             {
               connector: "pipedrive",
-              credential: { state: getPipedriveStatus(), variables: ["PIPEDRIVE_API_TOKEN"], note: "The read-only module Find a student already uses. Workers read through it; the write client is never imported." },
+              credential: { state: getPipedriveStatus(), variables: ["PIPEDRIVE_OAUTH_CLIENT_ID", "PIPEDRIVE_OAUTH_CLIENT_SECRET", "PIPEDRIVE_OAUTH_TOKEN_KEY"], note: "The WSA Pipedrive OAuth application, read scopes only, authorised by a WSA account. Separate from the website's PIPEDRIVE_API_TOKEN, which no worker path uses." },
               permission: { workersGranted: crmGranted, of: workers.length, authority: "crmScope.ts, transcribed from the Access Matrix. No CRM column exists yet." },
             },
             {

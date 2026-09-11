@@ -11,11 +11,12 @@
  *
  * WHICH CREDENTIAL, AND WHY. Tom Arrington, 11 September 2026: dedicated
  * WSA worker connector credentials; do not reuse the public contact-form
- * Pipedrive token. So this module reads with WORKFORCE_PIPEDRIVE_API_TOKEN
- * and nothing else. It borrows the GET-only functions from pipedrive-read.ts
- * through createPipedriveReader, bound to that token, so the read logic
- * exists once and the credential boundary is an argument rather than a
- * copy. It does not, and must never, import server/pipedrive.ts: that is
+ * Pipedrive token, and no paid service user either. So this module reads
+ * with the WSA Pipedrive OAuth grant and nothing else. It borrows the
+ * GET-only functions from pipedrive-read.ts through
+ * createPipedriveReaderWithAuth, bound to the OAuth strategy, so the read
+ * logic exists once and the credential boundary is an argument rather than
+ * a copy. It does not, and must never, import server/pipedrive.ts: that is
  * the write-capable client, and a test forbids the import. It never reads
  * the Student Portal's token either, and a test forbids that name too.
  *
@@ -25,12 +26,11 @@
  * or visa. The projection happens here, before anything reaches the
  * connector result, so a raw Pipedrive record never leaves this module.
  *
- * THE GATE IS STILL SHUT. Every entry in crmScope.ts is null, so every
- * worker is refused at the permission gate before this module's read path
- * is reached. The credential is wired; the permission awaits the approved
- * connector matrix and the Governance and Assurance checkpoint. Those are
- * different problems with different owners, and this file is the fix for
- * only one of them.
+ * THE GATE DECIDES. crmScope.ts carries the approved Connector Access
+ * Matrix v0.3 grants with their provenance; a worker without a grant is
+ * refused before this module's read path is reached, and one with a grant
+ * still passes the staff member's own access, the WSA boundary and the
+ * per-worker constraints below before a single GET is issued.
  *
  * Only read paths are exposed. There is no create, update, delete or send
  * here, because no controlled record grants a worker the ability to change
@@ -39,7 +39,9 @@
  */
 import { runConnectorAction, type ConnectorActionRequest, type ConnectorActionResult } from "./shared";
 import type { ConnectorState } from "../types";
-import { createPipedriveReader, type PersonSearchField } from "../../pipedrive-read";
+import { createPipedriveReaderWithAuth, type PersonSearchField } from "../../pipedrive-read";
+import { pipedriveOAuthAuth } from "../../crm/pipedriveOAuthAuth";
+import { pipedriveOAuthStatusSync } from "../../crm/pipedriveOAuth";
 import { resolveStageDisplay } from "../../portal-stages";
 import type { CrmLookupResult } from "../../crm/staffLookup";
 import { projectFieldsFor, type ProjectedValues } from "./crmProjection";
@@ -47,16 +49,26 @@ import { projectFieldsFor, type ProjectedValues } from "./crmProjection";
 /** The pre-conversion Lead state, matching the student portal's wording. */
 const LEAD_STAGE_LABEL = "Getting to know you";
 
-/** The dedicated worker credential. Read on every call so a rotation takes effect without a restart. */
-const workerToken = () => process.env.WORKFORCE_PIPEDRIVE_API_TOKEN ?? "";
-const reader = createPipedriveReader(workerToken);
+/**
+ * The workforce credential: the WSA Pipedrive OAuth application, read scopes
+ * only, Bearer against the company API domain. Tom Arrington, 11 September
+ * 2026: no paid service user, no reuse of the website's API token. The
+ * strategy resolves a fresh access token on every call, refreshing when
+ * needed, and fails closed with a plain message when no grant exists.
+ */
+const reader = createPipedriveReaderWithAuth(pipedriveOAuthAuth);
 
 function getPipedriveConnectorState(): ConnectorState {
-  // Configured means the dedicated worker credential is present. Whether
-  // that credential can see anything is answered by the call itself, and a
-  // Pipedrive 401 is reported as what it is through the honest-failure
-  // path in shared.ts.
-  return workerToken() ? "operational" : "unconfigured";
+  // What was last established about the OAuth grant. "permission_missing"
+  // is the honest name for a configured application nobody has authorised
+  // yet, or whose grant can no longer be refreshed. The call itself is the
+  // final arbiter and a refusal is reported through the honest-failure path
+  // in shared.ts.
+  switch (pipedriveOAuthStatusSync()) {
+    case "operational": return "operational";
+    case "unconfigured": return "unconfigured";
+    default: return "permission_missing";
+  }
 }
 
 /**

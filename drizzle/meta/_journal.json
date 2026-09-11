@@ -120,6 +120,13 @@
       "when": 1788810000000,
       "tag": "0016_information_resolutions",
       "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "5",
+      "when": 1788820000000,
+      "tag": "0017_connector_oauth_grants",
+      "breakpoints": true
     }
   ]
 }

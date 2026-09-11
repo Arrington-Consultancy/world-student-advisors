@@ -197,7 +197,7 @@ describe("7. connector not in place: a connector gap, said plainly, recorded, no
     expect(r.gapType).toBe("connector_gap");
     expect(r.evidenceAttempted).toBe(false);
     expect(r.answer).toContain("I tried to check the CRM");
-    expect(r.answer).toContain("not in place yet");
+    expect(r.answer).toContain("not authorised yet");
     expect(r.answer).not.toContain("does not currently preserve");
     expect(rec.rows[0].humanOwner).toBe(MI_HUMAN_OWNER);
   });

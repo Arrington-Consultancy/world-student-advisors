@@ -1,13 +1,14 @@
 /**
- * The production reader for management information: the workforce
- * read-only Pipedrive credential, GET only, never the website contact
- * form's token. Configured means the dedicated variable is present.
+ * The production reader for management information: the WSA Pipedrive OAuth
+ * grant, read scopes only, GET only, never the website contact form's
+ * token. Configured means a usable grant exists right now.
  */
-import { createPipedriveReader } from "../../pipedrive-read";
+import { createPipedriveReaderWithAuth } from "../../pipedrive-read";
+import { pipedriveOAuthAuth } from "../../crm/pipedriveOAuthAuth";
+import { pipedriveOAuthStatusSync } from "../../crm/pipedriveOAuth";
 import type { MiReader } from "./evidence";
 
-const workforceToken = () => process.env.WORKFORCE_PIPEDRIVE_API_TOKEN ?? "";
-const reader = createPipedriveReader(workforceToken);
+const reader = createPipedriveReaderWithAuth(pipedriveOAuthAuth);
 
 export const liveMiReader: MiReader = {
   listLeads: () => reader.listLeadsRaw(),
@@ -16,5 +17,5 @@ export const liveMiReader: MiReader = {
 };
 
 export function liveMiReaderConfigured(): boolean {
-  return workforceToken() !== "";
+  return pipedriveOAuthStatusSync() === "operational";
 }

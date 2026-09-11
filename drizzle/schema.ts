@@ -687,3 +687,30 @@ export const informationResolutions = mysqlTable("information_resolutions", {
 });
 
 export type InformationResolutionRow = typeof informationResolutions.$inferSelect;
+
+
+/**
+ * OAuth grants for connectors, currently the WSA Pipedrive OAuth application.
+ *
+ * Tom Arrington, 11 September 2026: a dedicated WSA OAuth application
+ * authorised by an existing WSA account, read scopes only, instead of a paid
+ * service user. Both tokens are sealed (AES-256-GCM) before they are stored
+ * and are never written anywhere else. apiDomain, scopes and the authorising
+ * staff member are identifiers, kept so the grant is accountable.
+ */
+export const connectorOauthGrants = mysqlTable("connector_oauth_grants", {
+  id: int("id").autoincrement().primaryKey(),
+  connector: varchar("connector", { length: 20 }).notNull(),
+  apiDomain: varchar("apiDomain", { length: 120 }).notNull(),
+  scopes: varchar("scopes", { length: 255 }).notNull(),
+  authorisedByStaffUserId: int("authorisedByStaffUserId").notNull(),
+  authorisedAt: timestamp("authorisedAt").notNull(),
+  sealedAccessToken: text("sealedAccessToken").notNull(),
+  accessTokenExpiresAt: timestamp("accessTokenExpiresAt").notNull(),
+  sealedRefreshToken: text("sealedRefreshToken").notNull(),
+  status: mysqlEnum("status", ["active", "reauthorisation_required", "revoked"]).notNull(),
+  lastRefreshedAt: timestamp("lastRefreshedAt"),
+  lastRefreshError: varchar("lastRefreshError", { length: 200 }),
+  revokedAt: timestamp("revokedAt"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});

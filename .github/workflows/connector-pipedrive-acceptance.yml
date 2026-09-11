@@ -1,0 +1,59 @@
+name: Connector acceptance - WSA Pipedrive OAuth (read only)
+
+# Manual only. Proves the WSA Pipedrive OAuth grant against production:
+# configuration present, grant operational and inside the approved read
+# scopes, authorised reads (counts only), token refresh, and denied access
+# (a refused write, a worker without a grant, a shared-password session).
+# Reads no record content and prints no token. Nothing is written to the
+# CRM. The grant row lives in the production database, so a public URL
+# reference is set on the app service for the run and cleared afterwards,
+# following the controlled migration workflows.
+# Auth: githubactionsprod, the production-scoped Railway Project Token.
+on:
+  workflow_dispatch: {}
+
+jobs:
+  accept:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Install Railway CLI
+        run: npm install -g @railway/cli
+      - name: Discover the MySQL public-URL variable NAME (key only, value never printed)
+        id: discover
+        env:
+          RAILWAY_TOKEN: ${{ secrets.githubactionsprod }}
+        run: |
+          KEYS=$(railway variables --service "MySQL" --environment "production" --json | jq -r 'keys[]')
+          PUBLIC_KEY=$(echo "$KEYS" | grep -i -E '^(MYSQL_PUBLIC_URL|DATABASE_PUBLIC_URL)$' | head -n1)
+          if [ -z "$PUBLIC_KEY" ]; then echo "No public-URL-shaped variable found on MySQL. Stopping."; exit 1; fi
+          echo "public_key=$PUBLIC_KEY" >> "$GITHUB_OUTPUT"
+      - name: Set a temporary database URL reference on the app service
+        env:
+          RAILWAY_TOKEN: ${{ secrets.githubactionsprod }}
+          PUBLIC_KEY: ${{ steps.discover.outputs.public_key }}
+        run: |
+          REF=$(printf '\044{{%s.%s}}' "MySQL" "$PUBLIC_KEY")
+          railway variables --service "world-student-advisors" --environment "production" \
+            --set "PIPEDRIVE_ACCEPTANCE_DATABASE_URL=${REF}" --skip-deploys
+      - name: Run the acceptance inside the service variables (read only on the CRM)
+        timeout-minutes: 10
+        env:
+          RAILWAY_TOKEN: ${{ secrets.githubactionsprod }}
+        run: |
+          railway run --service "world-student-advisors" --environment "production" -- \
+            sh -c 'DATABASE_URL="$PIPEDRIVE_ACCEPTANCE_DATABASE_URL" pnpm exec tsx scripts/connector-pipedrive-acceptance.ts'
+      - name: Remove the temporary database URL reference
+        if: always()
+        env:
+          RAILWAY_TOKEN: ${{ secrets.githubactionsprod }}
+        run: |
+          railway variables --service "world-student-advisors" --environment "production" \
+            --set "PIPEDRIVE_ACCEPTANCE_DATABASE_URL=" --skip-deploys

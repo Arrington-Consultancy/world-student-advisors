@@ -143,7 +143,9 @@ async function defaultRecord(row: ResolutionRecord): Promise<boolean> {
 }
 
 function defaultReaderConfigured(): boolean {
-  return Boolean(process.env.WORKFORCE_PIPEDRIVE_API_TOKEN);
+  // Without an injected reader there is nothing to read with; the route
+  // endpoint always injects the live OAuth-backed reader and its own check.
+  return false;
 }
 
 export async function resolveInformationQuestion(input: ResolveInput, deps: ResolveDeps = {}): Promise<InformationResolution> {
@@ -209,7 +211,7 @@ export async function resolveInformationQuestion(input: ResolveInput, deps: Reso
   if (!configured || !deps.reader) {
     return finish({
       outcome: "connector_unavailable", gapType: "connector_gap",
-      answer: `I tried to check the CRM but the workforce read connection to Pipedrive is not in place yet, so I cannot pull the figure. I have recorded it for ${MI_HUMAN_OWNER}; once the connection is live, ask me again and I will run it.`,
+      answer: `I tried to check the CRM but the WSA Pipedrive connection for the workforce is not authorised yet, so I cannot pull the figure. I have recorded it for ${MI_HUMAN_OWNER}; once the connection is live, ask me again and I will run it.`,
       coverage: null, sourcesChecked: [], evidenceAttempted: false, humanOwner: MI_HUMAN_OWNER,
     });
   }
