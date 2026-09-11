@@ -37,6 +37,7 @@ import {
   GRAPH_BASE,
   MANAGED_SHAREPOINT_APP_DISPLAY_NAME,
   MANAGED_SITE_GRANT_APP_DISPLAY_NAME,
+  SITES_FULLCONTROL_APP_ROLE_ID,
   buildAuditEvent,
   buildGraphTokenRequest,
   buildSitePermissionGrantBody,
@@ -147,21 +148,46 @@ async function main(): Promise<void> {
 
   // From here on, a secret exists for the temporary app and it MUST be deleted on every path.
   let tempSecretMinted = false;
+  let cleanupProven = false;
   const deleteTemporaryApp = async (): Promise<void> => {
     const del = await graph(automationToken, "DELETE", `/applications/${grantApp.id}`);
     // Deleted objects sit in the recycle bin for 30 days and could be restored. Purge them.
     const purge = await graph(automationToken, "DELETE", `/directory/deletedItems/${grantApp.id}`);
-    const check = await graph(automationToken, "GET", `/applications/${grantApp.id}?$select=id`);
-    const gone = check.status === 404;
+    // Proof, three ways, each read back from the tenant rather than inferred:
+    //   the application object is gone;
+    //   no service principal (Enterprise Application) carries its appId;
+    //   no owned application still declares Sites.FullControl.All.
+    let appGone = false, spGone = false, noFullControlDeclared = false, spCount = -1, declaring: string[] = [];
+    for (let attempt = 1; attempt <= 6; attempt += 1) {
+      const check = await graph(automationToken, "GET", `/applications/${grantApp.id}?$select=id`);
+      appGone = check.status === 404;
+      const sp = await graph<{ value: unknown[] }>(automationToken, "GET", `/servicePrincipals?$filter=${encodeURIComponent(`appId eq '${grantApp.appId}'`)}&$select=id`);
+      spCount = sp.status === 200 ? (sp.body?.value?.length ?? -1) : -1;
+      spGone = spCount === 0;
+      const owned = await graph<{ value: Array<{ appId: string; displayName: string; requiredResourceAccess?: Array<{ resourceAccess: Array<{ id: string }> }> }> }>(
+        automationToken, "GET", "/applications?$select=appId,displayName,requiredResourceAccess&$top=999",
+      );
+      declaring = (owned.body?.value ?? [])
+        .filter(a => (a.requiredResourceAccess ?? []).some(r => r.resourceAccess.some(x => x.id === SITES_FULLCONTROL_APP_ROLE_ID)))
+        .map(a => `${a.displayName} (${a.appId.slice(0, 8)}…)`);
+      noFullControlDeclared = owned.status === 200 && declaring.length === 0;
+      if (appGone && spGone && noFullControlDeclared) break;
+      await sleep(5_000);
+    }
+    cleanupProven = appGone && spGone && noFullControlDeclared;
     await recordAudit({
       action: "entra_app_delete", phase: "result", targetSystem: "microsoft_entra",
-      targetResource: `"${MANAGED_SITE_GRANT_APP_DISPLAY_NAME}" appId prefix ${grantApp.appId.slice(0, 8)}…: delete HTTP ${del.status}, purge HTTP ${purge.status}, read-back HTTP ${check.status}`,
+      targetResource: `"${MANAGED_SITE_GRANT_APP_DISPLAY_NAME}" prefix ${grantApp.appId.slice(0, 8)}…: delete HTTP ${del.status}, purge HTTP ${purge.status}; app gone ${appGone}; service principals with its appId ${spCount}; owned apps declaring FullControl ${declaring.length}`,
       permissionDecision: "allowed",
-      permissionReason: gone ? "Temporary application, its service principal, consent and secret removed and purged." : "Temporary application still readable after delete. Human follow-up required.",
-      success: gone ? 1 : 0, errorCategory: gone ? "none" : "cleanup_incomplete",
+      permissionReason: cleanupProven
+        ? "Cleanup proven: application object gone, no service principal remains, no owned application declares Sites.FullControl.All."
+        : "Cleanup NOT proven. The run is incomplete regardless of the grant result. Human follow-up required now.",
+      success: cleanupProven ? 1 : 0, errorCategory: cleanupProven ? "none" : "cleanup_incomplete",
     });
-    console.log(gone ? "Temporary application deleted and purged (read-back 404)." : `WARNING: temporary application still present (HTTP ${check.status}). Delete it by hand now.`);
-    if (!gone) process.exitCode = 1;
+    console.log(cleanupProven
+      ? "Cleanup proven: temporary application gone, its service principal gone, no owned application declares Sites.FullControl.All."
+      : `CLEANUP NOT PROVEN: app gone=${appGone}, service principals remaining=${spCount}, apps still declaring FullControl=${declaring.length}. Delete by hand now: Entra > App registrations and Enterprise applications > "${MANAGED_SITE_GRANT_APP_DISPLAY_NAME}".`);
+    if (!cleanupProven) process.exitCode = 1;
   };
 
   try {
@@ -170,7 +196,9 @@ async function main(): Promise<void> {
       passwordCredential: { displayName: "wsa-site-grant-single-use", endDateTime: new Date(Date.now() + 60 * 60 * 1000).toISOString() },
     });
     tempSecretMinted = true;
-    console.log(`::add-mask::${added.secretText}`);
+    // The secret is held in this variable and nowhere else. It is not echoed,
+    // not masked-then-echoed, not written to an artefact and not placed in an
+    // audit row. Tom Arrington, 11 September 2026: never print it.
     await recordAudit({ action: "entra_secret_mint", phase: "result", targetSystem: "microsoft_entra", targetResource: `single-use credential on appId prefix ${grantApp.appId.slice(0, 8)}…, one hour, in memory only`, permissionDecision: "allowed", permissionReason: "Minted for one grant call; the application is deleted before this run exits.", success: 1, errorCategory: "none" });
 
     // 2. Token with exactly Sites.FullControl.All (consent proven), retrying for propagation.
@@ -250,15 +278,25 @@ async function main(): Promise<void> {
   if (!declared.ok) fail(`Worker application declares more than Sites.Selected: ${declared.declared.join("; ")}.`);
   console.log("Worker application declares exactly Sites.Selected and its token carries exactly Sites.Selected.");
 
+  if (!cleanupProven) {
+    await recordAudit({
+      action: "apply_site_grant", phase: "result", targetSystem: "microsoft_entra",
+      targetResource: `grant work done on WSA site for appId prefix ${workerApp.appId.slice(0, 8)}… but temporary application cleanup NOT proven`,
+      permissionDecision: "allowed",
+      permissionReason: "INCOMPLETE. The SharePoint grant and read test may have passed, and that does not count: the temporary FullControl application could not be proven gone. Human follow-up required.",
+      success: 0, errorCategory: "cleanup_incomplete", humanApprovalReference: HUMAN_APPROVAL_REFERENCE,
+    });
+    fail("Run B INCOMPLETE: cleanup not proven. See the audit row and delete the temporary application by hand now.");
+  }
   await recordAudit({
     action: "apply_site_grant", phase: "result", targetSystem: "microsoft_entra",
-    targetResource: `read grant verified on WSA site for appId prefix ${workerApp.appId.slice(0, 8)}…; temporary application deleted; worker declares Sites.Selected only`,
+    targetResource: `read-only grant verified on the exact WSA site (${WSA_HOST}${WSA_SITE_PATH}) for appId prefix ${workerApp.appId.slice(0, 8)}…; temporary application, service principal and consent gone; worker declares Sites.Selected only`,
     permissionDecision: "allowed",
-    permissionReason: "Grant applied and verified, worker read test passed, worker refused outside the WSA site, temporary FullControl application deleted and purged.",
+    permissionReason: "Grant applied and verified as read only on the WSA site only; worker read test passed; worker refused on the tenant root and a different site; temporary FullControl application deleted, purged and proven absent; no secret recorded anywhere.",
     success: 1, errorCategory: "none", humanApprovalReference: HUMAN_APPROVAL_REFERENCE,
   });
   console.log("RUN B COMPLETE. Next: run connector-sharepoint-acceptance.yml for the full designated-location listing.");
-  process.exit(process.exitCode ?? 0);
+  process.exit(0);
 }
 
 main().catch(async error => {
