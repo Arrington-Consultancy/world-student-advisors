@@ -37,6 +37,28 @@ describe("the open section is addressable", () => {
   });
 });
 
+describe("a section that is open, renders", () => {
+  it("home shows only when no section is open, so a section outside the card lists is not swallowed", () => {
+    // The guard asked whether the open section was one of the cards on the
+    // home screen. Staff access, Routing gaps and Resources are reachable
+    // only from the account menu and are in no card list, so each set its
+    // state and then rendered home: pressing them did nothing.
+    const page = readFileSync(new URL("../client/src/pages/StaffPortal.tsx", import.meta.url), "utf8");
+    expect(page).toContain("{section === null ? (");
+    expect(page).not.toMatch(/current === null && section !== "reception" \?/);
+  });
+
+  it("the sections reachable only from the account menu are rendered and are in no card list", () => {
+    const page = readFileSync(new URL("../client/src/pages/StaffPortal.tsx", import.meta.url), "utf8");
+    const rendered = new Set([...page.matchAll(/section === "([a-z]+)"/g)].map(m => m[1]));
+    const cards = new Set([...page.matchAll(/^\s*id: "([a-z]+)",$/gm)].map(m => m[1]));
+    for (const id of ["access", "routing", "resources"]) {
+      expect(rendered.has(id)).toBe(true);
+      expect(cards.has(id)).toBe(false);
+    }
+  });
+});
+
 describe("the portal carries its own chrome", () => {
   it("the marketing header and footer are not rendered on the portal route", () => {
     const app = readFileSync(new URL("../client/src/App.tsx", import.meta.url), "utf8");

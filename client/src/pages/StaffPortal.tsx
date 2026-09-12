@@ -747,7 +747,13 @@ function WorkforceHome({ token, onLogout }: { token: string; onLogout: () => voi
       <main className="container max-w-5xl pt-8">
         <AccessBanner token={token} />
 
-        {current === null && section !== "reception" ? (
+        {/* Home shows when no section is open, and nothing else decides it.
+            This asked whether the open section was one of the cards above,
+            which silently swallowed every section reachable only from the
+            account menu: Staff access, Routing gaps and Resources set their
+            state and then rendered home. Reported by Tom Arrington on
+            12 September 2026, pressing Staff access and seeing nothing. */}
+        {section === null ? (
           <>
             <div className="mt-2">
               <h1 className="text-2xl font-semibold text-wsa-navy md:text-3xl">
