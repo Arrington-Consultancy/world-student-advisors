@@ -1,6 +1,26 @@
 import { Link } from "wouter";
 import { SOCIAL_LINKS } from "@/lib/socialLinks";
 
+/**
+ * Two claims in this footer rest on named records, and the wording is
+ * deliberately no wider than those records support.
+ *
+ * "British Council UK knowledge-trained counsellors": WSA holds current
+ * British Council "UK knowledge agent and counsellor training" completion
+ * certificates for named staff (01_ADMIN_&_GOVERNANCE/03_British Council_&
+ * _Accreditation, e.g. Eldah Therone valid to 28 April 2027, Winfred Mwikali
+ * valid to 1 September 2028). Each certificate states that the British
+ * Council "does not formally endorse, accredit or validate agents and
+ * counsellors", so the footer must never say certified, accredited,
+ * recognised or endorsed. Tom Arrington, 12 September 2026.
+ *
+ * "since 2012": the Grant Application of 17 June 2026
+ * (01_ADMIN_&_GOVERNANCE/01_Company_&_Legal), signed by the founder, states
+ * "Started 1 April 2012 - Incorporated 09 April 2015" under Companies House
+ * number 09532724. It evidences trading from 2012; the company itself dates
+ * from 2015. If that record is ever withdrawn, so is this phrase.
+ */
+
 export default function Footer() {
   return (
     <footer className="bg-wsa-navy text-white/60">
@@ -14,7 +34,7 @@ export default function Footer() {
               className="h-12 w-auto mb-6 brightness-0 invert opacity-80"
             />
             <p className="text-sm leading-relaxed max-w-xs">
-              Your trusted global advisors for international students since 2012, with British Council Certified Counsellors.
+              Your trusted global advisors for international students since 2012, with British Council UK knowledge-trained counsellors.
             </p>
             <div className="flex items-center gap-3 mt-5">
               <img src="/manus-storage/british_council_badge_694f3fc2.png" alt="British Council" className="h-7 w-7 opacity-80" />
@@ -124,7 +144,7 @@ export default function Footer() {
             <span className="text-white/20">|</span>
             <Link href="/compliance" className="hover:text-white/70 transition-colors">Compliance & Policies</Link>
             <span className="text-white/20">|</span>
-            <span>British Council Certified Counsellors</span>
+            <span>British Council UK knowledge-trained counsellors</span>
           </div>
         </div>
       </div>
