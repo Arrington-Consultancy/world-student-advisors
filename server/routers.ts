@@ -74,6 +74,7 @@ import { REMITS, OUTCOMES, UNOWNED_OUTCOMES } from "./workforce/remit";
 import { getPipedriveStatus } from "./workforce/connectors/pipedrive";
 import { buildAuthoriseUrl, describePipedriveGrant, oauthConfig, signState, PIPEDRIVE_OAUTH_SCOPES } from "./crm/pipedriveOAuth";
 import { miSource } from "./workforce/mi/source";
+import { DEFAULT_ACCESS_IN_FORCE, DEFAULT_ACCESS_NOTICE } from "./access/accessDefault";
 import { buildDriveAuthoriseUrl, describeDriveMirrorGrant, driveOAuthConfig, signDriveState, DRIVE_MIRROR_SCOPE } from "./mirror/driveMirrorOAuth";
 import { mirrorConfigState, mirrorTokenSource, recentMirrorRuns, runMirrorSync } from "./mirror/sync";
 import { recentBackupRuns, runCrmBackup } from "./mirror/backup";
@@ -679,6 +680,10 @@ export const appRouter = router({
           grantableActions: [...resolution.profile.actionPermissions],
           grantableOverlays: [...resolution.profile.sensitiveOverlays],
           consequentialActions: [...CONSEQUENTIAL_ACTION_LIST],
+          // What an account holds when nobody has assigned it anything.
+          // Shown on the screen so the breadth is visible to the person
+          // administering access rather than buried in the code.
+          defaultAccess: { inForce: DEFAULT_ACCESS_IN_FORCE, notice: DEFAULT_ACCESS_NOTICE },
           overlayMinimumLevels: SENSITIVE_OVERLAY_MIN_LEVEL,
           caseScopes: [...CASE_SCOPES],
           allScopes: [...FUNCTIONAL_SCOPES],

@@ -83,6 +83,7 @@ export const EXECUTIVE_PROFILE: StaffAccessProfile = Object.freeze({
   sensitiveOverlays: Object.freeze([...SENSITIVE_OVERLAYS]) as readonly SensitiveOverlay[],
   temporaryGrants: Object.freeze([]),
   status: "active",
+  assignmentSource: "executive",
   teamId: null,
   assignedByStaffUserId: null,
   assignedAt: null,

@@ -23,6 +23,7 @@
  *   - a shared-password session resolves to no profile, because it carries
  *     no individual identity to attach an authority decision to.
  */
+import { DEFAULT_ACCESS, DEFAULT_ACCESS_IN_FORCE, DEFAULT_ACCESS_SOURCE } from "./accessDefault";
 import { and, eq, isNull, or, gt } from "drizzle-orm";
 import { getDb } from "../db";
 import { staffUsers, staffAccessGrants } from "../../drizzle/schema";
@@ -213,10 +214,35 @@ export function buildProfile(row: StaffAccessRow, grantRows: readonly GrantRow[]
   const caseScope = isOneOf(CASE_SCOPES, row.caseScope) ? row.caseScope : null;
 
   if (row.baseAccessLevel === null && row.caseScope === null && row.accessStatus === null) {
+    // No assignment. This denied until 12 September 2026; it now applies the
+    // default recorded in accessDefault.ts. An inactive row is still
+    // disabled, so the default never revives a closed account, and any
+    // explicit assignment skips this branch entirely.
+    if (!DEFAULT_ACCESS_IN_FORCE || row.isActive !== 1) {
+      return {
+        resolved: false,
+        reason: "no_access_assignment",
+        detail: "This staff account has no recorded access assignment, so it holds no access (fail closed).",
+      };
+    }
     return {
-      resolved: false,
-      reason: "no_access_assignment",
-      detail: "This staff account has no recorded access assignment, so it holds no access (fail closed).",
+      resolved: true,
+      droppedGrantValues: [],
+      profile: {
+        staffUserId: row.id,
+        baseAccessLevel: DEFAULT_ACCESS.baseAccessLevel,
+        functionalScopes: DEFAULT_ACCESS.functionalScopes,
+        caseScope: DEFAULT_ACCESS.caseScope,
+        actionPermissions: DEFAULT_ACCESS.actionPermissions,
+        sensitiveOverlays: DEFAULT_ACCESS.sensitiveOverlays,
+        temporaryGrants: [],
+        status: "active",
+        teamId: row.teamId,
+        assignmentSource: "default",
+        assignedByStaffUserId: null,
+        assignedAt: null,
+        assignmentReason: DEFAULT_ACCESS_SOURCE,
+      },
     };
   }
   if (level === null) {
@@ -249,6 +275,7 @@ export function buildProfile(row: StaffAccessRow, grantRows: readonly GrantRow[]
       temporaryGrants: assembled.temporaryGrants,
       status: resolveStatus(row.isActive, row.accessStatus),
       teamId: row.teamId,
+      assignmentSource: "explicit",
       assignedByStaffUserId: row.assignedByStaffUserId,
       assignedAt: row.assignedAt,
       assignmentReason: row.assignmentReason,

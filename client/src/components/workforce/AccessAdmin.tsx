@@ -111,6 +111,16 @@ export function AccessAdmin({ token }: { token: string }) {
         </p>
       </div>
 
+      {data.defaultAccess?.inForce && (
+        <div className="flex items-start gap-3 border-l-2 border-amber-500 bg-amber-50 p-4">
+          <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-amber-600" aria-hidden />
+          <div className="text-base leading-relaxed text-gray-800">
+            <p className="font-semibold text-wsa-navy">Default access is in force</p>
+            <p className="mt-1">{data.defaultAccess.notice}</p>
+          </div>
+        </div>
+      )}
+
       <div>
         <p className="mb-2 text-base font-semibold text-wsa-navy">Who</p>
         <div className="divide-y divide-border/70 border border-border/70">

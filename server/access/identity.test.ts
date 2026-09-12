@@ -51,8 +51,23 @@ describe("buildProfile denies rather than degrading", () => {
     }
   });
 
-  it("refuses an account with no access assignment at all", () => {
+  it("applies the default to an active account with no assignment, and says the access came from the default", () => {
+    // Deny by default until 12 September 2026. Tom Arrington then chose full
+    // access by default on Tim Hunt's request, with the consequences stated.
     const result = buildProfile(row({ baseAccessLevel: null, caseScope: null, accessStatus: null }), []);
+    expect(result.resolved).toBe(true);
+    if (result.resolved) {
+      expect(result.profile.assignmentSource).toBe("default");
+      expect(result.profile.baseAccessLevel).toBe(1);
+      expect(result.profile.caseScope).toBe("organisation");
+      expect(result.profile.status).toBe("active");
+      expect(result.profile.assignedByStaffUserId).toBeNull();
+      expect(result.profile.assignmentReason).toContain("12 September 2026");
+    }
+  });
+
+  it("does not revive a closed account: an inactive row with no assignment still holds nothing", () => {
+    const result = buildProfile(row({ isActive: 0, baseAccessLevel: null, caseScope: null, accessStatus: null }), []);
     expect(result).toMatchObject({ resolved: false, reason: "no_access_assignment" });
   });
 

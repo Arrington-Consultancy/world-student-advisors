@@ -227,6 +227,12 @@ export interface StaffAccessProfile {
   temporaryGrants: readonly TemporaryGrant[];
   status: AccountStatus;
   teamId: string | null;
+  /**
+   * Where this profile came from. Descriptive only, never consulted for a
+   * decision, but it is the difference between access somebody chose and
+   * access nobody chose, which an audit row must be able to say.
+   */
+  assignmentSource?: "explicit" | "default" | "executive";
   /** Audit metadata (§10). Descriptive only — never consulted for a decision. */
   assignedByStaffUserId: number | null;
   assignedAt: Date | null;
