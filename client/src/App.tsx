@@ -48,6 +48,7 @@ import WebUKVisa from "./pages/WebUKVisa";
 import DDVavita from "./pages/DDVavita";
 import UKMastersStudy from "./pages/UKMastersStudy";
 import UKMastersNigeria from "./pages/UKMastersNigeria";
+import NigeriaPostgraduate from "./pages/NigeriaPostgraduate";
 
 
 function Router() {
@@ -102,6 +103,9 @@ function Router() {
       <Route path={"/DDVavita"} component={DDVavita} />
       <Route path={"/uk-masters-study"} component={UKMastersStudy} />
       <Route path={"/uk-masters-nigeria"} component={UKMastersNigeria} />
+      {/* Working draft landing page. Noindex and out of the sitemap until the
+          Google Ads brief is reconciled with the MPhil/MRes/PhD scope. */}
+      <Route path={"/nigeria-postgraduate"} component={NigeriaPostgraduate} />
       <Route path={"/404"} component={NotFound} />
       <Route component={NotFound} />
     </Switch>

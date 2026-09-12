@@ -56,6 +56,10 @@ export const VALID_CLIENT_ROUTES = [
   "/DDVavita",
   "/uk-masters-study",
   "/uk-masters-nigeria",
+  // Working-draft campaign landing page. A real route so it can be reviewed,
+  // but noindex and absent from the sitemap and the prerender list until the
+  // Google Ads brief is reconciled with the MPhil/MRes/PhD scope.
+  "/nigeria-postgraduate",
   "/404",
 ] as const;
 

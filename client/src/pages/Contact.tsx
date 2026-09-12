@@ -1,3 +1,4 @@
+import { isDesiredLevelValue, isDestinationValue } from "@shared/studentEnquiryOptions";
 import { ArrowRight, MapPin, Phone, Mail, CheckCircle, Loader2 } from "lucide-react";
 import { Link } from "wouter";
 import CountrySelect from "@/components/CountrySelect";
@@ -168,6 +169,37 @@ function StudentForm() {
     const url = new URL(window.location.href);
     url.searchParams.delete("gpt");
     window.history.replaceState({}, "", url.toString());
+  }, []);
+
+  /**
+   * Plain prefill from a campaign landing page, so a student who has
+   * already typed their name and email on the Nigeria postgraduate page
+   * does not type them again here.
+   *
+   * These are the student's own answers to this same form, carried across
+   * as ordinary text. They are placed in the form's state and nowhere
+   * else: every field is still validated, the bot check still runs, and
+   * nothing here can skip a step or grant anything. Only the fields named
+   * below are read, and only when the matching select has that option.
+   */
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const take = (key: string, max = 200) => (params.get(key) ?? "").slice(0, max).trim();
+    const firstName = take("firstName", 60);
+    const email = take("email", 120);
+    const phone = take("phone", 40);
+    const desiredLevel = take("desiredLevel", 40);
+    const preferredDestination = take("preferredDestination", 60);
+    if (!firstName && !email && !phone && !desiredLevel && !preferredDestination) return;
+    setFormData(prev => ({
+      ...prev,
+      firstName: firstName || prev.firstName,
+      email: email || prev.email,
+      phone: phone || prev.phone,
+      // Only accept a value the form itself offers; anything else is ignored.
+      desiredLevel: isDesiredLevelValue(desiredLevel) ? desiredLevel : prev.desiredLevel,
+      preferredDestination: isDestinationValue(preferredDestination) ? preferredDestination : prev.preferredDestination,
+    }));
   }, []);
 
   const mutation = trpc.contact.submitStudent.useMutation({

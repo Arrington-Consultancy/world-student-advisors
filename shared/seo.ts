@@ -188,7 +188,11 @@ export const CANONICAL_PATHS: Record<string, string> = {
 };
 
 export const NOINDEX_PATH_PREFIXES = ["/portal", "/staff-portal"];
-export const NOINDEX_PATHS = new Set(["/404"]);
+// /nigeria-postgraduate is a working-draft campaign landing page. It stays
+// out of the index, and out of sitemap.xml and the prerender list, until the
+// controlled Google Ads brief is reconciled with the MPhil/MRes/PhD scope
+// and Tom approves it for launch.
+export const NOINDEX_PATHS = new Set(["/404", "/nigeria-postgraduate"]);
 
 export function getCanonicalPath(path: string): string {
   return CANONICAL_PATHS[path] ?? path;
