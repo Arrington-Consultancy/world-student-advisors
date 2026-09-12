@@ -81,10 +81,10 @@ function EnquiryForm({ id }: { id: string }) {
   };
 
   const field =
-    "w-full rounded-xl border border-wsa-navy/15 bg-white px-4 py-3 text-base text-wsa-navy placeholder:text-gray-400 focus:border-wsa-red/60 focus:outline-none";
+    "w-full min-w-0 max-w-full rounded-xl border border-wsa-navy/15 bg-white px-4 py-3 text-base text-wsa-navy placeholder:text-gray-400 focus:border-wsa-red/60 focus:outline-none";
 
   return (
-    <form onSubmit={submit} className="space-y-2.5" aria-labelledby={`${id}-heading`}>
+    <form onSubmit={submit} className="min-w-0 max-w-full space-y-2.5" aria-labelledby={`${id}-heading`}>
       <p id={`${id}-heading`} className="text-lg font-semibold text-wsa-navy">
         Speak to a counsellor
       </p>
@@ -94,7 +94,7 @@ function EnquiryForm({ id }: { id: string }) {
       <label className="sr-only" htmlFor={`${id}-email`}>Email address</label>
       <input id={`${id}-email`} type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="Email address" autoComplete="email" required className={field} />
       <label className="sr-only" htmlFor={`${id}-phone`}>WhatsApp number</label>
-      <div className="flex items-stretch overflow-hidden rounded-xl border border-wsa-navy/15 bg-white focus-within:border-wsa-red/60">
+      <div className="flex min-w-0 max-w-full items-stretch overflow-hidden rounded-xl border border-wsa-navy/15 bg-white focus-within:border-wsa-red/60">
         <span className="flex items-center border-r border-wsa-navy/10 bg-wsa-stone/60 px-3 text-base text-gray-600" aria-hidden>
           {NIGERIA_DIALLING_CODE}
         </span>
@@ -216,7 +216,12 @@ export default function NigeriaPostgraduate() {
       {/* ── Hero ────────────────────────────────────────────────── */}
       <section className="px-4 pb-10 pt-8 sm:px-6 lg:pb-16 lg:pt-12">
         <div className="mx-auto grid max-w-6xl gap-8 lg:grid-cols-[1.05fr_minmax(320px,420px)] lg:items-start lg:gap-12">
-          <div>
+          {/* min-w-0 on both cells: a grid item's automatic minimum is its
+              content's intrinsic width, and a <select> or <input> at width:100%
+              still reports its intrinsic width during that step in some
+              engines (seen on Chromium 129 at 390px: the column became 456px
+              and the page scrolled sideways). */}
+          <div className="min-w-0">
             <p className="flex items-center gap-2.5">
               <NigerianFlag className="h-4 w-6" />
               <span className="text-sm font-semibold uppercase tracking-wider text-wsa-navy">For Nigerian graduates</span>
@@ -249,7 +254,7 @@ export default function NigeriaPostgraduate() {
           </div>
 
           {/* The form sits high on mobile too: it is the point of the page. */}
-          <div className="rounded-2xl border border-wsa-navy/12 bg-white p-5 shadow-sm lg:sticky lg:top-6">
+          <div className="min-w-0 rounded-2xl border border-wsa-navy/12 bg-white p-5 shadow-sm lg:sticky lg:top-6">
             <EnquiryForm id="hero-form" />
           </div>
         </div>

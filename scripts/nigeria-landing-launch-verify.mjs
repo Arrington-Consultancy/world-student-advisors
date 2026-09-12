@@ -80,8 +80,10 @@ try { const w = await fetch("https://wa.me/447470689849", { method: "GET", redir
 const cases = [["postgraduate", "uk"], ["mphil", "germany"], ["mres", "canada"], ["doctorate", "uk"]];
 for (const [level, dest] of cases) {
   const p = await b.newPage({ viewport: { width: 390, height: 844 } });
-  await p.goto(`${BASE}/nigeria-postgraduate`, { waitUntil: "networkidle" });
-  await p.getByRole("button", { name: /accept all/i }).click().catch(() => {});
+  await p.goto(`${BASE}/nigeria-postgraduate`, { waitUntil: "domcontentloaded" });
+  await p.getByRole("button", { name: /accept all/i }).click({ timeout: 5000 }).catch(() => {});
+  try { await p.locator("#hero-form-first").waitFor({ state: "visible", timeout: 60000 }); }
+  catch { ok(false, `${level}/${dest}: landing form did not render within 60s on visit ${cases.indexOf([level, dest]) + 1}`); await p.close(); continue; }
   await p.locator("#hero-form-first").fill("Chidi");
   await p.locator("#hero-form-email").fill("chidi@example.com");
   await p.locator("#hero-form-phone").fill("08012345678");
@@ -97,6 +99,7 @@ for (const [level, dest] of cases) {
   ok(phone.replace(/\s/g, "").startsWith("+234"), `${level}: phone "${phone}"`);
   log(`${level.padEnd(12)} ${dest.padEnd(8)} -> ${JSON.stringify(sel)} phone=${phone}`);
   await p.close();
+  await new Promise(r => setTimeout(r, 1500));
 }
 await b.close();
 console.log("\n=== PRODUCTION VERIFICATION ===");
