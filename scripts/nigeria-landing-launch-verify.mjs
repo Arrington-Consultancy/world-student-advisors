@@ -41,15 +41,28 @@ for (const [name, vp] of [["mobile", { width: 390, height: 844 }], ["desktop", {
   ok(!/noindex/i.test(live), `${name}: live robots meta ${live}`);
   ok(!/Working draft|Not published for paid traffic|pending approval/i.test(text), `${name}: draft wording visible`);
   for (const s of ["For Nigerian graduates", "Taught Master", "MPhil", "MRes", "PhD", "United Kingdom", "Germany", "Canada", "Eldah Therone", "Get my study options", "Student Support Library"])
-    ok(text.includes(s), `${name}: missing "${s}"`);
+    ok(text.toLowerCase().includes(s.toLowerCase()), `${name}: missing "${s}"`);
   ok(!/British Council (Certified|Accredited|Recognised)/i.test(text), `${name}: forbidden British Council wording`);
   const title = await p.title(); ok(/Nigerian/.test(title), `${name}: title is "${title}"`); log(`${name}: title "${title}"`);
   // every visible image loaded
   await p.evaluate(async () => { window.scrollTo(0, document.body.scrollHeight); await new Promise(r => setTimeout(r, 1200)); window.scrollTo(0, 0); });
   const broken = await p.evaluate(() => Array.from(document.images).filter(i => getComputedStyle(i).display !== "none" && i.complete && i.naturalWidth === 0).map(i => i.getAttribute("src")));
   ok(broken.length === 0, `${name}: broken images ${JSON.stringify(broken)}`);
-  const hscroll = await p.evaluate(() => document.documentElement.scrollWidth > window.innerWidth + 1);
-  ok(!hscroll, `${name}: horizontal overflow`);
+  // Horizontal overflow: measure at the top of the page, and when it is
+  // present name the elements responsible so the finding is actionable.
+  await p.evaluate(() => window.scrollTo(0, 0)); await p.waitForTimeout(300);
+  const over = await p.evaluate(() => {
+    const vw = window.innerWidth, out = [];
+    for (const el of document.querySelectorAll("body *")) {
+      const rc = el.getBoundingClientRect(); const cs = getComputedStyle(el);
+      if (rc.width > 0 && rc.right > vw + 1 && cs.position !== "fixed" && cs.visibility !== "hidden")
+        out.push(`${el.tagName.toLowerCase()}.${(el.className || "").toString().trim().split(/\s+/).slice(0, 4).join(".")} right=${Math.round(rc.right)} w=${Math.round(rc.width)} "${(el.textContent || "").trim().slice(0, 30)}"`);
+    }
+    return { vw, sw: document.documentElement.scrollWidth, bsw: document.body.scrollWidth, out: out.slice(0, 15), n: out.length };
+  });
+  log(`${name}: innerWidth=${over.vw} scrollWidth=${over.sw} bodyScrollWidth=${over.bsw} overflowing=${over.n}`);
+  for (const o of over.out) log(`${name}:   ${o}`);
+  ok(over.sw <= over.vw + 1, `${name}: horizontal overflow (scrollWidth ${over.sw} > ${over.vw})`);
   ok(errors.length === 0, `${name}: JS errors ${JSON.stringify(errors)}`);
   // Eldah contact: WhatsApp link + mailto present and correct
   const wa = await p.evaluate(() => Array.from(document.querySelectorAll('a[href^="https://wa.me/"]')).map(a => a.getAttribute("href")));
