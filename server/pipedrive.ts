@@ -131,12 +131,26 @@ const QUALIFICATION_MAP: Record<string, number> = {
   other: 36,
 };
 
+/**
+ * Form value to Pipedrive "Desired Level of Study" option id.
+ *
+ * The four postgraduate routes the Nigeria campaign advertises each map to
+ * their own option, so reporting can tell them apart. Tom Arrington,
+ * 12 September 2026: do not collapse them.
+ *
+ * MRes has no entry because Pipedrive has no MRes option yet. It is left
+ * unmapped on purpose rather than rounded to Taught Master's: a lead
+ * recorded as the wrong programme is worse than one recorded as none, and
+ * it is the mistake the destination comment below already warns about.
+ * scripts/pipedrive-campaign-options.mjs adds the real option.
+ */
 const LEVEL_MAP: Record<string, number> = {
   foundation: 39, // International Foundation Program
   undergraduate: 41, // Undergraduate (Bachelor's)
   "top-up": 42, // Top-Up Degree
   "pre-masters": 261, // Pre Masters
   postgraduate: 43, // Taught Master's
+  mphil: 44, // MPhil research degree
   doctorate: 45, // PhD Doctorate
   boarding: 38, // GCSE (closest — no dedicated boarding-school option)
   language: 46, // Other
@@ -183,6 +197,10 @@ const DESTINATION_MAP: Record<string, number> = {
   canada: 86, Canada: 86,
   europe: 84, Europe: 84, "Other European Counties": 84,
   multiple: 88, "Not Sure": 88, "Not Sure - Need Advice": 88,
+  // Germany is deliberately absent until Pipedrive has a Germany option.
+  // Recording it as "Other European Counties" would answer the question
+  // "did Germany work?" with a shrug, which is the whole reason Tom asked
+  // for the destinations to stay separate.
   // No live "Australia" option exists in Pipedrive's Preferred Study
   // Destination field. "Australia" was removed from the public dropdown
   // (client/src/pages/Contact.tsx) rather than silently recording it as New
@@ -262,8 +280,10 @@ const levelLabels: Record<string, string> = {
   undergraduate: "Undergraduate (Bachelor's)",
   "top-up": "Top-up Degree",
   "pre-masters": "Pre-Master's",
-  postgraduate: "Postgraduate (Master's)",
-  doctorate: "Doctorate (PhD)",
+  postgraduate: "Taught Master's",
+  mphil: "MPhil",
+  mres: "MRes",
+  doctorate: "PhD / Doctorate",
   boarding: "Boarding School",
   language: "Language Programme",
   summer: "Summer Programme",
@@ -272,8 +292,8 @@ const levelLabels: Record<string, string> = {
 };
 
 const destinationLabels: Record<string, string> = {
-  uk: "United Kingdom", usa: "United States", canada: "Canada",
-  europe: "Europe", multiple: "Multiple / Not sure",
+  uk: "United Kingdom", germany: "Germany", usa: "United States", canada: "Canada",
+  europe: "Other European destinations", multiple: "Multiple / Not sure",
 };
 
 interface PipedrivePersonSearchItem {
