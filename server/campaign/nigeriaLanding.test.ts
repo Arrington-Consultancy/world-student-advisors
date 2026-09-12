@@ -65,9 +65,42 @@ describe("nothing on the page claims what WSA cannot evidence", () => {
     }
   });
 
-  it("prints the British Council's own disclaimer wherever a credential is shown", () => {
-    expect(content).toContain("does not formally endorse, accredit or validate");
+  it("states the non-endorsement point wherever a credential is shown, and keeps it short", () => {
+    expect(content).toMatch(/does not endorse, accredit or validate agents/);
     expect(pageSrc).toContain("credential.disclaimer");
+    // Short enough to read on a phone: one sentence and a clause, not an essay.
+    const disclaimer = content.match(/BRITISH_COUNCIL_DISCLAIMER =\s*\n?\s*"([^"]+)"/)![1];
+    expect(disclaimer.length).toBeLessThan(200);
+    // Still says the two things that matter.
+    expect(disclaimer).toMatch(/not endorse/);
+    expect(disclaimer).toMatch(/individual/);
+  });
+
+  it("keeps the credential to what it is and when it expires", () => {
+    expect(pageSrc).toContain("credential.label");
+    expect(pageSrc).toContain("credential.validUntil");
+  });
+
+  it("carries no unfinished-looking placeholder on a public page", () => {
+    // Case-sensitive and with the colon: a lowercase "placeholder" is the
+    // ordinary HTML input attribute and is fine.
+    expect(page).not.toContain("PLACEHOLDER:");
+    expect(page).not.toMatch(/border-dashed border-amber/);
+    expect(page).not.toMatch(/not yet published here/);
+  });
+
+  it("does not say the counsellors are all based in Nigeria, because one is not", () => {
+    // Eldah Therone is in Nairobi. The page said "Real people, based in
+    // Nigeria" beside her card, which was simply untrue.
+    expect(page).not.toMatch(/based in Nigeria/);
+    expect(page).toContain("Real people. Your counsellor is named and stays with you.");
+  });
+
+  it("does not claim the UK is where most applicants go or where WSA knows best", () => {
+    expect(options).not.toMatch(/where most WSA postgraduate applicants go/i);
+    expect(options).not.toMatch(/know the admissions and visa route best/i);
+    const uk = CAMPAIGN_DESTINATIONS.find(d => d.value === "uk")!;
+    expect(uk.note).toBe("Our main destination for this campaign.");
   });
 
   it("credits the individual, and only where WSA holds the certificate", () => {

@@ -189,21 +189,19 @@ function CounsellorCard({ person }: { person: (typeof COUNSELLORS)[number] }) {
             <BadgeCheck className="mt-0.5 h-4 w-4 shrink-0 text-wsa-red" aria-hidden />
             <span>
               {person.credential.label}
-              <span className="block font-normal text-gray-600">
-                Valid to {person.credential.validUntil}. Certificate {person.credential.certificateCode}.
-              </span>
+              <span className="block font-normal text-gray-600">Valid to {person.credential.validUntil}</span>
             </span>
           </p>
-          <p className="mt-2 text-xs leading-relaxed text-gray-500">{person.credential.disclaimer}</p>
-          {person.credential.href ? (
+          <p className="mt-1.5 text-xs leading-relaxed text-gray-500">{person.credential.disclaimer}</p>
+          {/* The certificate file is linked only once it is published in the
+              campaign asset location with the holder's consent for that use.
+              Until then the credential is stated, not linked: an unfinished-
+              looking placeholder on a paid landing page is worse than a clean
+              statement of the same fact. */}
+          {person.credential.href && (
             <a href={person.credential.href} className="mt-2 inline-block text-sm font-medium text-wsa-red underline underline-offset-2">
               View the certificate
             </a>
-          ) : (
-            <p className="mt-2 rounded-lg border border-dashed border-amber-400 bg-amber-50 px-2.5 py-1.5 text-xs leading-relaxed text-amber-900">
-              PLACEHOLDER: the certificate file is held in SharePoint but is not yet published here. It needs to be
-              placed in the campaign asset location and cleared with {person.name} before it goes on a public page.
-            </p>
           )}
         </div>
       )}
@@ -289,7 +287,7 @@ export default function NigeriaPostgraduate() {
         <div className="mx-auto max-w-6xl">
           <h2 className="text-2xl font-bold tracking-tight text-wsa-navy sm:text-3xl">Who you will be dealing with</h2>
           <p className="mt-2 max-w-2xl text-base leading-relaxed text-gray-700">
-            Real people, based in Nigeria. Your counsellor is named and stays with you.
+            Real people. Your counsellor is named and stays with you.
           </p>
           <div className="mt-6 grid gap-4 sm:grid-cols-2">
             {COUNSELLORS.map(p => (
@@ -361,6 +359,14 @@ export default function NigeriaPostgraduate() {
           </div>
         </div>
       </section>
+
+      {/* Two genuine, consented Nigerian student testimonials belong here,
+          between the library and the final CTA. Tom Arrington, 12 September
+          2026: do not delay the build waiting for them, and the page does not
+          look empty without them. Each one needs the student's permission for
+          this specific use, the exact words shown to them first, and a check
+          against the case record, which is what WSA already promises publicly
+          on /student-success-stories. */}
 
       {/* ── Final CTA ───────────────────────────────────────────── */}
       <section className="bg-wsa-navy px-4 py-12 sm:px-6 lg:py-16">

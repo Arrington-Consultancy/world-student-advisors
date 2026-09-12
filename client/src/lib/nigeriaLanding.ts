@@ -94,9 +94,18 @@ export interface CounsellorProfile {
   consentSource: string | null;
 }
 
+/**
+ * The non-endorsement point, short enough to read on a phone.
+ *
+ * The certificate's full wording is "The British Council does not formally
+ * endorse, accredit or validate agents and counsellors. It only awards this
+ * certificate to individuals for their knowledge and awareness of the UK as
+ * a study destination." This keeps both halves of that, in one sentence,
+ * because the substance is what matters: no endorsement of WSA, and the
+ * award belongs to the individual.
+ */
 export const BRITISH_COUNCIL_DISCLAIMER =
-  "The British Council does not formally endorse, accredit or validate agents and counsellors. " +
-  "It awards this certificate to individuals for their knowledge and awareness of the UK as a study destination.";
+  "The British Council does not endorse, accredit or validate agents. This certificate recognises an individual's knowledge of the UK as a study destination.";
 
 /**
  * Eldah Therone confirmed in writing on 12 September 2026 that she is

@@ -73,7 +73,9 @@ export const CAMPAIGN_DESTINATIONS: ReadonlyArray<{
   note: string;
   value: DestinationValue;
 }> = Object.freeze([
-  { label: "United Kingdom", emphasis: "primary", value: "uk", note: "Where most WSA postgraduate applicants go, and where we know the admissions and visa route best." },
+  { label: "United Kingdom", emphasis: "primary", value: "uk", // "Where most applicants go" and "where we know the route best" were
+    // both stronger than WSA can currently evidence, so neither is claimed.
+    note: "Our main destination for this campaign." },
   { label: "Germany", emphasis: "secondary", value: "germany", note: "Considered where the course and your funding position fit." },
   { label: "Canada", emphasis: "secondary", value: "canada", note: "Considered where the course and your funding position fit." },
 ]);
