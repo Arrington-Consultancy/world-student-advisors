@@ -61,10 +61,22 @@ describe("the log never becomes governance", () => {
   });
 });
 
+/** One tRPC procedure's source, from its name to the start of the next one. */
+function procedureSource(header: string): string {
+  const start = routers.indexOf(header);
+  if (start === -1) throw new Error(`procedure not found: ${header}`);
+  const next = routers.indexOf(": publicProcedure", start + header.length);
+  return next === -1 ? routers.slice(start) : routers.slice(start, next);
+}
+
 describe("every failed route is written, with the fields Tom listed", () => {
   it("the route procedure writes a gap with exact wording and identity", () => {
-    const start = routers.indexOf("    route: publicProcedure");
-    const body = routers.slice(start, start + 2500);
+    // The whole procedure, not a fixed number of characters from its
+    // start: a character count silently stops testing the end of the
+    // procedure as soon as anything is added above it, which is exactly
+    // what happened when the information thread was added on 12 September
+    // 2026.
+    const body = procedureSource("    route: publicProcedure");
     expect(body).toMatch(/isGap\(result\)/);
     expect(body).toMatch(/recordRoutingGap\(\s*input\.request,\s*result/);
     expect(body).toMatch(/staffUserId, authMethod: session\.authMethod/);

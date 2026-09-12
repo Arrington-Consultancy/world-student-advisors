@@ -40,6 +40,23 @@ export interface InformationQuestion {
   stage: string | null;
   /** "cold": the enquiry stopped after first contact. */
   status: "cold" | null;
+  /**
+   * Filters the person clearly asked for that this layer cannot apply.
+   *
+   * Tom Arrington asked "how many cold leads are self funded since the site
+   * has been redone" on 12 September 2026 and was given a count of website
+   * leads. Nothing was wrong with that count; it simply was not the question.
+   * "Self funded" was dropped without a word, so a figure answering a
+   * narrower question than the one asked read as if it answered it.
+   *
+   * A dimension this parser cannot model is now carried here instead of
+   * disappearing, and the resolver refuses to present a plain count when it
+   * is non-empty. The list is deliberately short and grows from real
+   * questions rather than from imagination: a phrase listed here must be
+   * something staff genuinely ask for and the records genuinely cannot
+   * answer.
+   */
+  unmodelled: readonly string[];
   /** For rankings: what to group by. Only "channel" is supported. */
   groupBy: "channel" | null;
   /** For trends: compare the recent window with the one before it. */
@@ -161,6 +178,45 @@ function detectStage(ws: readonly string[]): string | null {
   return null;
 }
 
+/**
+ * "Cold" is modelled: the evidence record carries it. The phrase list was
+ * too narrow, matching "went cold" but not the way people actually write
+ * it, so "cold leads" was read as leads with no status filter at all.
+ */
+function detectStatus(ws: readonly string[]): "cold" | null {
+  const stated = [
+    "went cold", "gone cold", "go cold", "cold after", "stopped responding",
+    "dropped off", "never came back", "did not respond",
+    "cold lead", "cold leads", "cold enquiry", "cold enquiries",
+    "cold inquiry", "cold inquiries", "cold applicant", "cold applicants",
+    "cold student", "cold students", "cold referral", "cold referrals",
+  ];
+  return hasAny(ws, stated) ? "cold" : null;
+}
+
+/**
+ * Filters staff ask for that the records cannot answer in this layer.
+ * Matched on the whole sentence so a hyphenated or spaced spelling is
+ * caught the same way. Each entry names itself in the answer.
+ */
+const UNMODELLED_FILTERS: ReadonlyArray<{ readonly label: string; readonly patterns: readonly RegExp[] }> = Object.freeze([
+  {
+    label: "how the student is funded",
+    patterns: [
+      /\bself[\s._-]?fund(ed|ing)?\b/i,
+      /\bprivately[\s._-]?funded\b/i,
+      /\bsponsor(ed|ship)?\b/i,
+      /\bscholarship(s)?\b/i,
+      /\bbursar(y|ies)\b/i,
+      /\bstudent[\s._-]?(loan|finance)\b/i,
+    ],
+  },
+]);
+
+export function detectUnmodelled(text: string): string[] {
+  return UNMODELLED_FILTERS.filter(f => f.patterns.some(p => p.test(text))).map(f => f.label);
+}
+
 function detectMeasure(ws: readonly string[]): Measure | null {
   if (hasAny(ws, ["which source", "what source", "which channel", "where did most", "produced the most", "biggest source", "top source", "most enquiries", "most leads"])) return "ranking";
   if (hasAny(ws, ["increased", "increase", "decreased", "gone up", "gone down", "trend", "trending", "growing", "grown", "since the new", "since new", "up since", "down since", "compared to", "compared with", "up or down", "more or fewer", "improved"])) return "trend";
@@ -180,7 +236,7 @@ export function parseInformationQuestion(text: string, now: Date = new Date()): 
   const subject = detectSubject(ws);
   if (!measure || !subject) return null;
 
-  const status: "cold" | null = hasAny(ws, ["went cold", "gone cold", "go cold", "cold after", "stopped responding", "dropped off", "never came back", "did not respond"]) ? "cold" : null;
+  const status = detectStatus(ws);
   let channel = detectChannel(ws);
   // "cold leads" describes a state, not a channel; "cold leads from the
   // website" is website-channel leads that went cold or simply website leads.
@@ -193,9 +249,93 @@ export function parseInformationQuestion(text: string, now: Date = new Date()): 
     country: detectCountry(text),
     stage: detectStage(ws),
     status,
+    unmodelled: detectUnmodelled(text),
     groupBy: measure === "ranking" ? "channel" : null,
     trendAnchor: measure === "trend" ? (hasAny(ws, ["since the new site", "new site", "new website", "site went live", "went live", "relaunch"]) ? "since_new_site" : "over_period") : null,
     period: parsePeriod(text, now),
     original: text,
+  };
+}
+
+/**
+ * A follow-up, read against the question before it.
+ *
+ * Tom Arrington, 12 September 2026: an answer should be something you can
+ * continue, not a dead end you have to retype around. "And from Nigeria?"
+ * is a real question, but only next to what was asked first.
+ *
+ * The rule is inheritance, not replacement: a follow-up changes the
+ * dimensions it names and leaves every other one exactly as it was. The
+ * period matters most here. A follow-up that says nothing about time keeps
+ * the window already in force, because silently reverting to the default
+ * twelve months would change the answer without changing the question.
+ *
+ * A handful of phrases widen instead of narrow, so a person can undo a
+ * filter they set a moment ago rather than starting again.
+ *
+ * This never sees the client's idea of the earlier question. The route
+ * endpoint re-parses the earlier text server-side and passes the result
+ * here, so a thread cannot be used to smuggle in a question nobody asked.
+ */
+export type FollowUpParse =
+  | { kind: "question"; question: InformationQuestion }
+  | { kind: "not_a_follow_up"; reason: string };
+
+/** Phrases that remove a filter rather than adding one. */
+const CLEARS_CHANNEL = ["overall", "in total", "altogether", "all channels", "any channel", "all sources", "any source", "every source", "regardless of source", "from anywhere", "no matter where"];
+const CLEARS_COUNTRY = ["all countries", "any country", "every country", "anywhere", "regardless of country", "all nationalities"];
+
+export function parseFollowUpQuestion(text: string, previous: InformationQuestion, now: Date = new Date()): FollowUpParse {
+  if (isActionRequest(text)) {
+    return { kind: "not_a_follow_up", reason: "That asks for something to be produced rather than for a figure." };
+  }
+  const ws = words(text);
+
+  const measure = detectMeasure(ws);
+  const subject = detectSubject(ws);
+  const channel = detectChannel(ws);
+  const country = detectCountry(text);
+  const stage = detectStage(ws);
+  const status = detectStatus(ws);
+  const unmodelled = detectUnmodelled(text);
+  const period = parsePeriod(text, now);
+  const clearChannel = hasAny(ws, CLEARS_CHANNEL);
+  const clearCountry = hasAny(ws, CLEARS_COUNTRY);
+
+  const changesSomething =
+    measure !== null || subject !== null || channel !== null || country !== null ||
+    stage !== null || status !== null || unmodelled.length > 0 ||
+    !period.assumed || clearChannel || clearCountry;
+
+  if (!changesSomething) {
+    return {
+      kind: "not_a_follow_up",
+      reason: "I could not tell what to change about the previous question. Naming a period, a channel, a country or a stage is enough.",
+    };
+  }
+
+  const nextMeasure = measure ?? previous.measure;
+  return {
+    kind: "question",
+    question: {
+      measure: nextMeasure,
+      subject: subject ?? previous.subject,
+      // An explicit widening beats inheritance; a named channel beats both.
+      channel: channel ?? (clearChannel ? null : previous.channel),
+      country: country ?? (clearCountry ? null : previous.country),
+      stage: stage ?? previous.stage,
+      status: status ?? previous.status,
+      unmodelled: Array.from(new Set([...previous.unmodelled, ...unmodelled])),
+      groupBy: nextMeasure === "ranking" ? "channel" : null,
+      trendAnchor:
+        nextMeasure === "trend"
+          ? hasAny(ws, ["since the new site", "new site", "new website", "site went live", "went live", "relaunch"])
+            ? "since_new_site"
+            : (previous.trendAnchor ?? "over_period")
+          : null,
+      // Keep the window in force, label and all, unless this sentence names one.
+      period: period.assumed ? previous.period : period,
+      original: text,
+    },
   };
 }

@@ -34,7 +34,7 @@ import {
   type EvidenceRecord,
   type MiReader,
 } from "./evidence";
-import { parseInformationQuestion, type InformationQuestion, type Subject } from "./question";
+import { parseFollowUpQuestion, parseInformationQuestion, type InformationQuestion, type Subject } from "./question";
 
 /** The people a management-information gap is routed to for review. Named in the 5 September 2026 handover. */
 export const MI_HUMAN_OWNER = "Tim Hunt or Tom Arrington";
@@ -115,6 +115,43 @@ export interface ResolveInput {
   authMethod: AuditAuthMethod;
   /** Null when the session has no individual identity. Fails closed. */
   profile: StaffAccessProfile | null;
+  /**
+   * Earlier questions in the same thread, oldest first, as the person
+   * typed them. The route endpoint passes the text and this layer
+   * re-parses it, so a thread carries no structure the client invented.
+   */
+  priorRequests?: readonly string[];
+}
+
+/**
+ * The question this turn is really asking, given the ones before it.
+ *
+ * Each earlier turn is re-parsed and folded in, so a three-turn thread
+ * narrows the way the person meant rather than the way the last sentence
+ * reads on its own. A turn that cannot be read at all is skipped rather
+ * than allowed to reset the thread.
+ */
+export function questionForTurn(requestText: string, priorRequests: readonly string[], now: Date): InformationQuestion | null {
+  let carried: InformationQuestion | null = null;
+  for (const earlier of priorRequests) {
+    const parsed: InformationQuestion | null =
+      carried === null ? parseInformationQuestion(earlier, now) : foldFollowUp(earlier, carried, now);
+    if (parsed) carried = parsed;
+  }
+  if (carried === null) return parseInformationQuestion(requestText, now);
+  // A follow-up that stands on its own is read on its own; one that does
+  // not is read against the thread.
+  return foldFollowUp(requestText, carried, now) ?? parseInformationQuestion(requestText, now);
+}
+
+function foldFollowUp(text: string, previous: InformationQuestion, now: Date): InformationQuestion | null {
+  const standalone = parseInformationQuestion(text, now);
+  const followUp = parseFollowUpQuestion(text, previous, now);
+  if (followUp.kind !== "question") return standalone;
+  if (!standalone) return followUp.question;
+  // Both readings work. The follow-up wins, because a sentence typed under
+  // an answer is a continuation of it unless it names a different subject.
+  return followUp.question;
 }
 
 /** Which staff functional scope a subject sits in. Fail closed on anything unmapped. */
@@ -161,15 +198,47 @@ function defaultReaderConfigured(): boolean {
   return false;
 }
 
+/**
+ * States, rather than drops, a filter the question asked for and this
+ * layer cannot apply. The figure is kept: it is true, and a colleague who
+ * could only narrow it three ways out of four would say so and hand over
+ * what they had.
+ */
+export function applyUnmodelled(
+  resolution: Omit<InformationResolution, "question" | "recorded">,
+  q: InformationQuestion,
+): Omit<InformationResolution, "question" | "recorded"> {
+  if (q.unmodelled.length === 0) return resolution;
+  if (resolution.outcome !== "answered" && resolution.outcome !== "partial") return resolution;
+  const named = q.unmodelled.length === 1 ? q.unmodelled[0] : `${q.unmodelled.slice(0, -1).join(", ")} and ${q.unmodelled[q.unmodelled.length - 1]}`;
+  return {
+    ...resolution,
+    outcome: "partial",
+    gapType: "reporting_gap",
+    humanOwner: MI_HUMAN_OWNER,
+    answer:
+      `${resolution.answer} One part of your question I could not answer: you asked about ${named}, and WSA's CRM reporting ` +
+      `does not record that in a form I can filter on, so the figure above covers everything else you asked for but not that. ` +
+      `I have recorded it as a reporting gap for ${MI_HUMAN_OWNER} rather than leaving it out silently.`,
+  };
+}
+
 export async function resolveInformationQuestion(input: ResolveInput, deps: ResolveDeps = {}): Promise<InformationResolution> {
   const now = deps.now ?? new Date();
   const record = deps.record ?? defaultRecord;
-  const q = parseInformationQuestion(input.requestText, now);
+  const q = questionForTurn(input.requestText, input.priorRequests ?? [], now);
   if (!q) {
     return { outcome: "not_information", gapType: "none", answer: "", coverage: null, sourcesChecked: [], evidenceAttempted: false, humanOwner: null, recorded: false, question: null };
   }
 
-  const finish = async (partial: Omit<InformationResolution, "question" | "recorded">): Promise<InformationResolution> => {
+  const finish = async (raw: Omit<InformationResolution, "question" | "recorded">): Promise<InformationResolution> => {
+    // A figure that answers a wider question than the one asked is not an
+    // answer. Wherever the parser could not apply a filter the person
+    // clearly stated, the count still stands but it is presented as what it
+    // is, and the missing dimension is recorded as a reporting gap rather
+    // than quietly forgotten. Applied here, once, so no answer path can
+    // route around it.
+    const partial = applyUnmodelled(raw, q);
     const recorded = await record({
       requestText: input.requestText,
       staffUserId: input.staffUserId,

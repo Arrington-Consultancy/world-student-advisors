@@ -1313,7 +1313,17 @@ export const appRouter = router({
       }),
 
     route: publicProcedure
-      .input(z.object({ token: z.string(), request: z.string().min(1).max(500) }))
+      .input(z.object({
+        token: z.string(),
+        request: z.string().min(1).max(500),
+        /**
+         * Earlier questions in this thread, oldest first, as typed. Text
+         * only: the server re-parses every turn, so a client cannot hand
+         * the resolver a question nobody asked. Bounded so a thread cannot
+         * grow into an expensive request.
+         */
+        priorRequests: z.array(z.string().min(1).max(500)).max(6).optional(),
+      }))
       .query(async ({ input }) => {
         const session = await resolveStaffSession(input.token);
         let result = await routeStaffRequestAssisted(input.request);
@@ -1322,10 +1332,16 @@ export const appRouter = router({
         // Resolution first. A management-information question is answered
         // here, from the authorised sources, under the signed-in staff
         // member's own permissions, before anyone is told it is unavailable.
-        if (result.informationRequest) {
+        // A follow-up is rarely a recognisable question on its own: "and
+        // from Nigeria?" carries no subject and no measure. Inside a thread
+        // the resolver is given the chance to read it against what came
+        // before, and it returns not_information when it cannot, so this
+        // still fails closed for anything that is not a figure question.
+        const inThread = (input.priorRequests?.length ?? 0) > 0;
+        if (result.informationRequest || inThread) {
           const profile = staffUserId === null ? null : await resolveStaffAccessProfile(staffUserId).then(r => (r.resolved ? r.profile : null));
           const resolution = await resolveInformationQuestion(
-            { requestText: input.request, staffUserId, authMethod: session.authMethod, profile },
+            { requestText: input.request, staffUserId, authMethod: session.authMethod, profile, priorRequests: input.priorRequests ?? [] },
             { source: miSource },
           );
           if (resolution.outcome !== "not_information") {

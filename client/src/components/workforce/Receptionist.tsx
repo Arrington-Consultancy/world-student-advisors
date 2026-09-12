@@ -107,37 +107,75 @@ function DirectoryCard({ worker, onOpen }: { worker: Worker; onOpen: (worker: Wo
   );
 }
 
+/** One answered turn of an information thread, kept so the thread reads as a thread. */
+interface InformationTurn {
+  question: string;
+  answer: string;
+  sourcesChecked: string[];
+}
+
 export function Receptionist({ token }: { token: string }) {
   const [request, setRequest] = useState("");
   const [submitted, setSubmitted] = useState("");
+  /**
+   * The information thread. Tom Arrington, 12 September 2026: an answer
+   * should be something you can continue. Earlier turns are kept here and
+   * sent back as plain text; the server re-parses every one of them, so the
+   * thread carries no structure this component invented.
+   */
+  const [turns, setTurns] = useState<InformationTurn[]>([]);
+  const [followUp, setFollowUp] = useState("");
   /** A specialist opened straight from the directory, bypassing nothing but the routing step. */
   const [direct, setDirect] = useState<Worker | null>(null);
   const [correcting, setCorrecting] = useState(false);
   const [corrected, setCorrected] = useState<string | null>(null);
 
   const routeQuery = trpc.workforce.route.useQuery(
-    { token, request: submitted },
+    { token, request: submitted, priorRequests: turns.map(t => t.question) },
     { enabled: submitted.length > 0 },
   );
   const workers = trpc.workforce.listWorkers.useQuery({ token });
   const correct = trpc.workforce.routingCorrect.useMutation();
 
+  const result = routeQuery.data;
+
+  /** A new question. Starts a new thread: nothing before it is carried. */
   const ask = (text: string) => {
     const trimmed = text.trim();
     if (!trimmed) return;
     setRequest(trimmed);
     setSubmitted(trimmed);
+    setTurns([]);
+    setFollowUp("");
     setDirect(null);
     setCorrecting(false);
     setCorrected(null);
+  };
+
+  /**
+   * A follow-up. The answer on screen moves into the thread and the new
+   * sentence is asked against it, so "and from Nigeria?" keeps the subject,
+   * the status and above all the period already in force.
+   */
+  const askFollowUp = (e: FormEvent) => {
+    e.preventDefault();
+    const trimmed = followUp.trim();
+    if (!trimmed) return;
+    const answered = result?.informationAnswer;
+    // A turn that produced an answer joins the thread. One that could not
+    // be read does not, so a rephrase is asked against the last figure
+    // rather than against a sentence nothing came back from.
+    if (answered) {
+      setTurns(t => [...t, { question: submitted, answer: answered.answer, sourcesChecked: answered.sourcesChecked }]);
+    }
+    setSubmitted(trimmed);
+    setFollowUp("");
   };
 
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
     ask(request);
   };
-
-  const result = routeQuery.data;
 
   /**
    * The staff member says Reception got it wrong, and names who should have
@@ -262,17 +300,76 @@ export function Receptionist({ token }: { token: string }) {
       {/* An information question, looked into and answered here. Server-composed
           text from the records the signed-in person is allowed to see; never a
           raw record and never a governance explanation. */}
-      {result?.informationAnswer && !direct && (
+      {(result?.informationAnswer || turns.length > 0) && !direct && (
         <article className="mt-6 overflow-hidden rounded-2xl border border-wsa-navy/12 bg-white shadow-sm">
-          <p className="border-b border-wsa-navy/10 bg-wsa-warm-white px-5 py-3 text-sm text-gray-600">
-            You asked: <span className="text-wsa-navy">“{submitted}”</span>
-          </p>
-          <div className="p-5">
-            <p className="text-base leading-relaxed text-wsa-navy">{result.informationAnswer.answer}</p>
-            {result.informationAnswer.sourcesChecked.length > 0 && (
-              <p className="mt-3 text-sm text-gray-500">Checked: {result.informationAnswer.sourcesChecked.join(", ")}.</p>
-            )}
-          </div>
+          {/* Everything already answered in this thread, so the figures
+              stay on screen while the question is narrowed. */}
+          {turns.map((t, i) => (
+            <div key={`${i}-${t.question}`} className="border-b border-wsa-navy/10">
+              <p className="bg-wsa-warm-white px-5 py-3 text-sm text-gray-600">
+                You asked: <span className="text-wsa-navy">“{t.question}”</span>
+              </p>
+              <div className="px-5 py-4">
+                <p className="text-base leading-relaxed text-gray-600">{t.answer}</p>
+              </div>
+            </div>
+          ))}
+
+          {result?.informationAnswer && (
+            <>
+              <p className="border-b border-wsa-navy/10 bg-wsa-warm-white px-5 py-3 text-sm text-gray-600">
+                You asked: <span className="text-wsa-navy">“{submitted}”</span>
+              </p>
+              <div className="p-5">
+                <p className="text-base leading-relaxed text-wsa-navy">{result.informationAnswer.answer}</p>
+                {result.informationAnswer.sourcesChecked.length > 0 && (
+                  <p className="mt-3 text-sm text-gray-500">Checked: {result.informationAnswer.sourcesChecked.join(", ")}.</p>
+                )}
+              </div>
+            </>
+          )}
+
+          {/* Continue the thread. A follow-up keeps the subject, the
+              filters and the period already in force and changes only what
+              it names, so a person can narrow a figure the way they would
+              in conversation rather than retyping the whole question. */}
+          {result && !result.informationAnswer && turns.length > 0 && (
+            <div className="border-b border-wsa-navy/10 bg-amber-50/70 px-5 py-4">
+              <p className="text-base leading-relaxed text-amber-900">
+                I could not read “{submitted}” as a follow-up to the figures above. Naming a period, a channel, a
+                country or a stage is enough, for example “and from Nigeria?” or “what about last quarter?”.
+              </p>
+            </div>
+          )}
+
+          {(result?.informationAnswer || turns.length > 0) && (
+            <form onSubmit={askFollowUp} className="border-t border-wsa-navy/10 bg-wsa-stone/50 px-5 py-4">
+              <label htmlFor="reception-follow-up" className="sr-only">
+                Ask a follow-up question
+              </label>
+              <div className="flex items-center gap-2">
+                <input
+                  id="reception-follow-up"
+                  value={followUp}
+                  onChange={e => setFollowUp(e.target.value)}
+                  placeholder="Ask a follow-up, such as “and from Nigeria?”"
+                  autoComplete="off"
+                  className="min-w-0 flex-1 rounded-xl border border-wsa-navy/15 bg-white px-4 py-2.5 text-base text-wsa-navy placeholder:text-gray-400 focus:border-wsa-red/60 focus:outline-none"
+                />
+                <button
+                  type="submit"
+                  disabled={followUp.trim().length === 0 || routeQuery.isFetching}
+                  className="flex shrink-0 items-center gap-1.5 rounded-xl bg-wsa-navy px-4 py-2.5 text-base font-medium text-white transition hover:bg-wsa-navy/90 disabled:cursor-not-allowed disabled:opacity-40"
+                >
+                  {routeQuery.isFetching ? "Checking…" : "Ask"}
+                  {!routeQuery.isFetching && <CornerDownLeft className="h-3.5 w-3.5" aria-hidden />}
+                </button>
+              </div>
+              <p className="mt-2 text-sm text-gray-500">
+                This keeps the period and the filters above. To start again, use the box at the top.
+              </p>
+            </form>
+          )}
         </article>
       )}
 
@@ -357,7 +454,7 @@ export function Receptionist({ token }: { token: string }) {
         </article>
       )}
 
-      {result && !result.matched && !direct && !result.informationAnswer && (
+      {result && !result.matched && !direct && !result.informationAnswer && turns.length === 0 && (
         <div className="mt-6">
           <div className="rounded-2xl border border-wsa-navy/12 bg-white p-5">
             {/* Two different things reach this branch and the router now
