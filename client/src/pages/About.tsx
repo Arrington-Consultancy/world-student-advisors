@@ -75,7 +75,7 @@ export default function About() {
               <div className="space-y-8 lg:pt-8">
                 {[
                   { label: "Founded", value: "2012" },
-                  { label: "Certification", value: "British Council Certified Counsellors" },
+                  { label: "Training", value: "British Council UK knowledge-trained counsellors" },
                   { label: "Model", value: "One dedicated counsellor per student" },
                   { label: "Cost to students", value: "Free, funded by education partners" },
                   { label: "Offices", value: "United Kingdom, Kenya, Nigeria, Ghana" },
@@ -164,12 +164,12 @@ export default function About() {
             <div className="max-w-3xl mx-auto text-center">
               <p className="text-sm font-medium tracking-[0.2em] uppercase text-wsa-red mb-5">Certification</p>
               <img
-                src="/manus-storage/british_council_certified_b72a19c7.png"
-                alt="British Council Certified Counsellors"
+                src="/manus-storage/british_council_badge_694f3fc2.png"
+                alt="British Council UK knowledge-trained counsellors"
                 className="h-20 w-auto mx-auto mb-6"
               />
               <h2 className="text-2xl md:text-3xl font-semibold text-wsa-navy leading-[1.2] mb-6">
-                British Council Certified Counsellors
+                British Council UK knowledge-trained counsellors
               </h2>
               <p className="text-muted-foreground leading-relaxed max-w-2xl mx-auto">
                 This certification means WSA meets strict standards set by the British Council for ethical practice, accurate information, professional conduct, and student welfare. It is independently verified and regularly reviewed.

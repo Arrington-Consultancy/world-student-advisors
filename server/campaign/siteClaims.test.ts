@@ -17,6 +17,12 @@ const withoutComments = (src: string) =>
 const footerSrc = read("../../client/src/components/Footer.tsx");
 const footer = withoutComments(footerSrc);
 
+/** Every public page that named the British Council on 12 September 2026. */
+const PUBLIC_PAGES = ["Home", "About", "Counsellors", "Partners", "Privacy", "Terms", "NigeriaPostgraduate"];
+const pages = Object.fromEntries(
+  PUBLIC_PAGES.map(n => [n, withoutComments(read(`../../client/src/pages/${n}.tsx`))]),
+);
+
 describe("the site-wide footer makes no British Council claim the certificates do not support", () => {
   it("describes counsellors as UK knowledge-trained, the certificate's own words", () => {
     expect(footer).toContain("British Council UK knowledge-trained counsellors");
@@ -37,5 +43,46 @@ describe("the site-wide footer makes no British Council claim the certificates d
       expect(footerSrc).toMatch(/Grant Application of 17 June 2026/);
       expect(footerSrc).toMatch(/Incorporated 09 April 2015/);
     }
+  });
+});
+
+describe("the same rule holds on every public page, not only the footer", () => {
+  for (const name of PUBLIC_PAGES) {
+    it(`${name} never says British Council certified, accredited, recognised or endorsed`, () => {
+      expect(pages[name]).not.toMatch(/British Council (Certified|Accredited|Recognised|Endorsed)/i);
+      expect(pages[name]).not.toMatch(/(certified|accredited|recognised|endorsed) by the British Council/i);
+    });
+  }
+
+  it("uses the agreed wording wherever the British Council is named as a credential", () => {
+    for (const name of ["Home", "About", "Counsellors", "Partners", "Privacy", "Terms"]) {
+      expect(pages[name]).toContain("British Council UK knowledge-trained");
+    }
+  });
+
+  /**
+   * The per-counsellor badge is an individual claim, so it must stay gated
+   * on a per-person flag rather than being rendered for everyone.
+   */
+  it("shows the counsellor badge only for people flagged as holding a certificate", () => {
+    expect(pages.Counsellors).toMatch(/\{person\.britishCouncil && \(/);
+  });
+});
+
+describe("the public entry points outside the page set follow the same rule", () => {
+  const shell = withoutComments(read("../../client/src/components/PortalBrandShell.tsx"));
+  it("the Staff Portal sign-in shell does not say British Council recognised", () => {
+    expect(shell).not.toMatch(/British Council (Certified|Accredited|Recognised|Endorsed)/i);
+    expect(shell).toContain("British Council UK knowledge-trained");
+  });
+
+  /**
+   * The graphic british_council_certified_b72a19c7.png reads "BRITISH COUNCIL
+   * Certified Agent" in the image itself, so alt text cannot make it
+   * compliant. It stays in the repository but nothing may render it.
+   */
+  it("no page renders the 'Certified Agent' graphic", () => {
+    for (const name of PUBLIC_PAGES) expect(pages[name]).not.toContain("british_council_certified_b72a19c7");
+    expect(footer).not.toContain("british_council_certified_b72a19c7");
   });
 });

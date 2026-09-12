@@ -25,7 +25,7 @@ import { useState, useEffect, useCallback, useMemo } from "react";
 // whole — never rotate positions independently within a set.
 const BENEFIT_SETS = [
   [
-    "British Council Certified Counsellors",
+    "British Council UK knowledge-trained counsellors",
     "Your Own Dedicated Student Counsellor",
     "No Fees to Students or Families",
     "Application and Visa Guidance",
@@ -653,7 +653,7 @@ export default function Home() {
               },
               {
                 statement: "We recommend what's right",
-                detail: "British Council certified. We guide based on what's genuinely best for you, not what pays the highest commission. If studying abroad isn't the right choice, we'll say so."
+                detail: "British Council UK knowledge-trained counsellors. We guide based on what's genuinely best for you, not what pays the highest commission. If studying abroad isn't the right choice, we'll say so."
               },
               {
                 statement: "No fees. No pressure. No surprises.",
@@ -673,7 +673,7 @@ export default function Home() {
             <div className="mt-12 flex flex-col sm:flex-row items-center justify-center gap-8 text-white/60">
               <div className="flex items-center gap-3">
                 <img src="/manus-storage/british_council_badge_694f3fc2.png" alt="British Council" className="h-8 w-8" />
-                <span className="text-sm">British Council Certified</span>
+                <span className="text-sm">British Council UK knowledge-trained counsellors</span>
               </div>
               <span className="hidden sm:inline text-white/20">|</span>
               <div className="flex items-center gap-2">
