@@ -86,3 +86,21 @@ describe("the public entry points outside the page set follow the same rule", ()
     expect(footer).not.toContain("british_council_certified_b72a19c7");
   });
 });
+
+/**
+ * The meta description is what Google prints under every result and what
+ * a shared link shows, so it is the most-read sentence on the site. The
+ * same rule applies to it, and to the per-route descriptions in seo.ts.
+ */
+describe("the site's search and social metadata follow the same rule", () => {
+  const seo = withoutComments(read("../../shared/seo.ts"));
+  const indexHtml = read("../../client/index.html");
+  const bad = /British Council (Certified|Accredited|Recognised|Endorsed)|(certified|accredited|recognised|endorsed) by the British Council/i;
+  it("no route description says British Council certified", () => {
+    expect(seo).not.toMatch(bad);
+  });
+  it("index.html meta, keywords, Open Graph and Twitter descriptions do not either", () => {
+    expect(indexHtml).not.toMatch(bad);
+    expect(indexHtml).toMatch(/og:description" content="British Council UK knowledge-trained counsellors/);
+  });
+});

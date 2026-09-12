@@ -8,7 +8,7 @@ export const SITE_ORIGIN = "https://www.worldstudentadvisors.com";
 export const DEFAULT_SEO: SeoEntry = {
   title: "World Student Advisors: Study Abroad with a Personal Counsellor",
   description:
-    "World Student Advisors: British Council certified counsellors helping international students from Africa and beyond study in the UK, Canada, and Europe. Free personal counsellor guidance from first enquiry to enrolment.",
+    "World Student Advisors: British Council UK knowledge-trained counsellors helping international students from Africa and beyond study in the UK, Canada, and Europe. Free personal counsellor guidance from first enquiry to enrolment.",
 };
 
 export const SEO_MAP: Record<string, SeoEntry> = {
@@ -16,7 +16,7 @@ export const SEO_MAP: Record<string, SeoEntry> = {
   "/about": {
     title: "About Us | World Student Advisors",
     description:
-      "Meet the WorldStudentAdvisors team: British Council certified counsellors giving every student a named personal counsellor, not a chatbot or call centre.",
+      "Meet the WorldStudentAdvisors team: British Council UK knowledge-trained counsellors giving every student a named personal counsellor, not a chatbot or call centre.",
   },
   "/study-options": {
     title: "Study Options | World Student Advisors",
@@ -66,7 +66,7 @@ export const SEO_MAP: Record<string, SeoEntry> = {
   "/counsellors": {
     title: "Our Counsellors | World Student Advisors",
     description:
-      "Meet WorldStudentAdvisors' team of British Council certified counsellors across the UK, Kenya, Nigeria, Ghana, Angola, and Malawi.",
+      "Meet WorldStudentAdvisors' team of British Council UK knowledge-trained counsellors across the UK, Kenya, Nigeria, Ghana, Angola, and Malawi.",
   },
   "/student-support-library": {
     title: "Student Support Library | World Student Advisors",
