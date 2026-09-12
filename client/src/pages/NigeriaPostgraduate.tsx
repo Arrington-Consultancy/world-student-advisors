@@ -21,10 +21,11 @@ import {
  * and the review of the same date. Deliberately simple: who it is for,
  * why WSA, who you will actually deal with, and one short form.
  *
- * NOT FOR PAID TRAFFIC YET. The controlled Google Ads brief of 15 August
- * 2026 covers taught Master's only, and this page follows the wider
- * MPhil/MRes/PhD direction. The route is left out of the sitemap and the
- * prerender list, and carries noindex, until that is reconciled.
+ * NOT FOR PAID TRAFFIC YET. The scope conflict that blocked this page is
+ * closed: the controlled Google Ads brief was reissued as version 2.0 on
+ * 12 September 2026 covering Taught Master's, MPhil, MRes and PhD. What
+ * remains is Tom's decision to launch. Until he takes it the route stays
+ * out of the sitemap and the prerender list and carries noindex.
  *
  * The short form does not create leads itself. It hands what the student
  * typed to the existing /contact signup, which is the one controlled path
@@ -213,11 +214,11 @@ export default function NigeriaPostgraduate() {
   return (
     // The marketing header is fixed, so the page starts below it.
     <main className="bg-wsa-warm-white pt-24 lg:pt-28">
-      {/* Draft banner. Removed when the campaign scope is reconciled. */}
+      {/* Draft banner. Removed when Tom approves the page for launch. */}
       <div className="border-y border-amber-300 bg-amber-50 px-4 py-2.5 text-center">
         <p className="mx-auto max-w-3xl text-sm leading-relaxed text-amber-900">
-          <span className="font-semibold">Working draft.</span> Not published for paid traffic. The controlled Google Ads
-          brief covers taught Master&rsquo;s only and needs reconciling with the MPhil, MRes and PhD scope first.
+          <span className="font-semibold">Working draft.</span> Not published for paid traffic, pending approval to
+          launch. The controlled Google Ads brief now covers Taught Master&rsquo;s, MPhil, MRes and PhD.
         </p>
       </div>
 

@@ -27,13 +27,22 @@ export { CAMPAIGN_DESTINATIONS, CAMPAIGN_PROGRAMMES };
 
 /**
  * The approved scope, confirmed by Tom Arrington on 12 September 2026:
- * Taught Master's, MPhil, MRes and PhD. Wider than the controlled Google
- * Ads brief of 15 August 2026, which covers taught Master's only, so the
- * brief still has to be reconciled before paid traffic runs.
+ * Taught Master's, MPhil, MRes and PhD.
+ *
+ * The controlled Google Ads brief of 15 August 2026 covered taught
+ * Master's only and excluded MRes, MPhil and PhD by name. That conflict
+ * was the page's one hard launch blocker, and it is now closed: the brief
+ * was reissued as version 2.0 on 12 September 2026 to the four-programme
+ * scope, and filed in 11_SOCIAL_MEDIA/01_CAMPAIGNS. The 15 August document
+ * remains in place unchanged as the superseded record.
+ *
+ * The page stays a draft, because "the brief no longer contradicts it" is
+ * not the same decision as "launch it". That one is Tom's.
  */
-export const SCOPE_CONFLICT_NOTE =
-  "The controlled Google Ads brief of 15 August 2026 covers taught Master's only and excludes MRes, MPhil and PhD. " +
-  "Tom Arrington confirmed the wider scope for this page on 12 September 2026. The brief must be reconciled before paid traffic runs.";
+export const SCOPE_STATUS_NOTE =
+  "Campaign scope: Taught Master's, MPhil, MRes and PhD, confirmed by Tom Arrington on 12 September 2026. " +
+  "The controlled Google Ads brief was reissued as version 2.0 on the same date to match that scope, " +
+  "superseding the taught Master's only brief of 15 August 2026. The page remains a working draft until Tom approves launch.";
 
 export const OTHER_DESTINATIONS_NOTE =
   "Other European destinations may be discussed with your counsellor. We do not treat Europe as a single country.";

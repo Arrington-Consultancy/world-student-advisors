@@ -158,6 +158,33 @@ describe("an unlaunched campaign page cannot be indexed or crawled into", () => 
     expect(page).toMatch(/Working draft/);
     expect(page).toMatch(/Not published for paid traffic/);
   });
+
+  /**
+   * The banner's reason for the draft is load-bearing, not decoration. It
+   * told readers the Google Ads brief contradicted this page's scope. That
+   * conflict was closed on 12 September 2026 when the brief was reissued at
+   * version 2.0, so the banner would now be stating a blocker that no
+   * longer exists: a false statement, on the one element of the page whose
+   * whole job is to be true about the page's status.
+   */
+  it("does not still claim the Google Ads brief conflicts with this page", () => {
+    expect(page).not.toMatch(/brief covers taught Master/i);
+    expect(page).not.toMatch(/needs reconciling/i);
+  });
+
+  it("names the four-programme scope the reconciled brief now covers", () => {
+    expect(page).toMatch(/brief now covers Taught Master/i);
+    for (const label of ["MPhil", "MRes", "PhD"]) expect(page).toContain(label);
+  });
+
+  /**
+   * A reconciled brief is not permission to launch. If the banner ever
+   * stops naming what is actually outstanding, the page reads as finished
+   * while noindex silently keeps it dark.
+   */
+  it("still names approval to launch as what the page is waiting on", () => {
+    expect(page).toMatch(/pending approval to\s+launch/i);
+  });
 });
 
 describe("the short form hands over to the one controlled lead path", () => {
