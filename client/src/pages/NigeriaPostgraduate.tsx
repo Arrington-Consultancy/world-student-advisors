@@ -368,7 +368,8 @@ export default function NigeriaPostgraduate() {
       {/* ── Final CTA ───────────────────────────────────────────── */}
       <section className="bg-wsa-navy px-4 py-12 sm:px-6 lg:py-16">
         <div className="mx-auto grid max-w-6xl items-center gap-8 lg:grid-cols-[1fr_minmax(320px,420px)]">
-          <div>
+          {/* min-w-0 for the same reason as the hero cells above. */}
+          <div className="min-w-0">
             <p className="flex items-center gap-2.5">
               <NigerianFlag className="h-4 w-6" />
               <span className="text-sm font-semibold uppercase tracking-wider text-white/70">For Nigerian graduates</span>
@@ -404,7 +405,7 @@ export default function NigeriaPostgraduate() {
               </div>
             </div>
           </div>
-          <div className="rounded-2xl bg-white p-5 shadow-sm">
+          <div className="min-w-0 rounded-2xl bg-white p-5 shadow-sm">
             <EnquiryForm id="footer-form" />
           </div>
         </div>
