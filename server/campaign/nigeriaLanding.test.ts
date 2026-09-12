@@ -1,8 +1,12 @@
 import { describe, it, expect } from "vitest";
 import { readFileSync } from "fs";
 import {
+  CAMPAIGN_DESTINATIONS,
+  CAMPAIGN_PROGRAMMES,
   DESIRED_LEVEL_VALUES,
   DESTINATION_VALUES,
+  PIPEDRIVE_CAMPAIGN_OPTION_IDS,
+  PIPEDRIVE_OPTION_GAPS,
   isDesiredLevelValue,
   isDestinationValue,
 } from "../../shared/studentEnquiryOptions";
@@ -43,6 +47,7 @@ const content = withoutComments(contentSrc)
   .slice(0, withoutComments(contentSrc).indexOf("EVIDENCE_NEEDED"))
   .replace(/source: "[^"]*"/g, "");
 const options = read("../../shared/studentEnquiryOptions.ts");
+const pipedrive = read("../../server/pipedrive.ts");
 const contact = read("../../client/src/pages/Contact.tsx");
 const sitemap = read("../../client/public/sitemap.xml");
 const prerender = read("../../shared/prerenderRoutes.ts");
@@ -93,9 +98,11 @@ describe("nothing on the page claims what WSA cannot evidence", () => {
   });
 
   it("does not present Europe as a country, and leads with the UK", () => {
-    const names = Array.from(content.matchAll(/name: "([^"]+)", emphasis/g)).map(m => m[1]);
-    expect(names).not.toContain("Europe");
-    expect(names[0]).toBe("United Kingdom");
+    const labels = CAMPAIGN_DESTINATIONS.map(d => d.label);
+    expect(labels).not.toContain("Europe");
+    expect(labels[0]).toBe("United Kingdom");
+    // "Other European destinations" is allowed as a note, a bare "Europe" is not.
+    expect(content).toContain("We do not treat Europe as a single country");
   });
 
   it("publishes no phone number until one is verified", () => {
@@ -130,9 +137,8 @@ describe("the short form hands over to the one controlled lead path", () => {
   });
 
   it("only ever emits values the signup form accepts", () => {
-    const emitted = Array.from(contentSrc.matchAll(/recordedAs: "([^"]+)" \}/g)).map(m => m[1]);
-    expect(emitted.length).toBeGreaterThan(0);
-    for (const v of emitted) expect(isDesiredLevelValue(v) || isDestinationValue(v)).toBe(true);
+    for (const p of CAMPAIGN_PROGRAMMES) expect(isDesiredLevelValue(p.value)).toBe(true);
+    for (const d of CAMPAIGN_DESTINATIONS) expect(isDestinationValue(d.value)).toBe(true);
   });
 
   it("the signup form accepts a prefill only from its own option list", () => {
@@ -148,55 +154,127 @@ describe("the short form hands over to the one controlled lead path", () => {
   });
 });
 
-describe("what the CRM will and will not be able to tell apart", () => {
-  it("records MRes, MPhil and taught Master's as one value, and says so", () => {
-    expect(options).toContain("cannot tell an MRes or an MPhil from a taught Master's");
-    const levels = Array.from(contentSrc.matchAll(/recordedAs: "(postgraduate|doctorate)" \}/g)).map(m => m[1]);
-    expect(levels.filter(v => v === "postgraduate")).toHaveLength(3);
-    expect(levels.filter(v => v === "doctorate")).toHaveLength(1);
+describe("the four programme types and three destinations stay separate into the CRM", () => {
+  it("the campaign scope is exactly the four Tom confirmed", () => {
+    expect(CAMPAIGN_PROGRAMMES.map(p => p.label)).toEqual(["Taught Master's", "MPhil", "MRes", "PhD"]);
+  });
+
+  it("each programme records as its own value, with nothing collapsed", () => {
+    const values = CAMPAIGN_PROGRAMMES.map(p => p.value);
+    expect(new Set(values).size).toBe(CAMPAIGN_PROGRAMMES.length);
+    expect(values).toEqual(["postgraduate", "mphil", "mres", "doctorate"]);
+    for (const v of values) expect(isDesiredLevelValue(v)).toBe(true);
+  });
+
+  it("destinations are UK, Germany and Canada, each recorded as itself", () => {
+    expect(CAMPAIGN_DESTINATIONS.map(d => d.label)).toEqual(["United Kingdom", "Germany", "Canada"]);
+    const values = CAMPAIGN_DESTINATIONS.map(d => d.value);
+    expect(values).toEqual(["uk", "germany", "canada"]);
+    expect(new Set(values).size).toBe(3);
+    for (const v of values) expect(isDestinationValue(v)).toBe(true);
+  });
+
+  it("Germany is never recorded as Europe", () => {
+    const germany = CAMPAIGN_DESTINATIONS.find(d => d.label === "Germany")!;
+    expect(germany.value).not.toBe("europe");
+    expect(germany.value).not.toBe("multiple");
+  });
+
+  it("the landing form hands over what the student picked, with no remapping", () => {
+    expect(page).toContain('params.set("desiredLevel", level)');
+    expect(page).toContain('params.set("preferredDestination", destination)');
+    // The old collapsing map is gone.
+    expect(page).not.toContain("recordedAs");
+  });
+
+  it("the signup form really offers every campaign value", () => {
+    for (const p of CAMPAIGN_PROGRAMMES) expect(contact).toContain(`value="${p.value}"`);
+    for (const d of CAMPAIGN_DESTINATIONS) expect(contact).toContain(`value="${d.value}"`);
+  });
+
+  it("every campaign value maps to its own Pipedrive option, in the live code", () => {
+    for (const p of CAMPAIGN_PROGRAMMES) {
+      const id = (PIPEDRIVE_CAMPAIGN_OPTION_IDS as Record<string, number>)[p.value];
+      expect(id, `${p.label} has no Pipedrive option id`).toBeGreaterThan(0);
+      expect(pipedrive).toMatch(new RegExp(`\\b${p.value}: ${id},`));
+    }
+    for (const d of CAMPAIGN_DESTINATIONS) {
+      const id = (PIPEDRIVE_CAMPAIGN_OPTION_IDS as Record<string, number>)[d.value];
+      expect(id, `${d.label} has no Pipedrive option id`).toBeGreaterThan(0);
+      expect(pipedrive).toMatch(new RegExp(`\\b${d.value}: ${id}\\b`));
+    }
+  });
+
+  it("no two campaign values share a Pipedrive option id", () => {
+    const ids = Object.values(PIPEDRIVE_CAMPAIGN_OPTION_IDS);
+    expect(new Set(ids).size).toBe(ids.length);
+    // Seven values: four programmes and three destinations.
+    expect(ids).toHaveLength(CAMPAIGN_PROGRAMMES.length + CAMPAIGN_DESTINATIONS.length);
+  });
+
+  it("Germany is not recorded as Other European Counties", () => {
+    const europe = 84;
+    expect(PIPEDRIVE_CAMPAIGN_OPTION_IDS.germany).not.toBe(europe);
+    expect(PIPEDRIVE_CAMPAIGN_OPTION_IDS.germany).toBe(315);
+  });
+
+  it("MRes is not recorded as a taught Master's", () => {
+    expect(PIPEDRIVE_CAMPAIGN_OPTION_IDS.mres).not.toBe(PIPEDRIVE_CAMPAIGN_OPTION_IDS.postgraduate);
+    expect(PIPEDRIVE_CAMPAIGN_OPTION_IDS.mres).toBe(314);
+  });
+
+  it("anything still listed as a Pipedrive gap is genuinely unmapped", () => {
+    // Empty today. If a future campaign adds one, it must not be quietly
+    // rounded to a neighbouring option instead.
+    for (const gap of PIPEDRIVE_OPTION_GAPS) {
+      expect(pipedrive).not.toMatch(new RegExp(`\\b${gap.value}: \\d+`));
+    }
+  });
+
+  it("refuses a value the form does not offer", () => {
+    for (const bad of ["masters", "phd", "deutschland", "nigeria", ""]) {
+      expect(isDesiredLevelValue(bad)).toBe(false);
+      expect(isDestinationValue(bad)).toBe(false);
+    }
   });
 
   it("every canonical value is one the live form really offers", () => {
     for (const v of DESIRED_LEVEL_VALUES) expect(contact).toContain(`value="${v}"`);
     for (const v of DESTINATION_VALUES) expect(contact).toContain(`value="${v}"`);
   });
-
-  it("refuses a value the form does not offer", () => {
-    for (const bad of ["mphil", "mres", "germany", "nigeria", ""]) {
-      expect(isDesiredLevelValue(bad)).toBe(false);
-      expect(isDestinationValue(bad)).toBe(false);
-    }
-  });
 });
 
-describe("a Nigerian number reaches the signup form in a form it can read", () => {
-  it("gives a local mobile its country code and drops the trunk zero", () => {
-    expect(toInternationalNigerianNumber("08012345678")).toBe("+2348012345678");
-    expect(toInternationalNigerianNumber("0801 234 5678")).toBe("+2348012345678");
-    expect(toInternationalNigerianNumber("8012345678")).toBe("+2348012345678");
+describe("a profile is published only on the evidence WSA holds", () => {
+  it("shows contact details only for the person who approved them in writing", () => {
+    const data = content.slice(content.indexOf("export const COUNSELLORS"));
+    expect((data.match(/contact: \{/g) ?? []).length).toBe(1);
+    expect((data.match(/contact: null/g) ?? []).length).toBe(1);
+    expect(content).toContain("Approved by Eldah Therone in writing, 12 September 2026.");
   });
 
-  it("leaves a number that already states its country alone", () => {
-    expect(toInternationalNigerianNumber("+2348012345678")).toBe("+2348012345678");
-    // A Nigerian now in the UK is not assumed to be dialling from Nigeria.
-    expect(toInternationalNigerianNumber("+447914797830")).toBe("+447914797830");
-    expect(toInternationalNigerianNumber("+44 7914 797830")).toBe("+447914797830");
+  it("uses the verified number, email and job title from that approval", () => {
+    expect(content).toContain("+44 7470 689 849");
+    expect(content).toContain("Eldah@WorldStudentAdvisors.com");
+    expect(content).toContain('role: "Student Counsellor"');
+    expect(content).toContain("https://wa.me/447470689849");
   });
 
-  it("understands 00 and a bare 234 prefix", () => {
-    expect(toInternationalNigerianNumber("002348012345678")).toBe("+2348012345678");
-    expect(toInternationalNigerianNumber("2348012345678")).toBe("+2348012345678");
+  it("states Eldah's certificate exactly as the certificate does", () => {
+    expect(content).toContain("28 April 2027");
+    expect(content).toContain("67976");
   });
 
-  it("drops a value it cannot make sense of rather than passing on a mangled one", () => {
-    for (const bad of ["", "   ", "12", "0", "+", "+123", "abc", "080123"]) {
-      expect(toInternationalNigerianNumber(bad)).toBeNull();
-    }
+  it("gives Babatunde no credential, because none is held", () => {
+    const data = content.slice(content.indexOf("export const COUNSELLORS"));
+    const babatunde = data.slice(data.indexOf("Babatunde"));
+    expect(babatunde).toContain("credential: null");
+    expect(babatunde).not.toContain("British Council");
   });
 
-  it("never produces the +08 the international field read before", () => {
-    for (const input of ["08012345678", "0703 111 2222", "09099999999"]) {
-      expect(toInternationalNigerianNumber(input)).not.toMatch(/^\+0/);
-    }
+  it("publishes no phone number other than the approved one", () => {
+    const numbers = Array.from(page.matchAll(/\+\d[\d\s]{7,}/g)).map(m => m[0].trim());
+    expect(numbers).toEqual([]);
+    const inContent = Array.from(content.matchAll(/\+\d[\d\s]{7,}/g)).map(m => m[0].trim());
+    expect(inContent.every(n => n.replace(/\s/g, "") === "+447470689849")).toBe(true);
   });
 });

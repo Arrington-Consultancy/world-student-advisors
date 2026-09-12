@@ -493,8 +493,15 @@ function StudentForm() {
               <option value="undergraduate">Undergraduate (Bachelor's)</option>
               <option value="top-up">Top-up Degree</option>
               <option value="pre-masters">Pre-Master's</option>
-              <option value="postgraduate">Postgraduate (Master's)</option>
-              <option value="doctorate">Doctorate (PhD)</option>
+              {/* The four postgraduate routes stay four values so each can be
+                  measured. Tom Arrington, 12 September 2026. "postgraduate"
+                  carries Taught Master's because that is the value the live
+                  form has always used and it already maps to Pipedrive's
+                  Taught Master's option; renaming it would orphan records. */}
+              <option value="postgraduate">Taught Master's</option>
+              <option value="mphil">MPhil</option>
+              <option value="mres">MRes</option>
+              <option value="doctorate">PhD / Doctorate</option>
               <option value="boarding">Boarding School</option>
               <option value="language">Language Programme</option>
               <option value="summer">Summer Programme</option>
@@ -558,9 +565,11 @@ function StudentForm() {
             >
               <option value="">Select...</option>
               <option value="uk">United Kingdom</option>
+              <option value="germany">Germany</option>
               <option value="usa">United States</option>
               <option value="canada">Canada</option>
-              <option value="europe">Europe</option>
+              {/* Not "Europe": a continent is not a destination choice. */}
+              <option value="europe">Other European destinations</option>
               <option value="multiple">Multiple / Not sure</option>
             </select>
             {errors.preferredDestination && <p className="text-xs text-red-600 mt-1">{errors.preferredDestination}</p>}

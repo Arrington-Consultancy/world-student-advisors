@@ -10,63 +10,30 @@
  * of them appear here. A claim arrives on this page only when a WSA
  * record supports it, and `EVIDENCE_NEEDED` lists what is still waiting.
  *
- * The British Council wording is deliberate and narrow. The certificate
+ * The British Council wording is deliberate and narrow. Each certificate
  * in SharePoint states, in the British Council's own words, that it "does
  * not formally endorse, accredit or validate agents and counsellors" and
  * awards the certificate to individuals for their knowledge of the UK as
  * a study destination. So the page credits the individual, never WSA, and
  * shows that sentence beside the credential.
  */
+import {
+  CAMPAIGN_DESTINATIONS,
+  CAMPAIGN_PROGRAMMES,
+  type DestinationValue,
+} from "@shared/studentEnquiryOptions";
 
-import type { DesiredLevelValue, DestinationValue } from "@shared/studentEnquiryOptions";
-
-export type ProgrammeLevel = "taught_masters" | "mres" | "mphil" | "phd";
+export { CAMPAIGN_DESTINATIONS, CAMPAIGN_PROGRAMMES };
 
 /**
- * The scope Tom asked for on 12 September 2026. It is wider than the
- * controlled Google Ads brief of 15 August 2026, which covers taught
- * Master's only. That conflict is unresolved, so this page is a working
- * draft and must not take paid traffic until the brief is reconciled.
+ * The approved scope, confirmed by Tom Arrington on 12 September 2026:
+ * Taught Master's, MPhil, MRes and PhD. Wider than the controlled Google
+ * Ads brief of 15 August 2026, which covers taught Master's only, so the
+ * brief still has to be reconciled before paid traffic runs.
  */
-export const PROGRAMME_SCOPE: ReadonlyArray<{
-  id: ProgrammeLevel;
-  label: string;
-  note: string;
-  /**
-   * What the signup form will actually record. The form has no value for
-   * MRes or MPhil, so all three Master's routes are recorded as
-   * "postgraduate" and the distinction is lost on the way into the CRM.
-   * That is a reporting gap, not a mapping decision to be buried here.
-   */
-  recordedAs: DesiredLevelValue;
-}> = Object.freeze([
-  { id: "taught_masters", label: "Taught Master's", note: "MA, MSc and MBA programmes", recordedAs: "postgraduate" },
-  { id: "mres", label: "MRes", note: "Master's by research", recordedAs: "postgraduate" },
-  { id: "mphil", label: "MPhil", note: "Research degree, often a route to PhD", recordedAs: "postgraduate" },
-  { id: "phd", label: "PhD", note: "Doctoral research", recordedAs: "doctorate" },
-]);
-
-/** True when the CRM cannot tell two advertised programmes apart. */
-export function scopeIsDistinguishableInCrm(): boolean {
-  return new Set(PROGRAMME_SCOPE.map(p => p.recordedAs)).size === PROGRAMME_SCOPE.length;
-}
-
 export const SCOPE_CONFLICT_NOTE =
   "The controlled Google Ads brief of 15 August 2026 covers taught Master's only and excludes MRes, MPhil and PhD. " +
-  "This page follows Tom Arrington's wider direction of 12 September 2026. The brief must be reconciled before paid traffic runs.";
-
-/** UK first, then Germany and Canada. No thumbnails: the draft's flag strip made the page busy. */
-export const DESTINATIONS: ReadonlyArray<{
-  name: string;
-  emphasis: "primary" | "secondary";
-  note: string;
-  /** Germany has no value of its own on the signup form and lands in "europe". */
-  recordedAs: DestinationValue;
-}> = Object.freeze([
-  { name: "United Kingdom", emphasis: "primary", note: "Where most WSA postgraduate applicants go, and where we know the admissions and visa route best.", recordedAs: "uk" },
-  { name: "Germany", emphasis: "secondary", note: "Considered where the course and your funding position fit.", recordedAs: "europe" },
-  { name: "Canada", emphasis: "secondary", note: "Considered where the course and your funding position fit.", recordedAs: "canada" },
-]);
+  "Tom Arrington confirmed the wider scope for this page on 12 September 2026. The brief must be reconciled before paid traffic runs.";
 
 export const OTHER_DESTINATIONS_NOTE =
   "Other European destinations may be discussed with your counsellor. We do not treat Europe as a single country.";
@@ -111,6 +78,8 @@ export interface CounsellorProfile {
   role: string;
   location: string;
   photo: string;
+  /** Shown only where the person has approved it in writing. */
+  contact: { whatsapp: string; whatsappHref: string; email: string } | null;
   /** Present only where WSA holds the actual certificate. */
   credential: {
     label: string;
@@ -121,34 +90,66 @@ export interface CounsellorProfile {
     /** Null until the file is placed in the campaign location and cleared for publication. */
     href: string | null;
   } | null;
+  /** Where the consent to publish this profile is recorded. */
+  consentSource: string | null;
 }
 
 export const BRITISH_COUNCIL_DISCLAIMER =
   "The British Council does not formally endorse, accredit or validate agents and counsellors. " +
   "It awards this certificate to individuals for their knowledge and awareness of the UK as a study destination.";
 
+/**
+ * Eldah Therone confirmed in writing on 12 September 2026 that she is
+ * happy with the photograph, and that the telephone number, email address,
+ * job title and certificate displayed are correct. That email is filed at
+ * 11_SOCIAL_MEDIA/01_CAMPAIGNS/Eldah_Profile_Consent_and_Verified_Contact_12_Sep_2026.jpeg.
+ * Her contact details appear here because she approved them, and for no
+ * other reason.
+ *
+ * Babatunde Azeez is the Nigeria-based male counsellor. WSA holds his
+ * photograph, already published on /counsellors, but no British Council
+ * certificate and no written consent to publish contact details, so his
+ * card carries neither.
+ */
 export const COUNSELLORS: ReadonlyArray<CounsellorProfile> = Object.freeze([
   {
-    name: "Maryam Lawal",
-    role: "Director for Nigeria",
-    location: "Nigeria",
-    photo: "/manus-storage/maryam_lawal_52fa19ff.png",
+    name: "Eldah Therone",
+    role: "Student Counsellor",
+    location: "Nairobi, Kenya",
+    photo: "/manus-storage/eldah_therone_6c167959.jpg",
+    contact: {
+      whatsapp: "+44 7470 689 849",
+      whatsappHref: "https://wa.me/447470689849",
+      email: "Eldah@WorldStudentAdvisors.com",
+    },
     credential: {
       label: "British Council UK Agent and Counsellor Training, completed",
-      validUntil: "10 August 2028",
-      certificateCode: "116270",
+      validUntil: "28 April 2027",
+      certificateCode: "67976",
       disclaimer: BRITISH_COUNCIL_DISCLAIMER,
       href: null,
     },
+    consentSource: "Approved by Eldah Therone in writing, 12 September 2026.",
   },
   {
     name: "Babatunde Abdulia Azeez",
     role: "Senior Director for Nigeria",
     location: "Ibadan, Oyo State, Nigeria",
     photo: "/manus-storage/babatunde_azeez_1f9d8fb7.png",
+    contact: null,
     credential: null,
+    consentSource: null,
   },
 ]);
+
+/** The named help route, approved by the person who answers it. */
+export const HELP_CONTACT = Object.freeze({
+  name: "Eldah Therone",
+  role: "Student Counsellor",
+  whatsapp: "+44 7470 689 849",
+  whatsappHref: "https://wa.me/447470689849",
+  email: "Eldah@WorldStudentAdvisors.com",
+});
 
 /** The real library, already built and populated: 39 resources with podcasts and summaries. */
 export const LIBRARY = Object.freeze({
@@ -163,13 +164,15 @@ export const LIBRARY = Object.freeze({
  * a WSA record before it can be published.
  */
 export const EVIDENCE_NEEDED: ReadonlyArray<{ claim: string; why: string }> = Object.freeze([
-  { claim: "\"British Council recognised\" as a WSA organisational status", why: "The certificate WSA holds is an individual training award and explicitly says the British Council does not accredit or endorse agents. WSA business cards currently print \"Accredited by the British Council\", which the certificate contradicts." },
-  { claim: "\"Established 2012\"", why: "On the first-draft footer. No WSA incorporation or trading record has been cited for this page." },
+  { claim: "\"British Council recognised\" as a WSA organisational status", why: "The certificates WSA holds are individual training awards and explicitly say the British Council does not accredit or endorse agents. WSA business cards currently print \"Accredited by the British Council\", which the certificate contradicts, and the site-wide footer says \"British Council Certified Counsellors\". Both are outside this task." },
+  { claim: "\"Established 2012\"", why: "On the first-draft footer and on the site-wide footer. No WSA incorporation or trading record has been cited for this page." },
   { claim: "\"We will get back to you within 24 hours\"", why: "On the first-draft hero. A response-time promise needs a service standard WSA is willing to be held to." },
   { claim: "Student testimonials and outcome quotes", why: "The first draft carried two quoted students with photographs. No consented, attributable WSA testimonial has been supplied, so none appear." },
   { claim: "Any admission, visa or outcome success rate", why: "Not claimed anywhere on this page, and should not be added without evidence." },
-  { claim: "A published help phone number", why: "The direction allows Eldah's WSA number once verified from an authorised source. Not yet verified, so no number appears." },
+  { claim: "A British Council certificate for Babatunde Azeez", why: "None is held. His profile therefore shows no credential, and must not imply one." },
 ]);
+
+export const NIGERIA_DIALLING_CODE = "+234";
 
 /**
  * A Nigerian number as people actually write it, turned into the
@@ -187,8 +190,6 @@ export const EVIDENCE_NEEDED: ReadonlyArray<{ claim: string; why: string }> = Ob
  * a number that already states its country would be worse than doing
  * nothing. An empty or implausible value is dropped rather than passed on.
  */
-export const NIGERIA_DIALLING_CODE = "+234";
-
 export function toInternationalNigerianNumber(input: string): string | null {
   const trimmed = input.trim();
   if (!trimmed) return null;
@@ -208,3 +209,6 @@ export function toInternationalNigerianNumber(input: string): string | null {
   if (digits.startsWith("0")) digits = digits.slice(1);
   return digits.length >= 9 && digits.length <= 11 ? `${NIGERIA_DIALLING_CODE}${digits}` : null;
 }
+
+/** Destination values the page offers, plus the "help me decide" answer. */
+export const HELP_ME_DECIDE: DestinationValue = "multiple";

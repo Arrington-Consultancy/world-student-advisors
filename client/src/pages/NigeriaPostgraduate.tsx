@@ -1,15 +1,17 @@
 import { useState, type FormEvent } from "react";
 import { Link } from "wouter";
-import { ArrowRight, BadgeCheck, BookOpen, CheckCircle2, FileText, MessageSquare, ShieldCheck, UserRound } from "lucide-react";
+import { ArrowRight, BadgeCheck, BookOpen, CheckCircle2, FileText, Mail, MessageCircle, MessageSquare, ShieldCheck, UserRound } from "lucide-react";
 import {
   BENEFITS,
-  NIGERIA_DIALLING_CODE,
-  toInternationalNigerianNumber,
+  CAMPAIGN_DESTINATIONS,
+  CAMPAIGN_PROGRAMMES,
   COUNSELLORS,
-  DESTINATIONS,
+  HELP_CONTACT,
+  HELP_ME_DECIDE,
   LIBRARY,
+  NIGERIA_DIALLING_CODE,
   OTHER_DESTINATIONS_NOTE,
-  PROGRAMME_SCOPE,
+  toInternationalNigerianNumber,
 } from "@/lib/nigeriaLanding";
 
 /**
@@ -70,16 +72,11 @@ function EnquiryForm({ id }: { id: string }) {
     // at all. A mangled number is worse than a missing one.
     const international = toInternationalNigerianNumber(phone);
     if (international) params.set("phone", international);
-    // Translate to the values the signup form actually records, here and
-    // only here, so the page can offer MRes and MPhil as distinct choices
-    // even though the form cannot yet tell them apart.
-    const programme = PROGRAMME_SCOPE.find(p => p.id === level);
-    if (programme) params.set("desiredLevel", programme.recordedAs);
-    if (destination === "__any") params.set("preferredDestination", "multiple");
-    else {
-      const place = DESTINATIONS.find(d => d.name === destination);
-      if (place) params.set("preferredDestination", place.recordedAs);
-    }
+    // The value the student picked is the value that is recorded. Taught
+    // Master's, MPhil, MRes and PhD stay four things, and Germany stays
+    // Germany, all the way into the CRM.
+    if (level) params.set("desiredLevel", level);
+    if (destination) params.set("preferredDestination", destination);
     window.location.assign(`/contact?${params.toString()}#student-signup`);
   };
 
@@ -114,20 +111,17 @@ function EnquiryForm({ id }: { id: string }) {
       <label className="sr-only" htmlFor={`${id}-level`}>What you want to study</label>
       <select id={`${id}-level`} value={level} onChange={e => setLevel(e.target.value)} required className={`${field} ${level ? "" : "text-gray-400"}`}>
         <option value="">What do you want to study?</option>
-        {/* Keyed by the programme, not by what the form records: three of
-            these record as "postgraduate", so using that as the option value
-            would make picking MPhil display "Taught Master's". */}
-        {PROGRAMME_SCOPE.map(p => (
-          <option key={p.id} value={p.id}>{p.label}</option>
+        {CAMPAIGN_PROGRAMMES.map(p => (
+          <option key={p.value} value={p.value}>{p.label}</option>
         ))}
       </select>
       <label className="sr-only" htmlFor={`${id}-destination`}>Preferred destination</label>
       <select id={`${id}-destination`} value={destination} onChange={e => setDestination(e.target.value)} className={`${field} ${destination ? "" : "text-gray-400"}`}>
         <option value="">Preferred destination (optional)</option>
-        {DESTINATIONS.map(d => (
-          <option key={d.name} value={d.name}>{d.name}</option>
+        {CAMPAIGN_DESTINATIONS.map(d => (
+          <option key={d.value} value={d.value}>{d.label}</option>
         ))}
-        <option value="__any">Help me decide</option>
+        <option value={HELP_ME_DECIDE}>Help me decide</option>
       </select>
       <button
         type="submit"
@@ -167,6 +161,27 @@ function CounsellorCard({ person }: { person: (typeof COUNSELLORS)[number] }) {
           <p className="mt-0.5 text-sm text-gray-500">{person.location}</p>
         </div>
       </div>
+
+      {/* Contact details appear only for a person who has approved them in
+          writing. Babatunde has not, so his card shows none. */}
+      {person.contact && (
+        <div className="mt-4 flex flex-wrap gap-2">
+          <a
+            href={person.contact.whatsappHref}
+            className="inline-flex items-center gap-1.5 rounded-xl bg-[#128C7E] px-3.5 py-2 text-sm font-medium text-white transition hover:bg-[#0f7568]"
+          >
+            <MessageCircle className="h-4 w-4" aria-hidden />
+            WhatsApp {person.contact.whatsapp}
+          </a>
+          <a
+            href={`mailto:${person.contact.email}`}
+            className="inline-flex items-center gap-1.5 rounded-xl border border-wsa-navy/20 px-3.5 py-2 text-sm font-medium text-wsa-navy transition hover:border-wsa-red/50 hover:text-wsa-red"
+          >
+            <Mail className="h-4 w-4" aria-hidden />
+            Email
+          </a>
+        </div>
+      )}
 
       {person.credential && (
         <div className="mt-4 rounded-xl bg-wsa-stone/70 p-3.5">
@@ -225,8 +240,8 @@ export default function NigeriaPostgraduate() {
             </p>
 
             <ul className="mt-5 flex flex-wrap gap-2">
-              {PROGRAMME_SCOPE.map(p => (
-                <li key={p.id} className="rounded-full border border-wsa-navy/15 bg-white px-3.5 py-1.5 text-sm font-medium text-wsa-navy">
+              {CAMPAIGN_PROGRAMMES.map(p => (
+                <li key={p.value} className="rounded-full border border-wsa-navy/15 bg-white px-3.5 py-1.5 text-sm font-medium text-wsa-navy">
                   {p.label}
                 </li>
               ))}
@@ -296,11 +311,11 @@ export default function NigeriaPostgraduate() {
         <div className="mx-auto max-w-6xl">
           <h2 className="text-2xl font-bold tracking-tight text-wsa-navy sm:text-3xl">Where we place postgraduates</h2>
           <ul className="mt-6 space-y-3">
-            {DESTINATIONS.map(d => (
-              <li key={d.name} className="flex items-start gap-3">
+            {CAMPAIGN_DESTINATIONS.map(d => (
+              <li key={d.value} className="flex items-start gap-3">
                 <CheckCircle2 className={`mt-1 h-5 w-5 shrink-0 ${d.emphasis === "primary" ? "text-wsa-red" : "text-wsa-navy/35"}`} aria-hidden />
                 <p className="text-base leading-relaxed text-gray-700">
-                  <span className="font-semibold text-wsa-navy">{d.name}.</span> {d.note}
+                  <span className="font-semibold text-wsa-navy">{d.label}.</span> {d.note}
                 </p>
               </li>
             ))}
@@ -361,6 +376,30 @@ export default function NigeriaPostgraduate() {
             <p className="mt-3 max-w-xl text-lg leading-relaxed text-white/80">
               Tell us what you studied and what you want to do next. Your counsellor will take it from there.
             </p>
+            {/* The named help route. Eldah approved her number and email in
+                writing on 12 September 2026; nobody else's appear. */}
+            <div className="mt-6 rounded-2xl border border-white/15 bg-white/5 p-4">
+              <p className="text-sm uppercase tracking-wider text-white/60">Would rather just ask someone?</p>
+              <p className="mt-1.5 text-base text-white/90">
+                {HELP_CONTACT.name}, {HELP_CONTACT.role}, answers WhatsApp directly.
+              </p>
+              <div className="mt-3 flex flex-wrap gap-2">
+                <a
+                  href={HELP_CONTACT.whatsappHref}
+                  className="inline-flex items-center gap-1.5 rounded-xl bg-[#128C7E] px-4 py-2.5 text-base font-medium text-white transition hover:bg-[#0f7568]"
+                >
+                  <MessageCircle className="h-4 w-4" aria-hidden />
+                  {HELP_CONTACT.whatsapp}
+                </a>
+                <a
+                  href={`mailto:${HELP_CONTACT.email}`}
+                  className="inline-flex items-center gap-1.5 rounded-xl border border-white/25 px-4 py-2.5 text-base font-medium text-white transition hover:border-white/50"
+                >
+                  <Mail className="h-4 w-4" aria-hidden />
+                  Email Eldah
+                </a>
+              </div>
+            </div>
           </div>
           <div className="rounded-2xl bg-white p-5 shadow-sm">
             <EnquiryForm id="footer-form" />

@@ -138,11 +138,11 @@ const QUALIFICATION_MAP: Record<string, number> = {
  * their own option, so reporting can tell them apart. Tom Arrington,
  * 12 September 2026: do not collapse them.
  *
- * MRes has no entry because Pipedrive has no MRes option yet. It is left
- * unmapped on purpose rather than rounded to Taught Master's: a lead
- * recorded as the wrong programme is worse than one recorded as none, and
- * it is the mistake the destination comment below already warns about.
- * scripts/pipedrive-campaign-options.mjs adds the real option.
+ * MRes had no option until 12 September 2026, when option 314 was added
+ * (scripts/pipedrive-campaign-options.mjs, run and verified). Until then it
+ * was left unmapped rather than rounded to Taught Master's: a lead recorded
+ * as the wrong programme is worse than one recorded as none, which is the
+ * mistake the destination comment below still warns about.
  */
 const LEVEL_MAP: Record<string, number> = {
   foundation: 39, // International Foundation Program
@@ -151,6 +151,7 @@ const LEVEL_MAP: Record<string, number> = {
   "pre-masters": 261, // Pre Masters
   postgraduate: 43, // Taught Master's
   mphil: 44, // MPhil research degree
+  mres: 314, // MRes research degree (added 12 September 2026)
   doctorate: 45, // PhD Doctorate
   boarding: 38, // GCSE (closest — no dedicated boarding-school option)
   language: 46, // Other
@@ -197,10 +198,11 @@ const DESTINATION_MAP: Record<string, number> = {
   canada: 86, Canada: 86,
   europe: 84, Europe: 84, "Other European Counties": 84,
   multiple: 88, "Not Sure": 88, "Not Sure - Need Advice": 88,
-  // Germany is deliberately absent until Pipedrive has a Germany option.
-  // Recording it as "Other European Counties" would answer the question
+  // Germany is its own option (315, added 12 September 2026) rather than
+  // "Other European Counties". Recording it as a continent would answer
   // "did Germany work?" with a shrug, which is the whole reason Tom asked
   // for the destinations to stay separate.
+  germany: 315, Germany: 315,
   // No live "Australia" option exists in Pipedrive's Preferred Study
   // Destination field. "Australia" was removed from the public dropdown
   // (client/src/pages/Contact.tsx) rather than silently recording it as New

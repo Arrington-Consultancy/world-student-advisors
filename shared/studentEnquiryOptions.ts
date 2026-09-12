@@ -79,16 +79,33 @@ export const CAMPAIGN_DESTINATIONS: ReadonlyArray<{
 ]);
 
 /**
- * Values with no Pipedrive option of their own yet, and therefore no
- * mapping. Named here so the gap is visible rather than discovered later
- * as a hole in the reporting. Adding the option is a controlled change:
- * scripts/pipedrive-campaign-options.mjs, dry run first.
+ * Values with no Pipedrive option of their own, and therefore no mapping.
+ * Empty since 12 September 2026: MRes and Germany were the only two, and
+ * both now have real options (314 and 315), added and verified through
+ * scripts/pipedrive-campaign-options.mjs.
+ *
+ * It stays here, empty, on purpose. The next campaign that advertises
+ * something Pipedrive cannot record should list it here rather than round
+ * it to a neighbouring option, and a test asserts that anything listed
+ * here is genuinely absent from the Pipedrive maps.
  */
 export const PIPEDRIVE_OPTION_GAPS: ReadonlyArray<{
   field: "Desired Level of Study" | "Preferred Study Destination";
   value: string;
   optionLabel: string;
-}> = Object.freeze([
-  { field: "Desired Level of Study", value: "mres", optionLabel: "MRes research degree" },
-  { field: "Preferred Study Destination", value: "germany", optionLabel: "Germany" },
-]);
+}> = Object.freeze([]);
+
+/**
+ * Every campaign value and the Pipedrive option id it is recorded as.
+ * This is the measurement contract: four programmes, four ids; three
+ * destinations, three ids; no two sharing one.
+ */
+export const PIPEDRIVE_CAMPAIGN_OPTION_IDS = Object.freeze({
+  postgraduate: 43, // Taught Master's
+  mphil: 44, // MPhil research degree
+  mres: 314, // MRes research degree
+  doctorate: 45, // PhD Doctorate
+  uk: 78, // United Kingdom (UK)
+  germany: 315, // Germany
+  canada: 86, // Canada
+} as const);
