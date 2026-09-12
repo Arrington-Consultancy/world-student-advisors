@@ -5,7 +5,9 @@ name: Connector acceptance - selected-folder Google Drive (read only)
 # never-designated folders, the backup folder and anything named Arrington
 # are invisible, and that the worker gates refuse the wrong worker, the
 # wrong root and a shared-password session. Prints names, IDs, counts and
-# statuses only. Never prints a token and never prints file content.
+# statuses only. Never prints a token and never prints file content. Needs no
+# database: DATABASE_URL is unset for the run, so the gate decisions are pure
+# and no audit row is attempted against the internal host.
 # Auth: githubactionsprod, the production-scoped Railway Project Token.
 on:
   workflow_dispatch: {}
@@ -29,4 +31,5 @@ jobs:
         env:
           RAILWAY_TOKEN: ${{ secrets.githubactionsprod }}
         run: |
-          railway run --service "world-student-advisors" --environment "production" -- pnpm exec tsx scripts/drive-acceptance.ts
+          railway run --service "world-student-advisors" --environment "production" -- \
+            sh -c 'unset DATABASE_URL; pnpm exec tsx scripts/drive-acceptance.ts' 

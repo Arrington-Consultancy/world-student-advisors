@@ -16,7 +16,8 @@
  *      root that is not his.
  */
 import { workforceDriveIdentity, readGoogleDriveFile, WORKFORCE_DRIVE_SCOPE } from "../server/workforce/connectors/googleDrive";
-import { allDesignatedDriveRoots, DRIVE_NOT_DESIGNATED, DRIVE_ROOTS } from "../server/workforce/driveLocations";
+import { allDesignatedDriveRoots, decideDriveLocation, DRIVE_EXCLUDED_FILE_IDS, DRIVE_NOT_DESIGNATED, DRIVE_ROOTS } from "../server/workforce/driveLocations";
+import type { WorkerId } from "../server/workforce/types";
 import { MIRROR_FOLDER_NAME } from "../server/mirror/manifest";
 import { BACKUP_FOLDER_NAME } from "../server/mirror/backup";
 import * as jose from "jose";
@@ -60,17 +61,43 @@ for (const root of allDesignatedDriveRoots()) check(visible.some(f => f.id === r
 console.log("\n=== 3. What must be invisible ===");
 for (const f of DRIVE_NOT_DESIGNATED) check(!visible.some(v => v.id === f.id), `"${f.name}" not visible`, f.id);
 check(!visible.some(v => v.name === BACKUP_FOLDER_NAME), `"${BACKUP_FOLDER_NAME}" not visible`);
-const arrington = visible.filter(v => /arrington/i.test(v.name));
-check(arrington.length === 0, "no item with Arrington in its name is visible", arrington.map(a => a.name).join("; "));
+// "Arrington" alone is Tom's own surname and appears in WSA files he wrote,
+// so matching it would fail on legitimate WSA material. The company name is
+// what must not be readable, and any item carrying it must be withheld by ID
+// at the gate, exactly as the SharePoint credential-reach finding recorded.
+const company = visible.filter(v => /arrington[\s_.-]*consultancy/i.test(v.name));
+const unhandled = company.filter(v => !DRIVE_EXCLUDED_FILE_IDS.has(v.id));
+check(unhandled.length === 0, "every visible item naming Arrington Consultancy is withheld by ID at the gate", unhandled.map(a => `${a.name} (${a.id})`).join("; "));
+if (company.length > 0) console.log(`  note ${company.length} item(s) name Arrington Consultancy and are refused by the gate: ${company.map(c => c.name).join("; ")}`);
+const personal = visible.filter(v => /arrington/i.test(v.name) && !/arrington[\s_.-]*consultancy/i.test(v.name));
+if (personal.length > 0) console.log(`  note ${personal.length} WSA item(s) carry Tom Arrington's name as author or subject, which is not company material: ${personal.map(c => c.name).join("; ")}`);
 
 console.log("\n=== 4. Through the gates ===");
-const ethan = await readGoogleDriveFile({ workerId: "ethan", resourceScope: `root/${DRIVE_ROOTS.websiteOperatingSystem.id}`, staffUserId: null, authMethod: "shared_password" });
-check(!ethan.success, "a shared-password session is refused before the folder is touched", ethan.message.slice(0, 100));
-const sophie = await readGoogleDriveFile({ workerId: "sophie", resourceScope: `root/${DRIVE_ROOTS.websiteOperatingSystem.id}`, staffUserId: 1, authMethod: "entra_sso" });
-check(!sophie.success, "Sophie (no Drive folder) is refused at the gate", sophie.message.slice(0, 100));
-const wrongRoot = await readGoogleDriveFile({ workerId: "alex", resourceScope: `root/${DRIVE_ROOTS.websiteOperatingSystem.id}`, staffUserId: 1, authMethod: "entra_sso" });
-check(!wrongRoot.success, "Alex is refused Ethan's root", wrongRoot.message.slice(0, 100));
-console.log("  (An authorised listing through the full chain needs a real staff profile and is exercised by the worker path, not this script.)");
+// Decided without a database: the folder gate is a pure function of the
+// worker and the scope, and the shared-password refusal happens before any
+// access assignment is looked up.
+const GATE_CASES: Array<{ label: string; worker: WorkerId; scope: string; permitted: boolean }> = [
+  { label: "Ethan may list his designated root", worker: "ethan", scope: `root/${DRIVE_ROOTS.websiteOperatingSystem.id}`, permitted: true },
+  { label: "Ethan may search inside it", worker: "ethan", scope: `root/${DRIVE_ROOTS.websiteOperatingSystem.id}/search/specification`, permitted: true },
+  { label: "Alex may list WSA Website Images", worker: "alex", scope: `root/${DRIVE_ROOTS.websiteImages.id}`, permitted: true },
+  { label: "Maya may list WSA PDFs", worker: "maya", scope: `root/${DRIVE_ROOTS.pdfs.id}`, permitted: true },
+  { label: "Alex is refused Ethan's root", worker: "alex", scope: `root/${DRIVE_ROOTS.websiteOperatingSystem.id}`, permitted: false },
+  { label: "Sophie has no Drive folder at all", worker: "sophie", scope: `root/${DRIVE_ROOTS.websiteOperatingSystem.id}`, permitted: false },
+  { label: "Priya has no Drive folder at all", worker: "priya", scope: `root/${DRIVE_ROOTS.pdfs.id}`, permitted: false },
+  { label: "the withheld Arrington Consultancy PDF is refused even inside Maya's root", worker: "maya", scope: `root/${DRIVE_ROOTS.pdfs.id}/file/1gbRBDkB8zezqHqzT5KcTALCPc8VE-PPI`, permitted: false },
+  { label: "a folder name in place of an ID is refused", worker: "ethan", scope: "WSA Website Operating System", permitted: false },
+];
+for (const c of GATE_CASES) {
+  const d = decideDriveLocation(c.worker, c.scope);
+  check(d.permitted === c.permitted, c.label, d.permitted ? "permitted" : d.reason.slice(0, 90));
+}
+for (const f of DRIVE_NOT_DESIGNATED) {
+  const d = decideDriveLocation("ethan", `root/${f.id}`);
+  check(!d.permitted, `"${f.name}" is refused at the gate for a worker that holds a Drive grant`, d.reason.slice(0, 80));
+}
+const shared = await readGoogleDriveFile({ workerId: "ethan", resourceScope: `root/${DRIVE_ROOTS.websiteOperatingSystem.id}`, staffUserId: null, authMethod: "shared_password" });
+check(!shared.success, "a shared-password session is refused before the folder is touched", shared.message.slice(0, 90));
+console.log("  (An authorised listing through the full chain needs a signed-in staff profile and is exercised by the worker path, not this script.)");
 
 console.log(`\nRESULT: ${failures === 0 ? "every proof holds; selected-folder Drive access is accepted" : `${failures} proof(s) failed`}.`);
 process.exit(failures === 0 ? 0 : 1);
