@@ -42,7 +42,7 @@ export { CAMPAIGN_DESTINATIONS, CAMPAIGN_PROGRAMMES };
 export const SCOPE_STATUS_NOTE =
   "Campaign scope: Taught Master's, MPhil, MRes and PhD, confirmed by Tom Arrington on 12 September 2026. " +
   "The controlled Google Ads brief was reissued as version 2.0 on the same date to match that scope, " +
-  "superseding the taught Master's only brief of 15 August 2026. The page remains a working draft until Tom approves launch.";
+  "superseding the taught Master's only brief of 15 August 2026. Published on Tom's GO of 12 September 2026; paid traffic is a separate decision.";
 
 export const OTHER_DESTINATIONS_NOTE =
   "Other European destinations may be discussed with your counsellor. We do not treat Europe as a single country.";

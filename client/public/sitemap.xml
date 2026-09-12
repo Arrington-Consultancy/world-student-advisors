@@ -56,6 +56,11 @@
     <priority>0.8</priority>
   </url>
   <url>
+    <loc>https://www.worldstudentadvisors.com/nigeria-postgraduate</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
     <loc>https://www.worldstudentadvisors.com/sport-pathways</loc>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>

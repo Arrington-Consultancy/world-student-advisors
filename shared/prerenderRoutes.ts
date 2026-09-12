@@ -53,6 +53,7 @@ export const PRERENDER_ROUTES: readonly string[] = [
   "/DDVavita",
   "/uk-masters-study",
   "/uk-masters-nigeria",
+  "/nigeria-postgraduate",
 ];
 
 /**

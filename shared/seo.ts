@@ -167,6 +167,11 @@ export const SEO_MAP: Record<string, SeoEntry> = {
     description:
       "Practical UK taught Master's guidance for Nigerian graduates, covering entry requirements, WAEC evidence, funding, CAS, visa preparation and WSA counsellor support.",
   },
+  "/nigeria-postgraduate": {
+    title: "Postgraduate Study Abroad for Nigerian Graduates | World Student Advisors",
+    description:
+      "Taught Master's, MPhil, MRes and PhD abroad for Nigerian graduates, UK first then Germany and Canada, with your own Personal Student Counsellor from first question to visa preparation.",
+  },
 };
 
 export const CANONICAL_PATHS: Record<string, string> = {
@@ -188,11 +193,11 @@ export const CANONICAL_PATHS: Record<string, string> = {
 };
 
 export const NOINDEX_PATH_PREFIXES = ["/portal", "/staff-portal"];
-// /nigeria-postgraduate is a working-draft campaign landing page. It stays
-// out of the index, and out of sitemap.xml and the prerender list, until the
-// controlled Google Ads brief is reconciled with the MPhil/MRes/PhD scope
-// and Tom approves it for launch.
-export const NOINDEX_PATHS = new Set(["/404", "/nigeria-postgraduate"]);
+// /nigeria-postgraduate was noindex as a working draft from its creation on
+// 12 September 2026 until Tom Arrington's GO the same day, when noindex, the
+// draft banner, the sitemap entry and the prerender entry all changed
+// together (Change Entry 097). Paid traffic is a separate decision.
+export const NOINDEX_PATHS = new Set(["/404"]);
 
 export function getCanonicalPath(path: string): string {
   return CANONICAL_PATHS[path] ?? path;

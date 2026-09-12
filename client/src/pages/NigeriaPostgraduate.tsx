@@ -15,17 +15,16 @@ import {
 } from "@/lib/nigeriaLanding";
 
 /**
- * Nigeria postgraduate landing page. Working draft, 12 September 2026.
+ * Nigeria postgraduate landing page. Live since 12 September 2026.
  *
  * Built to the Tom-approved Implementation Direction of 12 September 2026
  * and the review of the same date. Deliberately simple: who it is for,
  * why WSA, who you will actually deal with, and one short form.
  *
- * NOT FOR PAID TRAFFIC YET. The scope conflict that blocked this page is
- * closed: the controlled Google Ads brief was reissued as version 2.0 on
- * 12 September 2026 covering Taught Master's, MPhil, MRes and PhD. What
- * remains is Tom's decision to launch. Until he takes it the route stays
- * out of the sitemap and the prerender list and carries noindex.
+ * PUBLISHED on Tom Arrington's GO of 12 September 2026 (Change Entry 097):
+ * noindex lifted, draft banner removed, sitemap and prerender entries
+ * added, all in one change. Paid traffic is a separate decision and had
+ * not been given when this page went live; nothing here starts an ad.
  *
  * The short form does not create leads itself. It hands what the student
  * typed to the existing /contact signup, which is the one controlled path
@@ -214,14 +213,6 @@ export default function NigeriaPostgraduate() {
   return (
     // The marketing header is fixed, so the page starts below it.
     <main className="bg-wsa-warm-white pt-24 lg:pt-28">
-      {/* Draft banner. Removed when Tom approves the page for launch. */}
-      <div className="border-y border-amber-300 bg-amber-50 px-4 py-2.5 text-center">
-        <p className="mx-auto max-w-3xl text-sm leading-relaxed text-amber-900">
-          <span className="font-semibold">Working draft.</span> Not published for paid traffic, pending approval to
-          launch. The controlled Google Ads brief now covers Taught Master&rsquo;s, MPhil, MRes and PhD.
-        </p>
-      </div>
-
       {/* ── Hero ────────────────────────────────────────────────── */}
       <section className="px-4 pb-10 pt-8 sm:px-6 lg:pb-16 lg:pt-12">
         <div className="mx-auto grid max-w-6xl gap-8 lg:grid-cols-[1.05fr_minmax(320px,420px)] lg:items-start lg:gap-12">

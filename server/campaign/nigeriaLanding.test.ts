@@ -10,13 +10,14 @@ import {
   isDesiredLevelValue,
   isDestinationValue,
 } from "../../shared/studentEnquiryOptions";
-import { NOINDEX_PATHS } from "../../shared/seo";
+import { NOINDEX_PATHS, SEO_MAP, shouldNoindex } from "../../shared/seo";
+import { PRERENDER_ROUTES } from "../../shared/prerenderRoutes";
 import { toInternationalNigerianNumber } from "../../client/src/lib/nigeriaLanding";
 
 /**
  * The Nigeria postgraduate landing page, checked against the two things
  * that would actually do damage: publishing a claim WSA cannot evidence,
- * and letting an unlaunched campaign page reach search or paid traffic.
+ * and letting the page's publication state (index, sitemap, prerender, banner) drift out of step.
  *
  * The page's content lives in a React-free module, but the component is
  * read as source here, because "this sentence is not on the page" is the
@@ -150,40 +151,32 @@ describe("nothing on the page claims what WSA cannot evidence", () => {
   });
 });
 
-describe("an unlaunched campaign page cannot be indexed or crawled into", () => {
-  it("is noindex", () => expect(NOINDEX_PATHS.has("/nigeria-postgraduate")).toBe(true));
-  it("is not in the sitemap", () => expect(sitemap).not.toContain("nigeria-postgraduate"));
-  it("is not prerendered", () => expect(prerender).not.toContain("nigeria-postgraduate"));
-  it("says on the page that it is a draft not for paid traffic", () => {
-    expect(page).toMatch(/Working draft/);
-    expect(page).toMatch(/Not published for paid traffic/);
-  });
-
+describe("a published campaign page is indexable, discoverable and carries no draft marking", () => {
   /**
-   * The banner's reason for the draft is load-bearing, not decoration. It
-   * told readers the Google Ads brief contradicted this page's scope. That
-   * conflict was closed on 12 September 2026 when the brief was reissued at
-   * version 2.0, so the banner would now be stating a blocker that no
-   * longer exists: a false statement, on the one element of the page whose
-   * whole job is to be true about the page's status.
+   * Tom Arrington gave the GO on 12 September 2026. The brief requires the
+   * banner and noindex to move together, and a page in the sitemap that a
+   * crawler is told not to index (or the reverse) is a contradiction, so
+   * all four states are asserted as one.
    */
-  it("does not still claim the Google Ads brief conflicts with this page", () => {
+  it("is indexable", () => {
+    expect(NOINDEX_PATHS.has("/nigeria-postgraduate")).toBe(false);
+    expect(shouldNoindex("/nigeria-postgraduate")).toBe(false);
+  });
+  it("is in the sitemap", () => expect(sitemap).toContain("https://www.worldstudentadvisors.com/nigeria-postgraduate</loc>"));
+  it("is prerendered", () => expect(PRERENDER_ROUTES).toContain("/nigeria-postgraduate"));
+  it("has its own title and description for search results", () => {
+    const seo = SEO_MAP["/nigeria-postgraduate"];
+    expect(seo?.title).toMatch(/Nigerian/);
+    expect(seo?.description).toMatch(/MPhil, MRes and PhD/);
+  });
+  it("shows no draft banner or approval wording", () => {
+    expect(page).not.toMatch(/Working draft/i);
+    expect(page).not.toMatch(/Not published for paid traffic/i);
+    expect(page).not.toMatch(/pending approval/i);
+  });
+  it("does not claim the Google Ads brief conflicts with this page", () => {
     expect(page).not.toMatch(/brief covers taught Master/i);
     expect(page).not.toMatch(/needs reconciling/i);
-  });
-
-  it("names the four-programme scope the reconciled brief now covers", () => {
-    expect(page).toMatch(/brief now covers Taught Master/i);
-    for (const label of ["MPhil", "MRes", "PhD"]) expect(page).toContain(label);
-  });
-
-  /**
-   * A reconciled brief is not permission to launch. If the banner ever
-   * stops naming what is actually outstanding, the page reads as finished
-   * while noindex silently keeps it dark.
-   */
-  it("still names approval to launch as what the page is waiting on", () => {
-    expect(page).toMatch(/pending approval to\s+launch/i);
   });
 });
 
