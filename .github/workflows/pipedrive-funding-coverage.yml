@@ -1,0 +1,25 @@
+name: Pipedrive funding coverage (read-only)
+
+# Manual-only. Counts how many people carry a value in the Education Funding
+# and Funding Source fields, inside the Railway service's own variables so
+# the production token never leaves the server. Prints counts and option
+# labels only: no name, no email, no record content, and never the token.
+# Writes nothing to Pipedrive.
+on:
+  workflow_dispatch: {}
+
+jobs:
+  coverage:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Install Railway CLI
+        run: npm install -g @railway/cli
+      - name: Count funding coverage
+        env:
+          RAILWAY_TOKEN: ${{ secrets.githubactionsprod }}
+        run: |
+          railway run --service "world-student-advisors" --environment "production" -- node scripts/pipedrive-funding-coverage.mjs
