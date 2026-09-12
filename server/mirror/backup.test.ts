@@ -25,15 +25,18 @@ const NOW = new Date("2026-09-12T02:30:00Z");
 const ORIGINAL_ENV = { ...process.env };
 
 const PERSON = { id: 501, name: "Test Student", email: [{ value: "student@example.com" }], add_time: "2026-06-01 09:00:00" };
+/** Parsed-path matching, and a 404 for a malformed query, as the real API gives. */
 function pipedrive(failOn: string | null = null) {
   return async (input: string | URL | Request): Promise<Response> => {
-    const u = String(input);
+    const u = new URL(String(input));
     const ok = (data: unknown) => new Response(JSON.stringify({ success: true, data, additional_data: { pagination: { more_items_in_collection: false } } }), { status: 200 });
-    if (failOn && u.includes(failOn)) return new Response("boom", { status: 500 });
-    if (u.includes("/persons")) return ok([PERSON]);
-    if (u.includes("/deals")) return ok([{ id: 900, title: "Deal", add_time: "2026-07-01 09:00:00" }]);
-    if (u.includes("/leads")) return ok([{ id: "L1", title: "Lead", add_time: "2026-05-01 09:00:00" }]);
-    if (u.includes("/activities")) return ok([{ id: 1, subject: "Call", due_date: "2026-09-01" }]);
+    if (failOn && u.pathname.endsWith(failOn)) return new Response("boom", { status: 500 });
+    if (/[?&]/.test(u.pathname)) return new Response(JSON.stringify({ success: false, error: "Not Found" }), { status: 404 });
+    if ((String(input).match(/\?/g) ?? []).length > 1) return new Response(JSON.stringify({ success: false, error: "Not Found" }), { status: 404 });
+    if (u.pathname === "/v1/persons") return ok([PERSON]);
+    if (u.pathname === "/v1/deals") return ok([{ id: 900, title: "Deal", add_time: "2026-07-01 09:00:00" }]);
+    if (u.pathname === "/v1/leads") return ok([{ id: "L1", title: "Lead", add_time: "2026-05-01 09:00:00" }]);
+    if (u.pathname === "/v1/activities") return ok([{ id: 1, subject: "Call", due_date: "2026-09-01" }]);
     return ok([{ id: 1, name: "thing" }]);
   };
 }

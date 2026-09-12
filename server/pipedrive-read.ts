@@ -233,7 +233,7 @@ export function createPipedriveReaderWithAuth(auth: PipedriveAuth) {
      * the disaster-recovery backup. Still GET only: pipedriveGet has no
      * method argument. The endpoint must start with "/" and carry no token.
      */
-    listCollectionRaw: (endpoint: string, paginated = true) => (paginated ? listAll(endpoint.includes("?") ? endpoint : `${endpoint}?`, 500, 200, auth) : pipedriveGet(endpoint, auth).then(r => (r?.data ?? []) as Array<Record<string, unknown>>)),
+    listCollectionRaw: (endpoint: string, paginated = true) => (paginated ? listAll(endpoint, 500, 200, auth) : pipedriveGet(endpoint, auth).then(r => (r?.data ?? []) as Array<Record<string, unknown>>)),
   };
 }
 
@@ -241,7 +241,12 @@ async function listAll(endpoint: string, pageSize: number, maxPages: number, aut
   const out: Array<Record<string, unknown>> = [];
   let start = 0;
   for (let page = 0; page < maxPages; page += 1) {
-    const result = await pipedriveGet(`${endpoint}&limit=${pageSize}&start=${start}`, auth);
+    // The separator depends on whether the endpoint already carries a query.
+    // This always used "&", so a bare endpoint became "/persons&limit=500",
+    // which Pipedrive answers with 404. It reached production because the
+    // test double matched on a substring rather than on a parsed URL.
+    const sep = endpoint.includes("?") ? "&" : "?";
+    const result = await pipedriveGet(`${endpoint}${sep}limit=${pageSize}&start=${start}`, auth);
     const data: unknown = result?.data;
     if (!Array.isArray(data) || data.length === 0) break;
     out.push(...(data as Array<Record<string, unknown>>));

@@ -33,16 +33,29 @@ const LEADS = [
 const DEALS = [{ id: 900, title: "Test Student", add_time: "2026-08-01 09:00:00", status: "open", stage_id: 21, user_id: { id: 1, name: "Tim Hunt" }, person_id: { value: 501 }, [CRM_FIELDS.dealApplicationDate1]: "2026-08-10" }];
 const USERS = [{ id: 1, name: "Tim Hunt", email: "tim.hunt@worldstudentadvisors.com" }];
 
+/**
+ * Matches on the parsed path, not a substring, and 404s a malformed query
+ * exactly as the real API does. Substring matching hid a reader that built
+ * "/persons&limit=500" and reached production before it was caught.
+ */
 function pipedriveFetch(fail = false) {
   return async (input: string | URL | Request): Promise<Response> => {
-    const u = String(input);
     if (fail) return new Response("boom", { status: 500 });
+    const u = new URL(String(input));
+    const notFound = new Response(JSON.stringify({ success: false, error: "Not Found" }), { status: 404 });
+    if (/[?&]/.test(u.pathname)) return notFound;
+    // One question mark only. A second one, from joining a query with "?"
+    // where "&" was needed, buries the paging parameters inside another
+    // value, and the real API rejects it.
+    if ((String(input).match(/\?/g) ?? []).length > 1) return notFound;
     const ok = (data: unknown) => new Response(JSON.stringify({ success: true, data, additional_data: { pagination: { more_items_in_collection: false } } }), { status: 200 });
-    if (u.includes("/leads")) return ok(LEADS);
-    if (u.includes("/deals")) return ok(DEALS);
-    if (u.includes("/persons")) return ok([PERSON]);
-    if (u.includes("/users")) return ok(USERS);
-    return new Response("not found", { status: 404 });
+    switch (u.pathname) {
+      case "/v1/leads": return ok(LEADS);
+      case "/v1/deals": return ok(DEALS);
+      case "/v1/persons": return ok([PERSON]);
+      case "/v1/users": return ok(USERS);
+      default: return notFound;
+    }
   };
 }
 
