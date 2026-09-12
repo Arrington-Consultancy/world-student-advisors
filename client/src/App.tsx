@@ -1,7 +1,7 @@
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import NotFound from "@/pages/NotFound";
-import { Route, Switch } from "wouter";
+import { Route, Switch, useLocation } from "wouter";
 import ErrorBoundary from "./components/ErrorBoundary";
 import ScrollToTop from "./components/ScrollToTop";
 import CookieConsent from "./components/CookieConsent";
@@ -108,7 +108,19 @@ function Router() {
   );
 }
 
+/**
+ * Routes that are a signed-in internal application rather than a page of
+ * the public website. They carry their own header, so the marketing header
+ * (which is fixed to the top of the viewport) would sit on top of it and
+ * make the portal's own navigation unreachable on a phone. Reported by Tom
+ * Arrington on 12 September 2026: the account menu, and therefore Staff
+ * access, could not be opened at all.
+ */
+const APP_SHELL_ROUTES = ["/staff-portal"];
+
 function App() {
+  const [location] = useLocation();
+  const isAppShell = APP_SHELL_ROUTES.some(r => location === r || location.startsWith(`${r}/`));
   return (
     <ErrorBoundary>
       <ThemeProvider defaultTheme="light">
@@ -116,11 +128,11 @@ function App() {
           <Toaster />
           <ScrollToTop />
           <SeoHead />
-          <Header />
+          {!isAppShell && <Header />}
           <main>
             <Router />
           </main>
-          <Footer />
+          {!isAppShell && <Footer />}
           <CookieConsent />
         </TooltipProvider>
       </ThemeProvider>

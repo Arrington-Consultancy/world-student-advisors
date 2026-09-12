@@ -6,6 +6,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { trpc } from "@/lib/trpc";
+import { sectionFromSearch, writeSectionToUrl, type StaffSection } from "@/lib/staffSection";
 import { ChannelsPanel } from "@/components/staff/ChannelsPanel";
 import { TeamPanel } from "@/components/staff/TeamPanel";
 import { ContentCheckPanel } from "@/components/staff/ContentCheckPanel";
@@ -498,17 +499,7 @@ export default function StaffPortal() {
  * actually reports — this component has no local notion of who is
  * "ready"; it only renders what workforce.listWorkers returns.
  */
-type StaffSection =
-  | "reception"
-  | "uniportals"
-  | "students"
-  | "social"
-  | "content"
-  | "team"
-  | "channels"
-  | "resources"
-  | "access"
-  | "routing";
+
 
 /**
  * The Staff Portal home, rebuilt to Tom's brief of 11 September 2026.
@@ -635,7 +626,7 @@ function SectionCard({
 }
 
 function WorkforceHome({ token, onLogout }: { token: string; onLogout: () => void }) {
-  const [section, setSection] = useState<StaffSection | null>(null);
+  const [section, setSection] = useState<StaffSection | null>(() => sectionFromSearch(window.location.search));
   const [menuOpen, setMenuOpen] = useState(false);
   const current = ALL_SECTIONS.find(s => s.id === section) ?? null;
 
@@ -653,6 +644,7 @@ function WorkforceHome({ token, onLogout }: { token: string; onLogout: () => voi
 
   const openSection = (id: StaffSection) => {
     setSection(id);
+    writeSectionToUrl(id);
     setMenuOpen(false);
   };
 
@@ -660,7 +652,7 @@ function WorkforceHome({ token, onLogout }: { token: string; onLogout: () => voi
     <div className="min-h-screen bg-wsa-warm-white pb-20">
       {/* Compact header. The logo stays but at a size that identifies the
           page rather than announcing it to somebody already signed in. */}
-      <header className="border-b border-wsa-navy/10 bg-white">
+      <header className="sticky top-0 z-30 border-b border-wsa-navy/10 bg-white">
         <div className="container flex max-w-5xl items-center justify-between gap-4 py-3">
           <button
             type="button"
@@ -797,7 +789,7 @@ function WorkforceHome({ token, onLogout }: { token: string; onLogout: () => voi
           <>
             <button
               type="button"
-              onClick={() => setSection(null)}
+              onClick={() => { setSection(null); writeSectionToUrl(null); }}
               className="mb-6 mt-2 inline-flex min-h-[44px] items-center gap-2 text-base font-semibold text-wsa-navy transition-colors hover:text-wsa-red"
             >
               <ArrowLeft className="h-5 w-5" aria-hidden />
