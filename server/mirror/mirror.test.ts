@@ -216,3 +216,36 @@ describe("the resolver over the mirror", () => {
     expect(r.answer).not.toMatch(/We had \d+/);
   });
 });
+
+describe("a transient Drive failure no longer costs a run", () => {
+  const fast = { sleep: async () => {}, random: () => 0 };
+
+  it("completes through a rate limit on a data file and a rate limit on the manifest", async () => {
+    wire();
+    drive.transientFailures.set("persons.csv", 3);
+    drive.transientFailures.set("manifest.json", 2);
+    const r = await runMirrorSync("manual", { fetchImpl: drive.fetch, now: () => NOW, driveOptions: fast });
+    expect(r.status).toBe("complete");
+    expect(Array.from(drive.files.values()).map(f => f.name).sort()).toEqual([MIRROR_FOLDER_NAME, "deals.csv", "leads.csv", "manifest.json", "persons.csv"].sort());
+    expect(JSON.parse(Array.from(drive.files.values()).find(f => f.name === "manifest.json")!.content).status).toBe("complete");
+  });
+
+  it("makes one mirror folder even when the create lands without answering", async () => {
+    wire();
+    drive.succeedThenFail.set(MIRROR_FOLDER_NAME, 1);
+    const r = await runMirrorSync("manual", { fetchImpl: drive.fetch, now: () => NOW, driveOptions: fast });
+    expect(r.status).toBe("complete");
+    expect(Array.from(drive.files.values()).filter(f => f.name === MIRROR_FOLDER_NAME)).toHaveLength(1);
+    expect(Array.from(drive.files.values())).toHaveLength(5);
+  });
+
+  it("still fails, and still leaves the last good manifest, when Drive refuses outright", async () => {
+    wire();
+    await runMirrorSync("manual", { fetchImpl: drive.fetch, now: () => NOW, driveOptions: fast });
+    const before = Array.from(drive.files.values()).find(f => f.name === "manifest.json")!.content;
+    drive.failUploadsNamed.add("persons.csv");
+    const r = await runMirrorSync("manual", { fetchImpl: drive.fetch, now: () => new Date(NOW.getTime() + 60_000), driveOptions: fast });
+    expect(r.status).toBe("failed");
+    expect(Array.from(drive.files.values()).find(f => f.name === "manifest.json")!.content).toBe(before);
+  });
+});

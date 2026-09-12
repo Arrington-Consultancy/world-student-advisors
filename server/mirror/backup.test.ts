@@ -149,3 +149,29 @@ describe("the backup is never worker-readable; the mirror is shared with the wor
     expect(DRIVE_NOT_DESIGNATED.map(f => f.name)).toContain("WSA Editable Docs");
   });
 });
+
+describe("a transient Drive failure no longer costs a snapshot", () => {
+  const fast = { sleep: async () => {}, random: () => 0 };
+
+  it("completes the snapshot through a rate limit part way down the upload list", async () => {
+    wire();
+    // deals.json is where the 12 September 2026 production run stopped.
+    drive.transientFailures.set("deals.json", 3);
+    drive.transientFailures.set("latest.json", 2);
+    const r = await runCrmBackup("manual", { fetchImpl: drive.fetch, now: () => NOW, driveOptions: fast });
+    expect(r.status).toBe("complete");
+    for (const e of BACKUP_ENTITIES) expect(byName(`${e.name}.json`)).toHaveLength(1);
+    expect(byName("manifest.json")).toHaveLength(1);
+    const latest = JSON.parse(byName("latest.json")[0].content);
+    expect(latest.snapshotLabel).toBe(snapshotLabel(NOW));
+    expect(latest.status).toBe("complete");
+  });
+
+  it("makes one snapshot folder even when its create lands without answering", async () => {
+    wire();
+    drive.succeedThenFail.set(snapshotLabel(NOW), 1);
+    const r = await runCrmBackup("manual", { fetchImpl: drive.fetch, now: () => NOW, driveOptions: fast });
+    expect(r.status).toBe("complete");
+    expect(byName(snapshotLabel(NOW))).toHaveLength(1);
+  });
+});

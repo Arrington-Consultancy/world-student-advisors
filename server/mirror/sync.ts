@@ -27,10 +27,13 @@ import { getDb } from "../db";
 import { mirrorSyncRuns } from "../../drizzle/schema";
 import { apiTokenAuth, createPipedriveReaderWithAuth } from "../pipedrive-read";
 import { getDriveMirrorAccess } from "./driveMirrorOAuth";
-import { DriveClient } from "./driveClient";
+import { DriveClient, type DriveClientOptions } from "./driveClient";
 import { dealRow, leadRow, personRow, ownerNameMap, toCsv, LEAD_COLUMNS, DEAL_COLUMNS, PERSON_COLUMNS, NEVER_MIRRORED, type Row } from "./sanitise";
 import { MIRROR_FILE_NAMES, MIRROR_FOLDER_NAME, type MirrorManifest, type MirrorFileEntry } from "./manifest";
 import { workforceDriveIdentity } from "../workforce/connectors/googleDrive";
+
+/** Test seams only: production passes none of these. */
+export interface MirrorRunDeps { fetchImpl?: typeof fetch; now?: () => Date; driveOptions?: DriveClientOptions }
 
 export type MirrorTokenSource = "website_token" | "dedicated";
 
@@ -58,17 +61,41 @@ export async function mirrorConfigState(): Promise<MirrorConfigState> {
 
 const md5 = (s: string) => createHash("md5").update(s, "utf8").digest("hex");
 
+/**
+ * How long a row left in "running" is believed. Beyond this the process
+ * that claimed it is taken to have died, and a new run may proceed.
+ */
+export const SYNC_CLAIM_STALE_MINUTES = 30;
+
+/**
+ * Two processes write this mirror: the service's own scheduler and any
+ * out-of-process run such as the production acceptance. On 12 September
+ * 2026 both ran at once, the folder was created twice over and Drive
+ * answered one of them with a 500. The single-flight promise above only
+ * covers one process, so the claim has to live where both can see it.
+ *
+ * This is a claim, not a lock: two runs that read this within the same
+ * instant can both proceed. It closes the window that actually occurs,
+ * where one run is minutes into its work, and it never blocks a run
+ * behind a process that has died.
+ */
+export function liveRun<T extends { id: number; startedAt: Date; trigger: string }>(rows: T[], now: Date, staleMinutes: number): T | null {
+  const row = rows[0];
+  if (!row) return null;
+  return now.getTime() - row.startedAt.getTime() < staleMinutes * 60_000 ? row : null;
+}
+
 export interface SyncOutcome { runId: number | null; status: "complete" | "partial" | "failed" | "skipped"; reason: string | null; counts?: { leads: number; deals: number; persons: number }; manifestFileId?: string }
 
 let inflight: Promise<SyncOutcome> | null = null;
 
-export function runMirrorSync(trigger: "schedule" | "manual" | "acceptance", deps: { fetchImpl?: typeof fetch; now?: () => Date } = {}): Promise<SyncOutcome> {
+export function runMirrorSync(trigger: "schedule" | "manual" | "acceptance", deps: MirrorRunDeps = {}): Promise<SyncOutcome> {
   if (inflight) return inflight;
   inflight = doRun(trigger, deps).finally(() => { inflight = null; });
   return inflight;
 }
 
-async function doRun(trigger: "schedule" | "manual" | "acceptance", deps: { fetchImpl?: typeof fetch; now?: () => Date }): Promise<SyncOutcome> {
+async function doRun(trigger: "schedule" | "manual" | "acceptance", deps: MirrorRunDeps): Promise<SyncOutcome> {
   const now = deps.now ?? (() => new Date());
   const state = await mirrorConfigState();
   if (state !== "ready") return { runId: null, status: "skipped", reason: `Mirror not configured: ${state}.` };
@@ -76,6 +103,9 @@ async function doRun(trigger: "schedule" | "manual" | "acceptance", deps: { fetc
   const startedAt = now();
   let runId: number | null = null;
   if (db) {
+    const running = await db.select().from(mirrorSyncRuns).where(eq(mirrorSyncRuns.status, "running")).orderBy(desc(mirrorSyncRuns.id)).limit(1);
+    const held = liveRun(running, startedAt, SYNC_CLAIM_STALE_MINUTES);
+    if (held) return { runId: null, status: "skipped", reason: `Mirror sync ${held.id} (${held.trigger}) has been running since ${held.startedAt.toISOString()}; this run stood down rather than write the same folder twice.` };
     const [row] = await db.insert(mirrorSyncRuns).values({ startedAt, status: "running", trigger, tokenSource: mirrorTokenSource() }).$returningId();
     runId = row?.id ?? null;
   }
@@ -115,7 +145,7 @@ async function doRun(trigger: "schedule" | "manual" | "acceptance", deps: { fetc
   // 3. Write data files, then the manifest.
   const drive = await getDriveMirrorAccess({ fetchImpl: deps.fetchImpl });
   if (!drive.ok) return failed(`Google Drive grant not usable at write time: ${drive.status}.`);
-  const client = new DriveClient(drive.accessToken, deps.fetchImpl);
+  const client = new DriveClient(drive.accessToken, deps.fetchImpl, deps.driveOptions);
   let folderId: string;
   try {
     const folder = (await client.findFolder(MIRROR_FOLDER_NAME)) ?? (await client.createFolder(MIRROR_FOLDER_NAME));

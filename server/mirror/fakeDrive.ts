@@ -2,6 +2,13 @@
  * An in-memory stand-in for the handful of Google Drive v3 calls the mirror
  * uses. Test helper only. Records every request so a test can prove what
  * was sent, and can be told to fail a named upload.
+ *
+ * Two kinds of failure, because the client treats them differently:
+ * failUploadsNamed is Drive refusing outright (403, a permission reason),
+ * which must not be retried; transientFailures is Drive asking the caller
+ * to wait (403 userRateLimitExceeded), which must be. succeedThenFail
+ * models the 500 that means the write landed anyway, so a retry that
+ * created a second copy would show up as a duplicate here.
  */
 import { createHash } from "crypto";
 
@@ -13,7 +20,19 @@ export class FakeDrive {
   permissions = new Map<string, string[]>();
   requests: Array<{ method: string; url: string; auth: string | null }> = [];
   failUploadsNamed = new Set<string>();
+  /** name -> how many further attempts fail with a retryable rate limit. */
+  transientFailures = new Map<string, number>();
+  /** name -> how many further attempts store the object and then answer 500. */
+  succeedThenFail = new Map<string, number>();
   private seq = 0;
+
+  /** Decrements a counter and says whether this attempt should misbehave. */
+  private takes(map: Map<string, number>, name: string): boolean {
+    const left = map.get(name) ?? 0;
+    if (left <= 0) return false;
+    map.set(name, left - 1);
+    return true;
+  }
 
   private md5(s: string) { return createHash("md5").update(s, "utf8").digest("hex"); }
   private meta(f: FakeFile) { return { id: f.id, name: f.name, mimeType: f.mimeType, parents: f.parents, md5Checksum: f.mimeType.includes("folder") ? undefined : this.md5(f.content), size: String(f.content.length), modifiedTime: new Date().toISOString() }; }
@@ -49,8 +68,10 @@ export class FakeDrive {
     }
     if (url.pathname === "/drive/v3/files" && method === "POST") {
       const body = JSON.parse(String(init.body)) as { name: string; mimeType: string; parents?: string[] };
+      if (this.takes(this.transientFailures, body.name)) return json({ error: { code: 403, errors: [{ reason: "userRateLimitExceeded" }] } }, 403);
       const f: FakeFile = { id: `folder-${++this.seq}`, name: body.name, mimeType: body.mimeType, parents: body.parents ?? [], content: "" };
       this.files.set(f.id, f);
+      if (this.takes(this.succeedThenFail, body.name)) return json({ error: { code: 500, errors: [{ reason: "responsePreparationError" }] } }, 500);
       return json(this.meta(f));
     }
     if (url.pathname === "/upload/drive/v3/files" && method === "POST") {
@@ -59,16 +80,22 @@ export class FakeDrive {
       const metaJson = parts[0].split("\r\n\r\n")[1].trim();
       const meta = JSON.parse(metaJson) as { name: string; parents: string[]; mimeType: string };
       const content = parts[1].split("\r\n\r\n")[1].replace(/\r\n$/, "");
-      if (this.failUploadsNamed.has(meta.name)) return json({ error: "injected failure" }, 500);
+      if (this.failUploadsNamed.has(meta.name)) return json({ error: { code: 403, errors: [{ reason: "insufficientFilePermissions" }] } }, 403);
+      if (this.takes(this.transientFailures, meta.name)) return json({ error: { code: 403, errors: [{ reason: "userRateLimitExceeded" }] } }, 403);
       const f: FakeFile = { id: `file-${++this.seq}`, name: meta.name, mimeType: meta.mimeType, parents: meta.parents, content };
       this.files.set(f.id, f);
+      // The write lands and the response does not, exactly as Drive's
+      // "operation was successful, but there was an error preparing the
+      // response" does.
+      if (this.takes(this.succeedThenFail, meta.name)) return json({ error: { code: 500, errors: [{ reason: "responsePreparationError" }] } }, 500);
       return json(this.meta(f));
     }
     const upload = /^\/upload\/drive\/v3\/files\/([^/]+)$/.exec(url.pathname);
     if (upload && method === "PATCH") {
       const f = this.files.get(upload[1]);
       if (!f) return json({ error: "not found" }, 404);
-      if (this.failUploadsNamed.has(f.name)) return json({ error: "injected failure" }, 500);
+      if (this.failUploadsNamed.has(f.name)) return json({ error: { code: 403, errors: [{ reason: "insufficientFilePermissions" }] } }, 403);
+      if (this.takes(this.transientFailures, f.name)) return json({ error: { code: 403, errors: [{ reason: "userRateLimitExceeded" }] } }, 403);
       f.content = String(init.body);
       return json(this.meta(f));
     }

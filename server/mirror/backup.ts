@@ -25,7 +25,7 @@ import { crmBackupRuns } from "../../drizzle/schema";
 import { apiTokenAuth, createPipedriveReaderWithAuth } from "../pipedrive-read";
 import { getDriveMirrorAccess } from "./driveMirrorOAuth";
 import { DriveClient } from "./driveClient";
-import { mirrorConfigState, mirrorToken, mirrorTokenSource } from "./sync";
+import { liveRun, mirrorConfigState, mirrorToken, mirrorTokenSource, type MirrorRunDeps } from "./sync";
 
 export const BACKUP_FOLDER_NAME = "WSA Pipedrive Backup";
 
@@ -67,16 +67,19 @@ export function snapshotLabel(d: Date): string {
   return d.toISOString().replace(/[:]/g, "").replace(/\.\d{3}Z$/, "Z");
 }
 
+/** A snapshot is minutes of work, so a stalled claim is believed for longer than the mirror's. */
+export const BACKUP_CLAIM_STALE_MINUTES = 90;
+
 export interface BackupOutcome { runId: number | null; status: "complete" | "failed" | "skipped"; reason: string | null; counts?: Record<string, number>; snapshotLabel?: string }
 
 let inflight: Promise<BackupOutcome> | null = null;
-export function runCrmBackup(trigger: "schedule" | "manual" | "acceptance", deps: { fetchImpl?: typeof fetch; now?: () => Date } = {}): Promise<BackupOutcome> {
+export function runCrmBackup(trigger: "schedule" | "manual" | "acceptance", deps: MirrorRunDeps = {}): Promise<BackupOutcome> {
   if (inflight) return inflight;
   inflight = doBackup(trigger, deps).finally(() => { inflight = null; });
   return inflight;
 }
 
-async function doBackup(trigger: "schedule" | "manual" | "acceptance", deps: { fetchImpl?: typeof fetch; now?: () => Date }): Promise<BackupOutcome> {
+async function doBackup(trigger: "schedule" | "manual" | "acceptance", deps: MirrorRunDeps): Promise<BackupOutcome> {
   const now = deps.now ?? (() => new Date());
   const state = await mirrorConfigState();
   if (state !== "ready") return { runId: null, status: "skipped", reason: `Backup not configured: ${state}.` };
@@ -85,6 +88,12 @@ async function doBackup(trigger: "schedule" | "manual" | "acceptance", deps: { f
   const label = snapshotLabel(startedAt);
   let runId: number | null = null;
   if (db) {
+    // The same cross-process claim the mirror sync holds. A full snapshot
+    // takes minutes and uploads tens of megabytes; two at once is how the
+    // 12 September 2026 acceptance walked into a Drive rate limit.
+    const running = await db.select().from(crmBackupRuns).where(eq(crmBackupRuns.status, "running")).orderBy(desc(crmBackupRuns.id)).limit(1);
+    const held = liveRun(running, startedAt, BACKUP_CLAIM_STALE_MINUTES);
+    if (held) return { runId: null, status: "skipped", reason: `CRM backup ${held.id} (${held.trigger}) has been running since ${held.startedAt.toISOString()}; this run stood down rather than take a second snapshot alongside it.` };
     const [row] = await db.insert(crmBackupRuns).values({ startedAt, status: "running", trigger, tokenSource: mirrorTokenSource(), snapshotLabel: label }).$returningId();
     runId = row?.id ?? null;
   }
@@ -116,7 +125,7 @@ async function doBackup(trigger: "schedule" | "manual" | "acceptance", deps: { f
   // 2. Write into a fresh snapshot folder.
   const drive = await getDriveMirrorAccess({ fetchImpl: deps.fetchImpl });
   if (!drive.ok) return failed(`Google Drive grant not usable at write time: ${drive.status}.`);
-  const client = new DriveClient(drive.accessToken, deps.fetchImpl);
+  const client = new DriveClient(drive.accessToken, deps.fetchImpl, deps.driveOptions);
   let rootId: string, snapshotId: string;
   try {
     const root = (await client.findFolder(BACKUP_FOLDER_NAME)) ?? (await client.createFolder(BACKUP_FOLDER_NAME));

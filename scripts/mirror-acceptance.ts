@@ -38,7 +38,26 @@ check(state === "ready", "mirror configuration", state);
 if (state !== "ready") { console.log("\nRESULT: the mirror is not ready to run."); process.exit(1); }
 
 console.log("\n=== 2. Sync run ===");
-const run = await runMirrorSync("acceptance");
+/**
+ * The service's own scheduler writes the same folder, and its first tick
+ * lands three minutes after a deploy. When it holds the claim this script
+ * waits it out rather than running a second sync over the top, which is
+ * what produced the failure on 12 September 2026.
+ */
+const waitOut = async (label: string, reason: string, idle: () => Promise<boolean>) => {
+  console.log(`  ${label} is already running; waiting for it: ${reason.slice(0, 160)}`);
+  for (let i = 0; i < 40; i += 1) {
+    await new Promise(r => setTimeout(r, 15_000));
+    if (await idle()) { console.log(`  the other ${label} finished after about ${((i + 1) * 15)}s; taking the claim`); return true; }
+  }
+  return false;
+};
+const syncIdle = async () => (await recentMirrorRuns(1))[0]?.status !== "running";
+
+let run = await runMirrorSync("acceptance");
+if (run.status === "skipped" && run.reason?.includes("stood down")) {
+  if (await waitOut("mirror sync", run.reason, syncIdle)) run = await runMirrorSync("acceptance");
+}
 check(run.status === "complete", "run status", `${run.status}${run.reason ? `: ${run.reason}` : ""}`);
 if (run.counts) console.log(`  counts: ${run.counts.leads} leads, ${run.counts.deals} deals, ${run.counts.persons} persons`);
 const runs = await recentMirrorRuns(1);
@@ -94,7 +113,11 @@ if (mirror.files) {
 }
 
 console.log("\n=== 6. Daily backup snapshot ===");
-const backup = await runCrmBackup("acceptance");
+let backup = await runCrmBackup("acceptance");
+if (backup.status === "skipped" && backup.reason?.includes("stood down")) {
+  const backupIdle = async () => (await recentBackupRuns(1))[0]?.status !== "running";
+  if (await waitOut("CRM backup", backup.reason, backupIdle)) backup = await runCrmBackup("acceptance");
+}
 check(backup.status === "complete", "backup run status", `${backup.status}${backup.reason ? `: ${backup.reason}` : ""}${backup.snapshotLabel ? ` snapshot ${backup.snapshotLabel}` : ""}`);
 if (backup.counts) console.log(`  counts: ${Object.entries(backup.counts).map(([k, v]) => `${k} ${v}`).join(", ")}`);
 const backupRuns = await recentBackupRuns(1);
