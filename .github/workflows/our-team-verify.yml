@@ -1,0 +1,46 @@
+name: OUR TEAM page verification (read-only)
+
+# Manual-only, READ-ONLY. Verifies the published /our-team page on the live
+# site after a deploy, against the approved implementation direction of
+# 14 September 2026: the route serves and is indexable, /counsellors 301s to
+# it in one hop, the sitemap points at the new path, the six people render in
+# the approved order with no country headings, every profile opens, the
+# British Council badge appears only for certificate holders, a certificate
+# opens only for the two people whose public use is evidenced, and the page
+# fits a phone. Submits no form and uses no secrets. Screenshots are kept.
+on:
+  workflow_dispatch:
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install Playwright (browser only, project dependencies untouched)
+        run: |
+          mkdir -p /tmp/pw && cd /tmp/pw
+          npm init -y >/dev/null
+          npm install playwright@1.47.2 >/dev/null
+          npx playwright install --with-deps chromium
+
+      - name: Verify the live page
+        run: |
+          mkdir -p /tmp/pw/out
+          cp scripts/our-team-verify.mjs /tmp/pw/verify.mjs
+          cd /tmp/pw
+          OUT_DIR=/tmp/pw/out node verify.mjs
+
+      - name: Upload screenshots and results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: our-team-live-verification
+          path: |
+            /tmp/pw/out/*.png
+            /tmp/pw/out/*.json
+          if-no-files-found: ignore

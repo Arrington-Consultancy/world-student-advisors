@@ -12,7 +12,7 @@ import Header from "./components/Header";
 import Footer from "./components/Footer";
 import About from "./pages/About";
 import StudyOptions from "./pages/StudyOptions";
-import Counsellors from "./pages/Counsellors";
+import OurTeam from "./pages/OurTeam";
 import StudentSupportLibrary from "./pages/StudentSupportLibrary";
 import StaffPortal from "./pages/StaffPortal";
 import Events from "./pages/Events";
@@ -74,7 +74,8 @@ function Router() {
       <Route path={"/study-options/undergraduate-degrees"} component={UndergraduateDegrees} />
       <Route path={"/study-options/pre-masters-top-up-degrees"} component={PreMasters} />
       <Route path={"/study-options/masters-doctoral-degrees"} component={MastersDoctoral} />
-      <Route path={"/counsellors"} component={Counsellors} />
+      <Route path={"/our-team"} component={OurTeam} />
+      <Route path={"/counsellors"} component={OurTeam} />
       <Route path={"/student-support-library"} component={StudentSupportLibrary} />
       <Route path={"/staff-portal"} component={StaffPortal} />
       <Route path={"/learning-hub/cv-university-application"} component={CVUniversityApplication} />

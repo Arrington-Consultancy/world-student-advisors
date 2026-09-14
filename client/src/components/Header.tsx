@@ -11,7 +11,7 @@ const navItems = [
   { label: "About", href: "/about" },
   { label: "Study Options", href: "/study-options" },
   { label: "Educational Partners", href: "/partners" },
-  { label: "Counsellors", href: "/counsellors" },
+  { label: "Our Team", href: "/our-team" },
   { label: "Staff Portal", href: "/staff-portal" },
   { label: "Events", href: "/events" },
   { label: "Student Support Library", href: "/student-support-library" },

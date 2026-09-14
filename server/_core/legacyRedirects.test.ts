@@ -42,7 +42,7 @@ describe("legacyRedirects — evidenced Squarespace-slug 301s ahead of the SPA f
     ["/about-us", "/about"],
     ["/who-we-are", "/about"],
     ["/AboutUS", "/about"],
-    ["/meet-our-counsellors", "/counsellors"],
+    ["/meet-our-counsellors", "/our-team"],
   ];
   const canonicalCases = Object.entries(CANONICAL_PATHS);
 

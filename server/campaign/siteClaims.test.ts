@@ -18,7 +18,7 @@ const footerSrc = read("../../client/src/components/Footer.tsx");
 const footer = withoutComments(footerSrc);
 
 /** Every public page that named the British Council on 12 September 2026. */
-const PUBLIC_PAGES = ["Home", "About", "Counsellors", "Partners", "Privacy", "Terms", "NigeriaPostgraduate"];
+const PUBLIC_PAGES = ["Home", "About", "OurTeam", "Partners", "Privacy", "Terms", "NigeriaPostgraduate"];
 const pages = Object.fromEntries(
   PUBLIC_PAGES.map(n => [n, withoutComments(read(`../../client/src/pages/${n}.tsx`))]),
 );
@@ -55,7 +55,7 @@ describe("the same rule holds on every public page, not only the footer", () => 
   }
 
   it("uses the agreed wording wherever the British Council is named as a credential", () => {
-    for (const name of ["Home", "About", "Counsellors", "Partners", "Privacy", "Terms"]) {
+    for (const name of ["Home", "About", "OurTeam", "Partners", "Privacy", "Terms"]) {
       expect(pages[name]).toContain("British Council UK knowledge-trained");
     }
   });
@@ -64,8 +64,8 @@ describe("the same rule holds on every public page, not only the footer", () => 
    * The per-counsellor badge is an individual claim, so it must stay gated
    * on a per-person flag rather than being rendered for everyone.
    */
-  it("shows the counsellor badge only for people flagged as holding a certificate", () => {
-    expect(pages.Counsellors).toMatch(/\{person\.britishCouncil && \(/);
+  it("shows the team badge only for people flagged as holding a certificate", () => {
+    expect(pages.OurTeam).toMatch(/if \(!person\.britishCouncil\) return null;/);
   });
 });
 

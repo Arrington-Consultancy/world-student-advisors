@@ -63,10 +63,10 @@ export const SEO_MAP: Record<string, SeoEntry> = {
     description:
       "Online and distance learning study options for international students, with WorldStudentAdvisors counsellor support.",
   },
-  "/counsellors": {
-    title: "Our Counsellors | World Student Advisors",
+  "/our-team": {
+    title: "Our Team | World Student Advisors",
     description:
-      "Meet WorldStudentAdvisors' team of British Council UK knowledge-trained counsellors across the UK, Kenya, Nigeria, Ghana, Angola, and Malawi.",
+      "Meet the people behind WorldStudentAdvisors: British Council UK knowledge-trained counsellors and the wider team who support students from first enquiry through application, visa preparation and enrolment.",
   },
   "/student-support-library": {
     title: "Student Support Library | World Student Advisors",
@@ -185,6 +185,9 @@ export const CANONICAL_PATHS: Record<string, string> = {
   "/study-options/online-learning": "/online-learning",
   "/privacy": "/privacy-policy",
   "/our-global-education-partners": "/partners",
+  // The counsellors page became OUR TEAM on 14 September 2026 (Change Entry
+  // 098). The old path is indexed and linked externally, so it 301s here.
+  "/counsellors": "/our-team",
   "/learning-hub": "/student-support-library",
   "/learning-hub/podcasts": "/student-support-library",
   "/podcasts": "/student-support-library",

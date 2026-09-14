@@ -27,6 +27,10 @@ export const VALID_CLIENT_ROUTES = [
   "/study-options/undergraduate-degrees",
   "/study-options/pre-masters-top-up-degrees",
   "/study-options/masters-doctoral-degrees",
+  "/our-team",
+  // Kept alongside /our-team: the page was renamed on 14 September 2026 and
+  // /counsellors 301s to it (CANONICAL_PATHS), but the old path stays a real
+  // route so an in-app link that still points at it renders rather than 404s.
   "/counsellors",
   "/student-support-library",
   "/staff-portal",

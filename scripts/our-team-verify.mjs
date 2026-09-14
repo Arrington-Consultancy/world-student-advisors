@@ -1,0 +1,137 @@
+/**
+ * Read-only verification of the published OUR TEAM page on the live site.
+ *
+ * Checks the things the approved implementation direction of 14 September
+ * 2026 asked to be confirmed after deployment: the page serves, /counsellors
+ * still works through a single redirect, the six people render in the
+ * approved order with no country headings, each profile opens, the British
+ * Council badge appears only for certificate holders and opens a certificate
+ * only where consent is evidenced, and the page fits a phone.
+ *
+ * Read-only: it opens pages, opens profile dialogs and requests two PDFs by
+ * HEAD. It submits no form and creates no lead. Uses no secrets.
+ */
+import { chromium } from "playwright";
+import { writeFileSync } from "fs";
+
+const ORIGIN = process.env.ORIGIN ?? "https://www.worldstudentadvisors.com";
+const OUT_DIR = process.env.OUT_DIR ?? ".";
+const EXPECTED_ORDER = [
+  "Tim Hunt",
+  "Tom Arrington",
+  "Eldah Therone",
+  "Glenice Owino",
+  "Manet Khamayo",
+  "Claudia Ingado",
+];
+/** WSA holds a current certificate for these four. */
+const BADGE_HOLDERS = ["Tim Hunt", "Eldah Therone", "Glenice Owino", "Manet Khamayo"];
+/** Public use of the certificate is evidenced only for these two. */
+const PUBLISHED_CERTIFICATES = {
+  "Tim Hunt": "/team/certificates/tim-hunt-british-council.pdf",
+  "Eldah Therone": "/team/certificates/eldah-therone-british-council.pdf",
+};
+
+const results = [];
+const check = (name, pass, detail = "") => {
+  results.push({ name, pass, detail });
+  console.log(`${pass ? "PASS" : "FAIL"}  ${name}${detail ? ` — ${detail}` : ""}`);
+};
+
+const CARD_NAME = 'section.bg-wsa-cream button.text-left.text-base';
+const DIALOG = '[data-slot="dialog-content"]';
+
+async function main() {
+  // 1. The route, the redirect and the certificate files, without a browser.
+  const team = await fetch(`${ORIGIN}/our-team`, { redirect: "manual" });
+  check("GET /our-team returns 200", team.status === 200, `HTTP ${team.status}`);
+  const html = await team.text();
+  check("the served HTML is indexable", !/noindex/i.test(html));
+
+  const old = await fetch(`${ORIGIN}/counsellors`, { redirect: "manual" });
+  const location = old.headers.get("location") ?? "";
+  check(
+    "/counsellors 301s to /our-team in one hop",
+    old.status === 301 && location.replace(ORIGIN, "") === "/our-team",
+    `HTTP ${old.status} -> ${location || "(none)"}`,
+  );
+
+  const sitemap = await (await fetch(`${ORIGIN}/sitemap.xml`)).text();
+  // Matched on the path so the same script works against a local build.
+  check("sitemap lists /our-team", /<loc>[^<]*\/our-team<\/loc>/.test(sitemap));
+  check("sitemap no longer lists /counsellors", !/<loc>[^<]*\/counsellors<\/loc>/.test(sitemap));
+
+  for (const [person, path] of Object.entries(PUBLISHED_CERTIFICATES)) {
+    const response = await fetch(`${ORIGIN}${path}`, { method: "HEAD" });
+    check(`${person}'s certificate is served`, response.status === 200, `HTTP ${response.status}`);
+  }
+  for (const path of ["/team/certificates/glenice-owino-british-council.pdf", "/team/certificates/manet-khamayo-british-council.pdf"]) {
+    const response = await fetch(`${ORIGIN}${path}`, { method: "HEAD" });
+    check(`unconsented certificate is NOT published (${path.split("/").pop()})`, response.status === 404, `HTTP ${response.status}`);
+  }
+
+  // 2. The rendered page, at both widths.
+  const browser = await chromium.launch();
+  for (const [label, width, height] of [["desktop", 1440, 900], ["mobile", 390, 844]]) {
+    const context = await browser.newContext({ viewport: { width, height } });
+    const page = await context.newPage();
+    await page.goto(`${ORIGIN}/our-team`, { waitUntil: "networkidle", timeout: 60_000 });
+
+    const heading = (await page.locator("h1").first().innerText()).trim();
+    check(`${label}: heading is "The people behind WSA"`, heading === "The people behind WSA", heading);
+
+    const order = (await page.locator(CARD_NAME).allInnerTexts()).map(t => t.trim());
+    check(`${label}: the six people render in the approved order`, JSON.stringify(order) === JSON.stringify(EXPECTED_ORDER), order.join(" | "));
+
+    const headings = (await page.locator("h2, h3").allInnerTexts()).map(t => t.trim());
+    const countryHeading = headings.find(h => ["United Kingdom", "Kenya", "Nigeria", "Ghana", "Angola", "Malawi"].includes(h));
+    check(`${label}: no country section headings`, countryHeading === undefined, countryHeading ?? "");
+
+    const journey = (await page.locator("ol li h3").allInnerTexts()).map(t => t.trim());
+    check(
+      `${label}: How we support you runs enquiry to enrolment`,
+      JSON.stringify(journey) === JSON.stringify(["Enquiry", "Claudia", "Named Student Counsellor", "Application", "Visa Preparation", "Enrolment"]),
+      journey.join(" -> "),
+    );
+
+    const overflow = await page.evaluate(() => ({
+      scrollWidth: document.documentElement.scrollWidth,
+      clientWidth: document.documentElement.clientWidth,
+    }));
+    check(`${label}: no horizontal overflow`, overflow.scrollWidth <= overflow.clientWidth + 1, `${overflow.scrollWidth} vs ${overflow.clientWidth}`);
+
+    // Every profile opens, and the credential behaviour is per person.
+    for (const person of EXPECTED_ORDER) {
+      await page.locator(CARD_NAME, { hasText: person }).click();
+      await page.locator(DIALOG).waitFor({ state: "visible", timeout: 30_000 });
+      const dialog = page.locator(DIALOG);
+      const text = await dialog.innerText();
+      const hasBadge = /British Council UK knowledge-trained/.test(text);
+      const certHref = await dialog.locator('a:has-text("View certificate")').getAttribute("href").catch(() => null);
+      check(`${label}: ${person}'s profile opens with their biography`, text.includes(person) && text.length > 400, `${text.length} chars`);
+      check(`${label}: ${person} badge ${BADGE_HOLDERS.includes(person) ? "shown" : "absent"}`, hasBadge === BADGE_HOLDERS.includes(person));
+      const expectedCert = PUBLISHED_CERTIFICATES[person] ?? null;
+      check(`${label}: ${person} certificate link ${expectedCert ? "present" : "absent"}`, (certHref ?? null) === expectedCert, certHref ?? "(none)");
+      await page.keyboard.press("Escape");
+      await page.locator(DIALOG).waitFor({ state: "hidden", timeout: 30_000 });
+      await page.waitForTimeout(150);
+    }
+
+    await page.screenshot({ path: `${OUT_DIR}/our-team-${label}.png`, fullPage: true });
+    await context.close();
+  }
+  await browser.close();
+
+  const failed = results.filter(r => !r.pass);
+  writeFileSync(`${OUT_DIR}/our-team-verify.json`, JSON.stringify(results, null, 2));
+  console.log(`\n${results.length - failed.length}/${results.length} checks passed.`);
+  if (failed.length > 0) {
+    console.error(`FAILED: ${failed.map(f => f.name).join("; ")}`);
+    process.exit(1);
+  }
+}
+
+main().catch(error => {
+  console.error(error);
+  process.exit(1);
+});

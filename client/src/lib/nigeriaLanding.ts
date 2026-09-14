@@ -78,7 +78,7 @@ export const BENEFITS: ReadonlyArray<Benefit> = Object.freeze([
 ]);
 
 /**
- * Real WSA people, both already published on /counsellors with genuine
+ * Real WSA people, both already published on /our-team with genuine
  * photographs. No profile appears here without a photograph WSA already
  * holds, and no credential appears without the certificate to open.
  */
@@ -125,7 +125,7 @@ export const BRITISH_COUNCIL_DISCLAIMER =
  * other reason.
  *
  * Babatunde Azeez is the Nigeria-based male counsellor. WSA holds his
- * photograph, already published on /counsellors, but no British Council
+ * photograph, already published on /our-team, but no British Council
  * certificate and no written consent to publish contact details, so his
  * card carries neither.
  */

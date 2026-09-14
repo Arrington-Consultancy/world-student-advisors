@@ -292,7 +292,7 @@ export default function NigeriaPostgraduate() {
             ))}
           </div>
           <Link
-            href="/counsellors"
+            href="/our-team"
             className="mt-5 inline-flex items-center gap-1.5 text-base font-medium text-wsa-red underline-offset-2 hover:underline"
           >
             See the full WSA team

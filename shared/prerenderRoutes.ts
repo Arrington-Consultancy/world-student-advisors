@@ -35,7 +35,7 @@ export const PRERENDER_ROUTES: readonly string[] = [
   "/masters-doctoral-degrees",
   "/sport-pathways",
   "/online-learning",
-  "/counsellors",
+  "/our-team",
   "/student-support-library",
   "/learning-hub/cv-university-application",
   "/training-workshops",

@@ -200,7 +200,7 @@ export default function Home() {
                 </p>
                 <div className="flex flex-col sm:flex-row gap-4">
                   <Link
-                    href="/counsellors"
+                    href="/our-team"
                     className="inline-flex items-center justify-center px-7 py-4 border-2 border-wsa-navy text-wsa-navy text-[15px] font-semibold tracking-wide transition-all duration-200 hover:bg-wsa-navy hover:text-white active:scale-[0.98]"
                   >
                     Talk to a Counsellor
@@ -328,7 +328,7 @@ export default function Home() {
                   After many years working in international education, Tim wanted to create a different kind of organisation. One built around personal advice, long term relationships and people who genuinely care about the students they support. That philosophy became the WSA Family.
                 </p>
                 <Link
-                  href="/counsellors"
+                  href="/our-team"
                   className="inline-flex items-center text-wsa-navy font-semibold hover:text-wsa-red transition-colors duration-200"
                 >
                   Meet your WSA Counsellors
@@ -424,7 +424,7 @@ export default function Home() {
                   For parents: your child's counsellor is available to you directly. You'll always know who to call.
                 </p>
                 <Link
-                  href="/counsellors"
+                  href="/our-team"
                   className="inline-flex items-center text-wsa-navy font-semibold hover:text-wsa-red transition-colors duration-200"
                 >
                   Meet your WSA Counsellors
