@@ -151,15 +151,25 @@ export default function UKMastersNigeria() {
                   MSc, MA and MBA
                 </p>
                 <h2 className="text-3xl md:text-4xl font-semibold text-wsa-navy leading-[1.15] mb-6">
-                  Choose a taught postgraduate route, not a research route
+                  Taught Master's here, research degrees on our postgraduate page
                 </h2>
                 <div className="space-y-4 text-[17px] text-muted-foreground leading-relaxed">
                   <p>
-                    This page is for students considering taught Master's study: MSc, MA, MBA, LLM and similar structured postgraduate courses. It is not aimed at MRes, MPhil, PhD or doctorate applicants.
+                    This page is about taught Master's study: MSc, MA, MBA, LLM and similar structured postgraduate courses.
                   </p>
                   <p>
                     Taught Master's courses normally combine modules, assignments, exams or projects, and a final dissertation or major project. The right choice depends on your previous degree, the subject you want to study and what you want the qualification to help you do next.
                   </p>
+                  <p>
+                    Considering an <strong className="text-wsa-navy">MRes, MPhil or PhD</strong> instead? A research degree is supervised and largely self-directed, and it is a different decision from a taught Master's rather than a harder version of one. WSA supports Nigerian graduates applying for all four, so start on our postgraduate page instead of this one.
+                  </p>
+                  <Link
+                    href="/nigeria-postgraduate"
+                    className="inline-flex items-center gap-2 text-[17px] font-medium text-wsa-red hover:underline"
+                  >
+                    Postgraduate study for Nigerian graduates: Taught Master's, MPhil, MRes and PhD
+                    <ArrowRight size={17} />
+                  </Link>
                 </div>
               </div>
             </ScrollReveal>

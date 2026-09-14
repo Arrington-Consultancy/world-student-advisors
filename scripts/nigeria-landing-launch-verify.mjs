@@ -101,6 +101,92 @@ for (const [level, dest] of cases) {
   await p.close();
   await new Promise(r => setTimeout(r, 1500));
 }
+
+// ---------------------------------------------------------------------------
+// Brief v2.0 readiness: Final URL, the four programmes, attribution and the
+// Google Ads conversion tag. Added 14 September 2026 for the Ads readiness
+// decision. Everything here reads; nothing is submitted.
+// ---------------------------------------------------------------------------
+console.log("\n=== Brief v2.0 readiness ===");
+{
+  const ctx = await b.newContext({ viewport: { width: 1280, height: 900 } });
+  const p = await ctx.newPage();
+
+  // Land exactly as a Google Ads click would, with a click id and all five UTMs.
+  const attribution = {
+    gclid: "wsaVerify_gclid_000",
+    utm_source: "google",
+    utm_medium: "cpc",
+    utm_campaign: "nigeria_postgraduate_v2",
+    utm_term: "phd_uk_nigeria",
+    utm_content: "readiness_check",
+  };
+  const query = new URLSearchParams(attribution).toString();
+  await p.goto(`${BASE}/nigeria-postgraduate?${query}`, { waitUntil: "domcontentloaded", timeout: 60000 });
+  await p.locator("h1").first().waitFor({ state: "visible", timeout: 60000 });
+
+  // 1. The call to action the brief names, in sections 19 and 30.
+  const cta = await p.getByRole("button", { name: /get my study options/i }).count()
+    + await p.getByRole("link", { name: /get my study options/i }).count();
+  ok(cta > 0, 'call to action "Get my study options" not found on the page');
+  log(`CTA "Get my study options" present: ${cta > 0}`);
+
+  // 2. All four approved programme types offered, and nothing outside them.
+  const body = (await p.locator("body").innerText()).toLowerCase();
+  for (const programme of ["taught master", "mphil", "mres", "phd"]) {
+    ok(body.includes(programme), `programme type missing from the page: ${programme}`);
+  }
+  for (const excluded of ["foundation", "undergraduate", "pre-master", "hnd", "top-up"]) {
+    ok(!body.includes(excluded), `page offers an out-of-scope programme: ${excluded}`);
+  }
+  log("four approved programme types present; no out-of-scope programme named");
+
+  // 3. Attribution captured from the landing URL and persisted.
+  const stored = await p.evaluate(() => {
+    try { return JSON.parse(window.localStorage.getItem("wsa_ad_click_ids") ?? "{}"); }
+    catch { return {}; }
+  });
+  for (const [key, value] of Object.entries(attribution)) {
+    ok(stored[key] === value, `attribution ${key} not captured (got ${JSON.stringify(stored[key])})`);
+  }
+  log(`attribution captured: ${Object.keys(stored).sort().join(", ") || "(none)"}`);
+
+  // 4. Attribution survives the hop to the signup form, which is where the
+  //    lead is actually created and where the conversion fires.
+  await p.goto(`${BASE}/contact`, { waitUntil: "domcontentloaded", timeout: 60000 });
+  const afterHop = await p.evaluate(() => {
+    try { return JSON.parse(window.localStorage.getItem("wsa_ad_click_ids") ?? "{}"); }
+    catch { return {}; }
+  });
+  ok(afterHop.gclid === attribution.gclid, "gclid did not survive the hop to the signup form");
+  ok(afterHop.utm_campaign === attribution.utm_campaign, "utm_campaign did not survive the hop");
+  log(`attribution after hop to /contact: gclid=${afterHop.gclid ?? "(lost)"} campaign=${afterHop.utm_campaign ?? "(lost)"}`);
+
+  // 5. The Google Ads conversion tag loads once analytics consent is given,
+  //    and stays absent until then. Both halves matter.
+  const beforeConsent = await p.evaluate(() =>
+    Boolean(document.querySelector('script[src*="googletagmanager.com/gtag/js"]')));
+  ok(!beforeConsent, "Google Ads tag loaded before consent was given");
+
+  const accept = p.getByRole("button", { name: /^accept all$/i });
+  if (await accept.count()) {
+    await accept.first().click();
+    await p.waitForTimeout(2500);
+  }
+  const afterConsent = await p.evaluate(() => ({
+    tag: Boolean(document.querySelector('script[src*="googletagmanager.com/gtag/js"]')),
+    id: document.querySelector('script[src*="googletagmanager.com/gtag/js"]')?.getAttribute("src") ?? "",
+    dataLayer: Array.isArray(window.dataLayer),
+  }));
+  ok(afterConsent.tag, "Google Ads tag did not load after analytics consent");
+  ok(afterConsent.id.includes("AW-946725823"), `unexpected Google Ads id: ${afterConsent.id}`);
+  ok(afterConsent.dataLayer, "dataLayer not initialised after consent");
+  log(`Google Ads tag before consent: ${beforeConsent} | after consent: ${afterConsent.tag} (${afterConsent.id || "no src"})`);
+
+  await p.close();
+  await ctx.close();
+}
+
 await b.close();
 console.log("\n=== PRODUCTION VERIFICATION ===");
 if (fails.length) { fails.forEach(f => console.log("FAIL:", f)); process.exit(1); }

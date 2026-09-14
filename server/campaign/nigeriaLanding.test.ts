@@ -10,7 +10,8 @@ import {
   isDesiredLevelValue,
   isDestinationValue,
 } from "../../shared/studentEnquiryOptions";
-import { NOINDEX_PATHS, SEO_MAP, shouldNoindex } from "../../shared/seo";
+import { CANONICAL_PATHS, NOINDEX_PATHS, SEO_MAP, shouldNoindex } from "../../shared/seo";
+import { isValidClientRoute } from "../../shared/routes";
 import { PRERENDER_ROUTES } from "../../shared/prerenderRoutes";
 import { toInternationalNigerianNumber } from "../../client/src/lib/nigeriaLanding";
 
@@ -330,4 +331,72 @@ describe("a profile is published only on the evidence WSA holds", () => {
     const inContent = Array.from(content.matchAll(/\+\d[\d\s]{7,}/g)).map(m => m[0].trim());
     expect(inContent.every(n => n.replace(/\s/g, "") === "+447470689849")).toBe(true);
   });
+});
+
+/**
+ * The taught Master's page at /uk-masters-nigeria is not the campaign's
+ * Final URL and must not become a second one. Brief v2.0 names exactly one
+ * destination, /nigeria-postgraduate, in sections 19 and 30.
+ *
+ * It still had a job to do, though. Until 14 September 2026 it told every
+ * research applicant "It is not aimed at MRes, MPhil, PhD or doctorate
+ * applicants", which turned away organically the very enquiries the
+ * approved scope now wants. It keeps its taught Master's focus and sends
+ * those students on instead.
+ */
+describe("the taught Master's page points research applicants onward without duplicating the campaign page", () => {
+  const oldPage = withoutComments(read("../../client/src/pages/UKMastersNigeria.tsx"));
+
+  it("no longer rejects research applicants", () => {
+    expect(oldPage).not.toMatch(/not aimed at MRes, MPhil, PhD or doctorate applicants/i);
+    expect(oldPage).not.toMatch(/not a research route/i);
+  });
+
+  it("routes them to the campaign page", () => {
+    expect(oldPage).toContain('href="/nigeria-postgraduate"');
+    expect(oldPage).toMatch(/MRes, MPhil or PhD/);
+  });
+
+  it("stays a taught Master's page rather than becoming a second campaign page", () => {
+    // The enquiry form, the programme picker and the destination picker are
+    // what make the campaign page the campaign page. None may appear here.
+    expect(oldPage).not.toContain("CAMPAIGN_PROGRAMMES");
+    expect(oldPage).not.toContain("CAMPAIGN_DESTINATIONS");
+    expect(oldPage).not.toContain("Get my study options");
+    expect(oldPage).toMatch(/taught Master's/i);
+  });
+
+  it("is still its own indexable route, neither redirected nor removed", () => {
+    expect(isValidClientRoute("/uk-masters-nigeria")).toBe(true);
+    expect(shouldNoindex("/uk-masters-nigeria")).toBe(false);
+    expect(PRERENDER_ROUTES).toContain("/uk-masters-nigeria");
+    expect(CANONICAL_PATHS["/uk-masters-nigeria"]).toBeUndefined();
+  });
+});
+
+/**
+ * Brief v2.0 section 15, and open point 2, forbid advertising three
+ * research services until WSA confirms in writing that it provides them:
+ * supervisor matching, research proposal writing and studentship
+ * placement. Section 29 forbids guaranteeing a supervisor, a studentship or
+ * a research place at all. This holds both Nigeria pages to that.
+ */
+describe("neither Nigeria page advertises unconfirmed research services", () => {
+  const pages = {
+    "nigeria-postgraduate": page,
+    "uk-masters-nigeria": withoutComments(read("../../client/src/pages/UKMastersNigeria.tsx")),
+  };
+
+  for (const [name, source] of Object.entries(pages)) {
+    it(`${name} promises no supervisor matching, proposal writing or studentship placement`, () => {
+      expect(source).not.toMatch(/supervisor match/i);
+      expect(source).not.toMatch(/(match|find|secure)( you)?( a| your)? supervisor/i);
+      expect(source).not.toMatch(/(write|writing|draft|drafting) (your |a )?research proposal/i);
+      expect(source).not.toMatch(/studentship (placement|guidance|matching)/i);
+      // "should not be treated as guaranteed" is a disclaimer, not a
+      // promise. What section 29 forbids is WSA guaranteeing an outcome.
+      expect(source).not.toMatch(/we guarantee/i);
+      expect(source).not.toMatch(/guaranteed (admission|place|offer|visa|supervisor|studentship|funding|scholarship)/i);
+    });
+  }
 });
