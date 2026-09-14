@@ -66,7 +66,21 @@ export const CAMPAIGN_PROGRAMMES: ReadonlyArray<{
   { label: "PhD", note: "Doctoral research", value: "doctorate" },
 ]);
 
-/** UK first, then Germany and Canada, each recorded as itself. */
+/**
+ * UK first, then the other destinations WSA actually works with, each
+ * recorded as itself.
+ *
+ * United States and Other European destinations added 14 September 2026 on
+ * Tim Hunt's landing page review: "We have USA and Europe." Both already
+ * existed as distinct Pipedrive options (85 and 84) and as values the
+ * signup form offers, so this widens what the campaign advertises without
+ * inventing anything downstream.
+ *
+ * "Other European destinations" is deliberately not "Europe". The rule
+ * that Germany is recorded as Germany is unchanged: this is the catch-all
+ * for the European countries that have no option of their own, and it
+ * never absorbs one that has.
+ */
 export const CAMPAIGN_DESTINATIONS: ReadonlyArray<{
   label: string;
   emphasis: "primary" | "secondary";
@@ -76,8 +90,10 @@ export const CAMPAIGN_DESTINATIONS: ReadonlyArray<{
   { label: "United Kingdom", emphasis: "primary", value: "uk", // "Where most applicants go" and "where we know the route best" were
     // both stronger than WSA can currently evidence, so neither is claimed.
     note: "Our main destination for this campaign." },
-  { label: "Germany", emphasis: "secondary", value: "germany", note: "Considered where the course and your funding position fit." },
+  { label: "United States", emphasis: "secondary", value: "usa", note: "Considered where the course and your funding position fit." },
   { label: "Canada", emphasis: "secondary", value: "canada", note: "Considered where the course and your funding position fit." },
+  { label: "Germany", emphasis: "secondary", value: "germany", note: "Considered where the course and your funding position fit." },
+  { label: "Other European destinations", emphasis: "secondary", value: "europe", note: "European countries with no option of their own, considered one country at a time." },
 ]);
 
 /**
@@ -99,8 +115,8 @@ export const PIPEDRIVE_OPTION_GAPS: ReadonlyArray<{
 
 /**
  * Every campaign value and the Pipedrive option id it is recorded as.
- * This is the measurement contract: four programmes, four ids; three
- * destinations, three ids; no two sharing one.
+ * This is the measurement contract: four programmes, four ids; five
+ * destinations, five ids; no two sharing one.
  */
 export const PIPEDRIVE_CAMPAIGN_OPTION_IDS = Object.freeze({
   postgraduate: 43, // Taught Master's
@@ -108,6 +124,8 @@ export const PIPEDRIVE_CAMPAIGN_OPTION_IDS = Object.freeze({
   mres: 314, // MRes research degree
   doctorate: 45, // PhD Doctorate
   uk: 78, // United Kingdom (UK)
-  germany: 315, // Germany
+  usa: 85, // United States
   canada: 86, // Canada
+  germany: 315, // Germany
+  europe: 84, // Other European Counties (Pipedrive's spelling)
 } as const);

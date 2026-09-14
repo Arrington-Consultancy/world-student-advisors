@@ -98,6 +98,21 @@ describe("nothing on the page claims what WSA cannot evidence", () => {
     expect(page).toContain("Real people. Your counsellor is named and stays with you.");
   });
 
+  /**
+   * Tim Hunt set both of these word for word in the landing page review of
+   * 14 September 2026. They are the paid campaign's promise, so they are
+   * asserted exactly rather than left to drift under later copy edits.
+   */
+  it("carries the headline and standfirst as they were given", () => {
+    expect(page).toContain("Study for Your Master&rsquo;s or PhD Abroad");
+    expect(page).toContain(
+      "Taught Master&rsquo;s, MRes, MPhil and PhD opportunities for Nigerian graduates, with your own WSA Student",
+    );
+    expect(page).toContain("Counsellor from course selection through to visa preparation.");
+    // The headline it replaced is gone, not merely demoted.
+    expect(page).not.toContain("Postgraduate study abroad, planned with one person who knows your case");
+  });
+
   it("does not claim the UK is where most applicants go or where WSA knows best", () => {
     expect(options).not.toMatch(/where most WSA postgraduate applicants go/i);
     expect(options).not.toMatch(/know the admissions and visa route best/i);
@@ -106,11 +121,14 @@ describe("nothing on the page claims what WSA cannot evidence", () => {
   });
 
   it("credits the individual, and only where WSA holds the certificate", () => {
-    // One profile carries a certificate, one does not. Counted on the data,
-    // not the interface declaration above it.
+    // Counted on the data, not the interface declaration above it. Every
+    // credential shown is one WSA holds, and no profile invents one.
     const data = content.slice(content.indexOf("export const COUNSELLORS"));
-    expect((data.match(/credential: \{/g) ?? []).length).toBe(1);
-    expect((data.match(/credential: null/g) ?? []).length).toBe(1);
+    const shown = (data.match(/credential: \{/g) ?? []).length;
+    const withheld = (data.match(/credential: null/g) ?? []).length;
+    const profiles = (data.match(/^    name: /gm) ?? []).length;
+    expect(shown + withheld).toBe(profiles);
+    expect(shown).toBe(1);
   });
 
   it("carries no testimonial, no founding date and no response-time promise", () => {
@@ -208,7 +226,7 @@ describe("the short form hands over to the one controlled lead path", () => {
   });
 });
 
-describe("the four programme types and three destinations stay separate into the CRM", () => {
+describe("the four programme types and five destinations stay separate into the CRM", () => {
   it("the campaign scope is exactly the four Tom confirmed", () => {
     expect(CAMPAIGN_PROGRAMMES.map(p => p.label)).toEqual(["Taught Master's", "MPhil", "MRes", "PhD"]);
   });
@@ -220,11 +238,19 @@ describe("the four programme types and three destinations stay separate into the
     for (const v of values) expect(isDesiredLevelValue(v)).toBe(true);
   });
 
-  it("destinations are UK, Germany and Canada, each recorded as itself", () => {
-    expect(CAMPAIGN_DESTINATIONS.map(d => d.label)).toEqual(["United Kingdom", "Germany", "Canada"]);
+  /**
+   * Widened on Tim Hunt's review of 14 September 2026 ("We have USA and
+   * Europe") from UK, Germany and Canada to five. The list is asserted in
+   * full and in order, so a destination cannot be added to the page
+   * without the Pipedrive option check below being applied to it.
+   */
+  it("destinations are the five WSA works with, each recorded as itself", () => {
+    expect(CAMPAIGN_DESTINATIONS.map(d => d.label)).toEqual([
+      "United Kingdom", "United States", "Canada", "Germany", "Other European destinations",
+    ]);
     const values = CAMPAIGN_DESTINATIONS.map(d => d.value);
-    expect(values).toEqual(["uk", "germany", "canada"]);
-    expect(new Set(values).size).toBe(3);
+    expect(values).toEqual(["uk", "usa", "canada", "germany", "europe"]);
+    expect(new Set(values).size).toBe(5);
     for (const v of values) expect(isDestinationValue(v)).toBe(true);
   });
 
@@ -262,7 +288,7 @@ describe("the four programme types and three destinations stay separate into the
   it("no two campaign values share a Pipedrive option id", () => {
     const ids = Object.values(PIPEDRIVE_CAMPAIGN_OPTION_IDS);
     expect(new Set(ids).size).toBe(ids.length);
-    // Seven values: four programmes and three destinations.
+    // Nine values: four programmes and five destinations.
     expect(ids).toHaveLength(CAMPAIGN_PROGRAMMES.length + CAMPAIGN_DESTINATIONS.length);
   });
 
@@ -301,8 +327,12 @@ describe("the four programme types and three destinations stay separate into the
 describe("a profile is published only on the evidence WSA holds", () => {
   it("shows contact details only for the person who approved them in writing", () => {
     const data = content.slice(content.indexOf("export const COUNSELLORS"));
-    expect((data.match(/contact: \{/g) ?? []).length).toBe(1);
-    expect((data.match(/contact: null/g) ?? []).length).toBe(1);
+    const profiles = (data.match(/^    name: /gm) ?? []).length;
+    const shown = (data.match(/contact: \{/g) ?? []).length;
+    const withheld = (data.match(/contact: null/g) ?? []).length;
+    expect(shown + withheld).toBe(profiles);
+    // Each set of contact details on the page has a recorded consent.
+    expect(shown).toBe((data.match(/consentSource: "/g) ?? []).length);
     expect(content).toContain("Approved by Eldah Therone in writing, 12 September 2026.");
   });
 
@@ -318,11 +348,34 @@ describe("a profile is published only on the evidence WSA holds", () => {
     expect(content).toContain("67976");
   });
 
-  it("gives Babatunde no credential, because none is held", () => {
+  /**
+   * Tim Hunt, 14 September 2026: "Get rid of Babatunde this will cost WSA
+   * 5% of the tuition fees if he is involved." A paid campaign page must
+   * therefore not name him or show his photograph. This asserts the
+   * published data, not a comment about it, so restoring his card fails.
+   */
+  it("does not route campaign enquiries to Babatunde Azeez", () => {
     const data = content.slice(content.indexOf("export const COUNSELLORS"));
-    const babatunde = data.slice(data.indexOf("Babatunde"));
-    expect(babatunde).toContain("credential: null");
-    expect(babatunde).not.toContain("British Council");
+    expect(data).not.toContain("Babatunde");
+    expect(data).not.toContain("babatunde_azeez");
+    expect(page).not.toMatch(/Babatunde/i);
+  });
+
+  /**
+   * The same review asked for Claudia Ingado to replace Eldah here. She is
+   * not published until WSA holds a photograph, verified contact details
+   * and written consent, so this guards the half that can be guarded: if
+   * Claudia is named on the page, she must be named with a real photograph
+   * and with her actual job title, never as a "Student Counsellor", which
+   * she is not.
+   */
+  it("if Claudia Ingado is published, she is published correctly", () => {
+    const data = content.slice(content.indexOf("export const COUNSELLORS"));
+    if (!data.includes("Claudia")) return;
+    const claudia = data.slice(data.indexOf("Claudia"));
+    expect(claudia).toContain('role: "Student Recruitment and Relationship Manager"');
+    expect(claudia).not.toMatch(/photo: ""/);
+    expect(claudia).not.toContain("consentSource: null");
   });
 
   it("publishes no phone number other than the approved one", () => {

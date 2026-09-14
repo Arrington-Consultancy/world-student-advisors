@@ -45,7 +45,7 @@ export const SCOPE_STATUS_NOTE =
   "superseding the taught Master's only brief of 15 August 2026. Published on Tom's GO of 12 September 2026; paid traffic is a separate decision.";
 
 export const OTHER_DESTINATIONS_NOTE =
-  "Other European destinations may be discussed with your counsellor. We do not treat Europe as a single country.";
+  "Your counsellor will talk through other destinations with you. We do not treat Europe as a single country, so where you have a particular country in mind it is recorded as that country.";
 
 /**
  * What WSA offers, in the grouping Tom asked for. "Application Support"
@@ -78,7 +78,7 @@ export const BENEFITS: ReadonlyArray<Benefit> = Object.freeze([
 ]);
 
 /**
- * Real WSA people, both already published on /our-team with genuine
+ * Real WSA people, already published on /our-team with genuine
  * photographs. No profile appears here without a photograph WSA already
  * holds, and no credential appears without the certificate to open.
  */
@@ -124,10 +124,21 @@ export const BRITISH_COUNCIL_DISCLAIMER =
  * Her contact details appear here because she approved them, and for no
  * other reason.
  *
- * Babatunde Azeez is the Nigeria-based male counsellor. WSA holds his
- * photograph, already published on /our-team, but no British Council
- * certificate and no written consent to publish contact details, so his
- * card carries neither.
+ * REMOVED 14 September 2026, Tim Hunt's landing page review: Babatunde
+ * Abdulia Azeez no longer appears on this campaign page. The instruction
+ * was commercial and unambiguous — an enquiry he is involved in costs WSA
+ * 5% of the tuition fee — so a paid campaign page must not route students
+ * to him. His /our-team profile is a separate record and is untouched by
+ * this change.
+ *
+ * STILL OPEN. The same review asked for Eldah to be replaced here by
+ * Claudia Ingado, Student Recruitment and Relationship Manager, who
+ * started on 14 September 2026 and takes the cold lead before it becomes
+ * a deal. Claudia is not on this page yet: WSA holds no photograph of
+ * her, no verified contact details and no written consent to publish
+ * them, and this page publishes no profile without all three. Eldah
+ * remains until those arrive, because a page with no named person is
+ * worse than one naming a counsellor who has consented.
  */
 export const COUNSELLORS: ReadonlyArray<CounsellorProfile> = Object.freeze([
   {
@@ -148,15 +159,6 @@ export const COUNSELLORS: ReadonlyArray<CounsellorProfile> = Object.freeze([
       href: null,
     },
     consentSource: "Approved by Eldah Therone in writing, 12 September 2026.",
-  },
-  {
-    name: "Babatunde Abdulia Azeez",
-    role: "Senior Director for Nigeria",
-    location: "Ibadan, Oyo State, Nigeria",
-    photo: "/manus-storage/babatunde_azeez_1f9d8fb7.png",
-    contact: null,
-    credential: null,
-    consentSource: null,
   },
 ]);
 
@@ -187,7 +189,7 @@ export const EVIDENCE_NEEDED: ReadonlyArray<{ claim: string; why: string }> = Ob
   { claim: "\"We will get back to you within 24 hours\"", why: "On the first-draft hero. A response-time promise needs a service standard WSA is willing to be held to." },
   { claim: "Student testimonials and outcome quotes", why: "The first draft carried two quoted students with photographs. No consented, attributable WSA testimonial has been supplied, so none appear." },
   { claim: "Any admission, visa or outcome success rate", why: "Not claimed anywhere on this page, and should not be added without evidence." },
-  { claim: "A British Council certificate for Babatunde Azeez", why: "None is held. His profile therefore shows no credential, and must not imply one." },
+  { claim: "A photograph, verified contact details and written consent for Claudia Ingado", why: "Tim Hunt asked on 14 September 2026 for Claudia, Student Recruitment and Relationship Manager, to be the named first contact on this page in place of Eldah. WSA holds none of the three, and this page publishes no profile without all three. Until they arrive the page keeps Eldah, who has consented." },
 ]);
 
 export const NIGERIA_DIALLING_CODE = "+234";

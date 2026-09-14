@@ -226,12 +226,14 @@ export default function NigeriaPostgraduate() {
               <NigerianFlag className="h-4 w-6" />
               <span className="text-sm font-semibold uppercase tracking-wider text-wsa-navy">For Nigerian graduates</span>
             </p>
+            {/* Headline and standfirst set word for word by Tim Hunt in the
+                landing page review of 14 September 2026. */}
             <h1 className="mt-4 text-3xl font-bold leading-[1.12] tracking-tight text-wsa-navy sm:text-4xl lg:text-5xl">
-              Postgraduate study abroad, planned with one person who knows your case
+              Study for Your Master&rsquo;s or PhD Abroad
             </h1>
             <p className="mt-4 max-w-xl text-lg leading-relaxed text-gray-700">
-              Taught Master&rsquo;s, MRes, MPhil and PhD. You get your own Personal Student Counsellor from your first
-              question through to your visa preparation.
+              Taught Master&rsquo;s, MRes, MPhil and PhD opportunities for Nigerian graduates, with your own WSA Student
+              Counsellor from course selection through to visa preparation.
             </p>
 
             <ul className="mt-5 flex flex-wrap gap-2">
