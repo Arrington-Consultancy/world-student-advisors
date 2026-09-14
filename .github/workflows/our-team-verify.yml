@@ -29,6 +29,7 @@ jobs:
           npx playwright install --with-deps chromium
 
       - name: Verify the live page
+        timeout-minutes: 10
         run: |
           mkdir -p /tmp/pw/out
           cp scripts/our-team-verify.mjs /tmp/pw/verify.mjs

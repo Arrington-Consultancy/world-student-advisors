@@ -75,7 +75,20 @@ async function main() {
   for (const [label, width, height] of [["desktop", 1440, 900], ["mobile", 390, 844]]) {
     const context = await browser.newContext({ viewport: { width, height } });
     const page = await context.newPage();
-    await page.goto(`${ORIGIN}/our-team`, { waitUntil: "networkidle", timeout: 60_000 });
+    // Fail fast and visibly rather than sitting on Playwright's 30s default
+    // for every locator: a stalled check should be obvious in the log.
+    page.setDefaultTimeout(20_000);
+    await page.goto(`${ORIGIN}/our-team`, { waitUntil: "domcontentloaded", timeout: 60_000 });
+    await page.locator("h1").first().waitFor({ state: "visible", timeout: 60_000 });
+
+    // The cookie banner is fixed to the bottom of the viewport and covers the
+    // lower cards, so a click on one would wait out its timeout. Accepting
+    // only essential cookies dismisses it without enabling analytics.
+    const essentialOnly = page.getByRole("button", { name: /essential only/i });
+    if (await essentialOnly.count()) {
+      await essentialOnly.first().click();
+      await essentialOnly.first().waitFor({ state: "hidden", timeout: 15_000 }).catch(() => {});
+    }
 
     const heading = (await page.locator("h1").first().innerText()).trim();
     check(`${label}: heading is "The people behind WSA"`, heading === "The people behind WSA", heading);
@@ -102,18 +115,24 @@ async function main() {
 
     // Every profile opens, and the credential behaviour is per person.
     for (const person of EXPECTED_ORDER) {
+      console.log(`      opening ${person}'s profile at ${label}...`);
+      await page.locator(CARD_NAME, { hasText: person }).scrollIntoViewIfNeeded();
       await page.locator(CARD_NAME, { hasText: person }).click();
-      await page.locator(DIALOG).waitFor({ state: "visible", timeout: 30_000 });
+      await page.locator(DIALOG).waitFor({ state: "visible" });
       const dialog = page.locator(DIALOG);
       const text = await dialog.innerText();
       const hasBadge = /British Council UK knowledge-trained/.test(text);
-      const certHref = await dialog.locator('a:has-text("View certificate")').getAttribute("href").catch(() => null);
+      // Checked with count() first: asking a locator that matches nothing for
+      // an attribute waits out the full timeout, which costs half an hour
+      // across the people who correctly have no certificate link.
+      const certLink = dialog.locator('a:has-text("View certificate")');
+      const certHref = (await certLink.count()) > 0 ? await certLink.getAttribute("href") : null;
       check(`${label}: ${person}'s profile opens with their biography`, text.includes(person) && text.length > 400, `${text.length} chars`);
       check(`${label}: ${person} badge ${BADGE_HOLDERS.includes(person) ? "shown" : "absent"}`, hasBadge === BADGE_HOLDERS.includes(person));
       const expectedCert = PUBLISHED_CERTIFICATES[person] ?? null;
       check(`${label}: ${person} certificate link ${expectedCert ? "present" : "absent"}`, (certHref ?? null) === expectedCert, certHref ?? "(none)");
       await page.keyboard.press("Escape");
-      await page.locator(DIALOG).waitFor({ state: "hidden", timeout: 30_000 });
+      await page.locator(DIALOG).waitFor({ state: "hidden" });
       await page.waitForTimeout(150);
     }
 
