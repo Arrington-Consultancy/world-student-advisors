@@ -72,13 +72,17 @@ export const WORKER_SHAREPOINT_LOCATIONS: Readonly<Record<WorkerId, readonly Sha
   harper: Object.freeze([]),
   olivia: Object.freeze([]),
   // Controlled governance evidence for audit. Approved 11 September 2026.
-  grace: Object.freeze(["17_Senior Management Team/AI_Operating_System"]),
+  // The 05_HUB prefix is load-bearing and was missing until 14 September
+  // 2026: the Senior Management Team tree is not at the drive root, and a
+  // production acceptance run answered 404 itemNotFound for grace and maya
+  // until both paths were corrected. Same folders, same approved scope.
+  grace: Object.freeze(["05_HUB/17_Senior Management Team/AI_Operating_System"]),
   // Website and SEO governance evidence. Approved 11 September 2026.
   ethan: Object.freeze(["16_WEBSITE_Ai"]),
   // Records control across the governance and management areas. The HR
   // sub-folder under 01_ADMIN is caught by NEVER_DESIGNATED regardless.
   // Approved 11 September 2026.
-  maya: Object.freeze(["01_ADMIN_&_GOVERNANCE", "17_Senior Management Team"]),
+  maya: Object.freeze(["01_ADMIN_&_GOVERNANCE", "05_HUB/17_Senior Management Team"]),
   // Campaign assets only. Approved 11 September 2026.
   alex: Object.freeze(["07_MARKETING_IMAGES"]),
   // Social, brand and evidence records, to the extent of her approved

@@ -35,23 +35,27 @@ describe("the designations are exactly the approved ones, 11 September 2026", ()
   it("a worker with no designation is refused every path, and the reason names the missing designation", () => {
     for (const w of listWorkers()) {
       if (WORKER_SHAREPOINT_LOCATIONS[w.id].length > 0) continue;
-      const decision = decideSharePointLocation(w.id, `${SITE}/17_Senior Management Team/AI_Operating_System`, SITE);
+      const decision = decideSharePointLocation(w.id, `${SITE}/05_HUB/17_Senior Management Team/AI_Operating_System`, SITE);
       expect(decision.permitted).toBe(false);
       expect(decision.reason).toContain("No SharePoint location is designated");
       expect(decision.reason).toContain("Access Matrix");
     }
   });
 
-  it("the six approved designations are exactly these, and every one is a folder that exists at the live root", () => {
+  it("the six approved designations are exactly these, and every one starts at a folder that exists at the live root", () => {
     expect(WORKER_SHAREPOINT_LOCATIONS.amelia).toEqual(["08_PARTNERS- ORGANISATIONS"]);
-    expect(WORKER_SHAREPOINT_LOCATIONS.grace).toEqual(["17_Senior Management Team/AI_Operating_System"]);
+    expect(WORKER_SHAREPOINT_LOCATIONS.grace).toEqual(["05_HUB/17_Senior Management Team/AI_Operating_System"]);
     expect(WORKER_SHAREPOINT_LOCATIONS.ethan).toEqual(["16_WEBSITE_Ai"]);
-    expect(WORKER_SHAREPOINT_LOCATIONS.maya).toEqual(["01_ADMIN_&_GOVERNANCE", "17_Senior Management Team"]);
+    expect(WORKER_SHAREPOINT_LOCATIONS.maya).toEqual(["01_ADMIN_&_GOVERNANCE", "05_HUB/17_Senior Management Team"]);
     expect(WORKER_SHAREPOINT_LOCATIONS.alex).toEqual(["07_MARKETING_IMAGES"]);
     expect(WORKER_SHAREPOINT_LOCATIONS.nia).toEqual(["11_SOCIAL_MEDIA", "07_MARKETING_IMAGES", "09_PODCASTS and WEBINARS"]);
-    // Read from the drive root on 11 September 2026. A designation that
-    // does not exist would point a worker at nothing while looking granted.
-    const liveRoot = ["01_ADMIN_&_GOVERNANCE", "07_MARKETING_IMAGES", "08_PARTNERS- ORGANISATIONS", "09_PODCASTS and WEBINARS", "11_SOCIAL_MEDIA", "16_WEBSITE_Ai", "17_Senior Management Team"];
+    // Read from the drive root on 11 September 2026, corrected 14 September
+    // 2026. A designation that does not exist points a worker at nothing
+    // while looking granted, which is exactly what happened to grace and
+    // maya: both named 17_Senior Management Team as though it sat at the
+    // root, and a production acceptance run answered 404 itemNotFound for
+    // both. It sits under 05_HUB.
+    const liveRoot = ["01_ADMIN_&_GOVERNANCE", "05_HUB", "07_MARKETING_IMAGES", "08_PARTNERS- ORGANISATIONS", "09_PODCASTS and WEBINARS", "11_SOCIAL_MEDIA", "16_WEBSITE_Ai"];
     for (const list of Object.values(WORKER_SHAREPOINT_LOCATIONS)) for (const loc of list) expect(liveRoot).toContain(loc.split("/")[0]);
   });
 
