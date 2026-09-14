@@ -132,14 +132,17 @@ console.log("\n=== Brief v2.0 readiness ===");
   log(`CTA "Get my study options" present: ${cta > 0}`);
 
   // 2. All four approved programme types offered, and nothing outside them.
-  const body = (await p.locator("body").innerText()).toLowerCase();
+  // Scoped to <main>. The site-wide header and footer link to every study
+  // option WSA offers, including the ones this campaign excludes, and those
+  // are navigation rather than anything this campaign is advertising.
+  const body = (await p.locator("main").innerText()).toLowerCase();
   for (const programme of ["taught master", "mphil", "mres", "phd"]) {
     ok(body.includes(programme), `programme type missing from the page: ${programme}`);
   }
   for (const excluded of ["foundation", "undergraduate", "pre-master", "hnd", "top-up"]) {
-    ok(!body.includes(excluded), `page offers an out-of-scope programme: ${excluded}`);
+    ok(!body.includes(excluded), `campaign page content names an out-of-scope programme: ${excluded}`);
   }
-  log("four approved programme types present; no out-of-scope programme named");
+  log("four approved programme types present in <main>; no out-of-scope programme named there");
 
   // 3. Attribution captured from the landing URL and persisted.
   const stored = await p.evaluate(() => {
@@ -169,10 +172,18 @@ console.log("\n=== Brief v2.0 readiness ===");
   ok(!beforeConsent, "Google Ads tag loaded before consent was given");
 
   const accept = p.getByRole("button", { name: /^accept all$/i });
-  if (await accept.count()) {
+  let consentGiven = false;
+  try {
+    await accept.first().waitFor({ state: "visible", timeout: 20000 });
     await accept.first().click();
-    await p.waitForTimeout(2500);
+    consentGiven = true;
+    await p.waitForTimeout(4000);
+  } catch {
+    // Left false, and asserted below, so a banner that never appears is
+    // reported as such rather than looking like a missing tag.
   }
+  ok(consentGiven, "cookie consent banner never offered Accept all, so the tag could not be tested");
+  log(`analytics consent given: ${consentGiven}`);
   const afterConsent = await p.evaluate(() => ({
     tag: Boolean(document.querySelector('script[src*="googletagmanager.com/gtag/js"]')),
     id: document.querySelector('script[src*="googletagmanager.com/gtag/js"]')?.getAttribute("src") ?? "",
