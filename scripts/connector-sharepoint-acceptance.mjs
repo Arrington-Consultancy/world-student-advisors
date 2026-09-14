@@ -21,12 +21,16 @@ if (!tenant || !clientId || !secret) {
 const WSA_HOST = "worldstudentadvisors123.sharepoint.com";
 const WSA_SITE_PATH = "/sites/WSASharePoint";
 // Mirrors server/workforce/sharePointLocations.ts. Kept literal here so the
-// acceptance does not import application code into a diagnostic.
+// acceptance does not import application code into a diagnostic. Being a
+// copy, it can drift, and on 14 September 2026 it did: grace and maya were
+// corrected in both places at once after this run reported 404 itemNotFound
+// for a 17_Senior Management Team that is not at the drive root. A test in
+// sharePointLocations.test.ts now fails if the two lists disagree.
 const DESIGNATED = {
   amelia: ["08_PARTNERS- ORGANISATIONS"],
-  grace: ["17_Senior Management Team/AI_Operating_System"],
+  grace: ["05_HUB/17_Senior Management Team/AI_Operating_System"],
   ethan: ["16_WEBSITE_Ai"],
-  maya: ["01_ADMIN_&_GOVERNANCE", "17_Senior Management Team"],
+  maya: ["01_ADMIN_&_GOVERNANCE", "05_HUB/17_Senior Management Team"],
   alex: ["07_MARKETING_IMAGES"],
   nia: ["11_SOCIAL_MEDIA", "07_MARKETING_IMAGES", "09_PODCASTS and WEBINARS"],
 };

@@ -12,6 +12,8 @@
  * invented, which is why the assertions use them verbatim.
  */
 import { describe, expect, it } from "vitest";
+import { readFileSync } from "fs";
+import { fileURLToPath } from "url";
 import {
   decideSharePointLocation,
   WORKER_SHAREPOINT_LOCATIONS,
@@ -73,6 +75,36 @@ describe("the designations are exactly the approved ones, 11 September 2026", ()
     expect(decideSharePointLocation("maya", `${SITE}/01_ADMIN_&_GOVERNANCE/policies.docx`, SITE).permitted).toBe(true);
     expect(decideSharePointLocation("maya", `${SITE}/01_ADMIN_&_GOVERNANCE/04_HR_&_People Governance/x.docx`, SITE).permitted).toBe(false);
     expect(decideSharePointLocation("maya", `${SITE}/000_Temp download/x.docx`, SITE).permitted).toBe(false);
+  });
+});
+
+/**
+ * scripts/connector-sharepoint-acceptance.mjs deliberately keeps its own
+ * literal copy of the designations, so that a diagnostic never imports the
+ * application code it is diagnosing. The cost of that choice is drift, and
+ * on 14 September 2026 it cost exactly that: the designations were
+ * corrected in the module while the diagnostic kept reporting the old
+ * paths, so the acceptance run appeared to fail a fix that had landed.
+ * This is the cheap guard that stops the copy going stale again.
+ */
+describe("the production diagnostic's copy of the designations matches the real ones", () => {
+  it("lists the same locations for the same workers", () => {
+    const script = readFileSync(
+      fileURLToPath(new URL("../../scripts/connector-sharepoint-acceptance.mjs", import.meta.url)),
+      "utf8",
+    );
+    const block = script.match(/const DESIGNATED = (\{[\s\S]*?\});/);
+    expect(block, "DESIGNATED literal not found in the acceptance script").not.toBeNull();
+    const mirrored = JSON.parse(
+      block![1].replace(/(\w+):/g, '"$1":').replace(/,(\s*[}\]])/g, "$1"),
+    ) as Record<string, string[]>;
+
+    const real = Object.fromEntries(
+      Object.entries(WORKER_SHAREPOINT_LOCATIONS)
+        .filter(([, locations]) => locations.length > 0)
+        .map(([id, locations]) => [id, [...locations]]),
+    );
+    expect(mirrored).toEqual(real);
   });
 });
 
