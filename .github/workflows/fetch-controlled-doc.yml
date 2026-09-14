@@ -1,0 +1,57 @@
+name: Fetch one controlled document (read only)
+
+# Manual only. Reads a single controlled document out of the WSA SharePoint
+# site and commits it to a short-lived path so it can be amended and re-filed
+# by a person through delegated access. The application used here holds
+# `read` on the site and nothing more, so this workflow cannot write to
+# SharePoint. Never prints a token.
+on:
+  workflow_dispatch:
+    inputs:
+      item_id:
+        description: "SharePoint driveItem id"
+        required: true
+      out_path:
+        description: "Path in the repository to write to"
+        required: true
+      service_name:
+        description: "Railway app service name"
+        required: true
+        default: "world-student-advisors"
+      environment_name:
+        description: "Railway environment name"
+        required: true
+        default: "production"
+
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Install Railway CLI
+        run: npm install -g @railway/cli
+      - name: Fetch the document
+        env:
+          RAILWAY_TOKEN: ${{ secrets.githubactionsprod }}
+        run: |
+          railway run \
+            --service "${{ github.event.inputs.service_name }}" \
+            --environment "${{ github.event.inputs.environment_name }}" \
+            -- env DOC_ITEM_ID='${{ github.event.inputs.item_id }}' \
+                   DOC_OUT='${{ github.event.inputs.out_path }}' \
+                   node scripts/fetch-controlled-doc.mjs
+      - name: Commit it
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add -f '${{ github.event.inputs.out_path }}'
+          if git diff --cached --quiet; then echo "nothing to commit"; exit 0; fi
+          git commit -m "Fetch controlled document for amendment: ${{ github.event.inputs.out_path }}"
+          git push origin HEAD:main
