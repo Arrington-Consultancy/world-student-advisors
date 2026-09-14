@@ -132,10 +132,15 @@ console.log("\n=== Brief v2.0 readiness ===");
   log(`CTA "Get my study options" present: ${cta > 0}`);
 
   // 2. All four approved programme types offered, and nothing outside them.
-  // Scoped to <main>. The site-wide header and footer link to every study
-  // option WSA offers, including the ones this campaign excludes, and those
-  // are navigation rather than anything this campaign is advertising.
-  const body = (await p.locator("main").innerText()).toLowerCase();
+  // Scoped to the outer <main>, which the app shell wraps the router in. The
+  // site-wide header and footer are its siblings, and they link to every study
+  // option WSA offers, including the ones this campaign excludes; those are
+  // navigation rather than anything this campaign is advertising.
+  //
+  // .first() is deliberate. The campaign page declares its own <main> inside
+  // the shell's, so the selector matches twice; the outer one is the whole
+  // routed page and is what should be scanned.
+  const body = (await p.locator("main").first().innerText()).toLowerCase();
   for (const programme of ["taught master", "mphil", "mres", "phd"]) {
     ok(body.includes(programme), `programme type missing from the page: ${programme}`);
   }
