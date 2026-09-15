@@ -144,6 +144,11 @@ export default function Footer() {
             <span className="text-white/20">|</span>
             <Link href="/compliance" className="hover:text-white/70 transition-colors">Compliance & Policies</Link>
             <span className="text-white/20">|</span>
+            {/* Moved out of the main menu on Tim Hunt's instruction, 15
+                September 2026. Staff still need one obvious way in, and a
+                footer utility bar is it. */}
+            <Link href="/staff-portal" className="hover:text-white/70 transition-colors">Staff Portal</Link>
+            <span className="text-white/20">|</span>
             <span>British Council UK knowledge-trained counsellors</span>
           </div>
         </div>

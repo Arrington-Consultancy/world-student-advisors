@@ -222,8 +222,8 @@ export default function NigeriaPostgraduate() {
               engines (seen on Chromium 129 at 390px: the column became 456px
               and the page scrolled sideways). */}
           <div className="min-w-0">
-            <p className="flex items-center gap-2.5">
-              <NigerianFlag className="h-4 w-6" />
+            <p className="flex items-center gap-3.5">
+              <NigerianFlag className="h-12 w-[4.5rem]" />
               <span className="text-sm font-semibold uppercase tracking-wider text-wsa-navy">For Nigerian graduates</span>
             </p>
             {/* Headline and standfirst set word for word by Tim Hunt in the
@@ -372,8 +372,8 @@ export default function NigeriaPostgraduate() {
         <div className="mx-auto grid max-w-6xl items-center gap-8 lg:grid-cols-[1fr_minmax(320px,420px)]">
           {/* min-w-0 for the same reason as the hero cells above. */}
           <div className="min-w-0">
-            <p className="flex items-center gap-2.5">
-              <NigerianFlag className="h-4 w-6" />
+            <p className="flex items-center gap-3.5">
+              <NigerianFlag className="h-12 w-[4.5rem]" />
               <span className="text-sm font-semibold uppercase tracking-wider text-white/70">For Nigerian graduates</span>
             </p>
             <h2 className="mt-3 text-2xl font-bold leading-tight tracking-tight text-white sm:text-3xl">

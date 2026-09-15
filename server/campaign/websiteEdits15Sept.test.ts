@@ -118,3 +118,40 @@ describe("registration form funding options", () => {
     expect(contactSrc).not.toContain("is NOT done");
   });
 });
+
+describe("Tim's presentation changes of 15 September 2026", () => {
+  const nigeria = withoutComments(read("../../client/src/pages/NigeriaPostgraduate.tsx"));
+  const header = withoutComments(read("../../client/src/components/Header.tsx"));
+  const footer = withoutComments(read("../../client/src/components/Footer.tsx"));
+
+  /**
+   * "Nigerian flag bigger on the landing page, 300% bigger ish." It was
+   * h-4 w-6. Asserted at the class rather than by eye, and asserted on
+   * every instance, because the page draws the flag twice and changing one
+   * of them is the easy half-fix.
+   */
+  it("draws the Nigerian flag about three times its old size, everywhere it appears", () => {
+    const sizes = [...nigeria.matchAll(/<NigerianFlag className="([^"]+)"/g)].map(m => m[1]);
+    expect(sizes.length).toBeGreaterThan(1);
+    for (const s of sizes) expect(s).toBe("h-12 w-[4.5rem]");
+    expect(nigeria).not.toContain('<NigerianFlag className="h-4 w-6"');
+  });
+
+  /**
+   * "Staff portal down in footer of page not in main menu." Both halves
+   * matter: gone from the menu AND present in the footer. Removing it from
+   * one without adding it to the other would leave staff with no door.
+   */
+  it("keeps Staff Portal out of the main menu and in the footer", () => {
+    expect(header).not.toContain("/staff-portal");
+    expect(header).not.toContain("Staff Portal");
+    expect(footer).toContain('href="/staff-portal"');
+    expect(footer).toContain("Staff Portal");
+  });
+
+  it("does not disturb the rest of the main menu", () => {
+    for (const href of ["/about", "/study-options", "/partners", "/our-team", "/events", "/student-support-library", "/portal/interview-coach"]) {
+      expect(header, href).toContain(`"${href}"`);
+    }
+  });
+});
