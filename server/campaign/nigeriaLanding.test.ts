@@ -13,7 +13,12 @@ import {
 import { CANONICAL_PATHS, NOINDEX_PATHS, SEO_MAP, shouldNoindex } from "../../shared/seo";
 import { isValidClientRoute } from "../../shared/routes";
 import { PRERENDER_ROUTES } from "../../shared/prerenderRoutes";
-import { toInternationalNigerianNumber } from "../../client/src/lib/nigeriaLanding";
+import { COUNSELLORS, toInternationalNigerianNumber } from "../../client/src/lib/nigeriaLanding";
+import { existsSync } from "fs";
+
+/** True when a public path like /team/x.jpg is a file that actually ships. */
+const publicFile = (p: string) =>
+  existsSync(new URL(`../../client/public${p}`, import.meta.url));
 
 /**
  * The Nigeria postgraduate landing page, checked against the two things
@@ -356,65 +361,73 @@ describe("the four programme types and five destinations stay separate into the 
   });
 });
 
+/**
+ * Tim Hunt's instruction of 15 September 2026, item 6: "Nigeria Landing
+ * Page — Replace Eldah with this, please", with the four people, job titles,
+ * WhatsApp numbers and emails given in WSA Team 4 girls.docx.
+ *
+ * The rule these tests defend has not changed, only what satisfies it: a
+ * profile is published on recorded evidence, never on assumption. The
+ * evidence is now the Managing Director's own controlled document, so all
+ * four appear. What still may not happen is a credential nobody holds, or a
+ * number that appears in the data and nowhere in that document.
+ */
 describe("a profile is published only on the evidence WSA holds", () => {
-  it("shows contact details only for the person who approved them in writing", () => {
-    const data = content.slice(content.indexOf("export const COUNSELLORS"));
-    const profiles = (data.match(/^    name: /gm) ?? []).length;
-    const shown = (data.match(/contact: \{/g) ?? []).length;
-    const withheld = (data.match(/contact: null/g) ?? []).length;
-    expect(shown + withheld).toBe(profiles);
-    // Each set of contact details on the page has a recorded consent.
-    expect(shown).toBe((data.match(/consentSource: "/g) ?? []).length);
-    expect(content).toContain("Approved by Eldah Therone in writing, 12 September 2026.");
+  const APPROVED = {
+    "Eldah Therone": { role: "Team Leader", whatsapp: "+44 7470 689 849", email: "eldah@worldstudentadvisors.com" },
+    "Glenice Owino": { role: "Senior Student Counsellor", whatsapp: "+44 7459 720 726", email: "glenice@worldstudentadvisors.com" },
+    "Manet Khamayo": { role: "Student Counsellor, Non-UK", whatsapp: "+44 7555 546016", email: "manet@worldstudentadvisors.com" },
+    "Claudia Ingado": { role: "Student Recruitment & Relationship Manager", whatsapp: "+44 7341 905 979", email: "claudia@worldstudentadvisors.com" },
+  } as const;
+
+  it("publishes exactly the four people Tim named, in his order", () => {
+    expect(COUNSELLORS.map(p => p.name)).toEqual(Object.keys(APPROVED));
   });
 
-  it("uses the verified number, email and job title from that approval", () => {
-    expect(content).toContain("+44 7470 689 849");
-    expect(content).toContain("Eldah@WorldStudentAdvisors.com");
-    expect(content).toContain('role: "Student Counsellor"');
-    expect(content).toContain("https://wa.me/447470689849");
+  it("gives each of them the job title, number and email from his document", () => {
+    for (const person of COUNSELLORS) {
+      const approved = APPROVED[person.name as keyof typeof APPROVED];
+      expect(person.role, person.name).toBe(approved.role);
+      expect(person.contact?.whatsapp, person.name).toBe(approved.whatsapp);
+      expect(person.contact?.email, person.name).toBe(approved.email);
+    }
   });
 
-  it("states Eldah's certificate exactly as the certificate does", () => {
+  it("every WhatsApp link resolves to the number printed beside it", () => {
+    for (const person of COUNSELLORS) {
+      const digits = person.contact!.whatsapp.replace(/\D/g, "");
+      expect(person.contact!.whatsappHref, person.name).toBe(`https://wa.me/${digits}`);
+    }
+  });
+
+  it("records where each published profile's permission comes from", () => {
+    for (const person of COUNSELLORS) {
+      expect(person.consentSource, person.name).toBeTruthy();
+    }
+  });
+
+  it("shows a photograph WSA actually holds for every person on the page", () => {
+    for (const person of COUNSELLORS) {
+      expect(person.photo, person.name).toMatch(/^\/team\//);
+      expect(publicFile(person.photo), `${person.name} photograph`).toBe(true);
+    }
+  });
+
+  it("credits a British Council certificate only where WSA holds one", () => {
+    // Eldah's is in the repository. Nobody else's is, so nobody else's card
+    // may carry one.
+    const withCredential = COUNSELLORS.filter(p => p.credential).map(p => p.name);
+    expect(withCredential).toEqual(["Eldah Therone"]);
     expect(content).toContain("28 April 2027");
     expect(content).toContain("67976");
   });
 
-  /**
-   * Tim Hunt, 14 September 2026: "Get rid of Babatunde this will cost WSA
-   * 5% of the tuition fees if he is involved." A paid campaign page must
-   * therefore not name him or show his photograph. This asserts the
-   * published data, not a comment about it, so restoring his card fails.
-   */
-  it("does not route campaign enquiries to Babatunde Azeez", () => {
-    const data = content.slice(content.indexOf("export const COUNSELLORS"));
-    expect(data).not.toContain("Babatunde");
-    expect(data).not.toContain("babatunde_azeez");
-    expect(page).not.toMatch(/Babatunde/i);
-  });
-
-  /**
-   * The same review asked for Claudia Ingado to replace Eldah here. She is
-   * not published until WSA holds a photograph, verified contact details
-   * and written consent, so this guards the half that can be guarded: if
-   * Claudia is named on the page, she must be named with a real photograph
-   * and with her actual job title, never as a "Student Counsellor", which
-   * she is not.
-   */
-  it("if Claudia Ingado is published, she is published correctly", () => {
-    const data = content.slice(content.indexOf("export const COUNSELLORS"));
-    if (!data.includes("Claudia")) return;
-    const claudia = data.slice(data.indexOf("Claudia"));
-    expect(claudia).toContain('role: "Student Recruitment and Relationship Manager"');
-    expect(claudia).not.toMatch(/photo: ""/);
-    expect(claudia).not.toContain("consentSource: null");
-  });
-
-  it("publishes no phone number other than the approved one", () => {
-    const numbers = Array.from(page.matchAll(/\+\d[\d\s]{7,}/g)).map(m => m[0].trim());
-    expect(numbers).toEqual([]);
+  it("publishes no telephone number that is not one of the four", () => {
+    const allowed = new Set(Object.values(APPROVED).map(a => a.whatsapp.replace(/\s/g, "")));
     const inContent = Array.from(content.matchAll(/\+\d[\d\s]{7,}/g)).map(m => m[0].trim());
-    expect(inContent.every(n => n.replace(/\s/g, "") === "+447470689849")).toBe(true);
+    for (const n of inContent) expect(allowed.has(n.replace(/\s/g, "")), n).toBe(true);
+    // The component itself still hard-codes no number at all.
+    expect(page).not.toMatch(/\+\d{2,}[\d\s]{6,}/);
   });
 });
 

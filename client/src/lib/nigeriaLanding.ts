@@ -117,39 +117,42 @@ export const BRITISH_COUNCIL_DISCLAIMER =
   "The British Council does not endorse, accredit or validate agents. This certificate recognises an individual's knowledge of the UK as a study destination.";
 
 /**
- * Eldah Therone confirmed in writing on 12 September 2026 that she is
- * happy with the photograph, and that the telephone number, email address,
- * job title and certificate displayed are correct. That email is filed at
- * 11_SOCIAL_MEDIA/01_CAMPAIGNS/Eldah_Profile_Consent_and_Verified_Contact_12_Sep_2026.jpeg.
- * Her contact details appear here because she approved them, and for no
- * other reason.
+ * The four people Tim Hunt put on this page.
  *
- * REMOVED 14 September 2026, Tim Hunt's landing page review: Babatunde
- * Abdulia Azeez no longer appears on this campaign page. The instruction
- * was commercial and unambiguous — an enquiry he is involved in costs WSA
- * 5% of the tuition fee — so a paid campaign page must not route students
- * to him. His /our-team profile is a separate record and is untouched by
- * this change.
+ * "6. Nigeria Landing Page — Replace Eldah with this, please", from
+ * `Website Edits 15 Sept 2026.docx` in
+ * 16_WEBSITE_Ai/01 Website Management (to Tom)/15 Sept 2026, with the names,
+ * job titles, WhatsApp numbers and email addresses taken verbatim from
+ * `WSA Team 4 girls.docx` in the same folder.
  *
- * STILL OPEN. The same review asked for Eldah to be replaced here by
- * Claudia Ingado, Student Recruitment and Relationship Manager, who
- * started on 14 September 2026 and takes the cold lead before it becomes
- * a deal. Claudia is not on this page yet: WSA holds no photograph of
- * her, no verified contact details and no written consent to publish
- * them, and this page publishes no profile without all three. Eldah
- * remains until those arrive, because a page with no named person is
- * worse than one naming a counsellor who has consented.
+ * That document is the consent as well as the content. This page had
+ * published no profile without a photograph, verified contact details and a
+ * recorded permission; all four are now supplied by the Managing Director in
+ * a controlled document, so all four people appear with their contact
+ * details. Job titles are his wording, including "Student Counsellor,
+ * Non-UK" for Manet, which differs from the title on /our-team.
+ *
+ * Photographs are the ones WSA already holds and already publishes on
+ * /our-team. Tim attached new images with the same instruction; those are
+ * filed in the SharePoint folder above and are NOT yet in the repository,
+ * because the connectors available here return an image to read but cannot
+ * write its bytes to disk. Claudia's replacement photograph (his item 3) is
+ * outstanding for that reason and that reason alone.
+ *
+ * Eldah keeps the British Council credential because WSA holds her
+ * certificate. The other three carry none, because none is held, and the
+ * card must not imply one.
  */
 export const COUNSELLORS: ReadonlyArray<CounsellorProfile> = Object.freeze([
   {
     name: "Eldah Therone",
-    role: "Student Counsellor",
+    role: "Team Leader",
     location: "Nairobi, Kenya",
-    photo: "/manus-storage/eldah_therone_6c167959.jpg",
+    photo: "/team/eldah-therone.jpg",
     contact: {
       whatsapp: "+44 7470 689 849",
       whatsappHref: "https://wa.me/447470689849",
-      email: "Eldah@WorldStudentAdvisors.com",
+      email: "eldah@worldstudentadvisors.com",
     },
     credential: {
       label: "British Council UK Agent and Counsellor Training, completed",
@@ -158,17 +161,63 @@ export const COUNSELLORS: ReadonlyArray<CounsellorProfile> = Object.freeze([
       disclaimer: BRITISH_COUNCIL_DISCLAIMER,
       href: null,
     },
-    consentSource: "Approved by Eldah Therone in writing, 12 September 2026.",
+    consentSource: "Approved by Eldah Therone in writing, 12 September 2026, and republished on Tim Hunt's instruction of 15 September 2026.",
+  },
+  {
+    name: "Glenice Owino",
+    role: "Senior Student Counsellor",
+    location: "Nairobi, Kenya",
+    photo: "/team/glenice-owino.jpg",
+    contact: {
+      whatsapp: "+44 7459 720 726",
+      whatsappHref: "https://wa.me/447459720726",
+      email: "glenice@worldstudentadvisors.com",
+    },
+    credential: null,
+    consentSource: "WSA Team 4 girls.docx, supplied by Tim Hunt, 15 September 2026.",
+  },
+  {
+    name: "Manet Khamayo",
+    role: "Student Counsellor, Non-UK",
+    location: "Nairobi, Kenya",
+    photo: "/team/manet-khamayo.jpg",
+    contact: {
+      whatsapp: "+44 7555 546016",
+      whatsappHref: "https://wa.me/447555546016",
+      email: "manet@worldstudentadvisors.com",
+    },
+    credential: null,
+    consentSource: "WSA Team 4 girls.docx, supplied by Tim Hunt, 15 September 2026.",
+  },
+  {
+    name: "Claudia Ingado",
+    role: "Student Recruitment & Relationship Manager",
+    location: "Nairobi, Kenya",
+    photo: "/team/claudia-ingado.jpg",
+    contact: {
+      whatsapp: "+44 7341 905 979",
+      whatsappHref: "https://wa.me/447341905979",
+      email: "claudia@worldstudentadvisors.com",
+    },
+    credential: null,
+    consentSource: "WSA Team 4 girls.docx, supplied by Tim Hunt, 15 September 2026.",
   },
 ]);
 
-/** The named help route, approved by the person who answers it. */
+/**
+ * The named help route.
+ *
+ * Left as Eldah. Tim's 15 September instruction replaced the team block on
+ * this page; it said nothing about this box, and changing who answers the
+ * "would rather just ask someone" route is his call, not an inference from
+ * a team list.
+ */
 export const HELP_CONTACT = Object.freeze({
   name: "Eldah Therone",
-  role: "Student Counsellor",
+  role: "Team Leader",
   whatsapp: "+44 7470 689 849",
   whatsappHref: "https://wa.me/447470689849",
-  email: "Eldah@WorldStudentAdvisors.com",
+  email: "eldah@worldstudentadvisors.com",
 });
 
 /** The real library, already built and populated: 39 resources with podcasts and summaries. */
@@ -189,7 +238,7 @@ export const EVIDENCE_NEEDED: ReadonlyArray<{ claim: string; why: string }> = Ob
   { claim: "\"We will get back to you within 24 hours\"", why: "On the first-draft hero. A response-time promise needs a service standard WSA is willing to be held to." },
   { claim: "Student testimonials and outcome quotes", why: "The first draft carried two quoted students with photographs. No consented, attributable WSA testimonial has been supplied, so none appear." },
   { claim: "Any admission, visa or outcome success rate", why: "Not claimed anywhere on this page, and should not be added without evidence." },
-  { claim: "A photograph, verified contact details and written consent for Claudia Ingado", why: "Tim Hunt asked on 14 September 2026 for Claudia, Student Recruitment and Relationship Manager, to be the named first contact on this page in place of Eldah. WSA holds none of the three, and this page publishes no profile without all three. Until they arrive the page keeps Eldah, who has consented." },
+  { claim: "Claudia Ingado's replacement photograph", why: "Tim Hunt's item 3 of 15 September 2026 supplies a new photograph of Claudia, filed as Claudia Ingado.png in 16_WEBSITE_Ai/01 Website Management (to Tom)/15 Sept 2026. It is not yet published: the connectors available to the implementer can display an image but cannot write its bytes to a file, so the existing photograph stands until the file is supplied directly. Her name, job title and contact details are his and are published." },
 ]);
 
 export const NIGERIA_DIALLING_CODE = "+234";
