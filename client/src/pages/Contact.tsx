@@ -13,11 +13,14 @@ import { reportSignupConversion } from "@/lib/googleAdsConversion";
 import { SPONSOR_STATUS_OPTIONS, SCHOLARSHIP_STATUS_OPTIONS } from "@shared/fundingStatus";
 
 /**
- * Every field this form asks for when Education Funding is sponsor,
- * scholarship, or mixed, blanked out when clearing/switching away from that
- * option. Keeping this as one object makes "reset everything not relevant
- * to the newly selected type" a single spread rather than eight separate
- * setters.
+ * Every field this form asks for when Education Funding is sponsor or
+ * scholarship, blanked out when clearing/switching away from that option.
+ * Keeping this as one object makes "reset everything not relevant to the
+ * newly selected type" a single spread rather than five separate setters.
+ *
+ * The three mixed-funding fields went with the Mixed funding option on 15
+ * September 2026. The server still reads them if they ever arrive, so an
+ * older record or an in-flight submission is not rejected.
  */
 const BLANK_FUNDING_DETAILS = {
   sponsorName: "",
@@ -25,9 +28,6 @@ const BLANK_FUNDING_DETAILS = {
   scholarshipName: "",
   scholarshipStatus: "",
   scholarshipCoverage: "",
-  mixedFundingSources: "",
-  mixedFundingConfirmedAmount: "",
-  mixedFundingRemaining: "",
 };
 
 /** Navigates to the Google OAuth start endpoint with flow=signup. */
@@ -57,8 +57,10 @@ const offices = [
     name: "Timothy J. Hunt",
     title: "Managing Director",
     address: "2 Newport Close, Clevedon, BS21 5DZ, England, UK",
-    whatsapp: "+44 7914 797830",
-    email: "UKHeadOffice@worldstudentadvisors.com",
+    // Tim Hunt, 15 September 2026: the UK Head Office WhatsApp is
+    // +44 7470 689 849, not his personal mobile.
+    whatsapp: "+44 7470 689 849",
+    email: "UKHeadOffice@WorldStudentAdvisors.com",
   },
   {
     country: "Kenya",
@@ -77,8 +79,9 @@ const offices = [
     name: "Babatunde Abdulia Azeez",
     title: "Senior Director for Nigeria",
     address: "DSTV Complex, Along Akala Express Way, New Garage, Ibadan, Oyo State, Nigeria",
-    phone: "+234 812 929 2769",
-    whatsapp: "+234 812 929 2769",
+    // Tim Hunt, 15 September 2026: one Nigeria office WhatsApp number only.
+    phone: "+234 818 204 9068",
+    whatsapp: "+234 818 204 9068",
     email: "NigeriaOffice@worldstudentadvisors.com",
   },
   {
@@ -252,11 +255,6 @@ function StudentForm() {
     if (formData.educationFunding === "scholarship") {
       if (!formData.scholarshipName.trim()) newErrors.scholarshipName = "Please tell us which scholarship";
       if (!formData.scholarshipStatus) newErrors.scholarshipStatus = "Please select the funding status";
-    }
-    if (formData.educationFunding === "mixed") {
-      if (!formData.mixedFundingSources.trim()) newErrors.mixedFundingSources = "Please describe your funding sources";
-      if (!formData.mixedFundingConfirmedAmount.trim()) newErrors.mixedFundingConfirmedAmount = "Please tell us what's already confirmed";
-      if (!formData.mixedFundingRemaining.trim()) newErrors.mixedFundingRemaining = "Please tell us what still depends on approval";
     }
     if (!formData.gdprConsent) newErrors.gdprConsent = "You must consent to data processing to submit";
     setErrors(newErrors);
@@ -581,10 +579,17 @@ function StudentForm() {
             financing their studies reads as a question to the applicant;
             "Education Funding" read as an internal category name.
 
-            The options are deliberately unchanged. Removing Student Loan and
-            Mixed funding was requested in the same document and is NOT done:
-            both remain open pending clarification from staff, so a student
-            who is financing their studies either way can still say so.
+            Student Loan and Mixed funding REMOVED 15 September 2026 on Tim
+            Hunt's instruction. The request was made once before and held
+            open pending staff clarification; that clarification has now
+            come from the Managing Director, so the options are gone.
+
+            Neither was mapping honestly in any case: Pipedrive has no loan
+            option, so "loan" was recorded as Self-funded, and "mixed" as
+            "Looking for a partial scholarship". Removing them stops the
+            CRM being told something the student did not say. The server
+            still accepts both values so that an in-flight submission, or a
+            record already carrying one, is never rejected.
           */}
           <label className="block text-sm font-medium text-wsa-navy mb-1.5">How are you financing your studies? *</label>
           <select
@@ -600,9 +605,7 @@ function StudentForm() {
             <option value="">Select...</option>
             <option value="self-funded">Self-funded / Family</option>
             <option value="scholarship">Scholarship</option>
-            <option value="loan">Student Loan</option>
             <option value="sponsor">Sponsor / Employer</option>
-            <option value="mixed">Mixed funding</option>
           </select>
           {errors.educationFunding && <p className="text-xs text-red-600 mt-1">{errors.educationFunding}</p>}
         </div>
@@ -680,47 +683,6 @@ function StudentForm() {
             </div>
           </>
         )}
-        {formData.educationFunding === "mixed" && (
-          <>
-            <div>
-              <label className="block text-sm font-medium text-wsa-navy mb-1.5">Funding sources *</label>
-              <input
-                type="text"
-                required
-                value={formData.mixedFundingSources}
-                onChange={(e) => { setFormData({ ...formData, mixedFundingSources: e.target.value }); setErrors((prev) => ({ ...prev, mixedFundingSources: "" })); }}
-                className={`w-full px-4 py-3 border bg-white focus:outline-none focus:ring-2 focus:ring-wsa-red/20 focus:border-wsa-red transition-colors ${errors.mixedFundingSources ? "border-red-400" : "border-border"}`}
-                placeholder="e.g. self-funded plus a sponsor, or a partial scholarship plus a loan"
-              />
-              {errors.mixedFundingSources && <p className="text-xs text-red-600 mt-1">{errors.mixedFundingSources}</p>}
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-wsa-navy mb-1.5">Amount or proportion already confirmed *</label>
-              <input
-                type="text"
-                required
-                value={formData.mixedFundingConfirmedAmount}
-                onChange={(e) => { setFormData({ ...formData, mixedFundingConfirmedAmount: e.target.value }); setErrors((prev) => ({ ...prev, mixedFundingConfirmedAmount: "" })); }}
-                className={`w-full px-4 py-3 border bg-white focus:outline-none focus:ring-2 focus:ring-wsa-red/20 focus:border-wsa-red transition-colors ${errors.mixedFundingConfirmedAmount ? "border-red-400" : "border-border"}`}
-                placeholder="e.g. 50% self-funded and confirmed, or £10,000 already available"
-              />
-              {errors.mixedFundingConfirmedAmount && <p className="text-xs text-red-600 mt-1">{errors.mixedFundingConfirmedAmount}</p>}
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-wsa-navy mb-1.5">What remains dependent on approval *</label>
-              <input
-                type="text"
-                required
-                value={formData.mixedFundingRemaining}
-                onChange={(e) => { setFormData({ ...formData, mixedFundingRemaining: e.target.value }); setErrors((prev) => ({ ...prev, mixedFundingRemaining: "" })); }}
-                className={`w-full px-4 py-3 border bg-white focus:outline-none focus:ring-2 focus:ring-wsa-red/20 focus:border-wsa-red transition-colors ${errors.mixedFundingRemaining ? "border-red-400" : "border-border"}`}
-                placeholder="e.g. remaining balance depends on a pending scholarship decision"
-              />
-              {errors.mixedFundingRemaining && <p className="text-xs text-red-600 mt-1">{errors.mixedFundingRemaining}</p>}
-            </div>
-          </>
-        )}
-
         {/* Additional Section */}
         <div className="pt-6 mt-6 border-t border-border/50">
           <h3 className="text-lg font-semibold text-wsa-navy mb-5">Additional Information</h3>

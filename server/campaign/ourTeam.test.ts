@@ -172,6 +172,21 @@ describe("nothing unevidenced is published (clauses 13 and 16)", () => {
     expect(whatsappLink("+44 7470 689 849")).toBe("https://wa.me/447470689849");
   });
 
+  /**
+   * Tim Hunt, 15 September 2026, corrected Manet's number. The fault it
+   * fixes is the one that is easy to leave half-done: changing the number a
+   * reader sees while the link still dials the old one. whatsappLink is the
+   * function the page actually uses, so this asserts the resolved link, not
+   * the source string.
+   */
+  it("resolves Manet's WhatsApp link to her corrected number", () => {
+    const manet = WSA_TEAM.find(p => p.name === "Manet Khamayo")!;
+    expect(manet.phone).toBe("+44 7555 546016");
+    expect(whatsappLink(manet.phone)).toBe("https://wa.me/447555546016");
+    // The superseded number is gone from the record, not merely hidden.
+    expect(manet.phone).not.toContain("547");
+  });
+
   it("uses the contact details from each person's own profile record", () => {
     const phones = Object.fromEntries(WSA_TEAM.map(p => [p.name, p.phone]));
     expect(phones).toEqual({
@@ -179,7 +194,8 @@ describe("nothing unevidenced is published (clauses 13 and 16)", () => {
       "Tom Arrington": "+44 1752 477 026",
       "Eldah Therone": "+44 7470 689 849",
       "Glenice Owino": "+44 7459 720 726",
-      "Manet Khamayo": "+44 7555 547 016",
+      // Corrected by Tim Hunt, 15 September 2026: 546016, not 547016.
+      "Manet Khamayo": "+44 7555 546016",
       "Claudia Ingado": "+44 7341 905 979",
     });
   });

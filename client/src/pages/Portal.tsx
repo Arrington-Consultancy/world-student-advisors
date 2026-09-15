@@ -321,7 +321,7 @@ export default function Portal() {
             </div>
             <div>
               <p className="font-semibold mb-1.5">Nigeria</p>
-              <p className="flex items-center gap-2 text-white/80 mb-1"><Phone className="w-3.5 h-3.5 shrink-0" /> WhatsApp: +234 812 929 2769</p>
+              <p className="flex items-center gap-2 text-white/80 mb-1"><Phone className="w-3.5 h-3.5 shrink-0" /> WhatsApp: +234 818 204 9068</p>
               <a href="mailto:NigeriaOffice@worldstudentadvisors.com" className="flex items-center gap-2 text-white/80 hover:text-white break-all"><Mail className="w-3.5 h-3.5 shrink-0" /> NigeriaOffice@worldstudentadvisors.com</a>
             </div>
           </div>

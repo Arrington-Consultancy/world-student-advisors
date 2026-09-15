@@ -7,10 +7,15 @@ const contact = readFileSync(path.resolve(import.meta.dirname, "../../client/src
 /**
  * The funding question, reworded at staff request on 1 September 2026.
  *
- * The same request asked for Student Loan and Mixed funding to be removed.
- * That part is NOT done: both remain open pending clarification, and these
- * tests hold them in place so a later tidy-up cannot quietly drop an option
- * a student needs in order to describe how they are actually paying.
+ * That request also asked for Student Loan and Mixed funding to be removed.
+ * It was held then, because "a member of staff asked" was not enough to
+ * drop an option a student might need to describe how they are paying, and
+ * these tests pinned both in place until someone with the authority said
+ * otherwise.
+ *
+ * Tim Hunt did so on 15 September 2026, in writing, as Managing Director.
+ * The tests now pin the opposite: both options are gone, and the removal is
+ * asserted at the rendered options rather than at a note claiming it.
  */
 describe("the funding question wording", () => {
   it("asks the applicant how they are financing their studies", () => {
@@ -32,16 +37,39 @@ describe("the funding options that must remain", () => {
     expect(contact).toContain(`<option value="${value}">${label}</option>`);
   });
 
-  /**
-   * Explicitly retained, not overlooked. Removing either was requested and
-   * deferred pending clarification from staff.
-   */
-  it("keeps Student Loan, which is deferred and not removed", () => {
-    expect(contact).toContain('<option value="loan">Student Loan</option>');
+});
+
+describe("the funding options Tim removed on 15 September 2026", () => {
+  it.each([
+    ["loan", "Student Loan"],
+    ["mixed", "Mixed funding"],
+  ])("no longer offers %s", (value, label) => {
+    expect(contact).not.toContain(`<option value="${value}">${label}</option>`);
+    expect(contact).not.toContain(`<option value="${value}">`);
   });
 
-  it("keeps Mixed funding, which is deferred and not removed", () => {
-    expect(contact).toContain('<option value="mixed">Mixed funding</option>');
+  /**
+   * Neither mapped honestly: Pipedrive has no loan option, so "loan" was
+   * filed as Self-funded and "mixed" as "Looking for a partial
+   * scholarship". Removing the options stops the CRM being told something
+   * the student never said.
+   */
+  it("leaves no unreachable mixed-funding questions behind the removed option", () => {
+    expect(contact).not.toContain('formData.educationFunding === "mixed"');
+    for (const field of ["mixedFundingSources", "mixedFundingConfirmedAmount", "mixedFundingRemaining"]) {
+      expect(contact).not.toContain(field);
+    }
+  });
+
+  /**
+   * The server still accepts both values. A submission already in flight,
+   * or a record that already carries one, must not be rejected because the
+   * form stopped offering the option.
+   */
+  it("the server still understands a value the form no longer offers", () => {
+    const pipedrive = readFileSync(path.resolve(import.meta.dirname, "../pipedrive.ts"), "utf8");
+    expect(pipedrive).toMatch(/\bloan: \d+/);
+    expect(pipedrive).toMatch(/\bmixed: \d+/);
   });
 });
 

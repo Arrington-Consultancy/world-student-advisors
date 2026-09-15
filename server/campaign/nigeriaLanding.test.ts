@@ -227,15 +227,47 @@ describe("the short form hands over to the one controlled lead path", () => {
 });
 
 describe("the four programme types and five destinations stay separate into the CRM", () => {
-  it("the campaign scope is exactly the four Tom confirmed", () => {
-    expect(CAMPAIGN_PROGRAMMES.map(p => p.label)).toEqual(["Taught Master's", "MPhil", "MRes", "PhD"]);
+  /**
+   * Tim Hunt, 15 September 2026: "MRes OUT, Other IN as the last option."
+   * This supersedes the four-programme scope of the controlled Ads brief
+   * v2.0 for what the page offers. Asserted in full and in order, so Other
+   * cannot drift up the list above a named programme.
+   */
+  it("the campaign scope is the four Tim asked for, Other last", () => {
+    expect(CAMPAIGN_PROGRAMMES.map(p => p.label)).toEqual(["Taught Master's", "MPhil", "PhD", "Other"]);
+    expect(CAMPAIGN_PROGRAMMES.at(-1)!.label).toBe("Other");
+    expect(CAMPAIGN_PROGRAMMES.map(p => p.label)).not.toContain("MRes");
   });
 
   it("each programme records as its own value, with nothing collapsed", () => {
     const values = CAMPAIGN_PROGRAMMES.map(p => p.value);
     expect(new Set(values).size).toBe(CAMPAIGN_PROGRAMMES.length);
-    expect(values).toEqual(["postgraduate", "mphil", "mres", "doctorate"]);
+    expect(values).toEqual(["postgraduate", "mphil", "doctorate", "other"]);
     for (const v of values) expect(isDesiredLevelValue(v)).toBe(true);
+  });
+
+  /**
+   * "Other" is a real Pipedrive option (46, "Other / Not Sure"), not a
+   * value rounded to a neighbouring programme. If it were rounded, an
+   * enquiry from someone who does not yet know what they want would be
+   * recorded as one who does.
+   */
+  it("Other is recorded as Other, and reaches the signup form intact", () => {
+    expect(PIPEDRIVE_CAMPAIGN_OPTION_IDS.other).toBe(46);
+    expect(isDesiredLevelValue("other")).toBe(true);
+    expect(contact).toContain('value="other"');
+    expect(pipedrive).toMatch(/\bother: 46\b/);
+  });
+
+  /**
+   * MRes left the campaign page but not the business: the main signup form
+   * still offers it and Pipedrive still records it as 314, so no existing
+   * record is orphaned and a student who wants an MRes can still say so.
+   */
+  it("MRes survives outside the campaign, still as its own option", () => {
+    expect(isDesiredLevelValue("mres")).toBe(true);
+    expect(contact).toContain('value="mres"');
+    expect(pipedrive).toMatch(/\bmres: 314,/);
   });
 
   /**
@@ -298,9 +330,9 @@ describe("the four programme types and five destinations stay separate into the 
     expect(PIPEDRIVE_CAMPAIGN_OPTION_IDS.germany).toBe(315);
   });
 
-  it("MRes is not recorded as a taught Master's", () => {
-    expect(PIPEDRIVE_CAMPAIGN_OPTION_IDS.mres).not.toBe(PIPEDRIVE_CAMPAIGN_OPTION_IDS.postgraduate);
-    expect(PIPEDRIVE_CAMPAIGN_OPTION_IDS.mres).toBe(314);
+  it("Other is not recorded as a taught Master's", () => {
+    expect(PIPEDRIVE_CAMPAIGN_OPTION_IDS.other).not.toBe(PIPEDRIVE_CAMPAIGN_OPTION_IDS.postgraduate);
+    expect(PIPEDRIVE_CAMPAIGN_OPTION_IDS.other).toBe(46);
   });
 
   it("anything still listed as a Pipedrive gap is genuinely unmapped", () => {

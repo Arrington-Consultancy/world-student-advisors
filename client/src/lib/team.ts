@@ -145,7 +145,10 @@ export const WSA_TEAM: TeamMember[] = [
     role: "Student Counsellor",
     roleAtWsa: "Listens, guides and supports students as they take the next step towards studying overseas.",
     email: "manet@worldstudentadvisors.com",
-    phone: "+44 7555 547 016",
+    // Corrected 15 September 2026 on Tim Hunt's instruction: 546016, not
+    // 547016. whatsappHref() strips non-digits from this same string, so the
+    // link and the visible number cannot drift apart.
+    phone: "+44 7555 546016",
     phoneKind: "whatsapp",
     photo: "/team/manet-khamayo.jpg",
     biography: [
@@ -238,7 +241,7 @@ export const REGIONAL_REPRESENTATIVES: RegionalRepresentative[] = [
     location: "Ibadan, Oyo State, Nigeria",
     region: "Nigeria",
     email: "babtunde@worldstudentadvisors.co.uk",
-    whatsapp: "+234 812 929 2769",
+    whatsapp: "+234 818 204 9068",
     photo: "/manus-storage/babatunde_azeez_1f9d8fb7.png",
     britishCouncil: false,
   },

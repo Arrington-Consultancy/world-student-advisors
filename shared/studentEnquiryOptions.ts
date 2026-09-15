@@ -24,10 +24,17 @@
 
 export const DESIRED_LEVEL_VALUES = Object.freeze([
   "foundation", "hnd", "undergraduate", "top-up", "pre-masters",
-  // The four postgraduate routes the Nigeria campaign advertises. Kept
-  // separate all the way to the CRM.
+  // The postgraduate routes, kept separate all the way to the CRM. "mres"
+  // stays a recognised value even though Tim Hunt took MRes off the Nigeria
+  // campaign on 15 September 2026: the signup form still offers it, and
+  // records already carry it.
   "postgraduate", "mphil", "mres", "doctorate",
   "boarding", "language",
+  // Offered by the signup form and now by the Nigeria campaign. Added to
+  // this list 15 September 2026 so a campaign page may emit it: prefill is
+  // validated against these values, so "other" was previously dropped on
+  // the hop to the signup form.
+  "other",
 ] as const);
 
 export const DESTINATION_VALUES = Object.freeze([
@@ -45,10 +52,15 @@ export function isDestinationValue(v: string): v is DestinationValue {
 }
 
 /**
- * The four programme routes in the approved campaign scope, with the form
- * value each one is recorded as. Every one is distinct: this list having
- * four entries and four distinct values is the whole point, and a test
- * asserts it.
+ * The programme routes in the campaign scope, with the form value each one
+ * is recorded as. Every one is distinct: this list having distinct values
+ * is the whole point, and a test asserts it.
+ *
+ * CHANGED 15 September 2026 on Tim Hunt's instruction: MRes removed, Other
+ * added as the last option. The controlled Google Ads brief v2.0 of 12
+ * September names MRes; Tim's later website instruction supersedes it for
+ * what the page offers. MRes remains a live value on the main signup form
+ * and in Pipedrive (option 314), so no existing record is orphaned.
  *
  * "postgraduate" carries Taught Master's for historical reasons — it is
  * the value the live form has always used and it already maps to
@@ -62,8 +74,11 @@ export const CAMPAIGN_PROGRAMMES: ReadonlyArray<{
 }> = Object.freeze([
   { label: "Taught Master's", note: "MA, MSc and MBA programmes", value: "postgraduate" },
   { label: "MPhil", note: "Research degree, often a route to PhD", value: "mphil" },
-  { label: "MRes", note: "Master's by research", value: "mres" },
   { label: "PhD", note: "Doctoral research", value: "doctorate" },
+  // Tim Hunt, 15 September 2026: "MRes OUT, Other IN as the last option."
+  // Last in the list because that is where he asked for it, and because a
+  // catch-all above a named programme trains people to stop reading.
+  { label: "Other", note: "Something else, or not sure yet", value: "other" },
 ]);
 
 /**
@@ -121,8 +136,8 @@ export const PIPEDRIVE_OPTION_GAPS: ReadonlyArray<{
 export const PIPEDRIVE_CAMPAIGN_OPTION_IDS = Object.freeze({
   postgraduate: 43, // Taught Master's
   mphil: 44, // MPhil research degree
-  mres: 314, // MRes research degree
   doctorate: 45, // PhD Doctorate
+  other: 46, // Other / Not Sure
   uk: 78, // United Kingdom (UK)
   usa: 85, // United States
   canada: 86, // Canada
