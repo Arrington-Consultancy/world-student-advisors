@@ -32,7 +32,14 @@ ok(r.status === 200, `HTTP ${r.status}`); log(`HTTP ${r.status}`);
 const robots = html.match(/<meta name="robots" content="([^"]*)"/)?.[1] ?? "(none)";
 ok(!/noindex/i.test(robots), `robots meta: ${robots}`); log(`robots meta: ${robots}`);
 ok(!/Working draft/i.test(html), "raw HTML still carries 'Working draft'");
-ok(/Postgraduate study abroad, planned with one person/.test(html), "raw HTML lacks the prerendered heading");
+// The prerendered <h1>, which proves the route is served as real HTML rather
+// than an empty SPA shell. The wording this previously looked for -
+// "Postgraduate study abroad, planned with one person who knows your case" -
+// was removed by the 14 September review (a02d7d3), and
+// server/campaign/nigeriaLanding.test.ts asserts the page must NOT contain it,
+// so requiring it here contradicted the suite. The apostrophe is matched
+// loosely because it is a curly one in the source.
+ok(/Study for Your Master.s or PhD Abroad/.test(html), "raw HTML lacks the prerendered heading");
 const sm = await (await fetch(`${BASE}/sitemap.xml`)).text();
 ok(sm.includes(`${BASE}/nigeria-postgraduate</loc>`), "route absent from live sitemap"); log(`sitemap has route: ${sm.includes("nigeria-postgraduate")}`);
 const xrobots = r.headers.get("x-robots-tag"); ok(!xrobots || !/noindex/i.test(xrobots), `X-Robots-Tag: ${xrobots}`); log(`X-Robots-Tag header: ${xrobots ?? "(none)"}`);
