@@ -6,7 +6,8 @@
  * still works through a single redirect, the six people render in the
  * approved order with no country headings, each profile opens, the British
  * Council badge appears only for certificate holders and opens a certificate
- * only where consent is evidenced, and the page fits a phone.
+ * only where consent is evidenced, every team photograph actually loads and
+ * decodes in the browser, and the page fits a phone.
  *
  * Read-only: it opens pages, opens profile dialogs and requests two PDFs by
  * HEAD. It submits no form and creates no lead. Uses no secrets.
@@ -112,6 +113,67 @@ async function main() {
       clientWidth: document.documentElement.clientWidth,
     }));
     check(`${label}: no horizontal overflow`, overflow.scrollWidth <= overflow.clientWidth + 1, `${overflow.scrollWidth} vs ${overflow.clientWidth}`);
+
+    // Every team photograph must actually load and decode in the browser.
+    // A src that 404s, or a file that is truncated or not really an image,
+    // still appears in the HTML and still matches a selector: what it does
+    // not do is produce a non-zero naturalWidth or resolve decode(). So the
+    // assertion is made on the decoded bitmap, never on the markup.
+    //
+    // The cards reveal on scroll, so the page is walked to the bottom first
+    // to force any deferred load before anything is measured.
+    await page.evaluate(async () => {
+      window.scrollTo(0, document.body.scrollHeight);
+      await new Promise(resolve => setTimeout(resolve, 1200));
+      window.scrollTo(0, 0);
+    });
+    await page.waitForTimeout(300);
+
+    for (const person of EXPECTED_ORDER) {
+      const photo = page.locator(`img[alt="${person}"]`).first();
+      const present = (await photo.count()) > 0;
+      check(`${label}: ${person}'s photograph is present`, present, present ? "" : "no img with that alt text");
+      if (!present) continue;
+
+      const state = await photo.evaluate(async element => {
+        const result = {
+          src: element.currentSrc || element.src || "(no src)",
+          naturalWidth: element.naturalWidth,
+          naturalHeight: element.naturalHeight,
+          complete: element.complete,
+          decoded: false,
+          error: null,
+        };
+        try {
+          await element.decode();
+          result.decoded = true;
+        } catch (error) {
+          result.error = String(error);
+        }
+        // Re-read after decode: a lazily-decoded image reports its intrinsic
+        // size only once the decode has actually happened.
+        result.naturalWidth = element.naturalWidth;
+        result.naturalHeight = element.naturalHeight;
+        return result;
+      });
+
+      const file = state.src.split("/").pop();
+      check(
+        `${label}: ${person}'s photograph loads and decodes`,
+        state.decoded && state.complete && state.naturalWidth > 0 && state.naturalHeight > 0,
+        `${file} ${state.naturalWidth}x${state.naturalHeight}${state.error ? ` — ${state.error}` : ""}`,
+      );
+
+      // 3:4 is the shape the card frame expects. A source of another shape is
+      // not broken, but it is cropped by object-cover rather than fitted, so
+      // it is worth failing on: that is how a wrong crop reaches the page.
+      const ratio = state.naturalHeight > 0 ? state.naturalWidth / state.naturalHeight : 0;
+      check(
+        `${label}: ${person}'s photograph is 3:4`,
+        Math.abs(ratio - 0.75) < 0.01,
+        `${state.naturalWidth}x${state.naturalHeight} (ratio ${ratio.toFixed(3)})`,
+      );
+    }
 
     // Every profile opens, and the credential behaviour is per person.
     for (const person of EXPECTED_ORDER) {

@@ -5,9 +5,14 @@
  * runner (the build container cannot reach production by egress policy).
  * It fetches the raw HTML, the sitemap and the robots meta; renders the
  * page at phone and desktop widths; checks Eldah Therone's WhatsApp and
- * email links; and drives the landing form through to the signup form for
- * all four programme types and three destinations, asserting the values
- * and the +234 phone conversion arrive intact.
+ * email links; asserts the programme selector offers exactly Tim's four
+ * authorised options with Other last; and drives the landing form through
+ * to the signup form for each of them across three destinations, asserting
+ * the values and the +234 phone conversion arrive intact.
+ *
+ * The authorised programme options are Postgraduate, MPhil, Doctorate and
+ * Other, per Tim Hunt's instruction of 15 September 2026 (item 7), which
+ * removed MRes. MRes is therefore not expected anywhere in this file.
  *
  * It never submits the signup form, so it creates no lead, no CRM record
  * and no email. Exits non-zero on any failed check.
@@ -16,6 +21,8 @@ import { chromium } from "playwright";
 const BASE = "https://www.worldstudentadvisors.com";
 const OUT = process.env.OUT_DIR ?? ".";
 const b = await chromium.launch(process.env.PW_EXECUTABLE ? { executablePath: process.env.PW_EXECUTABLE } : {});
+/** Tim's authorised programme options, in order, with Other last (item 7). */
+const LEVELS = ["postgraduate", "mphil", "doctorate", "other"];
 const fails = []; const ok = (c, m) => { if (!c) fails.push(m); };
 const log = m => console.log("  " + m);
 
@@ -40,7 +47,7 @@ for (const [name, vp] of [["mobile", { width: 390, height: 844 }], ["desktop", {
   const live = await p.evaluate(() => document.querySelector('meta[name="robots"]')?.getAttribute("content") ?? "(none)");
   ok(!/noindex/i.test(live), `${name}: live robots meta ${live}`);
   ok(!/Working draft|Not published for paid traffic|pending approval/i.test(text), `${name}: draft wording visible`);
-  for (const s of ["For Nigerian graduates", "Taught Master", "MPhil", "MRes", "PhD", "United Kingdom", "Germany", "Canada", "Eldah Therone", "Get my study options", "Student Support Library"])
+  for (const s of ["For Nigerian graduates", "Taught Master", "MPhil", "PhD", "United Kingdom", "Germany", "Canada", "Eldah Therone", "Get my study options", "Student Support Library"])
     ok(text.toLowerCase().includes(s.toLowerCase()), `${name}: missing "${s}"`);
   ok(!/British Council (Certified|Accredited|Recognised)/i.test(text), `${name}: forbidden British Council wording`);
   const title = await p.title(); ok(/Nigerian/.test(title), `${name}: title is "${title}"`); log(`${name}: title "${title}"`);
@@ -64,6 +71,23 @@ for (const [name, vp] of [["mobile", { width: 390, height: 844 }], ["desktop", {
   for (const o of over.out) log(`${name}:   ${o}`);
   ok(over.sw <= over.vw + 1, `${name}: horizontal overflow (scrollWidth ${over.sw} > ${over.vw})`);
   ok(errors.length === 0, `${name}: JS errors ${JSON.stringify(errors)}`);
+  // Programme selector: exactly Tim's four authorised options, in order, with
+  // Other last and MRes gone (item 7, 15 September 2026). Asserted on the
+  // select element rather than page copy, because the copy is a separate
+  // decision and the selector is what a student can actually choose.
+  const levelOptions = await p.evaluate(() => {
+    const sel = document.querySelector("#hero-form-level");
+    return sel ? Array.from(sel.options).filter(o => o.value).map(o => o.value) : null;
+  });
+  ok(levelOptions !== null, `${name}: #hero-form-level not found`);
+  if (levelOptions) {
+    ok(JSON.stringify(levelOptions) === JSON.stringify(LEVELS),
+      `${name}: programme options are ${JSON.stringify(levelOptions)}, expected ${JSON.stringify(LEVELS)}`);
+    ok(levelOptions[levelOptions.length - 1] === "other",
+      `${name}: "Other" is not the last programme option (${JSON.stringify(levelOptions)})`);
+    ok(!levelOptions.includes("mres"), `${name}: MRes is still offered in the programme selector`);
+    log(`${name}: programme options ${levelOptions.join(" -> ")}`);
+  }
   // Eldah contact: WhatsApp link + mailto present and correct
   const wa = await p.evaluate(() => Array.from(document.querySelectorAll('a[href^="https://wa.me/"]')).map(a => a.getAttribute("href")));
   const mail = await p.evaluate(() => Array.from(document.querySelectorAll('a[href^="mailto:"]')).map(a => a.getAttribute("href")));
@@ -77,7 +101,7 @@ for (const [name, vp] of [["mobile", { width: 390, height: 844 }], ["desktop", {
 try { const w = await fetch("https://wa.me/447470689849", { method: "GET", redirect: "manual" }); log(`wa.me/447470689849 -> ${w.status}`); ok(w.status !== 404 && w.status < 500, `wa.me returned ${w.status}`); } catch (e) { log(`wa.me fetch blocked from this network: ${e.message} (link href verified above)`); }
 
 // 3. CTA/form: four programme types x destinations reach the signup form on production, phone converts.
-const cases = [["postgraduate", "uk"], ["mphil", "germany"], ["mres", "canada"], ["doctorate", "uk"]];
+const cases = [["postgraduate", "uk"], ["mphil", "germany"], ["doctorate", "canada"], ["other", "uk"]];
 for (const [level, dest] of cases) {
   const p = await b.newPage({ viewport: { width: 390, height: 844 } });
   await p.goto(`${BASE}/nigeria-postgraduate`, { waitUntil: "domcontentloaded" });
@@ -131,7 +155,8 @@ console.log("\n=== Brief v2.0 readiness ===");
   ok(cta > 0, 'call to action "Get my study options" not found on the page');
   log(`CTA "Get my study options" present: ${cta > 0}`);
 
-  // 2. All four approved programme types offered, and nothing outside them.
+  // 2. The approved programme types named on the page, and nothing outside
+  // them. MRes was removed by Tim's item 7 and is no longer required here.
   // Scoped to the outer <main>, which the app shell wraps the router in. The
   // site-wide header and footer are its siblings, and they link to every study
   // option WSA offers, including the ones this campaign excludes; those are
@@ -141,13 +166,13 @@ console.log("\n=== Brief v2.0 readiness ===");
   // the shell's, so the selector matches twice; the outer one is the whole
   // routed page and is what should be scanned.
   const body = (await p.locator("main").first().innerText()).toLowerCase();
-  for (const programme of ["taught master", "mphil", "mres", "phd"]) {
+  for (const programme of ["taught master", "mphil", "phd"]) {
     ok(body.includes(programme), `programme type missing from the page: ${programme}`);
   }
   for (const excluded of ["foundation", "undergraduate", "pre-master", "hnd", "top-up"]) {
     ok(!body.includes(excluded), `campaign page content names an out-of-scope programme: ${excluded}`);
   }
-  log("four approved programme types present in <main>; no out-of-scope programme named there");
+  log("approved programme types present in <main>; no out-of-scope programme named there");
 
   // 3. Attribution captured from the landing URL and persisted.
   const stored = await p.evaluate(() => {
