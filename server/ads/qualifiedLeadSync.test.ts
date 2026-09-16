@@ -1,12 +1,12 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
-import { runQualifiedLeadSync, syncConfigState, type SyncDeps } from "./qualifiedLeadSync";
+import { isExplicitRealSyncSuccess, runQualifiedLeadSync, syncConfigState, type SyncDeps } from "./qualifiedLeadSync";
 import { memoryUploadStore } from "./uploadStore";
 import { ATTRIBUTION_FIELD_KEYS } from "./qualifiedLead";
 import { DataManagerError } from "./googleDataManager";
 
 const K = ATTRIBUTION_FIELD_KEYS;
 const NOW = new Date("2026-09-16T12:00:00Z");
-const ENV = { GOOGLE_ADS_DATAMANAGER_OAUTH_CLIENT_ID: "cid", GOOGLE_ADS_DATAMANAGER_OAUTH_CLIENT_SECRET: "sec", GOOGLE_ADS_DATAMANAGER_OAUTH_REFRESH_TOKEN: "rt", PIPEDRIVE_API_TOKEN: "pd-token" };
+const ENV = { GOOGLE_ADS_DATAMANAGER_OAUTH_CLIENT_ID: "cid", GOOGLE_ADS_DATAMANAGER_OAUTH_CLIENT_SECRET: "sec", GOOGLE_ADS_DATAMANAGER_OAUTH_REFRESH_TOKEN: "rt", PIPEDRIVE_API_TOKEN: "pd-token", GOOGLE_ADS_QUALIFIED_LEAD_SYNC_ENABLED: "true" };
 
 const PERSONS: Record<number, Record<string, unknown>> = {
   369: { id: 369, email: [{ value: "student@example.com" }], phone: [{ value: "+2348182049068" }], [K.person.gdprConsent]: 105 },
@@ -37,6 +37,13 @@ function deps(overrides: Partial<SyncDeps> = {}): SyncDeps & { ingest: ReturnTyp
 beforeEach(() => { vi.spyOn(console, "log").mockImplementation(() => {}); vi.spyOn(console, "warn").mockImplementation(() => {}); });
 
 describe("configuration gate", () => {
+  it("treats explicit real-sync acceptance as passed only when sync is enabled and the run completes", () => {
+    expect(isExplicitRealSyncSuccess("ready", { status: "complete", reason: null, considered: 0, uploaded: 0, skipped: 0, failed: 0, alreadyRecorded: 0, statusChecked: 0, skipReasons: {} })).toBe(true);
+    expect(isExplicitRealSyncSuccess("ready", { status: "partial", reason: "x", considered: 0, uploaded: 0, skipped: 0, failed: 0, alreadyRecorded: 0, statusChecked: 0, skipReasons: {} })).toBe(false);
+    expect(isExplicitRealSyncSuccess("sync_disabled", { status: "complete", reason: null, considered: 0, uploaded: 0, skipped: 0, failed: 0, alreadyRecorded: 0, statusChecked: 0, skipReasons: {} })).toBe(false);
+    expect(isExplicitRealSyncSuccess("sync_disabled", { status: "skipped", reason: "sync_disabled", considered: 0, uploaded: 0, skipped: 0, failed: 0, alreadyRecorded: 0, statusChecked: 0, skipReasons: {} })).toBe(false);
+  });
+
   it("stands down, touching nothing, until the Google credential, the Pipedrive token and the database are all present", async () => {
     expect(await syncConfigState({}, memoryUploadStore())).toBe("google_credential_unconfigured");
     expect(await syncConfigState({ GOOGLE_ADS_DATAMANAGER_OAUTH_CLIENT_ID: "x" }, memoryUploadStore())).toBe("google_credential_malformed");
@@ -47,6 +54,20 @@ describe("configuration gate", () => {
     const r = await runQualifiedLeadSync("manual", d);
     expect(r).toMatchObject({ status: "skipped", reason: "google_credential_unconfigured", uploaded: 0 });
     expect(d.ingest).not.toHaveBeenCalled();
+  });
+
+  it("stands down until GOOGLE_ADS_QUALIFIED_LEAD_SYNC_ENABLED is exactly \"true\", even with every credential present, whatever the trigger", async () => {
+    const { GOOGLE_ADS_QUALIFIED_LEAD_SYNC_ENABLED: _on, ...off } = ENV;
+    expect(await syncConfigState(off, memoryUploadStore())).toBe("sync_disabled");
+    for (const value of ["", "1", "yes", "TRUE", " true"]) {
+      expect(await syncConfigState({ ...off, GOOGLE_ADS_QUALIFIED_LEAD_SYNC_ENABLED: value }, memoryUploadStore())).toBe("sync_disabled");
+    }
+    for (const trigger of ["schedule", "manual", "acceptance"] as const) {
+      const d = deps({ env: off });
+      const r = await runQualifiedLeadSync(trigger, d);
+      expect(r).toMatchObject({ status: "skipped", reason: "sync_disabled", uploaded: 0 });
+      expect(d.ingest).not.toHaveBeenCalled();
+    }
   });
 });
 

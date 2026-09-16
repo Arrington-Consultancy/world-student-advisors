@@ -1,8 +1,9 @@
 /**
  * Runs the Qualified Lead conversion sync on a timer. Every 15 minutes by
  * default, first run a few minutes after boot, never overlapping itself,
- * silent while unconfigured except for one line at start so the state is
- * in the deploy log.
+ * silent while unconfigured or disabled except for one line at start so the
+ * state is in the deploy log. GOOGLE_ADS_QUALIFIED_LEAD_SYNC_ENABLED="true"
+ * is what lets a run send anything (qualifiedLeadSync.ts, syncEnabled).
  */
 import { runQualifiedLeadSync, syncConfigState } from "./qualifiedLeadSync";
 
