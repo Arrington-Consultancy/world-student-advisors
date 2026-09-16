@@ -6,7 +6,7 @@ import { DataManagerError } from "./googleDataManager";
 
 const K = ATTRIBUTION_FIELD_KEYS;
 const NOW = new Date("2026-09-16T12:00:00Z");
-const ENV = { GOOGLE_ADS_DATAMANAGER_OAUTH_CLIENT_ID: "cid", GOOGLE_ADS_DATAMANAGER_OAUTH_CLIENT_SECRET: "sec", GOOGLE_ADS_DATAMANAGER_OAUTH_REFRESH_TOKEN: "rt", PIPEDRIVE_API_TOKEN: "pd-token" };
+const ENV = { GOOGLE_ADS_QUALIFIED_LEAD_SYNC_ENABLED: "true", GOOGLE_ADS_DATAMANAGER_OAUTH_CLIENT_ID: "cid", GOOGLE_ADS_DATAMANAGER_OAUTH_CLIENT_SECRET: "sec", GOOGLE_ADS_DATAMANAGER_OAUTH_REFRESH_TOKEN: "rt", PIPEDRIVE_API_TOKEN: "pd-token" };
 
 const PERSONS: Record<number, Record<string, unknown>> = {
   369: { id: 369, email: [{ value: "student@example.com" }], phone: [{ value: "+2348182049068" }], [K.person.gdprConsent]: 105 },
@@ -37,16 +37,33 @@ function deps(overrides: Partial<SyncDeps> = {}): SyncDeps & { ingest: ReturnTyp
 beforeEach(() => { vi.spyOn(console, "log").mockImplementation(() => {}); vi.spyOn(console, "warn").mockImplementation(() => {}); });
 
 describe("configuration gate", () => {
-  it("stands down, touching nothing, until the Google credential, the Pipedrive token and the database are all present", async () => {
-    expect(await syncConfigState({}, memoryUploadStore())).toBe("google_credential_unconfigured");
-    expect(await syncConfigState({ GOOGLE_ADS_DATAMANAGER_OAUTH_CLIENT_ID: "x" }, memoryUploadStore())).toBe("google_credential_malformed");
+  it("stands down, touching nothing, until the switch is on and the Google credential, the Pipedrive token and the database are all present", async () => {
+    expect(await syncConfigState({}, memoryUploadStore())).toBe("sync_disabled");
+    expect(await syncConfigState({ GOOGLE_ADS_QUALIFIED_LEAD_SYNC_ENABLED: "true" }, memoryUploadStore())).toBe("google_credential_unconfigured");
+    expect(await syncConfigState({ GOOGLE_ADS_QUALIFIED_LEAD_SYNC_ENABLED: "true", GOOGLE_ADS_DATAMANAGER_OAUTH_CLIENT_ID: "x" }, memoryUploadStore())).toBe("google_credential_malformed");
     expect(await syncConfigState({ ...ENV, PIPEDRIVE_API_TOKEN: "" }, memoryUploadStore())).toBe("pipedrive_token_missing");
     expect(await syncConfigState(ENV, null)).toBe("database_unavailable");
     expect(await syncConfigState(ENV, memoryUploadStore())).toBe("ready");
     const d = deps({ env: {} });
     const r = await runQualifiedLeadSync("manual", d);
-    expect(r).toMatchObject({ status: "skipped", reason: "google_credential_unconfigured", uploaded: 0 });
+    expect(r).toMatchObject({ status: "skipped", reason: "sync_disabled", uploaded: 0 });
     expect(d.ingest).not.toHaveBeenCalled();
+  });
+
+  it("with the credential, the token and the database all present, sends nothing until GOOGLE_ADS_QUALIFIED_LEAD_SYNC_ENABLED is exactly true", async () => {
+    const armedButOff: NodeJS.ProcessEnv = { ...ENV, GOOGLE_ADS_QUALIFIED_LEAD_SYNC_ENABLED: undefined };
+    expect(await syncConfigState(armedButOff, memoryUploadStore())).toBe("sync_disabled");
+    for (const value of ["", "1", "yes", "on", "false", "enabled"]) {
+      expect(await syncConfigState({ ...armedButOff, GOOGLE_ADS_QUALIFIED_LEAD_SYNC_ENABLED: value }, memoryUploadStore())).toBe("sync_disabled");
+    }
+    for (const value of ["true", "TRUE", " True "]) {
+      expect(await syncConfigState({ ...armedButOff, GOOGLE_ADS_QUALIFIED_LEAD_SYNC_ENABLED: value }, memoryUploadStore())).toBe("ready");
+    }
+    const d = deps({ env: armedButOff });
+    const r = await runQualifiedLeadSync("schedule", d);
+    expect(r).toMatchObject({ status: "skipped", reason: "sync_disabled", considered: 0, uploaded: 0 });
+    expect(d.ingest).not.toHaveBeenCalled();
+    expect((d.store as ReturnType<typeof memoryUploadStore>).rows).toEqual([]);
   });
 });
 
