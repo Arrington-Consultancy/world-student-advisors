@@ -41,3 +41,5 @@ for (const r of rows) {
     `mentions a pipeline position: ${/position \d+|stagePosition/i.test(t)}; em dash: ${/\u2014/.test(t)}`,
   );
 }
+
+process.exit(0);
