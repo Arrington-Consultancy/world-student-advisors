@@ -21,6 +21,7 @@ const OUTCOME_MESSAGES: Record<string, string> = {
   invalid: "Pipedrive returned to the site without the expected details. Nothing was stored. Start again from this screen.",
   state_invalid: "The consent link had expired or did not match this site. Nothing was stored. Start again from this screen.",
   scopes_refused: "Pipedrive offered access outside the approved scope set, so the grant was refused and not stored. Check the application's scopes in the Pipedrive Developer Hub and try again.",
+  company_refused: "Pipedrive authorised the application for a company other than World Student Advisors (for example a developer sandbox), so the grant was refused and not stored. Sign in to Pipedrive as a WSA administrator at worldstudentadvisors.pipedrive.com and try again.",
   exchange_failed: "Pipedrive did not complete the token exchange. Nothing was stored. Check the client id and secret on the service and try again.",
   store_failed: "The grant could not be stored because the database was unavailable. Nothing was retained. Try again shortly.",
   unconfigured: "The WSA Pipedrive OAuth application is not configured on this service yet.",
