@@ -26,6 +26,24 @@ function tokenJson(over: Record<string, unknown> = {}) {
   return { access_token: "access-token-value-1234567890", refresh_token: "refresh-token-value-1234567890", expires_in: 3599, api_domain: "https://worldstudentadvisors.pipedrive.com", scope: "base leads:read deals:read contacts:read search:read", token_type: "Bearer", ...over };
 }
 
+describe("only the WSA company: a grant for a sandbox or any other company is refused", () => {
+  it("names the WSA company exactly", () => {
+    expect(oauth.PIPEDRIVE_WSA_API_DOMAIN).toBe("https://worldstudentadvisors.pipedrive.com");
+  });
+  it("accepts the WSA company however it is cased or slashed, and nothing else", () => {
+    expect(oauth.isWsaCompany("https://worldstudentadvisors.pipedrive.com")).toBe(true);
+    expect(oauth.isWsaCompany("https://WorldStudentAdvisors.pipedrive.com/")).toBe(true);
+    expect(oauth.isWsaCompany("https://tom-sandbox3.pipedrive.com")).toBe(false);
+    expect(oauth.isWsaCompany("https://worldstudentadvisors-sandbox.pipedrive.com")).toBe(false);
+    expect(oauth.isWsaCompany("https://worldstudentadvisors.pipedrive.com.evil.example")).toBe(false);
+    expect(oauth.isWsaCompany("http://worldstudentadvisors.pipedrive.com")).toBe(false);
+    expect(oauth.isWsaCompany("")).toBe(false);
+  });
+  it("names only the company host in a refusal", () => {
+    expect(oauth.companyHost("https://tom-sandbox3.pipedrive.com/")).toBe("tom-sandbox3.pipedrive.com");
+  });
+});
+
 describe("scopes are fixed to the approved set of Change Entry 100, and checked", () => {
   it("names exactly the approved set: read and full on deals, contacts and leads, plus base and search; never admin, mail, users or activities", () => {
     expect([...oauth.PIPEDRIVE_OAUTH_SCOPES]).toEqual(["base", "leads:read", "leads:full", "deals:read", "deals:full", "contacts:read", "contacts:full", "search:read"]);

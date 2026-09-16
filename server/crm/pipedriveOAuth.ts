@@ -68,6 +68,24 @@ export const PIPEDRIVE_CONNECTOR_AUTHORITY =
 export const PIPEDRIVE_AUTHORISE_URL = "https://oauth.pipedrive.com/oauth/authorize";
 export const PIPEDRIVE_TOKEN_URL = "https://oauth.pipedrive.com/oauth/token";
 export const PIPEDRIVE_OAUTH_REDIRECT_PATH = "/api/connectors/pipedrive/callback";
+/**
+ * The only Pipedrive company a grant may be retained for. Approved 16
+ * September 2026: the app is owned by a developer sandbox, and Pipedrive
+ * binds a grant to whichever company the authorising browser is signed in
+ * to, so a grant for the sandbox, or for any other company, is refused at
+ * authorisation, at refresh and at load, and no token is kept.
+ */
+export const PIPEDRIVE_WSA_API_DOMAIN = "https://worldstudentadvisors.pipedrive.com";
+
+/** Exactly the WSA company: case-insensitive, trailing slash ignored, nothing else however similar. */
+export function isWsaCompany(apiDomain: string): boolean {
+  return apiDomain.trim().replace(/\/$/, "").toLowerCase() === PIPEDRIVE_WSA_API_DOMAIN;
+}
+
+/** The host to name in a refusal, without leaking anything but the company. */
+export function companyHost(apiDomain: string): string {
+  return apiDomain.replace(/^https?:\/\//i, "").replace(/\/$/, "");
+}
 /** Refresh this long before the access token expires. */
 export const REFRESH_SKEW_MS = 5 * 60 * 1000;
 /** A state token is valid for this long between starting and finishing consent. */
@@ -256,6 +274,12 @@ async function loadFromStore(cfg: OAuthConfig): Promise<Cache> {
   const row = rows[0];
   if (!row || row.status === "revoked") return { status: "not_authorised", accessToken: null, expiresAt: null, apiDomain: null, grantId: null };
   if (row.status === "reauthorisation_required") return { status: "reauthorisation_required", accessToken: null, expiresAt: null, apiDomain: row.apiDomain, grantId: row.id };
+  // A stored grant for any company but WSA's is never opened, whatever
+  // its status says: the token stays sealed and the connector fails closed.
+  if (!isWsaCompany(row.apiDomain)) {
+    console.warn(`[Pipedrive OAuth] Stored grant is for ${companyHost(row.apiDomain)}, not the WSA company; refusing to use it.`);
+    return { status: "reauthorisation_required", accessToken: null, expiresAt: null, apiDomain: row.apiDomain, grantId: row.id };
+  }
   return {
     status: "operational",
     accessToken: open(row.sealedAccessToken, cfg.tokenKey),
@@ -272,6 +296,7 @@ async function refreshStored(cfg: OAuthConfig, grantId: number, fetchImpl: Fetch
   if (!row || row.status !== "active") return loadFromStore(cfg);
   try {
     const tokens = await refreshAccessToken(open(row.sealedRefreshToken, cfg.tokenKey), cfg, fetchImpl);
+    if (!isWsaCompany(tokens.apiDomain)) throw new Error(`refreshed grant is for ${companyHost(tokens.apiDomain)}, not the WSA company; refused`);
     const wider = scopesOutsideApproved(tokens.scope);
     if (tokens.scope && wider.length > 0) throw new Error(`refreshed grant carries scopes outside the approved scope set: ${wider.join(", ")}`);
     await db.update(connectorOauthGrants).set({

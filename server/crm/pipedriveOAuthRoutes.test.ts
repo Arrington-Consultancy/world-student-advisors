@@ -79,6 +79,19 @@ describe("Pipedrive OAuth callback", () => {
     expect(JSON.stringify(event)).not.toContain("refresh-token-value");
     expect(redirect).not.toContain("access-token-value");
   });
+  it("refuses and does not store a grant for a company other than WSA, naming the company, before scopes are even considered", async () => {
+    vi.mocked(oauth.exchangeAuthorisationCode).mockResolvedValue({ ...TOKENS, apiDomain: "https://tom-sandbox3.pipedrive.com", scope: "base deals:full admin" });
+    const state = await oauth.signState(7, KEY);
+    expect(await call({ code: "the-code", state })).toBe("/staff-portal?pipedrive=company_refused");
+    expect(oauth.storeGrant).not.toHaveBeenCalled();
+    const [event] = getAuditLog();
+    expect(event.permissionDecision).toBe("denied");
+    expect(event.permissionReason).toContain("tom-sandbox3.pipedrive.com");
+    expect(event.permissionReason).toContain("worldstudentadvisors.pipedrive.com");
+    expect(event.permissionReason).not.toContain("admin");
+    expect(event.errorCategory).toBe("permission_denied");
+    expect(JSON.stringify(event)).not.toContain("access-token-value");
+  });
   it("stores a grant carrying the approved :full scopes (Change Entry 100)", async () => {
     vi.mocked(oauth.exchangeAuthorisationCode).mockResolvedValue({ ...TOKENS, scope: "base deals:full contacts:full leads:full search:read" });
     const state = await oauth.signState(7, KEY);

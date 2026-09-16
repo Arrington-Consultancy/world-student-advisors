@@ -11,7 +11,7 @@
  * a log, an audit row or a response body.
  */
 import type { Express, Request, Response } from "express";
-import { exchangeAuthorisationCode, oauthConfig, scopesOutsideApproved, storeGrant, verifyState, PIPEDRIVE_OAUTH_REDIRECT_PATH } from "./pipedriveOAuth";
+import { exchangeAuthorisationCode, oauthConfig, scopesOutsideApproved, storeGrant, verifyState, PIPEDRIVE_OAUTH_REDIRECT_PATH, isWsaCompany, companyHost, PIPEDRIVE_WSA_API_DOMAIN } from "./pipedriveOAuth";
 import { recordAuditEvent, type AuditEvent } from "../workforce/audit";
 
 const AUTHORISE_CAPABILITY = "connector:pipedrive:authorise";
@@ -38,6 +38,12 @@ export function registerPipedriveOAuthRoutes(app: Express): void {
 
     try {
       const tokens = await exchangeAuthorisationCode(code, cfg);
+      // Company first, scopes second: a grant for the wrong company is
+      // refused whatever it carries, and the refusal says which company.
+      if (!isWsaCompany(tokens.apiDomain)) {
+        recordAuditEvent(authoriseEvent(who.staffUserId, "denied", `Pipedrive returned a grant for ${companyHost(tokens.apiDomain)}, not the WSA company ${companyHost(PIPEDRIVE_WSA_API_DOMAIN)}. Grant refused and not stored.`, false, "permission_denied"));
+        return back(res, "company_refused");
+      }
       const wider = scopesOutsideApproved(tokens.scope);
       if (wider.length > 0) {
         recordAuditEvent(authoriseEvent(who.staffUserId, "denied", `Pipedrive returned scopes outside the approved scope set: ${wider.join(", ")}. Grant refused and not stored.`, false, "permission_denied"));
