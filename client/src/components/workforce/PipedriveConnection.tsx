@@ -9,16 +9,18 @@ import { Button } from "@/components/ui/button";
  * WSA has no spare Pipedrive seat, so the workforce does not get a user of
  * its own. It reads through a dedicated WSA Pipedrive OAuth application,
  * authorised once here by a WSA administrator whose own Pipedrive account
- * has full visibility. The scopes are fixed on the server and read only.
+ * has full visibility. The scopes are fixed on the server (Change Entry
+ * 100); what any worker may do with them is decided separately, per
+ * worker, and no worker holds a write.
  * Nothing about the tokens is shown here; this screen only says whether a
  * grant exists, who made it, when, and what it covers.
  */
 const OUTCOME_MESSAGES: Record<string, string> = {
-  connected: "Pipedrive is connected. The workforce can now read the CRM through the WSA application with read scopes only.",
+  connected: "Pipedrive is connected. The workforce can now reach the CRM through the WSA application within the approved scope set. Each worker is still limited to its own approved grant; no worker holds a write.",
   denied: "Authorisation was declined in Pipedrive. Nothing was stored.",
   invalid: "Pipedrive returned to the site without the expected details. Nothing was stored. Start again from this screen.",
   state_invalid: "The consent link had expired or did not match this site. Nothing was stored. Start again from this screen.",
-  scopes_refused: "Pipedrive offered wider access than the approved read scopes, so the grant was refused and not stored. Check the application's scopes in the Pipedrive Developer Hub and try again.",
+  scopes_refused: "Pipedrive offered access outside the approved scope set, so the grant was refused and not stored. Check the application's scopes in the Pipedrive Developer Hub and try again.",
   exchange_failed: "Pipedrive did not complete the token exchange. Nothing was stored. Check the client id and secret on the service and try again.",
   store_failed: "The grant could not be stored because the database was unavailable. Nothing was retained. Try again shortly.",
   unconfigured: "The WSA Pipedrive OAuth application is not configured on this service yet.",
@@ -71,7 +73,7 @@ export function PipedriveConnection({ token }: { token: string }) {
       <h3 className="text-base font-semibold text-wsa-navy">Pipedrive connection for the AI workforce</h3>
       <p className="mt-1 text-base text-gray-600">
         The workforce reads the CRM through a dedicated WSA Pipedrive application, not a paid user. A WSA administrator with full
-        Pipedrive visibility authorises it once. The application sees only what that administrator can see, and the read scopes are fixed:
+        Pipedrive visibility authorises it once. The application sees only what that administrator can see, and its scopes are fixed to the approved set:
         {" "}{s.approvedScopes.join(", ")}.
       </p>
 

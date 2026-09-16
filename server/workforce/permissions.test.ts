@@ -184,3 +184,40 @@ describe("Pipedrive CRM gate — eight approved read scopes, nothing else", () =
     expect(evaluateConnectorPermission({ workerId: "amelia", connector: "pipedrive", operation: "read", resourceScope: "person/1" }).allowed).toBe(false);
   });
 });
+
+describe("Change Entry 100 — the connector may write; no worker may", () => {
+  // Tom Arrington, 16 September 2026: the WSA Pipedrive OAuth application
+  // becomes an operational read-and-write connector. That approval is of
+  // the connector's capability only. This test pins the boundary: if the
+  // token can carry deals:full, contacts:full and leads:full, every worker
+  // is still exactly its section 2 grant, and nobody is write-authorised.
+  it("the approved OAuth set carries writes for deals, contacts and leads and nothing administrative", async () => {
+    const { PIPEDRIVE_OAUTH_SCOPES } = await import("../crm/pipedriveOAuth");
+    expect([...PIPEDRIVE_OAUTH_SCOPES]).toEqual(expect.arrayContaining(["deals:full", "contacts:full", "leads:full"]));
+    expect([...PIPEDRIVE_OAUTH_SCOPES]).not.toEqual(expect.arrayContaining(["admin"]));
+  });
+
+  it("no worker holds any CRM write operation, and none is write-authorised, whatever the connector can do", () => {
+    const writes: ConnectorOperation[] = ["create", "update", "delete", "external_send"];
+    for (const worker of listWorkers()) {
+      expect(worker.writesAuthorised).toBe(false);
+      const scope = WORKER_CRM_SCOPE[worker.id];
+      if (scope) for (const op of writes) expect(scope.operations.has(op)).toBe(false);
+      for (const op of writes) {
+        const decision = evaluateConnectorPermission({ workerId: worker.id, connector: "pipedrive", operation: op, resourceScope: "deal/1" });
+        expect(decision.allowed).toBe(false);
+      }
+    }
+  });
+
+  it("a worker's CRM grant still cites the 11 September read-only authority, not the 16 September connector approval", () => {
+    for (const worker of listWorkers()) {
+      const scope = WORKER_CRM_SCOPE[worker.id];
+      if (scope) {
+        expect(scope.evidence).toContain("11 September 2026");
+        expect(scope.evidence).toContain("no write operation granted");
+        expect(scope.evidence).not.toContain("16 September");
+      }
+    }
+  });
+});

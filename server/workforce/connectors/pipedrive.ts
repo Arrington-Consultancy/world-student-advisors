@@ -50,8 +50,9 @@ import { projectFieldsFor, type ProjectedValues } from "./crmProjection";
 const LEAD_STAGE_LABEL = "Getting to know you";
 
 /**
- * The workforce credential: the WSA Pipedrive OAuth application, read scopes
- * only, Bearer against the company API domain. Tom Arrington, 11 September
+ * The workforce credential: the WSA Pipedrive OAuth application, Bearer
+ * against the company API domain. The application's scopes may include
+ * writes (Change Entry 100); this module still issues GETs only. Tom Arrington, 11 September
  * 2026: no paid service user, no reuse of the website's API token. The
  * strategy resolves a fresh access token on every call, refreshing when
  * needed, and fails closed with a plain message when no grant exists.

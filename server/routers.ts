@@ -1227,7 +1227,7 @@ export const appRouter = router({
      * Start consent for the WSA Pipedrive OAuth application. access_admin
      * only. Returns the authorise URL with a signed, ten-minute state
      * naming the staff member; the browser is sent there by the client.
-     * Scopes are fixed server-side and read only.
+     * Scopes are fixed server-side to the approved set (Change Entry 100).
      */
     pipedriveOAuthStart: publicProcedure
       .input(z.object({ token: z.string() }))
@@ -1498,7 +1498,7 @@ export const appRouter = router({
           connectors: [
             {
               connector: "pipedrive",
-              credential: { state: getPipedriveStatus(), variables: ["PIPEDRIVE_OAUTH_CLIENT_ID", "PIPEDRIVE_OAUTH_CLIENT_SECRET", "PIPEDRIVE_OAUTH_TOKEN_KEY"], note: "The WSA Pipedrive OAuth application, read scopes only, authorised by a WSA account. Separate from the website's PIPEDRIVE_API_TOKEN, which no worker path uses." },
+              credential: { state: getPipedriveStatus(), variables: ["PIPEDRIVE_OAUTH_CLIENT_ID", "PIPEDRIVE_OAUTH_CLIENT_SECRET", "PIPEDRIVE_OAUTH_TOKEN_KEY"], note: "The WSA Pipedrive OAuth application, approved scope set of Change Entry 100, authorised by a WSA account. Connector capability only: every worker remains read or search per its own grant. Separate from the website's PIPEDRIVE_API_TOKEN, which no worker path uses." },
               permission: { workersGranted: crmGranted, of: workers.length, authority: "crmScope.ts, transcribed from the Access Matrix. No CRM column exists yet." },
             },
             {

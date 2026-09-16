@@ -40,7 +40,7 @@ export function registerPipedriveOAuthRoutes(app: Express): void {
       const tokens = await exchangeAuthorisationCode(code, cfg);
       const wider = scopesOutsideApproved(tokens.scope);
       if (wider.length > 0) {
-        recordAuditEvent(authoriseEvent(who.staffUserId, "denied", `Pipedrive returned scopes outside the approved read set: ${wider.join(", ")}. Grant refused and not stored.`, false, "permission_denied"));
+        recordAuditEvent(authoriseEvent(who.staffUserId, "denied", `Pipedrive returned scopes outside the approved scope set: ${wider.join(", ")}. Grant refused and not stored.`, false, "permission_denied"));
         return back(res, "scopes_refused");
       }
       const grantId = await storeGrant(tokens, who.staffUserId, cfg);

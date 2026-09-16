@@ -79,14 +79,24 @@ describe("Pipedrive OAuth callback", () => {
     expect(JSON.stringify(event)).not.toContain("refresh-token-value");
     expect(redirect).not.toContain("access-token-value");
   });
-  it("refuses and does not store a grant that carries a write scope", async () => {
-    vi.mocked(oauth.exchangeAuthorisationCode).mockResolvedValue({ ...TOKENS, scope: "base deals:full leads:read" });
+  it("stores a grant carrying the approved :full scopes (Change Entry 100)", async () => {
+    vi.mocked(oauth.exchangeAuthorisationCode).mockResolvedValue({ ...TOKENS, scope: "base deals:full contacts:full leads:full search:read" });
+    const state = await oauth.signState(7, KEY);
+    expect(await call({ code: "the-code", state })).toBe("/staff-portal?pipedrive=connected");
+    expect(oauth.storeGrant).toHaveBeenCalledTimes(1);
+    const [event] = getAuditLog();
+    expect(event.permissionDecision).toBe("allowed");
+    expect(event.permissionReason).toContain("deals:full");
+  });
+  it("refuses and does not store a grant that carries a scope outside the approved set, naming the excess", async () => {
+    vi.mocked(oauth.exchangeAuthorisationCode).mockResolvedValue({ ...TOKENS, scope: "base deals:full leads:read admin mail:full" });
     const state = await oauth.signState(7, KEY);
     expect(await call({ code: "the-code", state })).toBe("/staff-portal?pipedrive=scopes_refused");
     expect(oauth.storeGrant).not.toHaveBeenCalled();
     const [event] = getAuditLog();
     expect(event.permissionDecision).toBe("denied");
-    expect(event.permissionReason).toContain("deals:full");
+    expect(event.permissionReason).toContain("admin, mail:full");
+    expect(event.permissionReason).not.toContain("deals:full");
     expect(event.errorCategory).toBe("permission_denied");
   });
   it("reports an exchange failure plainly and stores nothing", async () => {
