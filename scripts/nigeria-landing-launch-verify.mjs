@@ -22,7 +22,7 @@ const BASE = "https://www.worldstudentadvisors.com";
 const OUT = process.env.OUT_DIR ?? ".";
 const b = await chromium.launch(process.env.PW_EXECUTABLE ? { executablePath: process.env.PW_EXECUTABLE } : {});
 /** Tim's authorised programme options, in order, with Other last (item 7). */
-const LEVELS = ["postgraduate", "mphil", "doctorate", "other"];
+const LEVELS = ["postgraduate", "mphil", "mres", "doctorate", "other"];
 const fails = []; const ok = (c, m) => { if (!c) fails.push(m); };
 const log = m => console.log("  " + m);
 
@@ -92,7 +92,7 @@ for (const [name, vp] of [["mobile", { width: 390, height: 844 }], ["desktop", {
       `${name}: programme options are ${JSON.stringify(levelOptions)}, expected ${JSON.stringify(LEVELS)}`);
     ok(levelOptions[levelOptions.length - 1] === "other",
       `${name}: "Other" is not the last programme option (${JSON.stringify(levelOptions)})`);
-    ok(!levelOptions.includes("mres"), `${name}: MRes is still offered in the programme selector`);
+    ok(levelOptions.includes("mres"), `${name}: MRes is missing from the programme selector (approved scope, Brief v2.1; restored 16 September 2026)`);
     log(`${name}: programme options ${levelOptions.join(" -> ")}`);
   }
   // Eldah contact: WhatsApp link + mailto present and correct
@@ -108,7 +108,7 @@ for (const [name, vp] of [["mobile", { width: 390, height: 844 }], ["desktop", {
 try { const w = await fetch("https://wa.me/447470689849", { method: "GET", redirect: "manual" }); log(`wa.me/447470689849 -> ${w.status}`); ok(w.status !== 404 && w.status < 500, `wa.me returned ${w.status}`); } catch (e) { log(`wa.me fetch blocked from this network: ${e.message} (link href verified above)`); }
 
 // 3. CTA/form: four programme types x destinations reach the signup form on production, phone converts.
-const cases = [["postgraduate", "uk"], ["mphil", "germany"], ["doctorate", "canada"], ["other", "uk"]];
+const cases = [["postgraduate", "uk"], ["mphil", "germany"], ["mres", "uk"], ["doctorate", "canada"], ["other", "uk"]];
 for (const [level, dest] of cases) {
   const p = await b.newPage({ viewport: { width: 390, height: 844 } });
   await p.goto(`${BASE}/nigeria-postgraduate`, { waitUntil: "domcontentloaded" });
@@ -173,7 +173,7 @@ console.log("\n=== Brief v2.0 readiness ===");
   // the shell's, so the selector matches twice; the outer one is the whole
   // routed page and is what should be scanned.
   const body = (await p.locator("main").first().innerText()).toLowerCase();
-  for (const programme of ["taught master", "mphil", "phd"]) {
+  for (const programme of ["taught master", "mphil", "mres", "phd"]) {
     ok(body.includes(programme), `programme type missing from the page: ${programme}`);
   }
   for (const excluded of ["foundation", "undergraduate", "pre-master", "hnd", "top-up"]) {

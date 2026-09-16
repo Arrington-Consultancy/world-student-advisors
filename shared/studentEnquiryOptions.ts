@@ -24,10 +24,7 @@
 
 export const DESIRED_LEVEL_VALUES = Object.freeze([
   "foundation", "hnd", "undergraduate", "top-up", "pre-masters",
-  // The postgraduate routes, kept separate all the way to the CRM. "mres"
-  // stays a recognised value even though Tim Hunt took MRes off the Nigeria
-  // campaign on 15 September 2026: the signup form still offers it, and
-  // records already carry it.
+  // The postgraduate routes, kept separate all the way to the CRM.
   "postgraduate", "mphil", "mres", "doctorate",
   "boarding", "language",
   // Offered by the signup form and now by the Nigeria campaign. Added to
@@ -57,10 +54,13 @@ export function isDestinationValue(v: string): v is DestinationValue {
  * is the whole point, and a test asserts it.
  *
  * CHANGED 15 September 2026 on Tim Hunt's instruction: MRes removed, Other
- * added as the last option. The controlled Google Ads brief v2.0 of 12
- * September names MRes; Tim's later website instruction supersedes it for
- * what the page offers. MRes remains a live value on the main signup form
- * and in Pipedrive (option 314), so no existing record is orphaned.
+ * added as the last option. RESTORED 16 September 2026 on Tom Arrington's
+ * campaign brief: the controlled Google Ads Brief v2.1 (14 September 2026)
+ * approves Taught Master's, MPhil, MRes and PhD and requires all four to be
+ * named in the form, and Tom's instruction of 16 September is that the page
+ * "correctly represents all four programme types" and that MRes must not be
+ * excluded. Other stays last, as Tim asked. MRes maps to Pipedrive option
+ * 314, so the measurement contract in brief section 22 holds.
  *
  * "postgraduate" carries Taught Master's for historical reasons — it is
  * the value the live form has always used and it already maps to
@@ -74,10 +74,11 @@ export const CAMPAIGN_PROGRAMMES: ReadonlyArray<{
 }> = Object.freeze([
   { label: "Taught Master's", note: "MA, MSc and MBA programmes", value: "postgraduate" },
   { label: "MPhil", note: "Research degree, often a route to PhD", value: "mphil" },
+  { label: "MRes", note: "Master's by research", value: "mres" },
   { label: "PhD", note: "Doctoral research", value: "doctorate" },
-  // Tim Hunt, 15 September 2026: "MRes OUT, Other IN as the last option."
-  // Last in the list because that is where he asked for it, and because a
-  // catch-all above a named programme trains people to stop reading.
+  // Tim Hunt, 15 September 2026: "Other IN as the last option." Last in the
+  // list because that is where he asked for it, and because a catch-all
+  // above a named programme trains people to stop reading.
   { label: "Other", note: "Something else, or not sure yet", value: "other" },
 ]);
 
@@ -158,6 +159,7 @@ export const PIPEDRIVE_OPTION_GAPS: ReadonlyArray<{
 export const PIPEDRIVE_CAMPAIGN_OPTION_IDS = Object.freeze({
   postgraduate: 43, // Taught Master's
   mphil: 44, // MPhil research degree
+  mres: 314, // MRes research degree (added to production 12 September 2026)
   doctorate: 45, // PhD Doctorate
   other: 46, // Other / Not Sure
   uk: 78, // United Kingdom (UK)

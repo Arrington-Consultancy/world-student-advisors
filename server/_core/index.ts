@@ -12,6 +12,7 @@ import { registerPipedriveOAuthRoutes } from "../crm/pipedriveOAuthRoutes";
 import { warmPipedriveOAuth } from "../crm/pipedriveOAuth";
 import { registerDriveMirrorRoutes } from "../mirror/driveMirrorRoutes";
 import { startMirrorScheduler } from "../mirror/scheduler";
+import { startQualifiedLeadScheduler } from "../ads/scheduler";
 
 function isPortAvailable(port: number): Promise<boolean> {
   return new Promise(resolve => {
@@ -78,6 +79,8 @@ async function startServer() {
   void warmPipedriveOAuth().then(status => console.log(`[Pipedrive OAuth] Grant state at start: ${status}`));
   // Reporting mirror: hourly, skips itself while unconfigured.
   startMirrorScheduler();
+  // Google Ads Qualified Lead conversions, WSA owned (replaces Zapier). 16 September 2026.
+  startQualifiedLeadScheduler();
 }
 
 startServer().catch(console.error);

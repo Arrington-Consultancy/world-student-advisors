@@ -1,4 +1,4 @@
-import { int, mysqlEnum, mysqlTable, text, timestamp, varchar } from "drizzle-orm/mysql-core";
+import { int, mysqlEnum, mysqlTable, text, timestamp, uniqueIndex, varchar } from "drizzle-orm/mysql-core";
 
 /**
  * Core user table backing auth flow.
@@ -769,3 +769,30 @@ export const crmBackupRuns = mysqlTable("crm_backup_runs", {
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
 export type CrmBackupRun = typeof crmBackupRuns.$inferSelect;
+
+/**
+ * One row per Pipedrive Deal per Google Ads conversion action: the record
+ * of every Qualified Lead conversion decision the WSA-owned sync has made.
+ * The unique key is the idempotency guarantee; a Deal with a row is never
+ * sent to Google twice. Ids, flags, statuses and reasons only: no name,
+ * email, phone or click identifier is stored here.
+ */
+export const googleAdsConversionUploads = mysqlTable("google_ads_conversion_uploads", {
+  id: int("id").autoincrement().primaryKey(),
+  dealId: int("dealId").notNull(),
+  personId: int("personId"),
+  conversionActionId: varchar("conversionActionId", { length: 32 }).notNull(),
+  transactionId: varchar("transactionId", { length: 80 }).notNull(),
+  eventTimestamp: timestamp("eventTimestamp"),
+  status: mysqlEnum("status", ["uploaded", "skipped", "failed"]).notNull(),
+  /** Which match keys were sent, as names: "gclid,email,phone". Never values. */
+  identifiers: varchar("identifiers", { length: 120 }).notNull(),
+  requestId: varchar("requestId", { length: 120 }),
+  googleStatus: varchar("googleStatus", { length: 40 }),
+  googleDetail: varchar("googleDetail", { length: 400 }),
+  reason: varchar("reason", { length: 400 }),
+  attempts: int("attempts").notNull().default(1),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().notNull(),
+}, table => [uniqueIndex("google_ads_conversion_uploads_deal_action").on(table.dealId, table.conversionActionId)]);
+export type GoogleAdsConversionUpload = typeof googleAdsConversionUploads.$inferSelect;
