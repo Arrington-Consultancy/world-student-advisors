@@ -122,17 +122,49 @@ export async function invokeLLM(params: InvokeParams): Promise<InvokeResult> {
     messages: conversation,
   });
 
-  const textBlock = response.content.find(
+  // EVERY text block, in order. The API may return the answer as several
+  // text blocks and says so; taking only the first one handed a staff
+  // member an answer that stopped mid-sentence ("Her counsellor") while
+  // the rest of it sat unread in the second block. 16 September 2026.
+  const textBlocks = response.content.filter(
     (block): block is Anthropic.TextBlock => block.type === "text"
   );
+  const content = textBlocks.map(block => block.text).join("");
+  const finishReason = mapStopReason(response.stop_reason);
+  if (textBlocks.length !== 1 || finishReason !== "stop") {
+    // Shape only, never the text: this is the evidence trail for a reply
+    // that arrives incomplete or in pieces.
+    console.warn(`[LLM] response shape: ${textBlocks.length} text block(s), stop_reason=${response.stop_reason ?? "null"}, ${content.length} characters`);
+  }
 
   return {
     choices: [
       {
         index: 0,
-        message: { role: "assistant", content: textBlock?.text ?? "" },
-        finish_reason: "stop",
+        message: { role: "assistant", content },
+        finish_reason: finishReason,
       },
     ],
   };
+}
+
+/**
+ * Anthropic's stop_reason in the OpenAI-style vocabulary the callers read.
+ * "length" is the one that matters: it means the text is cut off, and a
+ * caller that shows it as if it were whole shows a broken answer.
+ */
+export function mapStopReason(stopReason: string | null | undefined): string | null {
+  switch (stopReason) {
+    case "end_turn":
+    case "stop_sequence":
+    case "tool_use":
+      return "stop";
+    case "max_tokens":
+      return "length";
+    case null:
+    case undefined:
+      return null;
+    default:
+      return stopReason;
+  }
 }

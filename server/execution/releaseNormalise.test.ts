@@ -46,4 +46,27 @@ describe("release check: mechanical style is corrected, genuine failures still b
     expect(r.reason).toContain("did not pass the release check");
     expect(r.qualityCheck?.blocking.map(f => f.code)).toContain("guarantee_language");
   });
+  it("Markdown emphasis and headings are removed, because the panel renders text", async () => {
+    invokeLLM.mockResolvedValue({ choices: [{ message: { content:
+      "## Where Vivian is\n\nVivian is at **CAS / Visa / Pre-Departure**, last updated 10 September 2026.\n\n**Her counsellor** is Glenice.\n\n**What should happen next**\n* The CAS request goes to the university.\n* The visa application follows." }, finish_reason: "stop" }] });
+    const r = await executeWorker({ staffUserId: 1, workerId: "james", requestText: "Where is Vivian in the process?", authMethod: "entra_sso" });
+    expect(r.outcome).toBe("answered");
+    expect(r.visibleText).not.toMatch(/\*\*|^#/m);
+    expect(r.visibleText).toContain("Where Vivian is\n\nVivian is at CAS / Visa / Pre-Departure, last updated 10 September 2026.");
+    expect(r.visibleText).toContain("- The CAS request goes to the university.");
+    expect(r.reason).toContain("Markdown marker");
+  });
+  it("a reply cut off at the length limit is withheld as incomplete, not shown as whole", async () => {
+    invokeLLM.mockResolvedValue({ choices: [{ message: { content: "Vivian is at CAS / Visa / Pre-Departure. Her counsellor" }, finish_reason: "length" }] });
+    const r = await executeWorker({ staffUserId: 1, workerId: "james", requestText: "Where is Vivian in the process?", authMethod: "entra_sso" });
+    expect(r.outcome).toBe("blocked_incomplete");
+    expect(r.visibleText).toBeNull();
+    expect(r.reason).toContain("cut off");
+  });
+  it("a reply the adapter reports as finished is shown whole, however many blocks it came in", async () => {
+    invokeLLM.mockResolvedValue({ choices: [{ message: { content: "Vivian is at CAS / Visa / Pre-Departure. Her counsellor is Glenice. The next step is the CAS request." }, finish_reason: "stop" }] });
+    const r = await executeWorker({ staffUserId: 1, workerId: "james", requestText: "Where is Vivian in the process?", authMethod: "entra_sso" });
+    expect(r.outcome).toBe("answered");
+    expect(r.visibleText).toBe("Vivian is at CAS / Visa / Pre-Departure. Her counsellor is Glenice. The next step is the CAS request.");
+  });
 });
