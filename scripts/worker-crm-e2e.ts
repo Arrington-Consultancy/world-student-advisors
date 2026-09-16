@@ -88,6 +88,8 @@ check(!/paste|attach(ed)? (the )?(handover|case file)/i.test(text), "answer does
 if (record?.stageLabel) check(text.toLowerCase().includes(record.stageLabel.toLowerCase().replace(/^s\d+\s*-\s*/, "").split("/")[0].trim().toLowerCase()), "answer states the student's stage", record.stageLabel);
 if (record?.counsellor) check(text.includes(record.counsellor.split(" ")[0]), "answer names the counsellor");
 check(text.toLowerCase().includes("next"), "answer addresses what happens next");
+check(!/\u2014|&mdash;/i.test(text), "answer as shown to the staff member carries no em dash");
+console.log(`  release: ${result.reason}`);
 console.log(`  brief: ${result.briefReference ?? "none"}; quality check: ${result.qualityCheck ? (result.qualityCheck.passed ? "passed" : "failed") : "n/a"}`);
 
 console.log(`\nRESULT: ${failures === 0 ? "the worker found the student by name and answered from the live WSA record" : `${failures} check(s) failed`}.`);

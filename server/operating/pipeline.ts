@@ -39,7 +39,8 @@ import {
   type StaffAccessProfile,
 } from "../access/accessControl";
 import { combineContributions, type CollaborationRequest, type CollaborationResult } from "./collaboration";
-import { runQualityCheck, acceptHumanisation, type QualityCheckResult, type HumanisationResult } from "./qualityCheck";
+import { runQualityCheck, acceptHumanisation, type QualityCheckResult, type HumanisationResult, findSubstanceChanges } from "./qualityCheck";
+import { normaliseMechanicalStyle } from "./styleNormalise";
 import type { WorkerId } from "../workforce/types";
 
 export type PipelineStage =
@@ -177,7 +178,16 @@ export function runPipeline(request: PipelineRequest, now: Date = new Date()): P
     };
   }
 
-  const recommendation = collaboration.recommendation as string;
+  // Mechanical style first (Tom Arrington, 16 September 2026): em dashes
+  // and prose double hyphens become ordinary punctuation and the result is
+  // what the check reads, unless anything but punctuation moved, in which
+  // case the original is checked and blocks as before.
+  const rawRecommendation = collaboration.recommendation as string;
+  const normalisedRecommendation = normaliseMechanicalStyle(rawRecommendation);
+  const recommendation =
+    normalisedRecommendation.replacements > 0 && findSubstanceChanges(rawRecommendation, normalisedRecommendation.text).length === 0
+      ? normalisedRecommendation.text
+      : rawRecommendation;
 
   // Stage 3: accuracy and quality check (§10). Runs on the recommendation,
   // never on the humanised text, because the humanisation pass has not
@@ -218,7 +228,7 @@ export function runPipeline(request: PipelineRequest, now: Date = new Date()): P
   let visibleText = recommendation;
 
   if (request.humanisedText !== undefined) {
-    humanisation = acceptHumanisation(recommendation, request.humanisedText);
+    humanisation = acceptHumanisation(recommendation, normaliseMechanicalStyle(request.humanisedText).text);
     visibleText = humanisation.text;
   }
 
