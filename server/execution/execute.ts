@@ -26,7 +26,8 @@ import { evaluateStaffPortalExecutionPermission } from "../workforce/permissions
 import { buildWorkerContext, type CaseData, type UpstreamOutput } from "../workforce/context";
 import { checkAccessForStaffUser } from "../access/enforcement";
 import { WORKER_FUNCTIONAL_SCOPE } from "../access/workerScope";
-import { runQualityCheck, type QualityCheckResult } from "../operating/qualityCheck";
+import { runQualityCheck, findSubstanceChanges, type QualityCheckResult } from "../operating/qualityCheck";
+import { normaliseMechanicalStyle } from "../operating/styleNormalise";
 import { getControlledBrief, NO_CONTROLLED_BRIEF } from "./briefs";
 import { checkPreparationOnly, checkRuleStatementsAreSourced, PRIYA_REFUSAL } from "../workforce/priyaScope";
 import { composeSystemPrompt, composeUserMessage, type ContributorInput } from "./prompt";
@@ -232,10 +233,21 @@ export async function executeWorker(request: ExecutionRequest): Promise<Executio
     }
   }
 
-  // 7. The quality gate, on the model's output, before any staff member
-  //    sees it. Text that fails is not shown however well it reads.
+  // 7. Mechanical style, then the quality gate, before any staff member
+  //    sees it. Tom Arrington, 16 September 2026: a punctuation violation
+  //    must not destroy a valid answer. Em dashes and prose double hyphens
+  //    are replaced with ordinary punctuation and the RESULT is checked;
+  //    if anything but punctuation moved, the original is checked instead
+  //    and blocks exactly as before. Every other failure the gate knows
+  //    (guarantees, evidence, boundary, permission, disagreement) is as
+  //    blocking as it always was, because none of those is punctuation.
+  const normalised = normaliseMechanicalStyle(modelText);
+  const releaseText =
+    normalised.replacements > 0 && findSubstanceChanges(modelText, normalised.text).length === 0
+      ? normalised.text
+      : modelText;
   const quality = runQualityCheck({
-    text: modelText,
+    text: releaseText,
     permissionChecked: true,
     hasUnresolvedDisagreement: false,
     disagreementVisibleInText: false,
@@ -260,8 +272,8 @@ export async function executeWorker(request: ExecutionRequest): Promise<Executio
 
   return {
     outcome: "answered",
-    visibleText: modelText,
-    reason: `${worker.canonicalName} answered under ${brief.sourceDocument}.`,
+    visibleText: releaseText,
+    reason: `${worker.canonicalName} answered under ${brief.sourceDocument}.${releaseText !== modelText ? ` ${normalised.summary}` : ""}`,
     workerId: request.workerId,
     workerName: worker.canonicalName,
     briefReference: brief.sourceDocument,
