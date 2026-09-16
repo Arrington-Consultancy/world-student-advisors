@@ -243,21 +243,23 @@ describe("the short form hands over to the one controlled lead path", () => {
 
 describe("the four programme types and five destinations stay separate into the CRM", () => {
   /**
-   * Tim Hunt, 15 September 2026: "MRes OUT, Other IN as the last option."
-   * This supersedes the four-programme scope of the controlled Ads brief
-   * v2.0 for what the page offers. Asserted in full and in order, so Other
-   * cannot drift up the list above a named programme.
+   * The controlled Google Ads Brief v2.1 (14 September 2026) approves Taught
+   * Master's, MPhil, MRes and PhD and requires all four in the form. Tim
+   * Hunt's website instruction of 15 September took MRes off and put Other
+   * last; Tom Arrington's campaign brief of 16 September restored MRes
+   * ("correctly represents all four programme types"). Other stays last, as
+   * Tim asked. Asserted in full and in order, so Other cannot drift up the
+   * list above a named programme and MRes cannot quietly go missing again.
    */
-  it("the campaign scope is the four Tim asked for, Other last", () => {
-    expect(CAMPAIGN_PROGRAMMES.map(p => p.label)).toEqual(["Taught Master's", "MPhil", "PhD", "Other"]);
+  it("the campaign scope is the approved four, Other last", () => {
+    expect(CAMPAIGN_PROGRAMMES.map(p => p.label)).toEqual(["Taught Master's", "MPhil", "MRes", "PhD", "Other"]);
     expect(CAMPAIGN_PROGRAMMES.at(-1)!.label).toBe("Other");
-    expect(CAMPAIGN_PROGRAMMES.map(p => p.label)).not.toContain("MRes");
   });
 
   it("each programme records as its own value, with nothing collapsed", () => {
     const values = CAMPAIGN_PROGRAMMES.map(p => p.value);
     expect(new Set(values).size).toBe(CAMPAIGN_PROGRAMMES.length);
-    expect(values).toEqual(["postgraduate", "mphil", "doctorate", "other"]);
+    expect(values).toEqual(["postgraduate", "mphil", "mres", "doctorate", "other"]);
     for (const v of values) expect(isDesiredLevelValue(v)).toBe(true);
   });
 
@@ -275,11 +277,11 @@ describe("the four programme types and five destinations stay separate into the 
   });
 
   /**
-   * MRes left the campaign page but not the business: the main signup form
-   * still offers it and Pipedrive still records it as 314, so no existing
-   * record is orphaned and a student who wants an MRes can still say so.
+   * MRes is its own option end to end: the main signup form offers it and
+   * Pipedrive records it as 314, so the campaign page's MRes value lands as
+   * MRes and never as taught Master's.
    */
-  it("MRes survives outside the campaign, still as its own option", () => {
+  it("MRes reaches the signup form and the CRM as its own option", () => {
     expect(isDesiredLevelValue("mres")).toBe(true);
     expect(contact).toContain('value="mres"');
     expect(pipedrive).toMatch(/\bmres: 314,/);
@@ -335,7 +337,7 @@ describe("the four programme types and five destinations stay separate into the 
   it("no two campaign values share a Pipedrive option id", () => {
     const ids = Object.values(PIPEDRIVE_CAMPAIGN_OPTION_IDS);
     expect(new Set(ids).size).toBe(ids.length);
-    // Nine values: four programmes and five destinations.
+    // Ten values: five programme options (the approved four plus Other) and five destinations.
     expect(ids).toHaveLength(CAMPAIGN_PROGRAMMES.length + CAMPAIGN_DESTINATIONS.length);
   });
 
