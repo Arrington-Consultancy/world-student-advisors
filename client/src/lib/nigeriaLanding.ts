@@ -44,8 +44,13 @@ export const SCOPE_STATUS_NOTE =
   "The controlled Google Ads brief was reissued as version 2.0 on the same date to match that scope, " +
   "superseding the taught Master's only brief of 15 August 2026. Published on Tom's GO of 12 September 2026; paid traffic is a separate decision.";
 
+/**
+ * Tim Hunt's closing line for "Where we place postgraduates", supplied
+ * verbatim in "Nigeria Landing Page - changes 16 Sept 2026.docx". It
+ * supersedes the note set in his 14 September review.
+ */
 export const OTHER_DESTINATIONS_NOTE =
-  "Your counsellor will talk through other destinations with you. We do not treat Europe as a single country, so where you have a particular country in mind it is recorded as that country.";
+  "Your WSA counsellor will help you compare countries, universities, courses and costs to find the options that best fit your ambitions and budget.";
 
 /**
  * What WSA offers, in the grouping Tom asked for. "Application Support"
@@ -147,7 +152,7 @@ export const COUNSELLORS: ReadonlyArray<CounsellorProfile> = Object.freeze([
   {
     name: "Eldah Therone",
     role: "Team Leader",
-    location: "Nairobi, Kenya",
+    location: "UK Head Office",
     photo: "/team/eldah-therone.jpg",
     contact: {
       whatsapp: "+44 7470 689 849",
@@ -166,7 +171,7 @@ export const COUNSELLORS: ReadonlyArray<CounsellorProfile> = Object.freeze([
   {
     name: "Glenice Owino",
     role: "Senior Student Counsellor",
-    location: "Nairobi, Kenya",
+    location: "UK Head Office",
     photo: "/team/glenice-owino.jpg",
     contact: {
       whatsapp: "+44 7459 720 726",
@@ -179,7 +184,7 @@ export const COUNSELLORS: ReadonlyArray<CounsellorProfile> = Object.freeze([
   {
     name: "Manet Khamayo",
     role: "Student Counsellor, Non-UK",
-    location: "Nairobi, Kenya",
+    location: "UK Head Office",
     photo: "/team/manet-khamayo.jpg",
     contact: {
       whatsapp: "+44 7555 546016",
@@ -192,7 +197,7 @@ export const COUNSELLORS: ReadonlyArray<CounsellorProfile> = Object.freeze([
   {
     name: "Claudia Ingado",
     role: "Student Recruitment & Relationship Manager",
-    location: "Nairobi, Kenya",
+    location: "UK Head Office",
     photo: "/team/claudia-ingado.jpg",
     contact: {
       whatsapp: "+44 7341 905 979",

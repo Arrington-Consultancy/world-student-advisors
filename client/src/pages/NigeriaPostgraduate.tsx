@@ -151,9 +151,9 @@ function CounsellorCard({ person }: { person: (typeof COUNSELLORS)[number] }) {
           src={person.photo}
           alt={`${person.name}, ${person.role} at World Student Advisors`}
           width={80}
-          height={80}
+          height={107}
           loading="lazy"
-          className="h-20 w-20 shrink-0 rounded-full border border-wsa-navy/10 bg-wsa-stone object-cover"
+          className="block aspect-[3/4] w-20 shrink-0 rounded-xl border border-wsa-navy/10 bg-wsa-stone object-cover object-top"
         />
         <div className="min-w-0">
           <p className="text-lg font-semibold leading-tight text-wsa-navy">{person.name}</p>
@@ -284,9 +284,11 @@ export default function NigeriaPostgraduate() {
       {/* ── The people ──────────────────────────────────────────── */}
       <section className="px-4 py-12 sm:px-6 lg:py-16">
         <div className="mx-auto max-w-6xl">
-          <h2 className="text-2xl font-bold tracking-tight text-wsa-navy sm:text-3xl">Who you will be dealing with</h2>
+          {/* Heading and standfirst set word for word by Tim Hunt on
+              16 September 2026, replacing "Who you will be dealing with". */}
+          <h2 className="text-2xl font-bold tracking-tight text-wsa-navy sm:text-3xl">Meet the team who will support you</h2>
           <p className="mt-2 max-w-2xl text-base leading-relaxed text-gray-700">
-            Real people. Your counsellor is named and stays with you.
+            Real people. Personal support. Your dedicated WSA advisor will be with you throughout your journey.
           </p>
           <div className="mt-6 grid gap-4 sm:grid-cols-2">
             {COUNSELLORS.map(p => (
@@ -310,9 +312,12 @@ export default function NigeriaPostgraduate() {
           <ul className="mt-6 space-y-3">
             {CAMPAIGN_DESTINATIONS.map(d => (
               <li key={d.value} className="flex items-start gap-3">
-                <CheckCircle2 className={`mt-1 h-5 w-5 shrink-0 ${d.emphasis === "primary" ? "text-wsa-red" : "text-wsa-navy/35"}`} aria-hidden />
+                {/* Tim's copy leads each destination with its flag. The flag is
+                    decorative: the country is named in the text beside it, so a
+                    screen reader is not read a run of regional indicators. */}
+                <span className="mt-0.5 shrink-0 text-lg leading-none" aria-hidden>{d.flag}</span>
                 <p className="text-base leading-relaxed text-gray-700">
-                  <span className="font-semibold text-wsa-navy">{d.label}.</span> {d.note}
+                  <span className="font-semibold text-wsa-navy">{d.placementLabel}.</span> {d.note}
                 </p>
               </li>
             ))}
