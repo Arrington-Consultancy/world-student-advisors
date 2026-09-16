@@ -86,23 +86,42 @@ export interface ResolveInput {
  * relay.
  */
 export async function resolveStudentByName(input: ResolveInput, deps: LookupDeps = oauthLookupDeps): Promise<StudentResolution> {
-  const result = await lookupStudents(
-    { staffUserId: input.staffUserId, authMethod: input.authMethod, term: input.name, by: "name", scope: WORKER_FUNCTIONAL_SCOPE[input.workerId] },
-    deps,
-  );
-  if (result.refused) {
-    return { kind: "refused", note: `The CRM could not be checked for "${input.name}" under the staff member's own access: ${result.reason}` };
+  const scope = WORKER_FUNCTIONAL_SCOPE[input.workerId];
+  let withheldTotal = 0;
+  // A CRM record rarely carries every name a person is known by: the deal
+  // may say "Vivian Ene Onuh" while the person record says "Vivian Onuh".
+  // So the spellings are tried from the most specific to the least, and
+  // the first that finds anything decides. Every attempt is audited by
+  // the lookup itself.
+  for (const term of searchTerms(input.name)) {
+    const result = await lookupStudents(
+      { staffUserId: input.staffUserId, authMethod: input.authMethod, term, by: "name", scope },
+      deps,
+    );
+    if (result.refused) {
+      return { kind: "refused", note: `The CRM could not be checked for "${input.name}" under the staff member's own access: ${result.reason}` };
+    }
+    withheldTotal += result.withheldCount;
+    if (result.results.length === 1) {
+      const one = result.results[0];
+      return { kind: "one", personId: one.personId, name: one.name };
+    }
+    if (result.results.length > 1) {
+      const options = result.results.map(r => `${r.name} (${r.stageLabel}${r.counsellor ? `, counsellor ${r.counsellor}` : ""})`).join("; ");
+      return { kind: "many", note: `${result.results.length} CRM students match "${input.name}" (searched as "${term}"): ${options}. Ask the staff member which one they mean, by email address or telephone number, before using any record.` };
+    }
   }
-  if (result.results.length === 1) {
-    const one = result.results[0];
-    return { kind: "one", personId: one.personId, name: one.name };
-  }
-  if (result.results.length === 0) {
-    const withheld = result.withheldCount > 0
-      ? ` ${result.withheldCount} matching record${result.withheldCount === 1 ? " is" : "s are"} outside the staff member's case scope and cannot be shown.`
-      : "";
-    return { kind: "none", note: `No CRM student matching "${input.name}" is within the staff member's access.${withheld} Ask for the student's email address or telephone number if the name may be spelt differently in the CRM.` };
-  }
-  const options = result.results.map(r => `${r.name} (${r.stageLabel}${r.counsellor ? `, counsellor ${r.counsellor}` : ""})`).join("; ");
-  return { kind: "many", note: `${result.results.length} CRM students match "${input.name}": ${options}. Ask the staff member which one they mean, by email address or telephone number, before using any record.` };
+  const withheld = withheldTotal > 0
+    ? ` ${withheldTotal} matching record${withheldTotal === 1 ? " is" : "s are"} outside the staff member's case scope and cannot be shown.`
+    : "";
+  return { kind: "none", note: `No CRM student matching "${input.name}" is within the staff member's access.${withheld} Ask for the student's email address or telephone number if the name may be spelt differently in the CRM.` };
+}
+
+/** The full name, then first and last, then the surname alone; never a first name alone. */
+export function searchTerms(name: string): string[] {
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  const out = [parts.join(" ")];
+  if (parts.length >= 3) out.push(`${parts[0]} ${parts[parts.length - 1]}`);
+  if (parts.length >= 2) out.push(parts[parts.length - 1]);
+  return Array.from(new Set(out));
 }

@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 
 vi.mock("../db", () => ({ getDb: async () => null }));
 
-const { extractNameCandidates, resolveStudentByName } = await import("./studentContext");
+const { extractNameCandidates, resolveStudentByName, searchTerms } = await import("./studentContext");
 const { gatherConnectorEvidence } = await import("./evidence");
 const { LOOKUP_ACTOR } = await import("../crm/staffLookup");
 import type { LookupDeps, CrmCandidate } from "../crm/staffLookup";
@@ -60,7 +60,29 @@ function deps(found: CrmCandidate[], scopes = ["admissions"]): { deps: LookupDep
 }
 const ask = { workerId: "james" as const, staffUserId: 7, authMethod: "entra_sso" as const };
 
+describe("searchTerms", () => {
+  it("tries the full name, then first and last, then the surname, and never a first name alone", () => {
+    expect(searchTerms("Vivian Ene Onuh")).toEqual(["Vivian Ene Onuh", "Vivian Onuh", "Onuh"]);
+    expect(searchTerms("Peter Agada")).toEqual(["Peter Agada", "Agada"]);
+  });
+});
+
 describe("resolveStudentByName", () => {
+  it("finds a student whose CRM record lacks a middle name by falling back to first and last, and stops there", async () => {
+    const searches: string[] = [];
+    const d = deps([]);
+    d.deps.search = async term => { searches.push(term); return term === "Vivian Onuh" ? [candidate(369, "VIVIAN ONUH")] : []; };
+    const r = await resolveStudentByName({ ...ask, name: "Vivian Ene Onuh" }, d.deps);
+    expect(r).toEqual({ kind: "one", personId: 369, name: "VIVIAN ONUH" });
+    expect(searches).toEqual(["Vivian Ene Onuh", "Vivian Onuh"]);
+  });
+  it("a surname shared by several students becomes a question naming the spelling searched", async () => {
+    const d = deps([]);
+    d.deps.search = async term => term === "Okoro" ? [candidate(1, "Grace Okoro"), candidate(2, "Amaka Okoro")] : [];
+    const r = await resolveStudentByName({ ...ask, name: "Gracie Okoro" }, d.deps);
+    expect(r.kind).toBe("many");
+    expect((r as { note: string }).note).toContain(`searched as "Okoro"`);
+  });
   it("one match under the staff member's own authority becomes one person id, audited as the staff lookup, not as the worker", async () => {
     const d = deps([candidate(369, "VIVIAN ENE ONUH")]);
     const r = await resolveStudentByName({ ...ask, name: "Vivian Ene Onuh" }, d.deps);
