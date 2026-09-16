@@ -13,7 +13,7 @@ import {
 import { CANONICAL_PATHS, NOINDEX_PATHS, SEO_MAP, shouldNoindex } from "../../shared/seo";
 import { isValidClientRoute } from "../../shared/routes";
 import { PRERENDER_ROUTES } from "../../shared/prerenderRoutes";
-import { COUNSELLORS, toInternationalNigerianNumber } from "../../client/src/lib/nigeriaLanding";
+import { COUNSELLORS, OTHER_DESTINATIONS_NOTE, toInternationalNigerianNumber } from "../../client/src/lib/nigeriaLanding";
 import { existsSync } from "fs";
 
 /** True when a public path like /team/x.jpg is a file that actually ships. */
@@ -97,10 +97,10 @@ describe("nothing on the page claims what WSA cannot evidence", () => {
   });
 
   it("does not say the counsellors are all based in Nigeria, because one is not", () => {
-    // Eldah Therone is in Nairobi. The page said "Real people, based in
-    // Nigeria" beside her card, which was simply untrue.
+    // The page once said "Real people, based in Nigeria" beside Eldah
+    // Therone's card, which was simply untrue. The standfirst that replaced
+    // it was itself replaced by Tim on 16 September; the claim stays gone.
     expect(page).not.toMatch(/based in Nigeria/);
-    expect(page).toContain("Real people. Your counsellor is named and stays with you.");
   });
 
   /**
@@ -122,7 +122,12 @@ describe("nothing on the page claims what WSA cannot evidence", () => {
     expect(options).not.toMatch(/where most WSA postgraduate applicants go/i);
     expect(options).not.toMatch(/know the admissions and visa route best/i);
     const uk = CAMPAIGN_DESTINATIONS.find(d => d.value === "uk")!;
-    expect(uk.note).toBe("Our main destination for this campaign.");
+    // Tim's wording of 16 September 2026, which supersedes "Our main
+    // destination for this campaign." It still claims no more than a
+    // network of partners, so the two assertions above continue to hold.
+    expect(uk.note).toBe(
+      "Our main destination, supported by WSA\u2019s strong network of UK universities and education partners.",
+    );
   });
 
   it("credits the individual, and only where WSA holds the certificate", () => {
@@ -160,7 +165,12 @@ describe("nothing on the page claims what WSA cannot evidence", () => {
     expect(labels).not.toContain("Europe");
     expect(labels[0]).toBe("United Kingdom");
     // "Other European destinations" is allowed as a note, a bare "Europe" is not.
-    expect(content).toContain("We do not treat Europe as a single country");
+    // The undertaking not to lump Europe together survives Tim's rewrite of
+    // 16 September 2026: "We do not treat Europe as a single country" became
+    // "We consider each country individually", which is the same commitment
+    // in his words. It moved from the closing note into the Europe entry.
+    expect(CAMPAIGN_DESTINATIONS.find(d => d.value === "europe")!.note)
+      .toContain("We consider each country individually");
   });
 
   it("publishes no phone number until one is verified", () => {
@@ -497,4 +507,73 @@ describe("neither Nigeria page advertises unconfirmed research services", () => 
       expect(source).not.toMatch(/guaranteed (admission|place|offer|visa|supervisor|studentship|funding|scholarship)/i);
     });
   }
+});
+
+/**
+ * Tim Hunt's instructions of 16 September 2026, from "Nigeria Landing Page -
+ * changes 16 Sept 2026.docx". His copy is asserted character for character,
+ * because the whole point of a supplied wording is that it is not edited,
+ * and because the previous wording in each case was also his and was also
+ * pinned here.
+ */
+describe("Tim's landing page changes of 16 September 2026", () => {
+  it("carries his team heading and standfirst, and not the ones they replaced", () => {
+    expect(page).toContain("Meet the team who will support you");
+    expect(page).toContain(
+      "Real people. Personal support. Your dedicated WSA advisor will be with you throughout your journey.",
+    );
+    expect(page).not.toContain("Who you will be dealing with");
+    expect(page).not.toContain("Real people. Your counsellor is named and stays with you.");
+  });
+
+  it("shows every counsellor as UK Head Office, with no Nairobi line left on the page", () => {
+    expect(COUNSELLORS.map(c => c.location)).toEqual([
+      "UK Head Office", "UK Head Office", "UK Head Office", "UK Head Office",
+    ]);
+    expect(content).not.toContain("Nairobi, Kenya");
+  });
+
+  it("carries his destination copy verbatim, in his order, with his labels", () => {
+    expect(CAMPAIGN_DESTINATIONS.map(d => d.placementLabel)).toEqual([
+      "United Kingdom", "USA", "Canada", "Germany", "Other European destinations",
+    ]);
+    const note = (v: string) => CAMPAIGN_DESTINATIONS.find(d => d.value === v)!.note;
+    expect(note("usa")).toBe(
+      "The land of opportunity, with world leading universities and an enormous choice of postgraduate programmes.",
+    );
+    expect(note("canada")).toBe(
+      "A major international study destination with opportunities for talented graduates and skilled professionals.",
+    );
+    expect(note("germany")).toBe(
+      "An excellent option for postgraduate study, with a wide range of Master\u2019s programmes taught entirely in English and many competitively priced study options. (www.daad.de)",
+    );
+    expect(note("europe")).toBe(
+      "WSA has strong links across Europe, particularly in Cyprus, Hungary, France and the Netherlands, as well as other EU countries. We consider each country individually to find the right course, university and budget for you.",
+    );
+    expect(OTHER_DESTINATIONS_NOTE).toBe(
+      "Your WSA counsellor will help you compare countries, universities, courses and costs to find the options that best fit your ambitions and budget.",
+    );
+    // Every destination leads with a flag, as his document does.
+    for (const d of CAMPAIGN_DESTINATIONS) expect(d.flag.length).toBeGreaterThan(0);
+  });
+
+  it("keeps the enquiry form's own destination wording, which a submission records", () => {
+    // He renamed the destination to "USA" in his copy. The form still says
+    // "United States", because that string is what reaches Pipedrive and he
+    // did not ask for the form to change.
+    expect(CAMPAIGN_DESTINATIONS.find(d => d.value === "usa")!.label).toBe("United States");
+  });
+
+  it("frames each counsellor photograph so nothing of the head is cropped away", () => {
+    // The card showed an 80x80 circle with object-cover over a 3:4 portrait,
+    // which discarded a quarter of the height and then the corners, taking
+    // the top of the head with it. A 3:4 box crops nothing, because it is
+    // the shape the asset already is.
+    expect(page).toMatch(/aspect-\[3\/4\][^"]*object-cover object-top/);
+    expect(page).not.toMatch(/h-20 w-20 shrink-0 rounded-full[^"]*object-cover/);
+  });
+
+  it("ships a real image file for all four counsellors", () => {
+    for (const c of COUNSELLORS) expect(publicFile(c.photo)).toBe(true);
+  });
 });

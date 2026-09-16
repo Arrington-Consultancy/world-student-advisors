@@ -97,18 +97,40 @@ export const CAMPAIGN_PROGRAMMES: ReadonlyArray<{
  * never absorbs one that has.
  */
 export const CAMPAIGN_DESTINATIONS: ReadonlyArray<{
+  /**
+   * What the enquiry form's dropdown shows, and therefore what a submission
+   * records. Deliberately NOT Tim's landing-page wording: he writes "USA" in
+   * the destination copy below while the form keeps "United States", so the
+   * two are separate fields and only `placementLabel` carries his copy.
+   */
   label: string;
+  /**
+   * Primary or secondary destination. Retained as data; the destination list
+   * now leads with `flag` rather than a tinted icon, per Tim's 16 September
+   * 2026 presentation.
+   */
   emphasis: "primary" | "secondary";
+  /** Emoji flag, as Tim supplied it on 16 September 2026. */
+  flag: string;
+  /** How the destination is named in "Where we place postgraduates". */
+  placementLabel: string;
+  /** Tim's destination copy, verbatim. */
   note: string;
   value: DestinationValue;
 }> = Object.freeze([
-  { label: "United Kingdom", emphasis: "primary", value: "uk", // "Where most applicants go" and "where we know the route best" were
-    // both stronger than WSA can currently evidence, so neither is claimed.
-    note: "Our main destination for this campaign." },
-  { label: "United States", emphasis: "secondary", value: "usa", note: "Considered where the course and your funding position fit." },
-  { label: "Canada", emphasis: "secondary", value: "canada", note: "Considered where the course and your funding position fit." },
-  { label: "Germany", emphasis: "secondary", value: "germany", note: "Considered where the course and your funding position fit." },
-  { label: "Other European destinations", emphasis: "secondary", value: "europe", note: "European countries with no option of their own, considered one country at a time." },
+  // The destination copy below is Tim Hunt's, supplied verbatim in "Nigeria
+  // Landing Page - changes 16 Sept 2026.docx" and not edited here. It
+  // supersedes the shorter notes set in his 14 September review.
+  { label: "United Kingdom", emphasis: "primary", value: "uk", flag: "\u{1F1EC}\u{1F1E7}", placementLabel: "United Kingdom",
+    note: "Our main destination, supported by WSA\u2019s strong network of UK universities and education partners." },
+  { label: "United States", emphasis: "secondary", value: "usa", flag: "\u{1F1FA}\u{1F1F8}", placementLabel: "USA",
+    note: "The land of opportunity, with world leading universities and an enormous choice of postgraduate programmes." },
+  { label: "Canada", emphasis: "secondary", value: "canada", flag: "\u{1F1E8}\u{1F1E6}", placementLabel: "Canada",
+    note: "A major international study destination with opportunities for talented graduates and skilled professionals." },
+  { label: "Germany", emphasis: "secondary", value: "germany", flag: "\u{1F1E9}\u{1F1EA}", placementLabel: "Germany",
+    note: "An excellent option for postgraduate study, with a wide range of Master\u2019s programmes taught entirely in English and many competitively priced study options. (www.daad.de)" },
+  { label: "Other European destinations", emphasis: "secondary", value: "europe", flag: "\u{1F1EA}\u{1F1FA}", placementLabel: "Other European destinations",
+    note: "WSA has strong links across Europe, particularly in Cyprus, Hungary, France and the Netherlands, as well as other EU countries. We consider each country individually to find the right course, university and budget for you." },
 ]);
 
 /**
