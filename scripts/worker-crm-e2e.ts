@@ -43,7 +43,8 @@ function check(ok: boolean, label: string, detail = ""): void {
 
 const question = (process.env.E2E_QUESTION ?? "").trim();
 if (!question) { console.log("E2E_QUESTION is required."); process.exit(2); }
-const staffEmail = (process.env.E2E_STAFF_EMAIL ?? process.env.ACCESS_BOOTSTRAP_EMAIL ?? "").trim().toLowerCase();
+// An empty workflow input arrives as an empty string, not as unset.
+const staffEmail = ((process.env.E2E_STAFF_EMAIL || "").trim() || (process.env.ACCESS_BOOTSTRAP_EMAIL || "").trim()).toLowerCase();
 if (!staffEmail) { console.log("E2E_STAFF_EMAIL (or ACCESS_BOOTSTRAP_EMAIL) is required."); process.exit(2); }
 
 console.log("\n=== 1. Grant ===");
