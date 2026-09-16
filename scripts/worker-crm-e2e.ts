@@ -83,7 +83,14 @@ const result = await executeWorker({ staffUserId: staff.id, workerId, requestTex
 check(result.outcome === "answered", "worker answered", `${result.outcome}: ${result.reason.slice(0, 160)}`);
 const text = result.visibleText ?? "";
 check(text.length > 200, "answer has substance", `${text.length} characters`);
-check(!/(don'?t|do not|cannot|can'?t|unable to) (have )?(any )?access/i.test(text) && !/no (live )?system access/i.test(text), "answer does not claim it lacks access");
+// James is told to say plainly that notes, activities, emails and documents are
+// not available to him, so a sentence about those is correct, not a failure.
+// What must never appear is a claim of no access to the student, the record or the CRM.
+const deniesRecord =
+  /(don'?t|do not|cannot|can'?t|unable to|no) (have )?(any )?(live )?access to (any |the |this |her |his |their )?(case file|crm|pipedrive|student record|student's record|record|application record|her application)/i.test(text)
+  || /no (live )?system access/i.test(text)
+  || /(cannot|can'?t|unable to) (find|locate|see|retrieve) (the |her |this )?(student|record|application)/i.test(text);
+check(!deniesRecord, "answer does not claim it lacks access to the student record or the CRM");
 check(!/paste|attach(ed)? (the )?(handover|case file)/i.test(text), "answer does not ask the staff member to paste the record");
 if (record?.stageLabel) check(text.toLowerCase().includes(record.stageLabel.toLowerCase().replace(/^s\d+\s*-\s*/, "").split("/")[0].trim().toLowerCase()), "answer states the student's stage", record.stageLabel);
 if (record?.counsellor) check(text.includes(record.counsellor.split(" ")[0]), "answer names the counsellor");
