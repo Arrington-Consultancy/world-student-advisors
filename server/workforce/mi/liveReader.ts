@@ -1,6 +1,6 @@
 /**
  * The production reader for management information: the WSA Pipedrive OAuth
- * grant, read scopes only, GET only, never the website contact form's
+ * grant, GET only whatever scopes the grant carries, never the website contact form's
  * token. Configured means a usable grant exists right now.
  */
 import { createPipedriveReaderWithAuth } from "../../pipedrive-read";

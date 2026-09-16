@@ -4,8 +4,9 @@ import { randomBytes } from "node:crypto";
 
 /**
  * The WSA Pipedrive OAuth application, tested at the edges Tom set on
- * 11 September 2026: read scopes only and fixed; no write scope ever
- * stored; tokens sealed before the database and never in a URL, log or
+ * 11 September 2026 and widened by him on 16 September 2026 (Change Entry
+ * 100): scopes fixed to the approved set; nothing outside it ever stored;
+ * tokens sealed before the database and never in a URL, log or
  * audit row; refresh handled properly and single-flight; the website's
  * API token untouched; nothing Arrington.
  */
@@ -25,15 +26,20 @@ function tokenJson(over: Record<string, unknown> = {}) {
   return { access_token: "access-token-value-1234567890", refresh_token: "refresh-token-value-1234567890", expires_in: 3599, api_domain: "https://worldstudentadvisors.pipedrive.com", scope: "base leads:read deals:read contacts:read search:read", token_type: "Bearer", ...over };
 }
 
-describe("scopes are read only, fixed, and checked", () => {
-  it("names exactly the approved read set and nothing ending in :full or admin", () => {
-    expect([...oauth.PIPEDRIVE_OAUTH_SCOPES]).toEqual(["base", "leads:read", "deals:read", "contacts:read", "search:read"]);
-    for (const s of oauth.PIPEDRIVE_OAUTH_SCOPES) expect(s).not.toMatch(/:full$|admin|write/);
+describe("scopes are fixed to the approved set of Change Entry 100, and checked", () => {
+  it("names exactly the approved set: read and full on deals, contacts and leads, plus base and search; never admin, mail, users or activities", () => {
+    expect([...oauth.PIPEDRIVE_OAUTH_SCOPES]).toEqual(["base", "leads:read", "leads:full", "deals:read", "deals:full", "contacts:read", "contacts:full", "search:read"]);
+    for (const s of oauth.PIPEDRIVE_OAUTH_SCOPES) expect(s).not.toMatch(/^(admin|mail|users|activities|products|projects|goals|webhooks|recents|phone|video|messengers)/);
+    expect(oauth.PIPEDRIVE_CONNECTOR_AUTHORITY).toContain("16 September 2026");
+    expect(oauth.PIPEDRIVE_CONNECTOR_AUTHORITY).toContain("no worker write granted");
   });
-  it("flags any scope wider than approved, including a single :full", () => {
+  it("accepts the read-only set and the approved :full scopes, and flags anything outside the set", () => {
     expect(oauth.scopesOutsideApproved("base leads:read deals:read contacts:read search:read")).toEqual([]);
-    expect(oauth.scopesOutsideApproved("base leads:read deals:full")).toEqual(["deals:full"]);
+    expect(oauth.scopesOutsideApproved("base leads:full deals:full contacts:full search:read")).toEqual([]);
+    expect(oauth.scopesOutsideApproved("base leads:read deals:full")).toEqual([]);
     expect(oauth.scopesOutsideApproved("base,contacts:read,admin")).toEqual(["admin"]);
+    expect(oauth.scopesOutsideApproved("base deals:full mail:full")).toEqual(["mail:full"]);
+    expect(oauth.scopesOutsideApproved("base deals:full users:read activities:full")).toEqual(["users:read", "activities:full"]);
     expect(oauth.scopesOutsideApproved("")).toEqual([]);
   });
   it("the authorise URL names the client, the callback and the state, and no scope override and no secret", () => {

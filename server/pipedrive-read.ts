@@ -27,7 +27,7 @@ export function isPipedriveReadConfigured(): boolean {
  * apart on purpose:
  *   - API token (the public website's own credential, PIPEDRIVE_API_TOKEN):
  *     query parameter against api.pipedrive.com. Used by Find a student.
- *   - OAuth (the WSA Pipedrive OAuth application, read scopes only): Bearer
+ *   - OAuth (the WSA Pipedrive OAuth application; this reader is GET-only whatever the grant carries): Bearer
  *     header against the company's own api_domain. Used by the workforce.
  * A strategy supplies the base URL and either a header or a query token.
  */

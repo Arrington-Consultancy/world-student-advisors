@@ -1,21 +1,34 @@
 /**
- * WSA Pipedrive OAuth application: the workforce's read-only CRM credential.
+ * WSA Pipedrive OAuth application: the workforce's CRM credential.
  *
  * Tom Arrington, 11 September 2026: WSA has 5 of 5 Premium seats in use and
  * another Deals user would cost about 637 pounds a year before VAT. Do not
  * buy a seat to give the AI read access. Use a dedicated WSA Pipedrive OAuth
- * application, authorised once by an existing WSA account, with read scopes
- * only.
+ * application, authorised once by an existing WSA account.
+ *
+ * Approved 16 September 2026 (Change Entry 100, Access Matrix v0.6):
+ * the application becomes an operational read-and-write connector for
+ * deals, contacts and leads, so that authorised workers and Staff Portal
+ * workflows can eventually act on the CRM. That approval is of the
+ * CONNECTOR's capability and of nothing else: no worker gained a write,
+ * and none can through this file.
  *
  * HOW THIS IS BOUNDED, in order of what matters most:
  *
- * Scopes are read only and fixed here. base is mandatory in Pipedrive's
- * model; leads:read, deals:read, contacts:read (persons and organisations)
- * and search:read (person search) are the minimum the approved Connector
- * Matrix v0.3 and the resolution-first reporting need. Nothing ending in
- * :full, and never admin. The scope string Pipedrive returns at
- * authorisation is checked against this list and a grant carrying anything
- * wider is refused and never stored.
+ * Scopes are fixed here and checked twice. base is mandatory in
+ * Pipedrive's model; :read and :full on deals, contacts (persons and
+ * organisations) and leads, and search:read, are the approved set. Never
+ * admin, mail, users, activities or anything else Pipedrive offers: each
+ * was reconciled against WSA use in Change Entry 100 section 3 and
+ * excluded. The scope string Pipedrive returns at authorisation, and again
+ * at every refresh, is checked against this list and a grant carrying
+ * anything outside it is refused and never stored.
+ *
+ * Connector capability is not worker authority. What a worker may do is
+ * decided by WORKER_CRM_SCOPE (read and search only), writesAuthorised
+ * (false for every worker) and the worker connector module, which exposes
+ * no write path. A token that could write a deal gives a worker exactly
+ * what a read-only token gave it. permissions.test.ts pins that.
  *
  * The app acts with the authorising user's visibility. That is Pipedrive's
  * model, not a choice here: an OAuth token is that user's read view of the
@@ -42,7 +55,16 @@ import { getDb } from "../db";
 import { connectorOauthGrants } from "../../drizzle/schema";
 import { ENV } from "../_core/env";
 
-export const PIPEDRIVE_OAUTH_SCOPES = Object.freeze(["base", "leads:read", "deals:read", "contacts:read", "search:read"] as const);
+export const PIPEDRIVE_OAUTH_SCOPES = Object.freeze([
+  "base",
+  "leads:read", "leads:full",
+  "deals:read", "deals:full",
+  "contacts:read", "contacts:full",
+  "search:read",
+] as const);
+/** The approval every widening of the set above must cite. Worker grants cite crmScope.ts's own authority, deliberately a different string. */
+export const PIPEDRIVE_CONNECTOR_AUTHORITY =
+  "WSA approval authority, 16 September 2026 (Path B): operational read-and-write connector for deals, contacts and leads. Recorded in WSA Change Log Change Entry 100 and Connector Access Matrix v0.6. Connector capability only; no worker write granted.";
 export const PIPEDRIVE_AUTHORISE_URL = "https://oauth.pipedrive.com/oauth/authorize";
 export const PIPEDRIVE_TOKEN_URL = "https://oauth.pipedrive.com/oauth/token";
 export const PIPEDRIVE_OAUTH_REDIRECT_PATH = "/api/connectors/pipedrive/callback";
@@ -82,7 +104,7 @@ export function oauthConfig(env: NodeJS.ProcessEnv = process.env): OAuthConfig |
   return { clientId, clientSecret, tokenKey, redirectUri: redirectUriFor() };
 }
 
-/** Which returned scopes are wider than the approved read set. Empty means read only. */
+/** Which returned scopes fall outside the approved set. Empty means the grant is within approval. */
 export function scopesOutsideApproved(scopeString: string): string[] {
   const approved = new Set<string>(PIPEDRIVE_OAUTH_SCOPES);
   return scopeString
@@ -251,7 +273,7 @@ async function refreshStored(cfg: OAuthConfig, grantId: number, fetchImpl: Fetch
   try {
     const tokens = await refreshAccessToken(open(row.sealedRefreshToken, cfg.tokenKey), cfg, fetchImpl);
     const wider = scopesOutsideApproved(tokens.scope);
-    if (tokens.scope && wider.length > 0) throw new Error(`refreshed grant carries scopes outside the approved read set: ${wider.join(", ")}`);
+    if (tokens.scope && wider.length > 0) throw new Error(`refreshed grant carries scopes outside the approved scope set: ${wider.join(", ")}`);
     await db.update(connectorOauthGrants).set({
       sealedAccessToken: seal(tokens.accessToken, cfg.tokenKey),
       accessTokenExpiresAt: tokens.expiresAt,
