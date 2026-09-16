@@ -63,7 +63,19 @@ export interface SyncOutcome {
   skipReasons: Record<string, number>;
 }
 
-export type SyncConfigState = "ready" | "google_credential_unconfigured" | "google_credential_malformed" | "pipedrive_token_missing" | "database_unavailable";
+export type SyncConfigState = "ready" | "google_credential_unconfigured" | "google_credential_malformed" | "pipedrive_token_missing" | "database_unavailable" | "sync_disabled";
+
+/**
+ * The deliberate switch. Nothing is uploaded, by the scheduler or by the
+ * acceptance script, until GOOGLE_ADS_QUALIFIED_LEAD_SYNC_ENABLED is exactly
+ * "true". Default off, so a credential can be configured and proven with
+ * validateOnly before the first real conversion leaves WSA. Absent, empty,
+ * "1", "yes" or "TRUE " all mean off: the switch is turned on on purpose.
+ */
+export const SYNC_ENABLED_VAR = "GOOGLE_ADS_QUALIFIED_LEAD_SYNC_ENABLED";
+export function syncEnabled(env: NodeJS.ProcessEnv = process.env): boolean {
+  return env[SYNC_ENABLED_VAR] === "true";
+}
 
 export async function syncConfigState(env: NodeJS.ProcessEnv = process.env, store: UploadStore | null | undefined = undefined): Promise<SyncConfigState> {
   const cred = credentialState(env);
@@ -72,6 +84,9 @@ export async function syncConfigState(env: NodeJS.ProcessEnv = process.env, stor
   if (!(env.PIPEDRIVE_API_TOKEN ?? "").trim()) return "pipedrive_token_missing";
   const s = store === undefined ? await databaseUploadStore() : store;
   if (!s) return "database_unavailable";
+  // Checked last so the state names the first missing piece of
+  // configuration; "sync_disabled" means everything else is in place.
+  if (!syncEnabled(env)) return "sync_disabled";
   return "ready";
 }
 
