@@ -63,6 +63,10 @@ export interface SyncOutcome {
   skipReasons: Record<string, number>;
 }
 
+export function isExplicitRealSyncSuccess(syncState: SyncConfigState, outcome: SyncOutcome): boolean {
+  return syncState === "ready" && outcome.status === "complete";
+}
+
 export type SyncConfigState = "ready" | "google_credential_unconfigured" | "google_credential_malformed" | "pipedrive_token_missing" | "database_unavailable" | "sync_disabled";
 
 /**

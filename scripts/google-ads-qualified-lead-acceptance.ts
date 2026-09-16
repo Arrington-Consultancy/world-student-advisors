@@ -27,7 +27,7 @@ import { getDb } from "../server/db";
 import { credentialIdentity, credentialState, ingestEvents, readCredential, accessToken, DataManagerError } from "../server/ads/googleDataManager";
 import { ATTRIBUTION_FIELD_KEYS, qualifiedLeadConfig, qualifiedLeadDestination, pipedriveTimeToIso } from "../server/ads/qualifiedLead";
 import { databaseUploadStore } from "../server/ads/uploadStore";
-import { LOOKBACK_DAYS, runQualifiedLeadSync, syncConfigState } from "../server/ads/qualifiedLeadSync";
+import { isExplicitRealSyncSuccess, LOOKBACK_DAYS, runQualifiedLeadSync, syncConfigState } from "../server/ads/qualifiedLeadSync";
 import { createPipedriveReader } from "../server/pipedrive-read";
 import { ENV } from "../server/_core/env";
 
@@ -119,7 +119,7 @@ try {
 if (process.env.E2E_RUN_SYNC === "1") {
   console.log("\n=== 6. One real sync run ===");
   const r = await runQualifiedLeadSync("acceptance");
-  check(r.status !== "partial", "sync run", `${r.status}; considered ${r.considered}, uploaded ${r.uploaded}, skipped ${r.skipped}, failed ${r.failed}, already recorded ${r.alreadyRecorded}, status checked ${r.statusChecked}${r.reason ? `; ${r.reason}` : ""}`);
+  check(isExplicitRealSyncSuccess(syncState, r), "sync run", `${r.status}; considered ${r.considered}, uploaded ${r.uploaded}, skipped ${r.skipped}, failed ${r.failed}, already recorded ${r.alreadyRecorded}, status checked ${r.statusChecked}${r.reason ? `; ${r.reason}` : ""}${syncState !== "ready" ? `; sync state ${syncState}` : ""}`);
   for (const [reason, n] of Object.entries(r.skipReasons)) note(`skipped ${n}: ${reason}`);
 }
 

@@ -1,5 +1,5 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
-import { runQualifiedLeadSync, syncConfigState, type SyncDeps } from "./qualifiedLeadSync";
+import { isExplicitRealSyncSuccess, runQualifiedLeadSync, syncConfigState, type SyncDeps } from "./qualifiedLeadSync";
 import { memoryUploadStore } from "./uploadStore";
 import { ATTRIBUTION_FIELD_KEYS } from "./qualifiedLead";
 import { DataManagerError } from "./googleDataManager";
@@ -37,6 +37,13 @@ function deps(overrides: Partial<SyncDeps> = {}): SyncDeps & { ingest: ReturnTyp
 beforeEach(() => { vi.spyOn(console, "log").mockImplementation(() => {}); vi.spyOn(console, "warn").mockImplementation(() => {}); });
 
 describe("configuration gate", () => {
+  it("treats explicit real-sync acceptance as passed only when sync is enabled and the run completes", () => {
+    expect(isExplicitRealSyncSuccess("ready", { status: "complete", reason: null, considered: 0, uploaded: 0, skipped: 0, failed: 0, alreadyRecorded: 0, statusChecked: 0, skipReasons: {} })).toBe(true);
+    expect(isExplicitRealSyncSuccess("ready", { status: "partial", reason: "x", considered: 0, uploaded: 0, skipped: 0, failed: 0, alreadyRecorded: 0, statusChecked: 0, skipReasons: {} })).toBe(false);
+    expect(isExplicitRealSyncSuccess("sync_disabled", { status: "complete", reason: null, considered: 0, uploaded: 0, skipped: 0, failed: 0, alreadyRecorded: 0, statusChecked: 0, skipReasons: {} })).toBe(false);
+    expect(isExplicitRealSyncSuccess("sync_disabled", { status: "skipped", reason: "sync_disabled", considered: 0, uploaded: 0, skipped: 0, failed: 0, alreadyRecorded: 0, statusChecked: 0, skipReasons: {} })).toBe(false);
+  });
+
   it("stands down, touching nothing, until the Google credential, the Pipedrive token and the database are all present", async () => {
     expect(await syncConfigState({}, memoryUploadStore())).toBe("google_credential_unconfigured");
     expect(await syncConfigState({ GOOGLE_ADS_DATAMANAGER_OAUTH_CLIENT_ID: "x" }, memoryUploadStore())).toBe("google_credential_malformed");
