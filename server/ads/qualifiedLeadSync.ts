@@ -8,8 +8,10 @@
  * and the Google credential WSA controls performs the upload.
  *
  * ORDER, AND WHY IT IS SAFE.
- *   1. Configuration is checked; anything missing means the run stands down
- *      with a reason and touches nothing.
+ *   1. The explicit enable switch is checked first, then the configuration.
+ *      The switch off, or anything missing, means the run stands down with a
+ *      reason and touches nothing. A Google credential arriving in production
+ *      does not, by itself, start uploads: the switch has to be set as well.
  *   2. Deals created inside the look-back window are read from Pipedrive.
  *      Reads only. The window is bounded because Google will not attribute a
  *      conversion to a click older than its conversion window anyway.
@@ -63,9 +65,25 @@ export interface SyncOutcome {
   skipReasons: Record<string, number>;
 }
 
-export type SyncConfigState = "ready" | "google_credential_unconfigured" | "google_credential_malformed" | "pipedrive_token_missing" | "database_unavailable";
+export type SyncConfigState = "ready" | "sync_disabled" | "google_credential_unconfigured" | "google_credential_malformed" | "pipedrive_token_missing" | "database_unavailable";
+
+/**
+ * The explicit enable switch. The sync sends nothing, however complete the
+ * credential and the rest of the configuration are, unless
+ * GOOGLE_ADS_QUALIFIED_LEAD_SYNC_ENABLED is exactly "true" (case and
+ * surrounding whitespace ignored; "1", "yes" and "on" do not count). Without
+ * this, installing the Google credential would send every unrecorded Deal in
+ * the look-back window on the first scheduled run, with nobody having decided
+ * that those historical Deals should be reported as conversions.
+ */
+export const SYNC_ENABLED_VARIABLE = "GOOGLE_ADS_QUALIFIED_LEAD_SYNC_ENABLED";
+
+export function syncEnabled(env: NodeJS.ProcessEnv = process.env): boolean {
+  return (env[SYNC_ENABLED_VARIABLE] ?? "").trim().toLowerCase() === "true";
+}
 
 export async function syncConfigState(env: NodeJS.ProcessEnv = process.env, store: UploadStore | null | undefined = undefined): Promise<SyncConfigState> {
+  if (!syncEnabled(env)) return "sync_disabled";
   const cred = credentialState(env);
   if (cred === "unconfigured") return "google_credential_unconfigured";
   if (cred === "malformed") return "google_credential_malformed";
