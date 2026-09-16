@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from "react";
 import { ArrowRight, ChevronRight, CircleCheck, CircleDashed, CornerDownLeft, Lock, Search } from "lucide-react";
 import { trpc, type RouterOutputs } from "@/lib/trpc";
+import { directoryFor } from "@shared/staffDirectory";
 import { WorkerChat } from "./WorkerChat";
 
 type Worker = RouterOutputs["workforce"]["listWorkers"]["workers"][number];
@@ -12,10 +13,14 @@ type Worker = RouterOutputs["workforce"]["listWorkers"]["workers"][number];
  * whether they can take the work, laid out so the answer is legible at a
  * glance rather than as four lines of prose the reader has to parse.
  *
- * It is never a dead end. When nothing is identified, the whole team is
- * shown with what each owns, and every card a member of staff may reach is
- * a way in. Tom, 11 September 2026: this section should function as a
- * specialist directory, not static information.
+ * It is never a dead end. When nothing is identified, the specialists this
+ * member can reach are shown with what each owns, and every card is a way
+ * in. Tom, 11 September 2026: this section should function as a specialist
+ * directory, not static information. Tom, 16 September 2026: the default is
+ * Ask WSA AI; the directory sits behind "Choose a specialist" and lists only
+ * what the signed-in member can reach, with the full roster under View AI
+ * team. Presentation only: routing, permissions, attribution and audit are
+ * exactly as before.
  *
  * It never learns. "Wrong specialist?" records what the person said as
  * evidence about the router; it grants nothing, teaches nothing and
@@ -53,8 +58,6 @@ function initials(name: string): string {
     .join("")
     .toUpperCase();
 }
-
-const HIDDEN_FROM_DIRECTORY = new Set(["staff_receptionist", "wsa_governance_assurance", "wsa_core_brain"]);
 
 /**
  * One card in the specialist directory.
@@ -129,6 +132,8 @@ export function Receptionist({ token }: { token: string }) {
   const [direct, setDirect] = useState<Worker | null>(null);
   const [correcting, setCorrecting] = useState(false);
   const [corrected, setCorrected] = useState<string | null>(null);
+  /** "Choose a specialist" opened. Closed by default: the front door is the Ask box. */
+  const [choosing, setChoosing] = useState(false);
 
   const routeQuery = trpc.workforce.route.useQuery(
     { token, request: submitted, priorRequests: turns.map(t => t.question) },
@@ -150,6 +155,7 @@ export function Receptionist({ token }: { token: string }) {
     setDirect(null);
     setCorrecting(false);
     setCorrected(null);
+    setChoosing(false);
   };
 
   /**
@@ -196,7 +202,9 @@ export function Receptionist({ token }: { token: string }) {
     setDirect(worker);
   };
 
-  const directory = workers.data?.workers.filter((w: Worker) => !HIDDEN_FROM_DIRECTORY.has(w.id)) ?? [];
+  // Server-decided reachability, presented. Only the member's own
+  // specialists when any resolve; the whole roster otherwise, as before.
+  const { workers: directory, mode: directoryMode } = directoryFor<Worker>(workers.data?.workers ?? []);
 
   const renderDirectory = (heading: string, onOpen: (w: Worker) => void) => (
     <div className="mt-5">
@@ -218,13 +226,13 @@ export function Receptionist({ token }: { token: string }) {
             aria-hidden
           />
           <label htmlFor="reception-request" className="sr-only">
-            Ask WSA what you need
+            Ask WSA AI what you need
           </label>
           <input
             id="reception-request"
             value={request}
             onChange={e => setRequest(e.target.value)}
-            placeholder="Ask WSA what you need…"
+            placeholder="Ask WSA AI what you need…"
             autoComplete="off"
             className="w-full bg-transparent py-4 pl-12 pr-32 text-base text-wsa-navy placeholder:text-gray-400 focus:outline-none sm:text-lg"
           />
@@ -479,12 +487,36 @@ export function Receptionist({ token }: { token: string }) {
         </div>
       )}
 
-      {/* The standing directory: a way in for staff who already know who
-          they want. Shown when nothing else is on screen. */}
-      {!result && !routeQuery.isFetching && !direct && workers.data && renderDirectory("Or go straight to a specialist", w => {
-        setSubmitted("");
-        setDirect(w);
-      })}
+      {/* Manual selection, second to the Ask box. Closed by default; one
+          click opens the specialists this member can reach. The full team
+          with statuses is under View AI team. */}
+      {!result && !routeQuery.isFetching && !direct && workers.data && (
+        <div className="mt-6">
+          <button
+            type="button"
+            onClick={() => setChoosing(c => !c)}
+            aria-expanded={choosing}
+            aria-controls="reception-directory"
+            className="inline-flex min-h-[44px] items-center gap-1.5 text-base font-medium text-wsa-navy underline-offset-2 hover:text-wsa-red hover:underline"
+          >
+            <ChevronRight className={`h-4 w-4 transition ${choosing ? "rotate-90" : ""}`} aria-hidden />
+            Choose a specialist
+          </button>
+          {choosing && (
+            <div id="reception-directory">
+              {renderDirectory(
+                directoryMode === "reachable" ? "Specialists you can reach" : "Who covers what",
+                w => { setSubmitted(""); setDirect(w); },
+              )}
+              <p className="mt-3 text-sm text-gray-500">
+                {directoryMode === "reachable"
+                  ? "Only the specialists in your access are listed here. The whole team, with each one's status, is under View AI team."
+                  : "The whole team is listed because no access scope resolved for this sign-in. Cards you cannot open say why."}
+              </p>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }
