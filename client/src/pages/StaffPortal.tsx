@@ -561,8 +561,8 @@ const DAILY_WORK: { id: StaffSection; label: string; blurb: string; icon: typeof
 const WSA_INFORMATION: { id: StaffSection; label: string; blurb: string; icon: typeof Users; tint: string }[] = [
   {
     id: "team",
-    label: "AI specialists",
-    blurb: "Work with WSA's specialist AI team.",
+    label: "View AI team",
+    blurb: "Who covers what, and each specialist's current status.",
     icon: Sparkles,
     tint: "bg-emerald-50 text-emerald-700",
   },
@@ -759,7 +759,7 @@ function WorkforceHome({ token, onLogout }: { token: string; onLogout: () => voi
               <h1 className="text-2xl font-semibold text-wsa-navy md:text-3xl">
                 {greeting()}{name ? `, ${name}` : ""}
               </h1>
-              <p className="mt-1 text-base text-gray-600">What do you need help with?</p>
+              <p className="mt-1 text-base text-gray-600">Ask WSA AI what you need. It finds the right specialist for you.</p>
             </div>
 
             {/* Reception, promoted from one card among many to the thing the
