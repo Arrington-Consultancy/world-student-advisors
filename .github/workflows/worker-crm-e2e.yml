@@ -1,0 +1,74 @@
+name: Worker CRM end-to-end (production, natural question)
+
+# Manual only. A staff member's natural question that names a real student
+# is routed, the student is identified under that staff member's own
+# authority, the worker reads the live WSA Pipedrive record through the OAuth
+# grant, and the model answers. Runs inside the service's variables with a
+# public database URL substituted, following connector-pipedrive-acceptance.
+# Prints booleans, counts, ids and stage labels only: never contact details,
+# never the answer text. Writes the audit rows the real path writes and
+# nothing else; the CRM is only read.
+# Auth: githubactionsprod, the production-scoped Railway Project Token.
+on:
+  workflow_dispatch:
+    inputs:
+      question:
+        description: "The natural staff question, naming the student"
+        required: true
+      staff_email:
+        description: "Staff account to act as (default: the deployment's ACCESS_BOOTSTRAP_EMAIL)"
+        required: false
+        default: ""
+      worker:
+        description: "Worker id to force (default: whatever the router chooses)"
+        required: false
+        default: ""
+
+jobs:
+  e2e:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Install Railway CLI
+        run: npm install -g @railway/cli
+      - name: Discover the MySQL public-URL variable NAME (key only, value never printed)
+        id: discover
+        env:
+          RAILWAY_TOKEN: ${{ secrets.githubactionsprod }}
+        run: |
+          KEYS=$(railway variables --service "MySQL" --environment "production" --json | jq -r 'keys[]')
+          PUBLIC_KEY=$(echo "$KEYS" | grep -i -E '^(MYSQL_PUBLIC_URL|DATABASE_PUBLIC_URL)$' | head -n1)
+          if [ -z "$PUBLIC_KEY" ]; then echo "No public-URL-shaped variable found on MySQL. Stopping."; exit 1; fi
+          echo "public_key=$PUBLIC_KEY" >> "$GITHUB_OUTPUT"
+      - name: Set a temporary database URL reference on the app service
+        env:
+          RAILWAY_TOKEN: ${{ secrets.githubactionsprod }}
+          PUBLIC_KEY: ${{ steps.discover.outputs.public_key }}
+        run: |
+          REF=$(printf '\044{{%s.%s}}' "MySQL" "$PUBLIC_KEY")
+          railway variables --service "world-student-advisors" --environment "production" \
+            --set "WORKER_E2E_DATABASE_URL=${REF}" --skip-deploys
+      - name: Run the end-to-end test inside the service variables
+        timeout-minutes: 10
+        env:
+          RAILWAY_TOKEN: ${{ secrets.githubactionsprod }}
+          E2E_QUESTION: ${{ github.event.inputs.question }}
+          E2E_STAFF_EMAIL: ${{ github.event.inputs.staff_email }}
+          E2E_WORKER: ${{ github.event.inputs.worker }}
+        run: |
+          railway run --service "world-student-advisors" --environment "production" -- \
+            sh -c 'DATABASE_URL="$WORKER_E2E_DATABASE_URL" E2E_QUESTION="$E2E_QUESTION" E2E_STAFF_EMAIL="$E2E_STAFF_EMAIL" E2E_WORKER="$E2E_WORKER" pnpm exec tsx scripts/worker-crm-e2e.ts'
+      - name: Remove the temporary database URL reference
+        if: always()
+        env:
+          RAILWAY_TOKEN: ${{ secrets.githubactionsprod }}
+        run: |
+          railway variables --service "world-student-advisors" --environment "production" \
+            --set "WORKER_E2E_DATABASE_URL=" --skip-deploys

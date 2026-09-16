@@ -24,6 +24,7 @@
  * guess, which is what Universal Worker Instructions section 6 requires.
  */
 import { readPipedriveRecord, searchPipedrive } from "../workforce/connectors/pipedrive";
+import { extractNameCandidates, resolveStudentByName, type StudentResolution } from "./studentContext";
 import { readSharePointRecord } from "../workforce/connectors/sharepoint";
 import { WORKER_CRM_SCOPE } from "../workforce/crmScope";
 import { WORKER_SHAREPOINT_LOCATIONS } from "../workforce/sharePointLocations";
@@ -77,18 +78,41 @@ export async function gatherConnectorEvidence(input: {
   staffUserId: number | null;
   authMethod: AuditAuthMethod;
   caseId?: string;
+  /** Test seam only; production uses the real staff lookup on the WSA OAuth grant. */
+  resolveByName?: typeof resolveStudentByName;
 }): Promise<GatheredEvidence> {
   const blocks: EvidenceBlock[] = [];
   const notes: EvidenceNote[] = [];
   const base = { workerId: input.workerId, staffUserId: input.staffUserId, authMethod: input.authMethod, caseId: input.caseId };
 
-  // CRM: only where the controlled record grants anything, and only for an
-  // identifier the staff member actually typed. No identifier, no call.
+  // CRM: only where the controlled record grants anything, and only for a
+  // student the staff member actually named. An email, telephone number or
+  // CRM id is used as typed. A name is not searched by the worker: it is
+  // resolved under the STAFF MEMBER's own Find-a-student authority (Tom
+  // Arrington, 9 September 2026), with their case scope applied, and only
+  // when exactly one record matches is that record read under the worker's
+  // grant. Several matches are put back to the person; none is stated.
+  // Operational Standard v1.0 section 12: use the live record so staff do not
+  // re-enter known history; never merge ambiguous identities silently.
   if (WORKER_CRM_SCOPE[input.workerId]) {
     const ids = extractIdentifiers(input.requestText);
-    for (const personId of ids.personIds) {
+    const personIds = new Set<number>(ids.personIds);
+    const labels = new Map<number, string>();
+    if (ids.personIds.length === 0 && ids.emails.length === 0 && ids.phones.length === 0) {
+      const resolve = input.resolveByName ?? resolveStudentByName;
+      for (const name of extractNameCandidates(input.requestText).slice(0, 2)) {
+        const resolution: StudentResolution = await resolve({ name, workerId: input.workerId, staffUserId: input.staffUserId, authMethod: input.authMethod });
+        if (resolution.kind === "one") {
+          personIds.add(resolution.personId);
+          labels.set(resolution.personId, `CRM person ${resolution.personId}, identified from the name "${name}" under the staff member's own student-lookup authority`);
+        } else {
+          notes.push({ source: "pipedrive", note: resolution.note });
+        }
+      }
+    }
+    for (const personId of Array.from(personIds)) {
       const r = await readPipedriveRecord({ ...base, resourceScope: `person/${personId}` });
-      if (r.success && r.data !== undefined) blocks.push({ source: "pipedrive", label: `CRM person ${personId}`, data: r.data });
+      if (r.success && r.data !== undefined) blocks.push({ source: "pipedrive", label: labels.get(personId) ?? `CRM person ${personId}`, data: r.data });
       else notes.push({ source: "pipedrive", note: `CRM read of person ${personId} did not return a record: ${r.message}` });
     }
     for (const [field, values] of [["email", ids.emails], ["phone", ids.phones]] as const) {

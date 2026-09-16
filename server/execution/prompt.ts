@@ -191,6 +191,13 @@ export function composeUserMessage(request: string, inputs: PromptInputs): strin
     for (const n of evidence.notes) {
       parts.push(`- Not available [${n.source}]: ${n.note}`);
     }
+    if (evidence.blocks.some(b => b.source === "pipedrive")) {
+      parts.push(
+        "A CRM record above is the authorised live view for this request: the base fields (name, contact details, counsellor, stage, last updated) plus the fields this worker's remit is approved to see. " +
+        "Answer from it directly: state where the student is, who their counsellor is, and what the record shows. " +
+        "Notes, activities, emails and documents are not part of it; if the question needs them, say plainly that they are not available to you and what the standard next step at this stage would be, rather than inferring or asking the person to paste the record.",
+      );
+    }
   }
 
   return parts.join("\n");
