@@ -24,7 +24,7 @@
  *      PUT, and none writes anything.
  * Exit 0 only when every proof holds.
  */
-import { describePipedriveGrant, getPipedriveOAuthAccess, oauthConfig, scopesOutsideApproved, resetPipedriveOAuthCache, PIPEDRIVE_OAUTH_SCOPES } from "../server/crm/pipedriveOAuth";
+import { describePipedriveGrant, getPipedriveOAuthAccess, oauthConfig, scopesOutsideApproved, resetPipedriveOAuthCache, PIPEDRIVE_OAUTH_SCOPES, isWsaCompany } from "../server/crm/pipedriveOAuth";
 import { pipedriveOAuthAuth } from "../server/crm/pipedriveOAuthAuth";
 import { createPipedriveReaderWithAuth } from "../server/pipedrive-read";
 import { readPipedriveRecord } from "../server/workforce/connectors/pipedrive";
@@ -50,13 +50,14 @@ check(grant.authorisedAt !== null, "authorised at", grant.authorisedAt ? grant.a
 check(Boolean(grant.apiDomainHost && /^[a-z0-9-]+\.pipedrive\.com$/i.test(grant.apiDomainHost)), "api_domain is a pipedrive.com company host", grant.apiDomainHost ?? "none");
 if (grant.status !== "operational") { console.log("\nRESULT: no usable grant. A WSA administrator must authorise the application from Staff access first."); process.exit(2); }
 
-console.log("\n=== 3. Scopes granted are inside the approved read set ===");
+console.log("\n=== 3. Scopes granted are inside the approved set ===");
 const scopeString = grant.scopes ?? "";
 const granted = scopeString.split(/[\s,]+/).filter(Boolean);
 check(granted.length > 0, "Pipedrive returned a scope string", scopeString || "(empty)");
 const wider = scopesOutsideApproved(scopeString);
 check(wider.length === 0, "nothing outside the approved set", wider.length ? `outside: ${wider.join(", ")}` : `approved: ${PIPEDRIVE_OAUTH_SCOPES.join(", ")}`);
-check(!granted.some(s => /:full$|admin|write/i.test(s)), "no :full, admin or write scope", granted.join(" "));
+check(!granted.some(s => /^(admin|mail|users|activities|products|projects|goals|webhooks|recents|phone|video|messengers)/i.test(s)), "no admin, mail, users, activities or other excluded scope (Change Entry 100)", granted.join(" "));
+check(Boolean(grant.apiDomainHost && isWsaCompany(`https://${grant.apiDomainHost}`)), "grant is for the WSA company and no other (Change Entry 100, revision 2)", grant.apiDomainHost ?? "none");
 
 console.log("\n=== 4. Authorised reads (counts only) ===");
 const reader = createPipedriveReaderWithAuth(pipedriveOAuthAuth);

@@ -16,24 +16,40 @@ import {
   getPerson,
   getOpenDealForPerson,
   getOpenLeadForPerson,
+  createPipedriveReaderWithAuth,
 } from "../pipedrive-read";
+import { pipedriveOAuthAuth } from "./pipedriveOAuthAuth";
 import type { CrmCandidate, LookupBy, LookupDeps } from "./staffLookup";
+
+/** The GET-only functions the search needs, so the same logic can run on either credential. */
+type LookupReader = {
+  searchPersonIds: (term: string, field: LookupBy) => Promise<number[]>;
+  getPerson: typeof getPerson;
+  getOpenDealForPerson: typeof getOpenDealForPerson;
+  getOpenLeadForPerson: typeof getOpenLeadForPerson;
+};
+const websiteReader: LookupReader = { searchPersonIds, getPerson, getOpenDealForPerson, getOpenLeadForPerson };
 
 /** The pre-conversion Lead state, matching the student portal's wording. */
 const LEAD_STAGE_LABEL = "Getting to know you";
 
-async function searchPipedrive(term: string, by: LookupBy): Promise<CrmCandidate[]> {
-  const ids = await searchPersonIds(term, by);
+/** The search, bound to a reader. Candidates only; the caller filters by case scope before anything is projected. */
+export function makeSearch(reader: LookupReader): (term: string, by: LookupBy) => Promise<CrmCandidate[]> {
+  return async (term, by) => searchWith(reader, term, by);
+}
+
+async function searchWith(reader: LookupReader, term: string, by: LookupBy): Promise<CrmCandidate[]> {
+  const ids = await reader.searchPersonIds(term, by);
   const candidates: CrmCandidate[] = [];
   for (const id of ids) {
-    const person = await getPerson(id);
+    const person = await reader.getPerson(id);
     if (!person) continue;
-    const deal = await getOpenDealForPerson(id);
+    const deal = await reader.getOpenDealForPerson(id);
     let stageLabel: string;
     if (deal) {
       stageLabel = resolveStageDisplay(deal.stageId).label;
     } else {
-      const lead = await getOpenLeadForPerson(id);
+      const lead = await reader.getOpenLeadForPerson(id);
       stageLabel = lead ? LEAD_STAGE_LABEL : "No open enquiry";
     }
     candidates.push({
@@ -56,7 +72,7 @@ async function searchPipedrive(term: string, by: LookupBy): Promise<CrmCandidate
  * September 2026: no manual owner map unless email matching proves
  * unreliable, and fail closed when there is no exact authorised match.
  */
-async function resolveOwnerByEmail(ownerEmail: string | null): Promise<number | null> {
+export async function resolveOwnerByEmail(ownerEmail: string | null): Promise<number | null> {
   if (!ownerEmail) return null;
   const db = await getDb();
   if (!db) return null;
@@ -75,7 +91,22 @@ async function resolveOwnerByEmail(ownerEmail: string | null): Promise<number | 
 
 export const productionLookupDeps: LookupDeps = {
   resolveProfile: resolveStaffAccessProfile,
-  search: searchPipedrive,
+  search: makeSearch(websiteReader),
+  resolveOwner: resolveOwnerByEmail,
+  audit: recordAuditEvent,
+};
+
+/**
+ * The same approved lookup on the WSA Pipedrive OAuth grant instead of the
+ * website's token. Used when a worker conversation names a student and
+ * the staff member's own authority is used to identify which record is
+ * meant (execution/studentContext.ts). Tom Arrington, 11 September 2026:
+ * nothing on a worker path reads with the website's token, so this is the
+ * credential that path uses. Same gates, same audit actor, same projection.
+ */
+export const oauthLookupDeps: LookupDeps = {
+  resolveProfile: resolveStaffAccessProfile,
+  search: makeSearch(createPipedriveReaderWithAuth(pipedriveOAuthAuth)),
   resolveOwner: resolveOwnerByEmail,
   audit: recordAuditEvent,
 };

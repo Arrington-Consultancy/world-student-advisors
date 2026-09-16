@@ -122,6 +122,15 @@ export interface LookupRequest {
   authMethod: AuditAuthMethod;
   term: string;
   by: LookupBy;
+  /**
+   * The functional scope the staff member must hold for this lookup.
+   * Defaults to LOOKUP_SCOPE (Find a student, Tom's decision of 9 September
+   * 2026). A worker conversation passes that worker's own functional scope
+   * instead: the member has already been checked for it to open the worker,
+   * and the student they name is identified under that same authority. Case
+   * scope is applied identically either way.
+   */
+  scope?: FunctionalScope;
 }
 
 /** The platform acting for a signed-in staff member. No worker is involved. */
@@ -180,7 +189,8 @@ export async function lookupStudents(
 
   // 2. Coarse gate, before any CRM call. Refused here means Pipedrive is
   //    never contacted for this request.
-  const coarse = evaluateAccess(profile, { action: "read", functionalScope: LOOKUP_SCOPE }, now);
+  const scope = request.scope ?? LOOKUP_SCOPE;
+  const coarse = evaluateAccess(profile, { action: "read", functionalScope: scope }, now);
   if (!coarse.allowed) return refuse(coarse.reason);
 
   // 3. Candidates. Nothing about them is trusted yet.
@@ -198,7 +208,7 @@ export async function lookupStudents(
     };
     const decision = evaluateAccess(
       profile,
-      { action: "read", functionalScope: LOOKUP_SCOPE, case: caseContext },
+      { action: "read", functionalScope: scope, case: caseContext },
       now,
     );
     if (decision.allowed) permitted.push(candidate);
@@ -214,7 +224,7 @@ export async function lookupStudents(
   deps.audit({
     ...baseAudit,
     permissionDecision: "allowed",
-    permissionReason: `searchedBy=${request.by}. ${results.length} returned, ${withheldCount} withheld by case scope.`,
+    permissionReason: `searchedBy=${request.by}; scope=${scope}. ${results.length} returned, ${withheldCount} withheld by case scope.`,
     success: true,
     errorCategory: "none",
     targetResourceId: results.map(r => `person:${r.personId}`).join(",") || undefined,
