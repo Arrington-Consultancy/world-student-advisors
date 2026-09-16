@@ -20,7 +20,8 @@
  *      many carry a Google click identifier. Counts only.
  *   6. Optionally (E2E_RUN_SYNC=1) one real sync run, exactly as the
  *      scheduler runs it. This sends real qualified leads if any exist and
- *      are unrecorded; it never fabricates one.
+ *      are unrecorded; it never fabricates one. Like the scheduler, it sends
+ *      nothing unless GOOGLE_ADS_QUALIFIED_LEAD_SYNC_ENABLED is exactly "true".
  * Exit 0 only when every step that could run passed.
  */
 import { getDb } from "../server/db";
@@ -45,6 +46,7 @@ const store = await databaseUploadStore();
 check(store !== null, "database reachable");
 const syncState = await syncConfigState(process.env, store);
 note(`sync state: ${syncState}`);
+if (syncState === "sync_disabled") note("the enable switch GOOGLE_ADS_QUALIFIED_LEAD_SYNC_ENABLED is not \"true\": no conversion can be uploaded, by the scheduler or by step 6, until it is set.");
 
 console.log("\n=== 2. Authentication ===");
 const credential = readCredential();
