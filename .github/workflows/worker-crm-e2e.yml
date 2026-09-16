@@ -12,9 +12,16 @@ name: Worker CRM end-to-end (production, natural question)
 on:
   workflow_dispatch:
     inputs:
+      mode:
+        description: "e2e: ask the question through the deployed procedure. inspect: report the shape of replies already stored for the staff member (reads only)."
+        required: false
+        default: "e2e"
+        type: choice
+        options: [e2e, inspect]
       question:
-        description: "The natural staff question, naming the student"
-        required: true
+        description: "The natural staff question, naming the student (e2e mode)"
+        required: false
+        default: ""
       staff_email:
         description: "Staff account to act as (default: the deployment's ACCESS_BOOTSTRAP_EMAIL)"
         required: false
@@ -62,9 +69,12 @@ jobs:
           E2E_QUESTION: ${{ github.event.inputs.question }}
           E2E_STAFF_EMAIL: ${{ github.event.inputs.staff_email }}
           E2E_WORKER: ${{ github.event.inputs.worker }}
+          E2E_MODE: ${{ github.event.inputs.mode }}
         run: |
+          SCRIPT=scripts/worker-crm-e2e.ts
+          if [ "$E2E_MODE" = "inspect" ]; then SCRIPT=scripts/worker-answer-shape.ts; fi
           railway run --service "world-student-advisors" --environment "production" -- \
-            sh -c 'DATABASE_URL="$WORKER_E2E_DATABASE_URL" E2E_QUESTION="$E2E_QUESTION" E2E_STAFF_EMAIL="$E2E_STAFF_EMAIL" E2E_WORKER="$E2E_WORKER" pnpm exec tsx scripts/worker-crm-e2e.ts'
+            sh -c "DATABASE_URL=\"\$WORKER_E2E_DATABASE_URL\" E2E_QUESTION=\"\$E2E_QUESTION\" E2E_STAFF_EMAIL=\"\$E2E_STAFF_EMAIL\" E2E_WORKER=\"\$E2E_WORKER\" pnpm exec tsx $SCRIPT"
       - name: Remove the temporary database URL reference
         if: always()
         env:

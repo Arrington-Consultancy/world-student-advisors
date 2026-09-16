@@ -27,7 +27,7 @@ import { buildWorkerContext, type CaseData, type UpstreamOutput } from "../workf
 import { checkAccessForStaffUser } from "../access/enforcement";
 import { WORKER_FUNCTIONAL_SCOPE } from "../access/workerScope";
 import { runQualityCheck, findSubstanceChanges, type QualityCheckResult } from "../operating/qualityCheck";
-import { normaliseMechanicalStyle } from "../operating/styleNormalise";
+import { normaliseMechanicalStyle, stripMarkdown } from "../operating/styleNormalise";
 import { getControlledBrief, NO_CONTROLLED_BRIEF } from "./briefs";
 import { checkPreparationOnly, checkRuleStatementsAreSourced, PRIYA_REFUSAL } from "../workforce/priyaScope";
 import { composeSystemPrompt, composeUserMessage, type ContributorInput } from "./prompt";
@@ -43,6 +43,7 @@ export type ExecutionOutcome =
   | "refused_no_context"
   | "blocked_quality"
   | "blocked_scope"
+  | "blocked_incomplete"
   | "model_unavailable";
 
 export interface ExecutionRequest {
@@ -161,6 +162,7 @@ export async function executeWorker(request: ExecutionRequest): Promise<Executio
   // 5. Model execution. Model choice is configuration; the worker's
   //    governance says nothing about which model runs it.
   let modelText: string;
+  let finishReason: string | null = null;
   try {
     // Prior turns go in as real messages between the system prompt and the
     // new one, never appended into the system text. A staff member's typed
@@ -178,9 +180,11 @@ export async function executeWorker(request: ExecutionRequest): Promise<Executio
         ...priorMessages,
         { role: "user", content: user },
       ],
-      maxTokens: 2048,
+      maxTokens: 4096,
     });
-    modelText = response.choices[0]?.message?.content ?? "";
+    const choice = response.choices[0];
+    modelText = choice?.message?.content ?? "";
+    finishReason = choice?.finish_reason ?? null;
   } catch (err) {
     return refuse(
       "model_unavailable",
@@ -193,6 +197,20 @@ export async function executeWorker(request: ExecutionRequest): Promise<Executio
 
   if (modelText.trim() === "") {
     return refuse("model_unavailable", "The model returned nothing.", request.workerId, brief.sourceDocument);
+  }
+
+  // 5b. An answer the model did not finish is not an answer. A reply cut
+  //     off at the length limit reads as complete to whoever receives it,
+  //     and a staff member acting on half an answer is worse served than
+  //     one told to ask again. 16 September 2026.
+  if (finishReason === "length") {
+    return refuse(
+      "blocked_incomplete",
+      `${worker.canonicalName}'s answer ran past the length limit and was cut off before it finished. ` +
+      "It has not been shown, because a partial answer reads as a whole one. Ask again, more narrowly, or in parts.",
+      request.workerId,
+      brief.sourceDocument,
+    );
   }
 
   // 6. Priya's boundary, checked on the output rather than trusted to
@@ -236,16 +254,15 @@ export async function executeWorker(request: ExecutionRequest): Promise<Executio
   // 7. Mechanical style, then the quality gate, before any staff member
   //    sees it. Tom Arrington, 16 September 2026: a punctuation violation
   //    must not destroy a valid answer. Em dashes and prose double hyphens
-  //    are replaced with ordinary punctuation and the RESULT is checked;
-  //    if anything but punctuation moved, the original is checked instead
-  //    and blocks exactly as before. Every other failure the gate knows
-  //    (guarantees, evidence, boundary, permission, disagreement) is as
-  //    blocking as it always was, because none of those is punctuation.
-  const normalised = normaliseMechanicalStyle(modelText);
-  const releaseText =
-    normalised.replacements > 0 && findSubstanceChanges(modelText, normalised.text).length === 0
-      ? normalised.text
-      : modelText;
+  //    are replaced with ordinary punctuation, Markdown markers are removed
+  //    because the panel renders none, and the RESULT is checked. If
+  //    anything but punctuation and markup moved, the less-changed text is
+  //    used instead, down to the original, which then blocks exactly as
+  //    before. Every other failure the gate knows (guarantees, evidence,
+  //    boundary, permission, disagreement) is as blocking as it always was,
+  //    because none of those is punctuation or markup.
+  const release = prepareForRelease(modelText);
+  const releaseText = release.text;
   const quality = runQualityCheck({
     text: releaseText,
     permissionChecked: true,
@@ -273,10 +290,31 @@ export async function executeWorker(request: ExecutionRequest): Promise<Executio
   return {
     outcome: "answered",
     visibleText: releaseText,
-    reason: `${worker.canonicalName} answered under ${brief.sourceDocument}.${releaseText !== modelText ? ` ${normalised.summary}` : ""}`,
+    reason: `${worker.canonicalName} answered under ${brief.sourceDocument}.${release.summary ? ` ${release.summary}` : ""}`,
     workerId: request.workerId,
     workerName: worker.canonicalName,
     briefReference: brief.sourceDocument,
     qualityCheck: quality,
   };
+}
+
+/**
+ * The text that goes to the release check and, if it passes, to the
+ * screen. Punctuation and markup are corrected; substance is compared
+ * against the model's own words at each step and the most corrected text
+ * whose substance is unchanged is used. Exported for the harness that
+ * checks what a staff member actually receives.
+ */
+export function prepareForRelease(modelText: string): { text: string; summary: string } {
+  const styled = normaliseMechanicalStyle(modelText);
+  const plain = stripMarkdown(styled.text);
+  const candidates: { text: string; summary: string }[] = [
+    { text: plain.text, summary: [styled.summary, plain.summary].filter(Boolean).join(" ") },
+    { text: styled.text, summary: styled.summary },
+  ];
+  for (const candidate of candidates) {
+    if (candidate.text === modelText) return { text: modelText, summary: "" };
+    if (findSubstanceChanges(modelText, candidate.text).length === 0) return candidate;
+  }
+  return { text: modelText, summary: "" };
 }

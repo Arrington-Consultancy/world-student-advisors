@@ -8,15 +8,19 @@
  * Runs inside the Railway service's variables with a public database URL
  * substituted, exactly as connector-pipedrive-acceptance does, so it uses
  * the real OAuth grant, the real staff access profile, the real permission
- * engine, the real router and the real model. It exercises the SAME modules
- * the deployed /api/trpc/workforce.ask path calls, in the same order.
+ * engine, the real router and the real model. Since 16 September 2026 the
+ * question goes through the deployed tRPC procedure itself, workforce.ask,
+ * called with a staff session token minted for the acting account: the
+ * same code the browser reaches, including the conversation store. What
+ * comes back is what the browser would receive, and the stored reply is
+ * compared with it byte for byte.
  *
  * What it prints: booleans, counts, ids, stage labels and the routed worker.
  * Never the student's contact details and never the worker's full answer,
  * because CI logs are not a controlled record. What it writes: the audit
  * rows the real path writes (the staff lookup, the connector read, and the
- * worker execution). No conversation row is recorded and nothing in the CRM
- * is touched.
+ * worker execution) and one conversation exchange owned by the acting
+ * staff member, exactly as a real Ask does. Nothing in the CRM is touched.
  *
  * Inputs (environment):
  *   E2E_STAFF_EMAIL  the staff account to act as; defaults to ACCESS_BOOTSTRAP_EMAIL.
@@ -31,7 +35,9 @@ import { staffUsers } from "../drizzle/schema";
 import { describePipedriveGrant, isWsaCompany } from "../server/crm/pipedriveOAuth";
 import { routeStaffRequest } from "../server/workforce/router";
 import { gatherConnectorEvidence } from "../server/execution/evidence";
-import { executeWorker } from "../server/execution/execute";
+import { appRouter } from "../server/routers";
+import { mintStaffIdentityToken } from "../server/staffIdentityAuth";
+import { listConversation } from "../server/execution/conversation";
 import { listWorkers } from "../server/workforce/registry";
 import type { WorkerId } from "../server/workforce/types";
 
@@ -56,7 +62,7 @@ if (grant.status !== "operational") { console.log("\nRESULT: no usable grant.");
 console.log("\n=== 2. Staff identity ===");
 const db = await getDb();
 if (!db) { console.log("No database."); process.exit(1); }
-const [staff] = await db.select({ id: staffUsers.id, isActive: staffUsers.isActive }).from(staffUsers).where(eq(staffUsers.email, staffEmail)).limit(1);
+const [staff] = await db.select().from(staffUsers).where(eq(staffUsers.email, staffEmail)).limit(1);
 check(Boolean(staff && staff.isActive === 1), "staff account resolved and active", staff ? `staff_users.id ${staff.id}` : "not found");
 if (!staff) process.exit(1);
 
@@ -78,11 +84,24 @@ check(Boolean(record?.stageLabel), "record carries a stage", record?.stageLabel 
 check(record?.counsellor !== undefined, "record carries a counsellor field", record?.counsellor ? "named" : "none");
 check(Boolean(record?.fields && Object.keys(record.fields).length > 0), "record carries the worker's approved remit fields", record?.fields ? `${Object.keys(record.fields).length} field(s)` : "none");
 
-console.log("\n=== 5. Worker execution (same path as workforce.ask) ===");
-const result = await executeWorker({ staffUserId: staff.id, workerId, requestText: question, authMethod: "entra_sso" });
+console.log("\n=== 5. The deployed procedure: workforce.ask, as the browser calls it ===");
+const token = await mintStaffIdentityToken(staff);
+const caller = appRouter.createCaller({ req: {} as never, res: {} as never });
+const result = await caller.workforce.ask({ token, workerId, request: question });
 check(result.outcome === "answered", "worker answered", `${result.outcome}: ${result.reason.slice(0, 160)}`);
 const text = result.visibleText ?? "";
 check(text.length > 200, "answer has substance", `${text.length} characters`);
+check(/[.!?)"']\s*$/.test(text), "answer ends with a finished sentence", JSON.stringify(text.trim().slice(-1)));
+check(!/\*\*|__|^#{1,6}\s|`/m.test(text), "answer carries no Markdown markers (the panel renders text)");
+check(!/stagePosition|stage position|position \d+ of|personId|pipeline position/i.test(text), "answer uses no internal field names or pipeline positions");
+console.log(`  lines: ${text.split("\n").length}; paragraphs: ${text.split(/\n{2,}/).length}`);
+
+console.log("\n=== 6. What was stored is what was returned ===");
+check(Boolean(result.conversationId), "a conversation id came back", result.conversationId ?? "none");
+const stored = result.conversationId ? await listConversation(result.conversationId, staff.id, workerId) : [];
+check(stored.length === 2, "one exchange stored: the question and the reply", `${stored.length} turn(s)`);
+check(stored[0]?.role === "staff" && stored[0]?.content === question, "stored question is the one asked");
+check(stored[1]?.role === "worker" && stored[1]?.content === text, "stored reply is byte-identical to the reply returned to the browser", stored[1] ? `${stored[1].content.length} characters` : "none");
 // James is told to say plainly that notes, activities, emails and documents are
 // not available to him, so a sentence about those is correct, not a failure.
 // What must never appear is a claim of no access to the student, the record or the CRM.
@@ -97,7 +116,7 @@ if (record?.counsellor) check(text.includes(record.counsellor.split(" ")[0]), "a
 check(text.toLowerCase().includes("next"), "answer addresses what happens next");
 check(!/\u2014|&mdash;/i.test(text), "answer as shown to the staff member carries no em dash");
 console.log(`  release: ${result.reason}`);
-console.log(`  brief: ${result.briefReference ?? "none"}; quality check: ${result.qualityCheck ? (result.qualityCheck.passed ? "passed" : "failed") : "n/a"}`);
+console.log(`  brief: ${result.briefReference ?? "none"}`);
 
 console.log(`\nRESULT: ${failures === 0 ? "the worker found the student by name and answered from the live WSA record" : `${failures} check(s) failed`}.`);
 process.exit(failures === 0 ? 0 : 1);

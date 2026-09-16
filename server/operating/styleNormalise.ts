@@ -75,3 +75,42 @@ export function normaliseMechanicalStyle(input: string): StyleNormalisation {
     summary: `${replacements} em dash${replacements === 1 ? "" : "es"} or double hyphen${replacements === 1 ? "" : "s"} replaced with ordinary punctuation before the release check.`,
   };
 }
+
+/**
+ * Markdown to plain text, for the Staff Portal's chat panel.
+ *
+ * Tom Arrington, 16 September 2026: raw "**CAS / Visa / Pre-Departure**"
+ * reached the screen because the panel renders text, not Markdown. The
+ * prompt now asks for plain text; this is the guarantee behind the ask.
+ * Emphasis markers, heading marks, inline code ticks and horizontal rules
+ * are removed, and asterisk or plus bullets become hyphen bullets. Words,
+ * numbers, dates and negations are untouched, which is what the caller's
+ * substance comparison confirms before the result is used.
+ */
+export function stripMarkdown(input: string): StyleNormalisation {
+  let replacements = 0;
+  let text = input.replace(/\r\n/g, "\n");
+
+  // Heading marks: "## Next steps" becomes "Next steps".
+  text = text.replace(/^[ \t]{0,3}#{1,6}[ \t]+/gm, () => { replacements += 1; return ""; });
+  // Bold and bold-italic, asterisk or underscore form.
+  text = text.replace(/\*{2,3}(\S(?:[^*\n]*?\S)?)\*{2,3}/g, (_m, inner: string) => { replacements += 1; return inner; });
+  text = text.replace(/__(\S(?:[^_\n]*?\S)?)__/g, (_m, inner: string) => { replacements += 1; return inner; });
+  // Italic with single asterisks around a word or phrase. "5 * 3" is not one.
+  text = text.replace(/(^|[\s(])\*(\S(?:[^*\n]*?\S)?)\*(?=[\s.,;:!?)]|$)/gm, (_m, lead: string, inner: string) => { replacements += 1; return `${lead}${inner}`; });
+  // Inline code ticks.
+  text = text.replace(/`([^`\n]+)`/g, (_m, inner: string) => { replacements += 1; return inner; });
+  // Asterisk, plus or bullet-character list markers become hyphens.
+  text = text.replace(/^([ \t]*)[*+\u2022][ \t]+/gm, (_m, indent: string) => { replacements += 1; return `${indent}- `; });
+  // A horizontal rule is a line of three or more hyphens, asterisks or underscores on its own.
+  text = text.replace(/^[ \t]*([-*_])(?:[ \t]*\1){2,}[ \t]*$/gm, () => { replacements += 1; return ""; });
+  // Three or more blank lines left behind collapse to one blank line.
+  text = text.replace(/\n{3,}/g, "\n\n");
+
+  if (replacements === 0) return { text: input, replacements: 0, summary: "" };
+  return {
+    text,
+    replacements,
+    summary: `${replacements} Markdown marker${replacements === 1 ? "" : "s"} removed for the plain-text panel.`,
+  };
+}
