@@ -29,6 +29,10 @@ describe("extractNameCandidates", () => {
     expect(extractNameCandidates("James, what does the CAS Status field mean?")).toEqual([]);
     expect(extractNameCandidates("Is this application ready to send?")).toEqual([]);
   });
+  it("stops a name where an employer or address begins: the question of 16 September 2026", () => {
+    expect(extractNameCandidates("How is managing this lead?  Joyce Kitakang Federal Ministry of Environment Department of Forestry, Utako District, Abuja, Nigeria")).toEqual(["Joyce Kitakang"]);
+    expect(extractNameCandidates("Peter Agada Lagos State University applicant")).toEqual(["Peter Agada"]);
+  });
   it("never proposes a single word, and stops at four", () => {
     expect(extractNameCandidates("Ask Vivian please")).toEqual([]);
     expect(extractNameCandidates("Alpha Beta Gamma Delta Epsilon Zeta arrived")).toEqual([]);
@@ -61,8 +65,8 @@ function deps(found: CrmCandidate[], scopes = ["admissions"]): { deps: LookupDep
 const ask = { workerId: "james" as const, staffUserId: 7, authMethod: "entra_sso" as const };
 
 describe("searchTerms", () => {
-  it("tries the full name, then first and last, then the surname, and never a first name alone", () => {
-    expect(searchTerms("Vivian Ene Onuh")).toEqual(["Vivian Ene Onuh", "Vivian Onuh", "Onuh"]);
+  it("tries the full name, then first and last, then the first two words, then the surname, and never a first name alone", () => {
+    expect(searchTerms("Vivian Ene Onuh")).toEqual(["Vivian Ene Onuh", "Vivian Onuh", "Vivian Ene", "Onuh"]);
     expect(searchTerms("Peter Agada")).toEqual(["Peter Agada", "Agada"]);
   });
 });
@@ -76,9 +80,21 @@ describe("resolveStudentByName", () => {
     expect(r).toEqual({ kind: "one", personId: 369, name: "VIVIAN ONUH" });
     expect(searches).toEqual(["Vivian Ene Onuh", "Vivian Onuh"]);
   });
-  it("a surname shared by several students becomes a question naming the spelling searched", async () => {
+  it("a surname shared by several students: the one the typed name is closest to is proposed and questioned, the other named as an alternative", async () => {
+    // Before 17 September 2026 this was a flat "which one?"; Tom Arrington
+    // asked for thinking: "Gracie" is Grace, not Amaka, so Grace is offered
+    // as a probable match with Amaka listed, and the worker must confirm.
     const d = deps([]);
     d.deps.search = async term => term === "Okoro" ? [candidate(1, "Grace Okoro"), candidate(2, "Amaka Okoro")] : [];
+    const r = await resolveStudentByName({ ...ask, name: "Gracie Okoro" }, d.deps);
+    expect(r.kind).toBe("probable");
+    if (r.kind !== "probable") return;
+    expect(r.name).toBe("Grace Okoro");
+    expect(r.alternatives.join(" ")).toContain("Amaka Okoro");
+  });
+  it("a surname shared by students the typed name is equally far from becomes a question naming the spelling searched", async () => {
+    const d = deps([]);
+    d.deps.search = async term => term === "Okoro" ? [candidate(1, "Grace Okoro"), candidate(2, "Gracia Okoro")] : [];
     const r = await resolveStudentByName({ ...ask, name: "Gracie Okoro" }, d.deps);
     expect(r.kind).toBe("many");
     expect((r as { note: string }).note).toContain(`searched as "Okoro"`);
@@ -116,6 +132,77 @@ describe("resolveStudentByName", () => {
     const r = await resolveStudentByName({ ...ask, staffUserId: null, authMethod: "shared_password", name: "Vivian Ene Onuh" }, d.deps);
     expect(r.kind).toBe("refused");
     expect(d.searches).toEqual([]);
+  });
+});
+
+describe("the question of 16 September 2026, replayed against a search double", () => {
+  it("finds the student from the pasted line, exactly, by her first two names", async () => {
+    const d = deps([]);
+    d.deps.search = async term => { d.searches.push(term); return term === "Joyce Kitakang" ? [candidate(8534, "Joyce Iya Kitakang", "Getting to know you")] : []; };
+    const r = await resolveStudentByName({ ...ask, name: "Joyce Kitakang" }, d.deps);
+    expect(r).toEqual({ kind: "one", personId: 8534, name: "Joyce Iya Kitakang" });
+  });
+  it("even the whole four-word run would now find her and treat her as the person meant", async () => {
+    const d = deps([]);
+    d.deps.search = async term => { d.searches.push(term); return term === "Joyce Kitakang" || term === "Joyce" ? [candidate(8534, "Joyce Iya Kitakang", "Getting to know you")] : []; };
+    const r = await resolveStudentByName({ ...ask, name: "Joyce Kitakang Federal Ministry" }, d.deps);
+    expect(r.kind).toBe("one");
+    expect(d.searches.slice(0, 3)).toEqual(["Joyce Kitakang Federal Ministry", "Joyce Ministry", "Joyce Kitakang"]);
+  });
+});
+
+describe("near matches: think, then question (Tom Arrington, 17 September 2026)", () => {
+  /** A search double keyed on the term: exact spellings find nothing, the stem finds the record. */
+  function fuzzyDeps(found: Record<string, CrmCandidate[]>) {
+    const d = deps([]);
+    d.deps.search = async (term, by) => { d.searches.push(`${by}:${term}`); return found[term] ?? []; };
+    return d;
+  }
+  it("a misspelt surname becomes a probable match carrying the name as recorded, after the exact spellings were tried", async () => {
+    const d = fuzzyDeps({ Kitak: [candidate(8534, "Joyce Iya Kitakang", "Getting to know you")] });
+    const r = await resolveStudentByName({ ...ask, name: "Joyce Kitakhang" }, d.deps);
+    expect(r.kind).toBe("probable");
+    if (r.kind !== "probable") return;
+    expect(r.personId).toBe(8534);
+    expect(r.name).toBe("Joyce Iya Kitakang");
+    expect(r.typed).toBe("Joyce Kitakhang");
+    expect(r.score).toBeGreaterThan(0.9);
+    expect(d.searches.slice(0, 2)).toEqual(["name:Joyce Kitakhang", "name:Kitakhang"]);
+    expect(d.searches).toContain("name:Kitak");
+  });
+  it("a short first name finds the long form and is questioned, not assumed", async () => {
+    const d = fuzzyDeps({ Thomas: [candidate(11, "Thomas Carl", "Application Submitted")] });
+    const r = await resolveStudentByName({ ...ask, name: "Tom Karl" }, d.deps);
+    expect(r.kind).toBe("probable");
+    if (r.kind === "probable") expect(r.name).toBe("Thomas Carl");
+  });
+  it("two records equally close become a question naming both, never a pick", async () => {
+    const d = fuzzyDeps({ Okafo: [candidate(21, "Chidi Okafor"), candidate(22, "Chidi Okafor", "Application Submitted")] });
+    const r = await resolveStudentByName({ ...ask, name: "Chidi Okafore" }, d.deps);
+    expect(r.kind).toBe("many");
+    if (r.kind === "many") { expect(r.note).toContain("closest matches"); expect(r.note).toContain("do not choose"); }
+  });
+  it("nothing alike anywhere stays none, and says near spellings were tried", async () => {
+    const d = fuzzyDeps({ Onuh: [candidate(31, "Peter Agada")] });
+    const r = await resolveStudentByName({ ...ask, name: "Vivian Onuh" }, d.deps);
+    expect(r.kind).toBe("none");
+    if (r.kind === "none") expect(r.note).toContain("near spellings");
+  });
+  it("a name typed without capitals is read leniently only when nothing capitalised was found", () => {
+    expect(extractNameCandidates("where is joyce kitakang in the application process", { lenient: true })).toEqual(["joyce kitakang"]);
+    expect(extractNameCandidates("where is joyce kitakang in the application process")).toEqual([]);
+    expect(extractNameCandidates("what should happen next for her application", { lenient: true })).toEqual([]);
+  });
+  it("a probable match reaches the worker as evidence with the question attached", async () => {
+    const evidence = await gatherConnectorEvidence({
+      ...ask, requestText: "Where is Joyce Kitakhang in the application process?",
+      resolveByName: async () => ({ kind: "probable", personId: 8534, name: "Joyce Iya Kitakang", typed: "Joyce Kitakhang", score: 0.97, alternatives: [] }),
+    });
+    const all = [...evidence.blocks.map(b => b.label), ...evidence.notes.map(n => n.note)].join("\n");
+    expect(all).toContain("person 8534");
+    expect(all).toContain("PROBABLE match");
+    expect(all).toContain("Joyce Iya Kitakang");
+    expect(all).toContain("ask the staff member to confirm");
   });
 });
 
