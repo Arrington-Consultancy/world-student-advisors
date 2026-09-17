@@ -127,10 +127,14 @@ check(!/paste|attach(ed)? (the )?(handover|case file)/i.test(text), "answer does
 if (record?.stageLabel) check(text.toLowerCase().includes(record.stageLabel.toLowerCase().replace(/^s\d+\s*-\s*/, "").split("/")[0].trim().toLowerCase()), "answer states the student's stage", record.stageLabel);
 if (record?.counsellor) check(text.includes(record.counsellor.split(" ")[0]), "answer names the counsellor");
 if (listMode) {
-  const named = listedNames.filter(n => text.includes(n.split(" ")[0]) && text.includes(n.split(" ").pop() ?? n)).length;
+  const present = (n: string) => text.includes(n.split(" ")[0]) && text.includes(n.split(" ").pop() ?? n);
+  const named = listedNames.filter(present).length;
   // Every listed student, not a sample: the execution layer completes the
   // list from the records if the model leaves anybody out (17 September 2026).
-  check(named === listedNames.length, "answer names every student listed", `${named} of ${listedNames.length}`);
+  // The names already appear in the evidence note above, so naming a missing
+  // one here reveals nothing new.
+  const missingNames = listedNames.filter(n => !present(n));
+  check(named === listedNames.length, "answer names every student listed", `${named} of ${listedNames.length}${missingNames.length ? `; not found: ${missingNames.join("; ")}` : ""}`);
   // The list is put back to the staff member: a question, or an invitation
   // to say which one, or to confirm. The exact wording is the worker's.
   check(/\?|which|let me know|tell me|confirm|point me|say who/i.test(text), "answer puts the choice back to the staff member");

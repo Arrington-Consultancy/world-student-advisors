@@ -38,8 +38,16 @@ export function makeSearch(reader: LookupReader): (term: string, by: LookupBy) =
   return async (term, by) => searchWith(reader, term, by);
 }
 
+/**
+ * Each candidate costs up to three reads (person, open deal, open lead). The
+ * search now returns up to a hundred ids, so a common first name is
+ * bounded here: sixty is more than any first name at WSA's size and keeps
+ * a lookup to a few seconds.
+ */
+const MAX_HYDRATED_CANDIDATES = 60;
+
 async function searchWith(reader: LookupReader, term: string, by: LookupBy): Promise<CrmCandidate[]> {
-  const ids = await reader.searchPersonIds(term, by);
+  const ids = (await reader.searchPersonIds(term, by)).slice(0, MAX_HYDRATED_CANDIDATES);
   const candidates: CrmCandidate[] = [];
   for (const id of ids) {
     const person = await reader.getPerson(id);
