@@ -24,7 +24,7 @@
  * guess, which is what Universal Worker Instructions section 6 requires.
  */
 import { readPipedriveRecord, searchPipedrive } from "../workforce/connectors/pipedrive";
-import { extractNameCandidates, resolveStudentByName, type StudentResolution } from "./studentContext";
+import { extractNameCandidates, extractSingleNameCandidate, resolveStudentByName, type StudentResolution } from "./studentContext";
 import { readSharePointRecord } from "../workforce/connectors/sharepoint";
 import { WORKER_CRM_SCOPE } from "../workforce/crmScope";
 import { WORKER_SHAREPOINT_LOCATIONS } from "../workforce/sharePointLocations";
@@ -103,7 +103,11 @@ export async function gatherConnectorEvidence(input: {
       // Capitalised names first; a message typed without capitals is read
       // leniently only when that finds nothing.
       const strict = extractNameCandidates(input.requestText);
-      const names = (strict.length > 0 ? strict : extractNameCandidates(input.requestText, { lenient: true })).slice(0, 2);
+      const runs = strict.length > 0 ? strict : extractNameCandidates(input.requestText, { lenient: true });
+      // A lone first name ("any Toms on Pipedrive") only when no fuller name
+      // was found; the resolver lists everybody of that name.
+      const single = runs.length === 0 ? extractSingleNameCandidate(input.requestText) : null;
+      const names = (runs.length > 0 ? runs : single ? [single] : []).slice(0, 2);
       for (const name of names) {
         const resolution: StudentResolution = await resolve({ name, workerId: input.workerId, staffUserId: input.staffUserId, authMethod: input.authMethod });
         if (resolution.kind === "one") {

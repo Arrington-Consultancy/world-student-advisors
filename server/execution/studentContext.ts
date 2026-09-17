@@ -20,7 +20,7 @@
 import { lookupStudents, type LookupDeps } from "../crm/staffLookup";
 import { oauthLookupDeps } from "../crm/lookupDeps";
 import { WORKER_FUNCTIONAL_SCOPE } from "../access/workerScope";
-import { fuzzySearchTerms, rankNameMatches } from "./nameMatch";
+import { fuzzySearchTerms, isKnownNameForm, nameForms, normaliseNamePart, rankNameMatches, sameNameForm } from "./nameMatch";
 import type { AuditAuthMethod } from "../workforce/audit";
 import type { WorkerId } from "../workforce/types";
 
@@ -87,6 +87,39 @@ export function extractNameCandidates(text: string, options: { lenient?: boolean
   return out;
 }
 
+/**
+ * One first name on its own, when the question asks about everybody of that
+ * name: "are there any Toms on Pipedrive" (Tom Arrington, 17 September
+ * 2026). Deliberately narrow, because a lone unknown word is usually not a
+ * name: the word must be a name WSA's own list of name forms knows, or must
+ * follow "called" or "named"; every stoplisted word is excluded; a plural
+ * ("toms", "Thomases") is read as a request for all of them. Used only when
+ * no two-to-four-word name was found.
+ */
+export function extractSingleNameCandidate(text: string): string | null {
+  const tokens = text
+    .replace(/[“”"]/g, " ")
+    .split(/\s+/)
+    .filter(Boolean)
+    .map(raw => raw.replace(/^[(\[]+|[)\],.;:!?]+$/g, "").replace(/(['’]s)$/i, ""));
+  const singular = (w: string) => {
+    const lower = w.toLowerCase();
+    if (/es$/.test(lower) && lower.length > 5 && isKnownNameForm(lower.slice(0, -2))) return lower.slice(0, -2);
+    if (/[^s]s$/.test(lower) && lower.length > 3 && isKnownNameForm(lower.slice(0, -1))) return lower.slice(0, -1);
+    return lower;
+  };
+  const candidates: string[] = [];
+  tokens.forEach((word, i) => {
+    if (!LENIENT_WORD.test(word) || word.length < 3) return;
+    const lower = word.toLowerCase();
+    if (NOT_A_NAME_START.has(lower) || NOT_A_NAME_WORD.has(word) || NOT_A_NAME_WORD.has(word[0].toUpperCase() + lower.slice(1))) return;
+    const base = singular(word);
+    const introduced = i > 0 && /^(called|named)$/i.test(tokens[i - 1]);
+    if (isKnownNameForm(base) || introduced) candidates.push(base[0].toUpperCase() + base.slice(1));
+  });
+  return candidates.length === 1 ? candidates[0] : null;
+}
+
 export type StudentResolution =
   | { kind: "one"; personId: number; name: string }
   /**
@@ -114,6 +147,7 @@ export interface ResolveInput {
  */
 export async function resolveStudentByName(input: ResolveInput, deps: LookupDeps = oauthLookupDeps): Promise<StudentResolution> {
   const scope = WORKER_FUNCTIONAL_SCOPE[input.workerId];
+  if (input.name.trim().split(/\s+/).filter(Boolean).length === 1) return resolveByFirstName(input, scope, deps);
   let withheldTotal = 0;
   // A CRM record rarely carries every name a person is known by: the deal
   // may say "Vivian Ene Onuh" while the person record says "Vivian Onuh".
@@ -183,6 +217,56 @@ export async function resolveStudentByName(input: ResolveInput, deps: LookupDeps
     ? ` ${withheldTotal} matching record${withheldTotal === 1 ? " is" : "s are"} outside the staff member's case scope and cannot be shown.`
     : "";
   return { kind: "none", note: `No CRM student matching "${input.name}" is within the staff member's access, including near spellings and short forms of the name.${withheld} Ask for the student's email address or telephone number, or the name as it was given at sign-up.` };
+}
+
+/**
+ * A first name on its own: everybody recorded under that name or a form of
+ * it. "Are there any Toms on Pipedrive" wants Tom, Thomas and Tommy alike.
+ * One such record is a probable match to be confirmed, never assumed;
+ * several are listed for the staff member to choose from; none is said
+ * plainly with the forms that were tried.
+ */
+async function resolveByFirstName(
+  input: ResolveInput,
+  scope: (typeof WORKER_FUNCTIONAL_SCOPE)[WorkerId],
+  deps: LookupDeps,
+): Promise<StudentResolution> {
+  const typed = input.name.trim();
+  const forms = nameForms(typed);
+  const found = new Map<number, { personId: number; name: string; stageLabel: string; counsellor: string | null }>();
+  for (const term of forms) {
+    const result = await lookupStudents(
+      { staffUserId: input.staffUserId, authMethod: input.authMethod, term, by: "name", scope },
+      deps,
+    );
+    if (result.refused) {
+      return { kind: "refused", note: `The CRM could not be checked for "${typed}" under the staff member's own access: ${result.reason}` };
+    }
+    for (const r of result.results) {
+      // Only a record whose own name carries this first name or a form of
+      // it: "Tom" must not collect "Tomasz" because the search matched a prefix.
+      const parts = r.name.split(/\s+/).filter(Boolean);
+      const carries = parts.some(p => sameNameForm(p, typed) || normaliseNamePart(p) === normaliseNamePart(typed));
+      if (carries && !found.has(r.personId)) found.set(r.personId, { personId: r.personId, name: r.name, stageLabel: r.stageLabel, counsellor: r.counsellor });
+    }
+  }
+  const formsText = forms.length > 1 ? ` or a form of it (${forms.slice(1).join(", ")})` : "";
+  const describe = (c: { name: string; stageLabel: string; counsellor: string | null }) => `${c.name} (${c.stageLabel}${c.counsellor ? `, counsellor ${c.counsellor}` : ""})`;
+  const all = Array.from(found.values());
+  if (all.length === 0) {
+    return { kind: "none", note: `No CRM student is recorded with the name "${typed}"${formsText} within the staff member's access. Say so plainly; do not guess.` };
+  }
+  if (all.length === 1) {
+    return { kind: "probable", personId: all[0].personId, name: all[0].name, typed, score: 0.9, alternatives: [] };
+  }
+  const shown = all.slice(0, 15);
+  const more = all.length > shown.length ? ` and ${all.length - shown.length} more` : "";
+  return {
+    kind: "many",
+    note:
+      `${all.length} CRM students are recorded with the name "${typed}"${formsText}: ${shown.map(describe).join("; ")}${more}. ` +
+      "Give the staff member this list, with each student's stage and counsellor, and ask which one they mean before using any single record.",
+  };
 }
 
 /**

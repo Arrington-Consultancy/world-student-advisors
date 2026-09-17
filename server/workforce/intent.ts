@@ -197,6 +197,22 @@ const CONCEPT_FORMS: Record<Concept, string[]> = {
   prospect: ["prospect", "prospects", "prospecting", "business development", "new business"],
   outreach: ["outreach", "outbound", "cold call", "cold calling", "cold email", "canvassing"],
 
+  // A student's CRM record: where it lives, who holds it, where it stands.
+  // Tom Arrington, 16 and 17 September 2026. "managing" and "who has" are
+  // here because that is how the question is asked at WSA ("how is
+  // managing this lead?", "who has this student?").
+  crm: ["pipedrive", "crm", "on the system", "in the system", "on record", "on file", "in the records"],
+  counsellor: ["counsellor", "counselor", "counsellors", "counselors", "adviser", "advisor", "case owner"],
+  managing: [
+    "managing", "manages", "managed by", "who has", "who is handling", "handling", "dealing with", "looking after",
+    "looks after", "assigned to", "owner", "who owns",
+  ],
+  stage: ["stage", "status", "where are we with", "how far", "progress", "getting on", "what is happening with", "update on"],
+  // No lexical forms: set by conceptsIn when the sentence carries what looks
+  // like a person's name (two or more capitalised words in a row, not at the
+  // start of the sentence, none of them WSA vocabulary).
+  named_person: [],
+
   person_specific: [
     "this student", "this particular student", "this applicant", "this candidate",
     "this guy", "this girl", "this lady", "this lad", "this person", "this one",
@@ -297,6 +313,25 @@ function containsSequence(words: readonly string[], phrase: readonly string[]): 
   return false;
 }
 
+/**
+ * Does the sentence carry what looks like a person's name: two or more
+ * capitalised words in a row, not the opening words of the sentence, none
+ * of them a word the vocabulary knows. Lexical only; whether such a person
+ * exists is the lookup's business, under the staff member's own authority.
+ */
+export function carriesNamedPerson(text: string): boolean {
+  const tokens = text.split(/\s+/).filter(Boolean);
+  let run = 0;
+  for (let i = 0; i < tokens.length; i++) {
+    const word = tokens[i].replace(/^[(\[“"]+|[)\]”",.;:!?]+$/g, "").replace(/['’]s$/, "");
+    const capitalised = /^[A-Z][a-z'’-]+$/.test(word) && !KNOWN_WORDS.has(stem(word.toLowerCase()));
+    if (capitalised && i > 0) run += 1;
+    else run = 0;
+    if (run >= 2) return true;
+  }
+  return false;
+}
+
 /** Which concepts a request expresses. */
 export function conceptsIn(text: string): Set<Concept> {
   const words = normalise(text);
@@ -307,6 +342,7 @@ export function conceptsIn(text: string): Set<Concept> {
       if (containsSequence(words, phrase)) { found.add(concept); break; }
     }
   }
+  if (carriesNamedPerson(text)) found.add("named_person");
   return found;
 }
 

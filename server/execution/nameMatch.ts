@@ -89,6 +89,18 @@ export function sameNameForm(a: string, b: string): boolean {
   return NICKNAME_INDEX.get(x)?.has(y) ?? false;
 }
 
+/** True when the part is a name WSA's list knows in any of its forms. */
+export function isKnownNameForm(part: string): boolean {
+  return NICKNAME_INDEX.has(part.toLowerCase());
+}
+
+/** Every recorded form of a name, the typed one first, capitalised for searching. */
+export function nameForms(part: string): string[] {
+  const lower = part.toLowerCase();
+  const others = Array.from(NICKNAME_INDEX.get(lower) ?? []).filter(n => n !== lower);
+  return [lower, ...others].map(n => n[0].toUpperCase() + n.slice(1));
+}
+
 /** The long forms a short form may stand for, for discovery searches. */
 export function longForms(part: string): string[] {
   const set = NICKNAME_INDEX.get(part.toLowerCase());

@@ -79,7 +79,8 @@ export type OutcomeId =
   | "social_market_intelligence"
   | "social_account_action"
   | "cold_lead_prospecting"
-  | "management_information";
+  | "management_information"
+  | "student_record_lookup";
 
 /**
  * Concepts are the vocabulary the request is reduced to before anything is
@@ -106,7 +107,8 @@ export type Concept =
   | "publish" | "schedule" | "reply" | "market" | "audience"
   | "cold" | "prospect" | "outreach"
   | "count" | "report" | "trend" | "most" | "channel_source"
-  | "person_specific";
+  | "person_specific"
+  | "crm" | "counsellor" | "managing" | "stage" | "named_person";
 
 /** An outcome and what has to be present in a request for it to be the one being asked for. */
 export interface OutcomeDefinition {
@@ -320,6 +322,29 @@ export const OUTCOMES: readonly OutcomeDefinition[] = [
     specificity: 9,
   },
   {
+    id: "student_record_lookup",
+    description: "Find a named student's record in the CRM and say who is managing them, what stage they are at, or whether they are recorded at all",
+    // Tom Arrington, 16 and 17 September 2026. "How is managing this lead?
+    // <name>" reached nobody by rule on 16 September and only reached Sophie
+    // through the assistant pass; "ar ethere any toms on pipedrive" reached
+    // nobody at all on 17 September. Both are questions about one student's
+    // CRM record, which the platform already answers under the staff
+    // member's own lookup authority once a worker conversation is open (Tom's
+    // decision of 9 September 2026, extended to every record on 17
+    // September). This outcome makes that placement a rule. It is not a
+    // count: a count over the CRM stays management information, which
+    // outranks it and is blocked here so "how many on pipedrive" cannot
+    // become a record lookup.
+    requires: [
+      ["crm"],
+      ["counsellor"],
+      ["managing", "student"], ["managing", "lead"], ["managing", "case"], ["managing", "enquiry"], ["managing", "named_person"],
+      ["stage", "student"], ["stage", "lead"], ["stage", "case"], ["stage", "enquiry"], ["stage", "named_person"],
+    ],
+    blockedBy: ["count", "report", "trend", "most"],
+    specificity: 8,
+  },
+  {
     id: "cold_lead_prospecting",
     description: "Find or work cold leads and outbound prospects",
     // No bare "cold" group. On its own the word is ambiguous enough that
@@ -378,7 +403,12 @@ export interface WorkerRemit {
 export const REMITS: readonly WorkerRemit[] = [
   {
     workerId: "sophie",
-    produces: ["enquiry_triage"],
+    // student_record_lookup: Sophie's approved CRM read intent (registry,
+    // CRM_READ_INTENT_APPROVED) and Tom Arrington's decisions of 9 and 17
+    // September 2026 on the staff student lookup; recorded in Change Entries
+    // 106 to 108. The remit's cited source below remains the Handover role
+    // scope, which places first contact and the enquiry record with her.
+    produces: ["enquiry_triage", "student_record_lookup"],
     identifiesButMayNotConclude: [],
     excludes: [
       { outcome: "option_comparison", belongsTo: "oliver", source: HANDOVER_ROLE_SCOPE },
