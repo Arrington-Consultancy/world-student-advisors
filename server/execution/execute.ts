@@ -21,6 +21,7 @@
  * for anything consequential, a human's.
  */
 import { invokeLLM } from "../_core/llm";
+import { completeStudentLists } from "./listCompleteness";
 import { getWorker } from "../workforce/registry";
 import { evaluateStaffPortalExecutionPermission } from "../workforce/permissions";
 import { buildWorkerContext, type CaseData, type UpstreamOutput } from "../workforce/context";
@@ -213,6 +214,34 @@ export async function executeWorker(request: ExecutionRequest): Promise<Executio
     );
   }
 
+  // 5c. A list of students is given in full or it is not an answer. Tom
+  //     Arrington, 17 September 2026. Checked against the list the evidence
+  //     layer built; one rewrite is asked for, then the list is appended in
+  //     plain text from the records themselves.
+  let listSummary: string | null = null;
+  if (evidence.studentLists && evidence.studentLists.length > 0) {
+    const completed = await completeStudentLists(modelText, evidence, async correction => {
+      const again = await invokeLLM({
+        messages: [
+          { role: "system", content: system },
+          ...(request.history ?? []).map(turn => ({
+            role: turn.role === "staff" ? ("user" as const) : ("assistant" as const),
+            content: turn.content,
+          })),
+          { role: "user", content: user },
+          { role: "assistant", content: modelText },
+          { role: "user", content: correction },
+        ],
+        maxTokens: 4096,
+      });
+      const c = again.choices[0];
+      if (c?.finish_reason === "length") return null;
+      return c?.message?.content ?? null;
+    });
+    modelText = completed.text;
+    listSummary = completed.summary;
+  }
+
   // 6. Priya's boundary, checked on the output rather than trusted to
   //    the prompt. Her permitted work is preparation, and a model asked
   //    to prepare a case will drift into answering it, usually while
@@ -290,7 +319,7 @@ export async function executeWorker(request: ExecutionRequest): Promise<Executio
   return {
     outcome: "answered",
     visibleText: releaseText,
-    reason: `${worker.canonicalName} answered under ${brief.sourceDocument}.${release.summary ? ` ${release.summary}` : ""}`,
+    reason: `${worker.canonicalName} answered under ${brief.sourceDocument}.${listSummary ? ` ${listSummary}` : ""}${release.summary ? ` ${release.summary}` : ""}`,
     workerId: request.workerId,
     workerName: worker.canonicalName,
     briefReference: brief.sourceDocument,

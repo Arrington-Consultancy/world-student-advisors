@@ -146,7 +146,21 @@ export type StudentResolution =
    * member to confirm. Tom Arrington, 17 September 2026.
    */
   | { kind: "probable"; personId: number; name: string; typed: string; score: number; alternatives: string[] }
-  | { kind: "many" | "none" | "refused"; note: string };
+  /**
+   * Several students match. `students` carries the list the note describes
+   * so the execution layer can check the worker's reply names every one of
+   * them, and complete it if not (Tom Arrington, 17 September 2026: a count
+   * in place of the names is not an answer).
+   */
+  | { kind: "many"; note: string; typed?: string; students?: ListedStudent[] }
+  | { kind: "none" | "refused"; note: string };
+
+export interface ListedStudent {
+  personId: number;
+  name: string;
+  stageLabel: string;
+  counsellor: string | null;
+}
 
 export interface ResolveInput {
   name: string;
@@ -195,7 +209,12 @@ export async function resolveStudentByName(input: ResolveInput, deps: LookupDeps
       return { kind: "probable", personId: m.personId, name: m.name, typed: input.name, score: Math.round(ranking.match.score * 100) / 100, alternatives: ranking.others.map(o => describe(o.candidate)) };
     }
     if (ranking.kind === "several") {
-      return { kind: "many", note: `${ranking.matches.length} CRM students match "${input.name}" (searched as "${term}"): ${ranking.matches.map(m => describe(m.candidate)).join("; ")}. Ask the staff member which one they mean, by email address or telephone number, before using any record.` };
+      return {
+        kind: "many",
+        typed: input.name,
+        students: ranking.matches.map(m => m.candidate),
+        note: `${ranking.matches.length} CRM students match "${input.name}" (searched as "${term}"): ${ranking.matches.map(m => describe(m.candidate)).join("; ")}. Name every one of them and ask the staff member which one they mean, by email address or telephone number, before using any record.`,
+      };
     }
     for (const r of result.results) if (!near.has(r.personId)) near.set(r.personId, { personId: r.personId, name: r.name, stageLabel: r.stageLabel, counsellor: r.counsellor });
   }
@@ -227,7 +246,12 @@ export async function resolveStudentByName(input: ResolveInput, deps: LookupDeps
     };
   }
   if (ranking.kind === "several") {
-    return { kind: "many", note: `No CRM student is recorded exactly as "${input.name}". The closest matches are: ${ranking.matches.map(m => describe(m.candidate)).join("; ")}. Ask the staff member which of these they mean before using any record; do not choose for them.` };
+    return {
+      kind: "many",
+      typed: input.name,
+      students: ranking.matches.map(m => m.candidate),
+      note: `No CRM student is recorded exactly as "${input.name}". The closest matches are: ${ranking.matches.map(m => describe(m.candidate)).join("; ")}. Name every one of them and ask the staff member which of these they mean before using any record; do not choose for them.`,
+    };
   }
   const withheld = withheldTotal > 0
     ? ` ${withheldTotal} matching record${withheldTotal === 1 ? " is" : "s are"} outside the staff member's case scope and cannot be shown.`
@@ -281,6 +305,8 @@ async function resolveByFirstName(
   const more = all.length > shown.length ? ` and ${all.length - shown.length} more` : "";
   return {
     kind: "many",
+    typed,
+    students: shown,
     note:
       `${all.length} CRM students are recorded with the name "${typed}"${formsText}: ${shown.map(describe).join("; ")}${more}. ` +
       "Your reply must name every one of these students, one per line, each with their stage and counsellor exactly as given here; " +

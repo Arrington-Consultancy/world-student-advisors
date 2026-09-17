@@ -128,7 +128,9 @@ if (record?.stageLabel) check(text.toLowerCase().includes(record.stageLabel.toLo
 if (record?.counsellor) check(text.includes(record.counsellor.split(" ")[0]), "answer names the counsellor");
 if (listMode) {
   const named = listedNames.filter(n => text.includes(n.split(" ")[0]) && text.includes(n.split(" ").pop() ?? n)).length;
-  check(named >= Math.min(2, listedNames.length), "answer names the students listed", `${named} of ${listedNames.length}`);
+  // Every listed student, not a sample: the execution layer completes the
+  // list from the records if the model leaves anybody out (17 September 2026).
+  check(named === listedNames.length, "answer names every student listed", `${named} of ${listedNames.length}`);
   // The list is put back to the staff member: a question, or an invitation
   // to say which one, or to confirm. The exact wording is the worker's.
   check(/\?|which|let me know|tell me|confirm|point me|say who/i.test(text), "answer puts the choice back to the staff member");
