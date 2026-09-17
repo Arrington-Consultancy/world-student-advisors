@@ -57,6 +57,18 @@ for (const t of turns.filter(t => t.role === "staff")) {
   );
 }
 
+// The staff member's own words, on request. E2E_SHOW_QUESTIONS=1 prints the
+// text of THEIR OWN stored questions to this worker inside E2E_FROM..E2E_TO
+// (ISO timestamps). Their own questions, asked for by them; never a reply.
+if (process.env.E2E_SHOW_QUESTIONS === "1") {
+  const from = Date.parse(process.env.E2E_FROM || "") || since.getTime();
+  const to = Date.parse(process.env.E2E_TO || "") || Date.now();
+  console.log(`\n=== The staff member's own questions to ${workerId}, ${new Date(from).toISOString()} to ${new Date(to).toISOString()} ===`);
+  for (const t of turns.filter(t => t.role === "staff" && t.createdAt.getTime() >= from && t.createdAt.getTime() <= to)) {
+    console.log(`  turn ${t.id} at ${t.createdAt.toISOString()}: ${JSON.stringify(t.content)}`);
+  }
+}
+
 console.log(`\n=== crm:lookup audit rows for staff_users.id ${staff.id} in the last ${hours}h (newest first, reasons redacted) ===`);
 const lookups = await db.select().from(workforceAuditEvents)
   .where(and(eq(workforceAuditEvents.staffUserId, staff.id), eq(workforceAuditEvents.requestedCapability, "crm:lookup"), gte(workforceAuditEvents.createdAt, since)))
