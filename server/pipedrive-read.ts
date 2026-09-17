@@ -142,8 +142,14 @@ export type PersonSearchField = "email" | "phone" | "name";
  */
 export async function searchPersonIds(term: string, field: PersonSearchField, auth: PipedriveAuth = websiteAuth): Promise<number[]> {
   const exact = field === "name" ? "" : "&exact_match=true";
+  // Pipedrive's search returns at most 100 items a page. Ten was the limit
+  // until 17 September 2026, when "are there any Toms on Pipedrive" showed
+  // why it was wrong: a common first name has more than ten matches, and
+  // ten of them in an order that varied from call to call is neither a
+  // complete answer nor the same answer twice. One page of a hundred covers
+  // any first name at WSA's size and keeps the result set whole.
   const result = await pipedriveGet(
-    `/persons/search?term=${encodeURIComponent(term)}&fields=${field}${exact}&limit=10`,
+    `/persons/search?term=${encodeURIComponent(term)}&fields=${field}${exact}&limit=100`,
     auth,
   );
   const items: any[] = result?.data?.items ?? [];
