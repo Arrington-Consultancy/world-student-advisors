@@ -20,6 +20,7 @@
 import { lookupStudents, type LookupDeps } from "../crm/staffLookup";
 import { oauthLookupDeps } from "../crm/lookupDeps";
 import { WORKER_FUNCTIONAL_SCOPE } from "../access/workerScope";
+import { fuzzySearchTerms, rankNameMatches } from "./nameMatch";
 import type { AuditAuthMethod } from "../workforce/audit";
 import type { WorkerId } from "../workforce/types";
 
@@ -37,6 +38,7 @@ const NOT_A_NAME_START = new Set([
 const NOT_A_NAME_WORD = new Set(["University", "College", "School", "Institute", "Academy", "Pipedrive", "CRM", "WSA", "UK", "USA", "CAS", "UKVI", "IELTS", "UCAS", "MSc", "MA", "MBA", "PhD", "BSc", "BA", "Status", "Stage", "Offer", "Visa", "Application", "September", "October", "November", "December", "January", "February", "March", "April", "May", "June", "July", "August", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday"]);
 
 const WORD = /^[A-Z][A-Za-z'’-]*$/;
+const LENIENT_WORD = /^[A-Za-z][A-Za-z'’-]{1,}$/;
 
 /**
  * Runs of two to four capitalised words that could be a person's name, in
@@ -44,14 +46,19 @@ const WORD = /^[A-Z][A-Za-z'’-]*$/;
  * proposes candidates and nothing else; the lookup decides what exists and
  * what this staff member may see.
  */
-export function extractNameCandidates(text: string): string[] {
+export function extractNameCandidates(text: string, options: { lenient?: boolean } = {}): string[] {
   const tokens = text.replace(/[“”"]/g, " ").split(/\s+/).filter(Boolean);
+  // Lenient: a staff member typing on a phone writes "joyce kitakang". Runs
+  // of lower-case words are then also proposed, with the same stoplists;
+  // the lookup decides whether any such run is a student. Used only when
+  // the ordinary pass found nothing, so a capitalised name always wins.
+  const wordTest = options.lenient ? LENIENT_WORD : WORD;
   const out: string[] = [];
   let run: string[] = [];
   const flush = () => {
     while (run.length > 0 && NOT_A_NAME_START.has(run[0].toLowerCase())) run.shift();
     while (run.length > 0 && NOT_A_NAME_START.has(run[run.length - 1].toLowerCase())) run.pop();
-    if (run.length >= 2 && run.length <= 4 && !run.some(w => NOT_A_NAME_WORD.has(w))) {
+    if (run.length >= 2 && run.length <= 4 && !run.some(w => NOT_A_NAME_WORD.has(w) || (options.lenient && NOT_A_NAME_START.has(w.toLowerCase())))) {
       const name = run.join(" ");
       if (!out.includes(name)) out.push(name);
     }
@@ -60,7 +67,7 @@ export function extractNameCandidates(text: string): string[] {
   for (const raw of tokens) {
     // Strip the punctuation that clings to a name in a sentence, and a possessive.
     const word = raw.replace(/^[(\[]+|[)\],.;:!?]+$/g, "").replace(/(['’]s)$/i, "");
-    if (WORD.test(word)) run.push(word);
+    if (wordTest.test(word)) run.push(word);
     else flush();
     if (/[,.;:!?]$/.test(raw)) flush();
   }
@@ -70,6 +77,14 @@ export function extractNameCandidates(text: string): string[] {
 
 export type StudentResolution =
   | { kind: "one"; personId: number; name: string }
+  /**
+   * The exact spellings found nothing, and one CRM record is a clear near
+   * match: a different spelling, or a short form for a long one. It is
+   * offered to the worker AS a probable match, with the name as recorded,
+   * and the worker is told to name the record it used and ask the staff
+   * member to confirm. Tom Arrington, 17 September 2026.
+   */
+  | { kind: "probable"; personId: number; name: string; typed: string; score: number; alternatives: string[] }
   | { kind: "many" | "none" | "refused"; note: string };
 
 export interface ResolveInput {
@@ -93,6 +108,8 @@ export async function resolveStudentByName(input: ResolveInput, deps: LookupDeps
   // So the spellings are tried from the most specific to the least, and
   // the first that finds anything decides. Every attempt is audited by
   // the lookup itself.
+  const near = new Map<number, { personId: number; name: string; stageLabel: string; counsellor: string | null }>();
+  const describe = (c: { name: string; stageLabel: string; counsellor: string | null }) => `${c.name} (${c.stageLabel}${c.counsellor ? `, counsellor ${c.counsellor}` : ""})`;
   for (const term of searchTerms(input.name)) {
     const result = await lookupStudents(
       { staffUserId: input.staffUserId, authMethod: input.authMethod, term, by: "name", scope },
@@ -102,19 +119,58 @@ export async function resolveStudentByName(input: ResolveInput, deps: LookupDeps
       return { kind: "refused", note: `The CRM could not be checked for "${input.name}" under the staff member's own access: ${result.reason}` };
     }
     withheldTotal += result.withheldCount;
-    if (result.results.length === 1) {
-      const one = result.results[0];
+    if (result.results.length === 0) continue;
+    // What the search returned is checked against what was typed before it
+    // is believed. A surname search that returns one differently named
+    // person is not a match; it is a lead for the near-match pass below.
+    const ranking = rankNameMatches(input.name, result.results);
+    if (ranking.kind === "exact") {
+      const one = ranking.match.candidate;
       return { kind: "one", personId: one.personId, name: one.name };
     }
-    if (result.results.length > 1) {
-      const options = result.results.map(r => `${r.name} (${r.stageLabel}${r.counsellor ? `, counsellor ${r.counsellor}` : ""})`).join("; ");
-      return { kind: "many", note: `${result.results.length} CRM students match "${input.name}" (searched as "${term}"): ${options}. Ask the staff member which one they mean, by email address or telephone number, before using any record.` };
+    if (ranking.kind === "probable") {
+      const m = ranking.match.candidate;
+      return { kind: "probable", personId: m.personId, name: m.name, typed: input.name, score: Math.round(ranking.match.score * 100) / 100, alternatives: ranking.others.map(o => describe(o.candidate)) };
     }
+    if (ranking.kind === "several") {
+      return { kind: "many", note: `${ranking.matches.length} CRM students match "${input.name}" (searched as "${term}"): ${ranking.matches.map(m => describe(m.candidate)).join("; ")}. Ask the staff member which one they mean, by email address or telephone number, before using any record.` };
+    }
+    for (const r of result.results) if (!near.has(r.personId)) near.set(r.personId, { personId: r.personId, name: r.name, stageLabel: r.stageLabel, counsellor: r.counsellor });
+  }
+  // Nothing under the exact spellings. Think before saying so: try the
+  // stems, the long forms of a short first name and the commonest
+  // alternative spellings, then rank whatever comes back against what was
+  // typed. One clear near match is offered as probable and questioned; a
+  // few are put to the person by name; none stays none.
+  for (const term of fuzzySearchTerms(input.name)) {
+    const result = await lookupStudents(
+      { staffUserId: input.staffUserId, authMethod: input.authMethod, term, by: "name", scope },
+      deps,
+    );
+    if (result.refused) break;
+    withheldTotal += result.withheldCount;
+    for (const r of result.results) if (!near.has(r.personId)) near.set(r.personId, { personId: r.personId, name: r.name, stageLabel: r.stageLabel, counsellor: r.counsellor });
+    if (near.size >= 30) break;
+  }
+  const ranking = rankNameMatches(input.name, Array.from(near.values()));
+  if (ranking.kind === "exact" || ranking.kind === "probable") {
+    const m = ranking.match.candidate;
+    return {
+      kind: "probable",
+      personId: m.personId,
+      name: m.name,
+      typed: input.name,
+      score: Math.round(ranking.match.score * 100) / 100,
+      alternatives: ranking.kind === "probable" ? ranking.others.map(o => describe(o.candidate)) : [],
+    };
+  }
+  if (ranking.kind === "several") {
+    return { kind: "many", note: `No CRM student is recorded exactly as "${input.name}". The closest matches are: ${ranking.matches.map(m => describe(m.candidate)).join("; ")}. Ask the staff member which of these they mean before using any record; do not choose for them.` };
   }
   const withheld = withheldTotal > 0
     ? ` ${withheldTotal} matching record${withheldTotal === 1 ? " is" : "s are"} outside the staff member's case scope and cannot be shown.`
     : "";
-  return { kind: "none", note: `No CRM student matching "${input.name}" is within the staff member's access.${withheld} Ask for the student's email address or telephone number if the name may be spelt differently in the CRM.` };
+  return { kind: "none", note: `No CRM student matching "${input.name}" is within the staff member's access, including near spellings and short forms of the name.${withheld} Ask for the student's email address or telephone number, or the name as it was given at sign-up.` };
 }
 
 /** The full name, then first and last, then the surname alone; never a first name alone. */

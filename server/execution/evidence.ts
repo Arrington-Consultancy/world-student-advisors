@@ -100,11 +100,25 @@ export async function gatherConnectorEvidence(input: {
     const labels = new Map<number, string>();
     if (ids.personIds.length === 0 && ids.emails.length === 0 && ids.phones.length === 0) {
       const resolve = input.resolveByName ?? resolveStudentByName;
-      for (const name of extractNameCandidates(input.requestText).slice(0, 2)) {
+      // Capitalised names first; a message typed without capitals is read
+      // leniently only when that finds nothing.
+      const strict = extractNameCandidates(input.requestText);
+      const names = (strict.length > 0 ? strict : extractNameCandidates(input.requestText, { lenient: true })).slice(0, 2);
+      for (const name of names) {
         const resolution: StudentResolution = await resolve({ name, workerId: input.workerId, staffUserId: input.staffUserId, authMethod: input.authMethod });
         if (resolution.kind === "one") {
           personIds.add(resolution.personId);
           labels.set(resolution.personId, `CRM person ${resolution.personId}, identified from the name "${name}" under the staff member's own student-lookup authority`);
+        } else if (resolution.kind === "probable") {
+          // A near match is evidence with a question attached, not a fact.
+          personIds.add(resolution.personId);
+          const explanation =
+            `CRM person ${resolution.personId}, a PROBABLE match, not an exact one: the staff member wrote "${resolution.typed}" and the closest CRM record is recorded as "${resolution.name}"` +
+            (resolution.alternatives.length > 0 ? ` (other, less likely matches: ${resolution.alternatives.join("; ")})` : "") +
+            `. Say which record you used, quote the name as recorded, and ask the staff member to confirm it is the right student before they act on the answer`;
+          labels.set(resolution.personId, explanation);
+          // The question travels with the evidence even if the read below fails.
+          notes.push({ source: "pipedrive", note: explanation });
         } else {
           notes.push({ source: "pipedrive", note: resolution.note });
         }
