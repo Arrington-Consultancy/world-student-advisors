@@ -65,8 +65,9 @@ describe("completeStudentLists", () => {
   });
   it("never invents a student: every appended line comes from the list", () => {
     const rendered = renderStudentList(TOMS);
-    const lines = rendered.split("\n").slice(1);
+    const lines = rendered.split("\n").slice(1, -1);
     expect(lines).toHaveLength(3);
+    expect(rendered.trim().endsWith(".")).toBe(true);
     for (const s of TOMS.students) expect(rendered).toContain(`- ${s.name}: ${s.stageLabel}`);
   });
 });
