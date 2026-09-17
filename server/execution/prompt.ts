@@ -210,7 +210,7 @@ export function composeUserMessage(request: string, inputs: PromptInputs): strin
         "Answer from it directly: state where the student is, who their counsellor is, and what the record shows. " +
         "Notes, activities, emails and documents are not part of it; if the question needs them, say plainly that they are not available to you and what the standard next step at this stage would be, rather than inferring or asking the person to paste the record. " +
         "If a record's label says it is a PROBABLE match rather than an exact one, think before you answer: open with the record you used and the name exactly as recorded, ask the staff member to confirm it is the right student, and then give the answer from that record so they lose nothing if it is. " +
-        "If a note says several records are close matches, name them and ask which is meant; do not choose. If no record was found under the exact name or its near spellings, say so and ask for the email address, telephone number or the name as given at sign-up.",
+        "If a note says several records are close matches, or lists several students recorded under a name, name every one of them, one per line with the stage and counsellor the note gives, and ask which is meant; a count in place of the names is not an answer, and you do not choose. If no record was found under the exact name or its near spellings, say so and ask for the email address, telephone number or the name as given at sign-up.",
       );
     }
   }

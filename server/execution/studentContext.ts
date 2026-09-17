@@ -33,6 +33,7 @@ const NOT_A_NAME_START = new Set([
   "applications", "counsellor", "counselor", "process", "stage", "next", "status", "record", "case", "offer", "visa", "cas", "crm", "wsa", "uk", "usa",
   "pipedrive", "university", "college", "master", "masters", "msc", "ma", "mba", "phd", "bsc", "ba", "ielts", "ucas", "ask", "help", "get", "send",
   "review", "prepare", "explain", "summarise", "summarize", "confirm", "advise", "draft", "write", "list", "compare", "assess",
+  "any", "all", "some", "every", "each", "both", "several", "many", "no", "not", "yes", "so", "just", "still", "again", "ever", "never",
 ]);
 /** Capitalised words that appear inside a run but belong to WSA vocabulary, not a name. */
 const NOT_A_NAME_WORD = new Set([
@@ -64,22 +65,37 @@ export function extractNameCandidates(text: string, options: { lenient?: boolean
   const wordTest = options.lenient ? LENIENT_WORD : WORD;
   const out: string[] = [];
   let run: string[] = [];
-  const flush = () => {
-    while (run.length > 0 && NOT_A_NAME_START.has(run[0].toLowerCase())) run.shift();
-    // A vocabulary word ends the name: what precedes it may still be one.
-    const stop = run.findIndex(w => NOT_A_NAME_WORD.has(w) || (options.lenient && NOT_A_NAME_START.has(w.toLowerCase())));
-    if (stop >= 0) run = run.slice(0, stop);
-    while (run.length > 0 && NOT_A_NAME_START.has(run[run.length - 1].toLowerCase())) run.pop();
-    if (run.length >= 2 && run.length <= 4) {
-      const name = run.join(" ");
+  const propose = (segment: string[]) => {
+    while (segment.length > 0 && NOT_A_NAME_START.has(segment[0].toLowerCase())) segment.shift();
+    while (segment.length > 0 && NOT_A_NAME_START.has(segment[segment.length - 1].toLowerCase())) segment.pop();
+    if (segment.length >= 2 && segment.length <= 4) {
+      const name = segment.join(" ");
       if (!out.includes(name)) out.push(name);
+    }
+  };
+  const flush = () => {
+    if (options.lenient) {
+      // Lower-case text has no capitals to mark where a name starts, so an
+      // ordinary word inside the run splits it rather than ending it: "ar
+      // ethere any toms" is not a name, and neither half of it is.
+      let segment: string[] = [];
+      for (const w of run) {
+        if (NOT_A_NAME_WORD.has(w) || NOT_A_NAME_START.has(w.toLowerCase())) { propose(segment); segment = []; }
+        else segment.push(w);
+      }
+      propose(segment);
+    } else {
+      // A vocabulary word ends the name: what precedes it may still be one.
+      const stop = run.findIndex(w => NOT_A_NAME_WORD.has(w));
+      propose(stop >= 0 ? run.slice(0, stop) : run);
     }
     run = [];
   };
   for (const raw of tokens) {
     // Strip the punctuation that clings to a name in a sentence, and a possessive.
     const word = raw.replace(/^[(\[]+|[)\],.;:!?]+$/g, "").replace(/(['’]s)$/i, "");
-    if (wordTest.test(word)) run.push(word);
+    // In lower-case text a two-letter word is never part of a name.
+    if (wordTest.test(word) && (!options.lenient || word.length >= 3)) run.push(word);
     else flush();
     if (/[,.;:!?]$/.test(raw)) flush();
   }
@@ -259,13 +275,16 @@ async function resolveByFirstName(
   if (all.length === 1) {
     return { kind: "probable", personId: all[0].personId, name: all[0].name, typed, score: 0.9, alternatives: [] };
   }
-  const shown = all.slice(0, 15);
+  // Enough for a whole first name at WSA's size (17 Toms on 17 September
+  // 2026); beyond that the count of the remainder is stated.
+  const shown = all.slice(0, 25);
   const more = all.length > shown.length ? ` and ${all.length - shown.length} more` : "";
   return {
     kind: "many",
     note:
       `${all.length} CRM students are recorded with the name "${typed}"${formsText}: ${shown.map(describe).join("; ")}${more}. ` +
-      "Give the staff member this list, with each student's stage and counsellor, and ask which one they mean before using any single record.",
+      "Your reply must name every one of these students, one per line, each with their stage and counsellor exactly as given here; " +
+      "a count or a summary in place of the names is not an answer. Then ask which one the staff member means before using any single record.",
   };
 }
 
