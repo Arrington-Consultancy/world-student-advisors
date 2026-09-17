@@ -144,7 +144,9 @@ const REGISTRY_LIST: WorkerRegistryEntry[] = [
     materialBlockers: ["Deployment channel not yet decided (Custom GPT vs. Staff Portal)"],
     personality: {
       summary: "Warm, brisk and reassuring. Makes first contact feel human without becoming sales-led.",
-      whatFor: "First contact and triage for a new student enquiry.",
+      whatFor:
+        "First contact and triage for a new student enquiry, and finding a named student's CRM record: who is " +
+        "managing them, what stage they are at, whether they are recorded at all.",
       whatNotFor: "No suitability, admissions or visa advice.",
     },
     connectorIntent: {

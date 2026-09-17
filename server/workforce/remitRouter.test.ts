@@ -285,3 +285,48 @@ describe("a count over existing records is management information, not prospecti
     expect(routeByRemit("how many enquiries did we get last month").responsibleWorkerId).toBeNull();
   });
 });
+
+/**
+ * Tom Arrington, 16 and 17 September 2026. A question about one student's
+ * CRM record reached nobody by rule ("How is managing this lead? <name>"),
+ * and "ar ethere any toms on pipedrive" reached nobody at all. These are
+ * Sophie's by rule now, and a count over the CRM still is not.
+ */
+describe("a named student's CRM record is Sophie's, by rule (remit-1.3)", () => {
+  const CASES: [string, string][] = [
+    ["ar ethere any toms on pipedrive", "sophie"],
+    ["are there any Toms on Pipedrive?", "sophie"],
+    ["How is managing this lead?  Joyce Kitakang Federal Ministry of Environment Department of Forestry, Utako District, Abuja, Nigeria", "sophie"],
+    ["Who is managing this lead? Joyce Kitakang", "sophie"],
+    ["Who is the counsellor for Joyce Kitakang?", "sophie"],
+    ["What stage is Joyce Kitakang at?", "sophie"],
+    ["is Grace Okoro on the crm", "sophie"],
+    ["who has this student", "sophie"],
+    ["how is this lead getting on", "sophie"],
+  ];
+  for (const [text, expected] of CASES) {
+    it(`"${text.slice(0, 60)}" -> ${expected}`, () => {
+      const d = routeByRemit(text);
+      expect(d.outcome).toBe("student_record_lookup");
+      expect(d.responsibleWorkerId).toBe(expected);
+      expect(routeStaffRequest(text).responsibleWorkerId).toBe(expected);
+    });
+  }
+
+  it("a count over the CRM is still management information, not a record lookup", () => {
+    expect(routeByRemit("how many leads are on pipedrive").outcome).toBe("management_information");
+    expect(routeByRemit("how many students on the crm this month").outcome).toBe("management_information");
+    expect(routeByRemit("how many people are on pipedrive").outcome).not.toBe("student_record_lookup");
+  });
+
+  it("does not take questions the other specialists own", () => {
+    expect(routeByRemit("is the application ready even though discovery is missing?").responsibleWorkerId).toBe("james");
+    expect(routeByRemit("can this particular student bring his wife?").responsibleWorkerId).toBe("priya");
+    expect(routeByRemit("what unis do we have for this student").responsibleWorkerId).toBe("amelia");
+    expect(routeByRemit("what scholarships could this student apply for").responsibleWorkerId).toBe("harper");
+  });
+
+  it("the routing model version was raised with the remit change", () => {
+    expect(ROUTING_MODEL_VERSION).toBe("remit-1.3");
+  });
+});

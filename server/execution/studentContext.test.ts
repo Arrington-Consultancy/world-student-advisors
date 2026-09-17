@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 
 vi.mock("../db", () => ({ getDb: async () => null }));
 
-const { extractNameCandidates, resolveStudentByName, searchTerms } = await import("./studentContext");
+const { extractNameCandidates, extractSingleNameCandidate, resolveStudentByName, searchTerms } = await import("./studentContext");
 const { gatherConnectorEvidence } = await import("./evidence");
 const { LOOKUP_ACTOR } = await import("../crm/staffLookup");
 import type { LookupDeps, CrmCandidate } from "../crm/staffLookup";
@@ -236,5 +236,61 @@ describe("gatherConnectorEvidence with a named student", () => {
     const evidence = await gatherConnectorEvidence({ ...ask, requestText: "Where is Grace Okoro up to?", resolveByName: async () => ({ kind: "many", note: "2 CRM students match \"Grace Okoro\": ..." }) });
     expect(evidence.blocks).toEqual([]);
     expect(evidence.notes[0].note).toContain("2 CRM students match");
+  });
+});
+
+/**
+ * Tom Arrington, 17 September 2026, typed into Reception: "ar ethere any
+ * toms on pipedrive". A lone first name, plural, mis-typed around it.
+ */
+describe("a single first name: extractSingleNameCandidate", () => {
+  it("reads a plural known first name as a request for everybody of that name", () => {
+    expect(extractSingleNameCandidate("ar ethere any toms on pipedrive")).toBe("Tom");
+    expect(extractSingleNameCandidate("are there any Thomases on Pipedrive?")).toBe("Thomas");
+    expect(extractSingleNameCandidate("do we have a Joyce on the crm")).toBe("Joyce");
+  });
+  it("accepts a name introduced by called or named even when the list does not know it", () => {
+    expect(extractSingleNameCandidate("do we have a student called Adaeze")).toBe("Adaeze");
+  });
+  it("proposes nothing for ordinary words, stoplisted words or two unknown words", () => {
+    expect(extractSingleNameCandidate("Is the application ready to send?")).toBeNull();
+    expect(extractSingleNameCandidate("what is the visa rule on dependants")).toBeNull();
+    expect(extractSingleNameCandidate("check pipedrive status")).toBeNull();
+    expect(extractSingleNameCandidate("tom and joyce both")).toBeNull();
+  });
+});
+
+describe("resolveStudentByName with a first name alone", () => {
+  it("lists every student recorded under the name or a form of it, with stage and counsellor, and asks which is meant", async () => {
+    const d = deps([]);
+    d.deps.search = async (term, by) => {
+      d.searches.push(`${by}:${term}`);
+      if (term === "Tom") return [candidate(1, "Tom Adeyemi"), candidate(3, "Tomasz Nowak")];
+      if (term === "Thomas") return [candidate(2, "Thomas Okafor", "Getting to know you")];
+      return [];
+    };
+    const r = await resolveStudentByName({ ...ask, name: "Tom" }, d.deps);
+    expect(r.kind).toBe("many");
+    if (r.kind !== "many") return;
+    expect(r.note).toContain("2 CRM students are recorded with the name \"Tom\"");
+    expect(r.note).toContain("Tom Adeyemi");
+    expect(r.note).toContain("Thomas Okafor (Getting to know you, counsellor Eldah Therone)");
+    expect(r.note).not.toContain("Tomasz");
+    expect(r.note).toContain("ask which one they mean");
+    expect(d.searches[0]).toBe("name:Tom");
+    expect(d.searches).toContain("name:Thomas");
+  });
+  it("one student of that name is a probable match to be confirmed, never assumed", async () => {
+    const d = deps([]);
+    d.deps.search = async term => (term === "Thomas" ? [candidate(2, "Thomas Okafor")] : []);
+    const r = await resolveStudentByName({ ...ask, name: "Tom" }, d.deps);
+    expect(r).toMatchObject({ kind: "probable", personId: 2, name: "Thomas Okafor", typed: "Tom" });
+  });
+  it("none says so plainly with the forms that were tried", async () => {
+    const d = deps([]);
+    const r = await resolveStudentByName({ ...ask, name: "Tom" }, d.deps);
+    expect(r.kind).toBe("none");
+    if (r.kind !== "none") return;
+    expect(r.note).toContain("\"Tom\" or a form of it (Thomas");
   });
 });

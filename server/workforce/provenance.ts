@@ -128,7 +128,7 @@ export const HANDOVER_PROSPECTING_GAP: ControlledSource = {
  * Raise this whenever the remit model, the concept vocabulary or the
  * routing priority changes. It is not the application version.
  */
-export const ROUTING_MODEL_VERSION = "remit-1.2";
+export const ROUTING_MODEL_VERSION = "remit-1.3";
 
 export interface Discrepancy {
   record: string;
