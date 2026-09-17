@@ -275,7 +275,9 @@ async function resolveByFirstName(
   if (all.length === 1) {
     return { kind: "probable", personId: all[0].personId, name: all[0].name, typed, score: 0.9, alternatives: [] };
   }
-  const shown = all.slice(0, 15);
+  // Enough for a whole first name at WSA's size (17 Toms on 17 September
+  // 2026); beyond that the count of the remainder is stated.
+  const shown = all.slice(0, 25);
   const more = all.length > shown.length ? ` and ${all.length - shown.length} more` : "";
   return {
     kind: "many",

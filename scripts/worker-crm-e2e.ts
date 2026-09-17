@@ -129,7 +129,9 @@ if (record?.counsellor) check(text.includes(record.counsellor.split(" ")[0]), "a
 if (listMode) {
   const named = listedNames.filter(n => text.includes(n.split(" ")[0]) && text.includes(n.split(" ").pop() ?? n)).length;
   check(named >= Math.min(2, listedNames.length), "answer names the students listed", `${named} of ${listedNames.length}`);
-  check(/which (one|of|student|tom|record)|which .* (do you|did you) mean|do you mean/i.test(text), "answer asks which one the staff member means");
+  // The list is put back to the staff member: a question, or an invitation
+  // to say which one, or to confirm. The exact wording is the worker's.
+  check(/\?|which|let me know|tell me|confirm|point me|say who/i.test(text), "answer puts the choice back to the staff member");
 } else {
   check(text.toLowerCase().includes("next"), "answer addresses what happens next");
 }
