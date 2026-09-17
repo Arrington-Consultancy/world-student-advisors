@@ -106,8 +106,12 @@ export function AccessAdmin({ token }: { token: string }) {
       <div className="flex items-start gap-3 border-l-2 border-wsa-navy bg-wsa-navy/5 p-4">
         <ShieldCheck className="mt-0.5 h-5 w-5 shrink-0 text-wsa-navy" aria-hidden />
         <p className="text-base leading-relaxed text-gray-700">
-          You can grant only what you hold yourself, and you cannot change your own access. Every change records
-          who, what, when and why, as the Access Control Standard requires.
+          {data.canChangeOwnAccess
+            ? "You are the bootstrap access administrator, so you may change your own access as well as " +
+              "everybody else's. You cannot suspend, disable or remove access_admin from your own account. " +
+              "For everyone else you can grant only what you hold yourself."
+            : "You can grant only what you hold yourself, and you cannot change your own access."}{" "}
+          Every change records who, what, when and why, as the Access Control Standard requires.
         </p>
       </div>
 

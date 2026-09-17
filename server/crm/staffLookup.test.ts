@@ -125,72 +125,47 @@ describe("1. a user without enquiry_triage gets nothing", () => {
   });
 });
 
-describe("2. an out-of-scope student is filtered before projection", () => {
-  it("returns only my student, and counts the other as withheld", async () => {
+describe("2. every matching record is returned to a staff member who holds the scope (Tom Arrington, 17 September 2026)", () => {
+  it("returns my student and my colleague's student alike, withholding nothing", async () => {
     const r = await ask(deps(resolved()));
     expect(r.refused).toBe(false);
     if (r.refused) return;
-    expect(r.results.map(x => x.personId)).toEqual([1001]);
-    expect(r.withheldCount).toBe(1);
+    expect(r.results.map(x => x.personId).sort()).toEqual([1001, 2002]);
+    expect(r.withheldCount).toBe(0);
   });
 
-  it("leaks no field of the withheld record anywhere in the response", async () => {
-    const r = await ask(deps(resolved()));
-    const json = JSON.stringify(r);
-    for (const leak of ["2002", "Theirs Fixture", "theirs@fixture.test", "900002", "Offer received", "Colleague"]) {
-      expect(json).not.toContain(leak);
-    }
+  it("returns a record whose owner matches no staff account, and one with no owner at all", async () => {
+    const r = await ask(deps(resolved(), [ORPHAN, { ...MINE, ownerEmail: null, ownerName: null }]));
+    if (r.refused) throw new Error("unexpected refusal");
+    expect(r.results.map(x => x.personId).sort()).toEqual([1001, 3003]);
+    expect(r.withheldCount).toBe(0);
   });
 
-  it("filters while the record is still raw, before it becomes a result", () => {
-    const src = readFileSync("server/crm/staffLookup.ts", "utf8");
-    const body = src.slice(src.indexOf("export async function lookupStudents"));
-    const filter = body.indexOf("if (decision.allowed) permitted.push(candidate)");
-    const projection = body.indexOf("permitted.map(project)");
-    expect(filter).toBeGreaterThan(-1);
-    expect(projection).toBeGreaterThan(-1);
-    expect(filter).toBeLessThan(projection);
+  it("never consults the owner resolver: ownership plays no part", async () => {
+    const d = deps(resolved());
+    await ask(d);
+    expect(d.resolveOwner).not.toHaveBeenCalled();
   });
 
-  it("the owner match feeds only case scope: a matching owner cannot rescue a missing scope", async () => {
+  it("the scope is still the gate: a matching owner cannot rescue a missing scope", async () => {
     const d = deps(resolved({ functionalScopes: [] }), [MINE]);
     expect((await ask(d)).refused).toBe(true);
+    expect(d.search).not.toHaveBeenCalled();
+  });
+
+  it("the source no longer carries the per-record case filter", () => {
+    const src = readFileSync("server/crm/staffLookup.ts", "utf8");
+    expect(src).not.toContain("if (decision.allowed) permitted.push(candidate)");
+    expect(src).not.toContain("resolveOwner(candidate");
   });
 });
 
-describe("3. an owner-email mismatch fails closed", () => {
-  it("withholds a record whose owner matches no staff account", async () => {
-    const r = await ask(deps(resolved(), [ORPHAN]));
-    if (r.refused) throw new Error("unexpected refusal");
-    expect(r.results).toHaveLength(0);
-    expect(r.withheldCount).toBe(1);
-  });
-
-  it("withholds a record with no owner at all", async () => {
-    const r = await ask(deps(resolved(), [{ ...MINE, ownerEmail: null, ownerName: null }]));
-    if (r.refused) throw new Error("unexpected refusal");
-    expect(r.results).toHaveLength(0);
-  });
-
-  it("does not guess: an owner email differing only by case is resolved by the resolver, not by the lookup", async () => {
-    // The lookup passes the email through untouched. Normalisation belongs to
-    // the resolver, which is tested against the real table; here a resolver
-    // that does not match must produce a withheld record.
-    const strict = deps(resolved(), [{ ...MINE, ownerEmail: "ME@WorldStudentAdvisors.com" }]);
-    strict.resolveOwner = vi.fn(async (e: string | null) => (e && OWNER_MAP[e] !== undefined ? OWNER_MAP[e] : null));
-    const r = await ask(strict);
-    if (r.refused) throw new Error("unexpected refusal");
-    expect(r.results).toHaveLength(0);
-  });
-});
-
-describe("4. searching by phone, email or name cannot leak another student", () => {
+describe("3. searching by phone, email or name returns the same records", () => {
   for (const by of ["phone", "email", "name"] as LookupBy[]) {
-    it(`by ${by}: the colleague's student never appears`, async () => {
+    it(`by ${by}: both students appear and the mode is recorded`, async () => {
       const r = await ask(deps(resolved()), by);
       if (r.refused) throw new Error("unexpected refusal");
-      expect(r.results.map(x => x.personId)).toEqual([1001]);
-      expect(JSON.stringify(r)).not.toContain("Theirs Fixture");
+      expect(r.results.map(x => x.personId).sort()).toEqual([1001, 2002]);
       expect(r.searchedBy).toBe(by);
     });
   }
@@ -236,8 +211,8 @@ describe("6. the lookup is auditable against the named staff identity", () => {
     expect(e.permissionDecision).toBe("allowed");
     expect(e.requestedCapability).toBe("crm:lookup");
     expect(e.connector).toBe("pipedrive");
-    expect(e.permissionReason).toContain("1 returned, 1 withheld");
-    expect(e.targetResourceId).toBe("person:1001");
+    expect(e.permissionReason).toContain("2 returned; all records open to staff");
+    expect(e.targetResourceId).toBe("person:1001,person:2002");
   });
 
   it("records a refusal against the staff id too", async () => {
@@ -256,10 +231,10 @@ describe("6. the lookup is auditable against the named staff identity", () => {
     expect(JSON.stringify(e)).not.toContain("900001");
   });
 
-  it("never writes a withheld record's id", async () => {
+  it("records every matched id, because every match is returned", async () => {
     const d = deps(resolved());
     await ask(d);
-    expect(JSON.stringify(d.audit.mock.calls[0][0])).not.toContain("2002");
+    expect(d.audit.mock.calls[0][0].targetResourceId).toContain("person:2002");
   });
 });
 
@@ -279,7 +254,7 @@ describe("7. a session with no individual identity gets nothing", () => {
 });
 
 describe("positive controls", () => {
-  it("organisation scope sees both and withholds nothing", async () => {
+  it("organisation scope sees both, exactly as own_applicants now does", async () => {
     const r = await ask(deps(resolved({ caseScope: "organisation", baseAccessLevel: 1 })));
     if (r.refused) throw new Error("unexpected refusal");
     expect(r.results.map(x => x.personId).sort()).toEqual([1001, 2002]);

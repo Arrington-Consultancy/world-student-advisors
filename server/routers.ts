@@ -113,7 +113,8 @@ import {
   CASE_SCOPES,
   SENSITIVE_OVERLAY_MIN_LEVEL,
 } from "./access/accessControl";
-import { decideAssignment, CONSEQUENTIAL_ACTION_LIST } from "./access/administration";
+import { decideAssignment, CONSEQUENTIAL_ACTION_LIST, BOOTSTRAP_SELF_CHANGE_AUTHORITY } from "./access/administration";
+import { isBootstrapAdministrator } from "./access/bootstrapAdministrator";
 import { authenticateExecutive } from "./access/executiveAccess";
 import {
   listStaff,
@@ -676,6 +677,9 @@ export const appRouter = router({
           canAdminister: true as const,
           staff: await listStaff(),
           administratorLevel: resolution.profile.baseAccessLevel,
+          // So the screen can say which rule applies to this person's own
+          // record. A description only: assignAccess re-establishes it.
+          canChangeOwnAccess: isBootstrapAdministrator(session),
           grantableScopes: [...resolution.profile.functionalScopes],
           grantableActions: [...resolution.profile.actionPermissions],
           grantableOverlays: [...resolution.profile.sensitiveOverlays],
@@ -731,6 +735,13 @@ export const appRouter = router({
           };
         }
 
+        // Tom Arrington, 17 September 2026: the bootstrap access administrator
+        // may change their own access. Established here from the verified
+        // individual session and the environment, never from the request. The
+        // shared executive session is not an individual identity and never
+        // qualifies, whatever email it carries.
+        const bootstrapAdministrator = isBootstrapAdministrator(session);
+
         const proposed = {
           targetStaffUserId: input.targetStaffUserId,
           baseAccessLevel: input.baseAccessLevel as 1 | 2 | 3 | 4 | 5,
@@ -741,6 +752,12 @@ export const appRouter = router({
           accessStatus: input.accessStatus,
           teamId: input.teamId,
           reason: input.reason,
+          // A self-change by the bootstrap administrator is recorded against
+          // the authority that permits it, so the audit row says so itself.
+          authorityReference:
+            bootstrapAdministrator && input.targetStaffUserId === staffUserId
+              ? BOOTSTRAP_SELF_CHANGE_AUTHORITY
+              : undefined,
         };
 
         const decision = decideAssignment(
@@ -752,6 +769,7 @@ export const appRouter = router({
             sensitiveOverlays: resolution.profile.sensitiveOverlays,
             caseScope: resolution.profile.caseScope,
             status: resolution.profile.status,
+            bootstrapAdministrator,
           },
           current,
           proposed,

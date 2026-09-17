@@ -1,12 +1,18 @@
 /**
  * The staff-facing student lookup: search Pipedrive by phone, email or name
- * and return the minimum a staff member needs, filtered to what THEY are
- * allowed to see.
+ * and return the minimum a staff member needs.
  *
  * Tom Arrington scoped this on 8 September 2026 and signed it off on 9
- * September, with one concern above all others: "staff-facing" must not mean
- * the backend token quietly exposes the whole CRM to every authenticated
- * staff member. This module exists to make that impossible by construction.
+ * September with a per-record ownership filter. On 17 September 2026 he
+ * decided otherwise: "open every record to every staff member." Every
+ * record the search returns is now projected for any staff member who holds
+ * the functional scope. The paragraphs below that describe the ownership
+ * filter (steps 4 and "FAIL CLOSED ON OWNERSHIP") record the design that
+ * stood from 9 to 17 September and no longer describe the code; they are
+ * kept so the change is legible in place. What still stands: an individual
+ * sign-in with an active access assignment, the functional scope checked
+ * before Pipedrive is called, the seven-field projection, and the audit row
+ * against the named staff identity.
  *
  * WHY THIS IS NOT A WORKER. No AI worker is involved, and none gains
  * Pipedrive access here. The Access Matrix has no CRM column and
@@ -50,7 +56,7 @@
  * Dependencies are injected so every one of these properties is provable
  * in a test without a database or a live Pipedrive.
  */
-import { evaluateAccess, type CaseContext, type FunctionalScope } from "../access/accessControl";
+import { evaluateAccess, type FunctionalScope } from "../access/accessControl";
 import type { ProfileResolution } from "../access/identity";
 import type { AuditEvent, AuditAuthMethod } from "../workforce/audit";
 
@@ -80,10 +86,8 @@ export interface CrmLookupResponse {
   refused: false;
   results: CrmLookupResult[];
   /**
-   * Matches in the CRM that were outside the staff member's case scope.
-   * Follows the codebase's established pattern of reporting omission rather
-   * than silently shortening a list; no identifier of a withheld record is
-   * ever included. Tom accepted the small disclosure this represents.
+   * Always 0 since 17 September 2026, when Tom Arrington opened every
+   * student record to every staff member. Kept so callers need not change.
    */
   withheldCount: number;
   searchedBy: LookupBy;
@@ -111,8 +115,11 @@ export interface LookupDeps {
   resolveProfile: (staffUserId: number | null) => Promise<ProfileResolution>;
   /** Candidates only. Called ONLY after the coarse permission check passes. */
   search: (term: string, by: LookupBy) => Promise<CrmCandidate[]>;
-  /** Pipedrive owner email -> staff_users.id by exact match, or null. */
-  resolveOwner: (ownerEmail: string | null) => Promise<number | null>;
+  /**
+   * Pipedrive owner email -> staff_users.id. Not consulted by the lookup
+   * since 17 September 2026; accepted so existing dependency bundles keep working.
+   */
+  resolveOwner?: (ownerEmail: string | null) => Promise<number | null>;
   audit: (event: Omit<AuditEvent, "timestamp">) => void;
   now?: Date;
 }
@@ -193,38 +200,25 @@ export async function lookupStudents(
   const coarse = evaluateAccess(profile, { action: "read", functionalScope: scope }, now);
   if (!coarse.allowed) return refuse(coarse.reason);
 
-  // 3. Candidates. Nothing about them is trusted yet.
+  // 3. The search. Every record it returns is projected. Tom Arrington,
+  //    17 September 2026: "open every record to every staff member." The
+  //    per-record ownership filter that stood from 9 to 17 September (the
+  //    Pipedrive owner resolved to a staff account and used as the case
+  //    context, failing closed on an unset or unknown owner) no longer
+  //    runs. The individual sign-in and the functional scope above still do.
   const candidates = await deps.search(term, request.by);
 
-  // 4. Filter while still raw. The owner resolves to the CaseContext and the
-  //    ordinary six-step evaluation runs; the owner match feeds only the
-  //    case-scope step and can widen nothing else.
-  const permitted: CrmCandidate[] = [];
-  for (const candidate of candidates) {
-    const ownerStaffId = await deps.resolveOwner(candidate.ownerEmail);
-    const caseContext: CaseContext = {
-      assignedStaffUserIds: ownerStaffId === null ? [] : [ownerStaffId],
-      teamId: null,
-    };
-    const decision = evaluateAccess(
-      profile,
-      { action: "read", functionalScope: scope, case: caseContext },
-      now,
-    );
-    if (decision.allowed) permitted.push(candidate);
-  }
+  // 4. Projection to the seven approved fields, and nothing else.
+  const results = candidates.map(project);
+  const withheldCount = 0;
 
-  // 5. Only survivors are projected. A withheld record never reaches here.
-  const results = permitted.map(project);
-  const withheldCount = candidates.length - permitted.length;
-
-  // 6. The fact of the lookup, against the named staff identity. The search
-  //    term is a phone number or an address and is deliberately not logged;
-  //    the matched ids and the counts are what an incident review needs.
+  // 5. The fact of the lookup, against the named staff identity. The search
+  //    term is a phone number, an address or a name and is deliberately not
+  //    logged; the matched ids and the count are what an incident review needs.
   deps.audit({
     ...baseAudit,
     permissionDecision: "allowed",
-    permissionReason: `searchedBy=${request.by}; scope=${scope}. ${results.length} returned, ${withheldCount} withheld by case scope.`,
+    permissionReason: `searchedBy=${request.by}; scope=${scope}. ${results.length} returned; all records open to staff (17 September 2026).`,
     success: true,
     errorCategory: "none",
     targetResourceId: results.map(r => `person:${r.personId}`).join(",") || undefined,
