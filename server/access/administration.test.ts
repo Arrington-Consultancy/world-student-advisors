@@ -226,3 +226,121 @@ describe("values outside the approved lists are refused, not stored", () => {
     expect(decideAssignment(ADMIN, NOBODY, proposal({ sensitiveOverlays: ["all" as never] })).permitted).toBe(false);
   });
 });
+
+/**
+ * Tom Arrington, 17 September 2026: "i need to make my own approval
+ * possible, I cant test the system without this." The bootstrap access
+ * administrator, and only that account, may change their own access.
+ */
+describe("the bootstrap access administrator may change their own access (17 September 2026)", () => {
+  const BOOTSTRAP: AdministratorAccess = { ...ADMIN, bootstrapAdministrator: true };
+  const OWN: CurrentAssignment = {
+    baseAccessLevel: 1,
+    caseScope: "organisation",
+    functionalScopes: [...ADMIN.functionalScopes],
+    actionPermissions: [...ADMIN.actionPermissions],
+    sensitiveOverlays: [...ADMIN.sensitiveOverlays],
+    accessStatus: "active",
+    teamId: null,
+  };
+  const self = (overrides: Partial<ProposedAssignment> = {}) =>
+    proposal({
+      targetStaffUserId: BOOTSTRAP.staffUserId,
+      baseAccessLevel: 1,
+      caseScope: "organisation",
+      functionalScopes: [...ADMIN.functionalScopes],
+      actionPermissions: [...ADMIN.actionPermissions],
+      sensitiveOverlays: [...ADMIN.sensitiveOverlays],
+      reason: "Testing the Staff Portal end to end as the bootstrap administrator.",
+      ...overrides,
+    });
+
+  it("permits the bootstrap administrator to widen their own access, even to what they do not hold yet", () => {
+    const decision = decideAssignment(BOOTSTRAP, OWN, self({
+      functionalScopes: [...ADMIN.functionalScopes, "visa_compliance"],
+      actionPermissions: [...ADMIN.actionPermissions, "submit"],
+    }));
+    expect(decision.permitted).toBe(true);
+    if (!decision.permitted) return;
+    expect(decision.grantsToAdd).toContainEqual({ grantType: "functional_scope", value: "visa_compliance" });
+    expect(decision.grantsToAdd).toContainEqual({ grantType: "action_permission", value: "submit" });
+  });
+
+  it("permits the bootstrap administrator to narrow their own access, so a lower level can be tested", () => {
+    const decision = decideAssignment(BOOTSTRAP, OWN, self({
+      baseAccessLevel: 4,
+      caseScope: "own_applicants",
+      functionalScopes: ["enquiry_triage"],
+      actionPermissions: ["read", "access_admin"],
+      sensitiveOverlays: [],
+    }));
+    expect(decision.permitted).toBe(true);
+    if (!decision.permitted) return;
+    expect(decision.auditLines.map(l => l.changeType)).toContain("level_changed");
+    expect(decision.grantsToRevoke).toContainEqual({ grantType: "functional_scope", value: "finance" });
+  });
+
+  it("refuses the bootstrap administrator suspending or disabling their own account", () => {
+    for (const accessStatus of ["suspended", "disabled"] as const) {
+      const decision = decideAssignment(BOOTSTRAP, OWN, self({ accessStatus }));
+      expect(decision.permitted).toBe(false);
+      if (!decision.permitted) expect(decision.code).toBe("self_lockout");
+    }
+  });
+
+  it("refuses the bootstrap administrator removing access_admin from their own account", () => {
+    const decision = decideAssignment(BOOTSTRAP, OWN, self({ actionPermissions: ["read", "create", "update"] }));
+    expect(decision.permitted).toBe(false);
+    if (!decision.permitted) expect(decision.code).toBe("self_lockout");
+  });
+
+  it("still requires a reason and still refuses unknown values and overlay floors on a self-change", () => {
+    const noReason = decideAssignment(BOOTSTRAP, OWN, self({ reason: "test" }));
+    expect(noReason.permitted).toBe(false);
+    if (!noReason.permitted) expect(noReason.code).toBe("reason_missing");
+
+    const badScope = decideAssignment(BOOTSTRAP, OWN, self({ functionalScopes: ["made_up" as never] }));
+    expect(badScope.permitted).toBe(false);
+    if (!badScope.permitted) expect(badScope.code).toBe("unknown_value");
+
+    const floor = decideAssignment(BOOTSTRAP, OWN, self({
+      baseAccessLevel: 4,
+      sensitiveOverlays: ["credentials_security"],
+    }));
+    expect(floor.permitted).toBe(false);
+    if (!floor.permitted) expect(floor.code).toBe("overlay_below_minimum_level");
+  });
+
+  it("an inactive bootstrap administrator, or one without access_admin, is still refused first", () => {
+    const suspended = decideAssignment({ ...BOOTSTRAP, status: "suspended" }, OWN, self());
+    expect(suspended.permitted).toBe(false);
+    if (!suspended.permitted) expect(suspended.code).toBe("administrator_not_active");
+
+    const noAdmin = decideAssignment(
+      { ...BOOTSTRAP, actionPermissions: ["read", "create", "update"] },
+      OWN,
+      self(),
+    );
+    expect(noAdmin.permitted).toBe(false);
+    if (!noAdmin.permitted) expect(noAdmin.code).toBe("administrator_lacks_access_admin");
+  });
+
+  it("the flag changes nothing about what the bootstrap administrator may do to anybody else", () => {
+    const level3: AdministratorAccess = { ...BOOTSTRAP, baseAccessLevel: 3 };
+    const tooHigh = decideAssignment(level3, NOBODY, proposal({ baseAccessLevel: 2 }));
+    expect(tooHigh.permitted).toBe(false);
+    if (!tooHigh.permitted) expect(tooHigh.code).toBe("level_above_administrator");
+
+    const lacks = decideAssignment(BOOTSTRAP, NOBODY, proposal({ functionalScopes: ["visa_compliance"] }));
+    expect(lacks.permitted).toBe(false);
+    if (!lacks.permitted) expect(lacks.code).toBe("grant_administrator_lacks");
+  });
+
+  it("every other administrator is still refused a self-change, flag absent or false", () => {
+    for (const admin of [ADMIN, { ...ADMIN, bootstrapAdministrator: false }]) {
+      const decision = decideAssignment(admin, OWN, self());
+      expect(decision.permitted).toBe(false);
+      if (!decision.permitted) expect(decision.code).toBe("self_administration");
+    }
+  });
+});

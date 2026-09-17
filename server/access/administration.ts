@@ -15,10 +15,21 @@
  *
  * Four controls, and none of them is a matter of the caller being careful:
  *
- * NOBODY EDITS THEIR OWN ACCESS. Not their level, not their grants, not
- * their status. An administrator who can elevate themselves is not
- * constrained by their own level, which makes every other check here
- * decorative.
+ * NOBODY EDITS THEIR OWN ACCESS, WITH ONE NAMED EXCEPTION. Not their level,
+ * not their grants, not their status. An administrator who can elevate
+ * themselves is not constrained by their own level, which makes every
+ * other check here decorative. The exception, decided by Tom Arrington on
+ * 17 September 2026 ("i need to make my own approval possible, I cant test
+ * the system without this"): the BOOTSTRAP ACCESS ADMINISTRATOR, the one
+ * account whose signed-in email is the ACCESS_BOOTSTRAP_EMAIL setting, may
+ * change their own access. That account is already the root of trust: the
+ * setting is made by whoever has Railway access, who could edit the
+ * database directly, so the exception grants nothing not already
+ * reachable. It is identified by the caller from the verified session and
+ * the environment, never from the request, and it may not suspend, disable
+ * or de-administer itself, because a locked-out estate is the deadlock this
+ * module has already met once. Every other administrator still needs a
+ * second administrator.
  *
  * NOBODY GRANTS WHAT THEY DO NOT HOLD. An administrator cannot assign a
  * level above their own, nor an overlay, scope or action permission they
@@ -64,7 +75,25 @@ export interface AdministratorAccess {
   sensitiveOverlays: readonly SensitiveOverlay[];
   caseScope: CaseScope | null;
   status: "active" | "suspended" | "disabled";
+  /**
+   * True only when the caller has established, from the verified session
+   * and the ACCESS_BOOTSTRAP_EMAIL setting, that this administrator is the
+   * bootstrap access administrator. Tom Arrington, 17 September 2026. It
+   * unlocks one thing: changing their own access. It changes nothing about
+   * what they may do to anybody else. Absent means false.
+   */
+  bootstrapAdministrator?: boolean;
 }
+
+/**
+ * Written to the audit row of every self-change the bootstrap administrator
+ * makes, so a reviewer reading staff_access_changes can see at once that the
+ * change was made under the 17 September 2026 exception and not by a second
+ * administrator.
+ */
+export const BOOTSTRAP_SELF_CHANGE_AUTHORITY =
+  "Bootstrap access administrator self-change. Authorised by Tom Arrington, 17 September 2026: " +
+  "the account named in ACCESS_BOOTSTRAP_EMAIL may change its own access.";
 
 export interface ProposedAssignment {
   /** Whose access is being set. */
@@ -86,6 +115,7 @@ export type RefusalCode =
   | "administrator_not_active"
   | "administrator_lacks_access_admin"
   | "self_administration"
+  | "self_lockout"
   | "level_above_administrator"
   | "grant_administrator_lacks"
   | "overlay_below_minimum_level"
@@ -181,12 +211,34 @@ export function decideAssignment(
     );
   }
 
-  // The control that makes the rest mean anything.
-  if (administrator.staffUserId === proposed.targetStaffUserId) {
+  // The control that makes the rest mean anything, with the one named
+  // exception described at the top of this file.
+  const selfChange = administrator.staffUserId === proposed.targetStaffUserId;
+  const bootstrapSelfChange = selfChange && administrator.bootstrapAdministrator === true;
+  if (selfChange && !bootstrapSelfChange) {
     return refuse(
       "self_administration",
       "You cannot change your own access. Another administrator must make this change.",
     );
+  }
+  if (bootstrapSelfChange) {
+    // The bootstrap administrator may widen or narrow their own access but
+    // may not lock the estate out: the account stays active and keeps
+    // access_admin, or the change is refused.
+    if (proposed.accessStatus !== "active") {
+      return refuse(
+        "self_lockout",
+        `You cannot set your own access to ${proposed.accessStatus}. You are the bootstrap access ` +
+        "administrator, and an estate with no active administrator cannot be recovered from the screen.",
+      );
+    }
+    if (!proposed.actionPermissions.includes("access_admin")) {
+      return refuse(
+        "self_lockout",
+        "You cannot remove access_admin from your own account. You are the bootstrap access administrator, " +
+        "and an estate with no administrator cannot be recovered from the screen.",
+      );
+    }
   }
 
   if (proposed.reason.trim().length < 10) {
@@ -218,34 +270,43 @@ export function decideAssignment(
   // Level 1 is the most authority, so "above the administrator" is a
   // NUMERICALLY LOWER value. Getting this backwards would invert the
   // control entirely, which is why it is stated rather than inlined.
-  if (proposed.baseAccessLevel < administrator.baseAccessLevel) {
-    return refuse(
-      "level_above_administrator",
-      `You hold Level ${administrator.baseAccessLevel} and cannot assign Level ${proposed.baseAccessLevel}, ` +
-      "which carries more authority than your own.",
-    );
-  }
+  //
+  // The bootstrap administrator's own self-change is the one case these
+  // "hold it first" checks do not apply to: the point of Tom's 17 September
+  // 2026 decision is that the root-of-trust account can set its own access
+  // to test the system, which by definition means holding things it does
+  // not hold yet. Every other target, including one the bootstrap
+  // administrator changes, is still bounded by what the administrator holds.
+  if (!bootstrapSelfChange) {
+    if (proposed.baseAccessLevel < administrator.baseAccessLevel) {
+      return refuse(
+        "level_above_administrator",
+        `You hold Level ${administrator.baseAccessLevel} and cannot assign Level ${proposed.baseAccessLevel}, ` +
+        "which carries more authority than your own.",
+      );
+    }
 
-  // Nobody hands out what they do not hold.
-  for (const scope of proposed.functionalScopes) {
-    if (!administrator.functionalScopes.includes(scope)) {
-      return refuse("grant_administrator_lacks", `You cannot grant the ${scope} scope because you do not hold it.`);
+    // Nobody hands out what they do not hold.
+    for (const scope of proposed.functionalScopes) {
+      if (!administrator.functionalScopes.includes(scope)) {
+        return refuse("grant_administrator_lacks", `You cannot grant the ${scope} scope because you do not hold it.`);
+      }
     }
-  }
-  for (const action of proposed.actionPermissions) {
-    if (!administrator.actionPermissions.includes(action)) {
-      return refuse(
-        "grant_administrator_lacks",
-        `You cannot grant the ${action} permission because you do not hold it.`,
-      );
+    for (const action of proposed.actionPermissions) {
+      if (!administrator.actionPermissions.includes(action)) {
+        return refuse(
+          "grant_administrator_lacks",
+          `You cannot grant the ${action} permission because you do not hold it.`,
+        );
+      }
     }
-  }
-  for (const overlay of proposed.sensitiveOverlays) {
-    if (!administrator.sensitiveOverlays.includes(overlay)) {
-      return refuse(
-        "grant_administrator_lacks",
-        `You cannot grant the ${overlay} overlay because you do not hold it.`,
-      );
+    for (const overlay of proposed.sensitiveOverlays) {
+      if (!administrator.sensitiveOverlays.includes(overlay)) {
+        return refuse(
+          "grant_administrator_lacks",
+          `You cannot grant the ${overlay} overlay because you do not hold it.`,
+        );
+      }
     }
   }
 
