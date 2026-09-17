@@ -13,11 +13,11 @@ on:
   workflow_dispatch:
     inputs:
       mode:
-        description: "e2e: ask the question through the deployed procedure. inspect: report the shape of replies already stored for the staff member (reads only)."
+        description: "e2e: ask the question through the deployed procedure. inspect: shape of stored replies (reads only). diagnose: why recent questions did or did not find a student (reads only; question input is treated as the surname to look for)."
         required: false
         default: "e2e"
         type: choice
-        options: [e2e, inspect]
+        options: [e2e, inspect, diagnose]
       question:
         description: "The natural staff question, naming the student (e2e mode)"
         required: false
@@ -73,8 +73,9 @@ jobs:
         run: |
           SCRIPT=scripts/worker-crm-e2e.ts
           if [ "$E2E_MODE" = "inspect" ]; then SCRIPT=scripts/worker-answer-shape.ts; fi
+          if [ "$E2E_MODE" = "diagnose" ]; then SCRIPT=scripts/worker-question-diagnose.ts; fi
           railway run --service "world-student-advisors" --environment "production" -- \
-            sh -c "DATABASE_URL=\"\$WORKER_E2E_DATABASE_URL\" E2E_QUESTION=\"\$E2E_QUESTION\" E2E_STAFF_EMAIL=\"\$E2E_STAFF_EMAIL\" E2E_WORKER=\"\$E2E_WORKER\" pnpm exec tsx $SCRIPT"
+            sh -c "DATABASE_URL=\"\$WORKER_E2E_DATABASE_URL\" E2E_QUESTION=\"\$E2E_QUESTION\" E2E_STAFF_EMAIL=\"\$E2E_STAFF_EMAIL\" E2E_WORKER=\"\$E2E_WORKER\" E2E_SURNAME=\"\$E2E_QUESTION\" pnpm exec tsx $SCRIPT"
       - name: Remove the temporary database URL reference
         if: always()
         env:
