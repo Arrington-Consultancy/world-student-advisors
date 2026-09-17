@@ -294,3 +294,14 @@ describe("resolveStudentByName with a first name alone", () => {
     expect(r.note).toContain("\"Tom\" or a form of it (Thomas");
   });
 });
+
+describe("lenient extraction does not manufacture a name out of a lower-case sentence", () => {
+  it("Tom's sentence of 17 September 2026 yields no run, so the lone first name is what gets searched", () => {
+    expect(extractNameCandidates("ar ethere any toms on pipedrive", { lenient: true })).toEqual([]);
+    expect(extractSingleNameCandidate("ar ethere any toms on pipedrive")).toBe("Tom");
+  });
+  it("still reads a lower-case full name, and splits at ordinary words rather than swallowing them", () => {
+    expect(extractNameCandidates("who has joyce kitakang", { lenient: true })).toEqual(["joyce kitakang"]);
+    expect(extractNameCandidates("is joyce kitakang or any grace okoro on the crm", { lenient: true })).toEqual(["joyce kitakang", "grace okoro"]);
+  });
+});

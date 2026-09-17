@@ -78,11 +78,24 @@ const evidence = await gatherConnectorEvidence({ workerId, requestText: question
 for (const b of evidence.blocks) console.log(`  block: ${b.label}`);
 for (const n of evidence.notes) console.log(`  note: ${n.note.replace(/[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/g, "<email>")}`);
 const crmBlocks = evidence.blocks.filter(b => b.source === "pipedrive");
-check(crmBlocks.length === 1, "exactly one CRM record was read for the named student", `${crmBlocks.length} record(s)`);
+// A question that names several students at once ("are there any Toms on
+// Pipedrive") is answered from a list, not a record: the resolver hands the
+// worker every match with stage and counsellor and asks it to put the choice
+// to the staff member. That is the correct evidence for such a question.
+const listNote = evidence.notes.find(n => n.source === "pipedrive" && /are recorded with the name|closest matches are|CRM students match/.test(n.note));
+const listedNames = listNote ? Array.from(listNote.note.matchAll(/(?:: |; )([^(;:]+?) \(/g)).map(m => m[1].trim()) : [];
+const listMode = crmBlocks.length === 0 && listedNames.length >= 2;
+if (listMode) {
+  check(true, "several students were listed for the staff member to choose from", `${listedNames.length} listed`);
+} else {
+  check(crmBlocks.length === 1, "exactly one CRM record was read for the named student", `${crmBlocks.length} record(s)`);
+}
 const record = crmBlocks[0]?.data as { stageLabel?: string; counsellor?: string | null; fields?: Record<string, unknown> } | undefined;
-check(Boolean(record?.stageLabel), "record carries a stage", record?.stageLabel ?? "none");
-check(record?.counsellor !== undefined, "record carries a counsellor field", record?.counsellor ? "named" : "none");
-check(Boolean(record?.fields && Object.keys(record.fields).length > 0), "record carries the worker's approved remit fields", record?.fields ? `${Object.keys(record.fields).length} field(s)` : "none");
+if (!listMode) {
+  check(Boolean(record?.stageLabel), "record carries a stage", record?.stageLabel ?? "none");
+  check(record?.counsellor !== undefined, "record carries a counsellor field", record?.counsellor ? "named" : "none");
+  check(Boolean(record?.fields && Object.keys(record.fields).length > 0), "record carries the worker's approved remit fields", record?.fields ? `${Object.keys(record.fields).length} field(s)` : "none");
+}
 
 console.log("\n=== 5. The deployed procedure: workforce.ask, as the browser calls it ===");
 const token = await mintStaffIdentityToken(staff);
@@ -113,10 +126,16 @@ check(!deniesRecord, "answer does not claim it lacks access to the student recor
 check(!/paste|attach(ed)? (the )?(handover|case file)/i.test(text), "answer does not ask the staff member to paste the record");
 if (record?.stageLabel) check(text.toLowerCase().includes(record.stageLabel.toLowerCase().replace(/^s\d+\s*-\s*/, "").split("/")[0].trim().toLowerCase()), "answer states the student's stage", record.stageLabel);
 if (record?.counsellor) check(text.includes(record.counsellor.split(" ")[0]), "answer names the counsellor");
-check(text.toLowerCase().includes("next"), "answer addresses what happens next");
+if (listMode) {
+  const named = listedNames.filter(n => text.includes(n.split(" ")[0]) && text.includes(n.split(" ").pop() ?? n)).length;
+  check(named >= Math.min(2, listedNames.length), "answer names the students listed", `${named} of ${listedNames.length}`);
+  check(/which (one|of|student|tom|record)|which .* (do you|did you) mean|do you mean/i.test(text), "answer asks which one the staff member means");
+} else {
+  check(text.toLowerCase().includes("next"), "answer addresses what happens next");
+}
 check(!/\u2014|&mdash;/i.test(text), "answer as shown to the staff member carries no em dash");
 console.log(`  release: ${result.reason}`);
 console.log(`  brief: ${result.briefReference ?? "none"}`);
 
-console.log(`\nRESULT: ${failures === 0 ? "the worker found the student by name and answered from the live WSA record" : `${failures} check(s) failed`}.`);
+console.log(`\nRESULT: ${failures === 0 ? (listMode ? "the worker listed the matching students from the live WSA records and asked which one is meant" : "the worker found the student by name and answered from the live WSA record") : `${failures} check(s) failed`}.`);
 process.exit(failures === 0 ? 0 : 1);
