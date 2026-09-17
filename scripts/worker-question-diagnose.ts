@@ -16,6 +16,8 @@ import { and, desc, eq, gte } from "drizzle-orm";
 import { getDb } from "../server/db";
 import { staffUsers, workerConversationTurns, workforceAuditEvents } from "../drizzle/schema";
 import { extractNameCandidates } from "../server/execution/studentContext";
+import { createPipedriveReader } from "../server/pipedrive-read";
+import { ENV } from "../server/_core/env";
 
 const staffEmail = ((process.env.E2E_STAFF_EMAIL || "").trim() || (process.env.ACCESS_BOOTSTRAP_EMAIL || "").trim()).toLowerCase();
 const workerId = (process.env.E2E_WORKER || "").trim() || "james";
@@ -63,6 +65,40 @@ for (const a of lookups) {
   console.log(`  ${a.createdAt.toISOString()} ${a.workerId} ${a.permissionDecision}: ${redact(a.permissionReason).slice(0, 220)}${a.targetResourceId ? ` [${a.targetResourceId.split(",").length} person(s)]` : ""}`);
 }
 if (lookups.length === 0) console.log("  (none: no student lookup was attempted for this staff member in the window)");
+
+// Every audit row for this staff member, any worker, around each lookup that
+// returned nothing: what routed where, what executed, what was denied and why.
+console.log(`\n=== All audit rows for this staff member within 3 minutes of a lookup that returned nothing (any worker; reasons redacted) ===`);
+const empties = lookups.filter(l => /\b0 returned\b/.test(l.permissionReason) && !/\b1 returned\b/.test(l.permissionReason));
+const windows: Array<[number, number]> = [];
+for (const l of empties) {
+  const t = l.createdAt.getTime();
+  if (!windows.some(([a, b]) => t >= a && t <= b)) windows.push([t - 3 * 60 * 1000, t + 3 * 60 * 1000]);
+}
+const allRows = await db.select().from(workforceAuditEvents)
+  .where(and(eq(workforceAuditEvents.staffUserId, staff.id), gte(workforceAuditEvents.createdAt, since)))
+  .orderBy(desc(workforceAuditEvents.id)).limit(400);
+for (const [a, b] of windows) {
+  console.log(`  window ${new Date(a).toISOString()} to ${new Date(b).toISOString()}`);
+  for (const r of allRows.filter(r => r.createdAt.getTime() >= a && r.createdAt.getTime() <= b).sort((x, y) => x.id - y.id)) {
+    console.log(`    ${r.createdAt.toISOString()} ${r.workerId} ${r.requestedCapability} ${r.permissionDecision}${r.connector ? ` via ${r.connector}` : ""}${r.targetResourceId ? ` [${redact(r.targetResourceId).slice(0, 80)}]` : ""}: ${redact(r.permissionReason).slice(0, 260)}`);
+  }
+}
+
+if (surname && ENV.pipedriveApiToken) {
+  console.log(`\n=== Pipedrive: persons whose name matches the surname today (counts and timestamps only) ===`);
+  try {
+    const reader = createPipedriveReader(() => ENV.pipedriveApiToken);
+    const ids = await reader.searchPersonIds(surname, "name");
+    console.log(`  ${ids.length} person(s) match "${surname}" by name search`);
+    for (const id of ids.slice(0, 5)) {
+      const raw = await reader.getPersonRaw(id);
+      console.log(`    person ${id}: created ${String(raw?.add_time ?? "?")}, last updated ${String(raw?.update_time ?? "?")}, name words ${String(raw?.name ?? "").split(/\s+/).filter(Boolean).length}`);
+    }
+  } catch (error) {
+    console.log(`  Pipedrive search failed: ${String((error as Error)?.message ?? error).slice(0, 160)}`);
+  }
+}
 
 console.log(`\n=== Other audit rows for ${workerId} and this staff member in the window, by capability and decision ===`);
 const others = await db.select().from(workforceAuditEvents)
