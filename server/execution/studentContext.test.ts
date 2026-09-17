@@ -29,6 +29,10 @@ describe("extractNameCandidates", () => {
     expect(extractNameCandidates("James, what does the CAS Status field mean?")).toEqual([]);
     expect(extractNameCandidates("Is this application ready to send?")).toEqual([]);
   });
+  it("stops a name where an employer or address begins: the question of 16 September 2026", () => {
+    expect(extractNameCandidates("How is managing this lead?  Joyce Kitakang Federal Ministry of Environment Department of Forestry, Utako District, Abuja, Nigeria")).toEqual(["Joyce Kitakang"]);
+    expect(extractNameCandidates("Peter Agada Lagos State University applicant")).toEqual(["Peter Agada"]);
+  });
   it("never proposes a single word, and stops at four", () => {
     expect(extractNameCandidates("Ask Vivian please")).toEqual([]);
     expect(extractNameCandidates("Alpha Beta Gamma Delta Epsilon Zeta arrived")).toEqual([]);
@@ -61,8 +65,8 @@ function deps(found: CrmCandidate[], scopes = ["admissions"]): { deps: LookupDep
 const ask = { workerId: "james" as const, staffUserId: 7, authMethod: "entra_sso" as const };
 
 describe("searchTerms", () => {
-  it("tries the full name, then first and last, then the surname, and never a first name alone", () => {
-    expect(searchTerms("Vivian Ene Onuh")).toEqual(["Vivian Ene Onuh", "Vivian Onuh", "Onuh"]);
+  it("tries the full name, then first and last, then the first two words, then the surname, and never a first name alone", () => {
+    expect(searchTerms("Vivian Ene Onuh")).toEqual(["Vivian Ene Onuh", "Vivian Onuh", "Vivian Ene", "Onuh"]);
     expect(searchTerms("Peter Agada")).toEqual(["Peter Agada", "Agada"]);
   });
 });
@@ -128,6 +132,22 @@ describe("resolveStudentByName", () => {
     const r = await resolveStudentByName({ ...ask, staffUserId: null, authMethod: "shared_password", name: "Vivian Ene Onuh" }, d.deps);
     expect(r.kind).toBe("refused");
     expect(d.searches).toEqual([]);
+  });
+});
+
+describe("the question of 16 September 2026, replayed against a search double", () => {
+  it("finds the student from the pasted line, exactly, by her first two names", async () => {
+    const d = deps([]);
+    d.deps.search = async term => { d.searches.push(term); return term === "Joyce Kitakang" ? [candidate(8534, "Joyce Iya Kitakang", "Getting to know you")] : []; };
+    const r = await resolveStudentByName({ ...ask, name: "Joyce Kitakang" }, d.deps);
+    expect(r).toEqual({ kind: "one", personId: 8534, name: "Joyce Iya Kitakang" });
+  });
+  it("even the whole four-word run would now find her and treat her as the person meant", async () => {
+    const d = deps([]);
+    d.deps.search = async term => { d.searches.push(term); return term === "Joyce Kitakang" || term === "Joyce" ? [candidate(8534, "Joyce Iya Kitakang", "Getting to know you")] : []; };
+    const r = await resolveStudentByName({ ...ask, name: "Joyce Kitakang Federal Ministry" }, d.deps);
+    expect(r.kind).toBe("one");
+    expect(d.searches.slice(0, 3)).toEqual(["Joyce Kitakang Federal Ministry", "Joyce Ministry", "Joyce Kitakang"]);
   });
 });
 

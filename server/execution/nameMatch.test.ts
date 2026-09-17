@@ -40,6 +40,9 @@ describe("scoring and ranking", () => {
     expect(nameMatchScore("Joyce Kitakhang", "Joyce Iya Kitakang").score).toBeGreaterThan(0.95);
     expect(nameMatchScore("Tom Karl", "Thomas Carl").exact).toBe(true);
     expect(nameMatchScore("Joyce Okoro", "Joyce Iya Kitakang").score).toBeLessThan(0.76);
+    // Trailing words that are not the name cost nothing when the record's own first and last names are present.
+    expect(nameMatchScore("Joyce Kitakang Federal Ministry", "Joyce Iya Kitakang").exact).toBe(true);
+    expect(nameMatchScore("Joyce Adeyemi Federal Ministry", "Joyce Iya Kitakang").score).toBeLessThan(0.76);
   });
   it("one clear near match is probable; two close ones are several; nothing alike is none", () => {
     const people = [{ personId: 1, name: "Joyce Iya Kitakang" }, { personId: 2, name: "Grace Okoro" }, { personId: 3, name: "Joy Adeyemi" }];

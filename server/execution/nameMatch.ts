@@ -170,14 +170,27 @@ export function nameMatchScore(typed: string, recorded: string): { score: number
   const typedParts = typed.trim().split(/\s+/).filter(Boolean);
   const recordedParts = recorded.trim().split(/\s+/).filter(Boolean);
   if (typedParts.length === 0 || recordedParts.length === 0) return { score: 0, exact: false };
+  // Read from both sides. From the typed side, a typed middle name the
+  // record does not carry ("Vivian Ene Onuh" against "VIVIAN ONUH") costs
+  // nothing. From the record's side, trailing words the person typed that
+  // are not part of the name at all ("Joyce Kitakang Federal Ministry"
+  // against "Joyce Iya Kitakang") cost nothing either, provided the record's
+  // own first and last names are both present in what was typed. The better
+  // reading wins; neither can invent a match the other side contradicts.
+  const fromTyped = onePerspective(typedParts, recordedParts);
+  const fromRecord = onePerspective(recordedParts, typedParts);
+  return fromRecord.score > fromTyped.score ? fromRecord : fromTyped;
+}
+
+function onePerspective(parts: string[], against: string[]): { score: number; exact: boolean } {
   let weighted = 0, weightTotal = 0, exact = true;
-  typedParts.forEach((part, index) => {
-    const best = Math.max(...recordedParts.map(r => partSimilarity(part, r)));
-    const isMiddle = index > 0 && index < typedParts.length - 1;
-    // A typed middle name the record simply does not carry ("Vivian Ene
-    // Onuh" against "VIVIAN ONUH") is neither a match nor a mismatch.
-    if (isMiddle && best < 0.6) return;
-    const weight = index === typedParts.length - 1 ? 2 : 1;
+  parts.forEach((part, index) => {
+    const best = Math.max(...against.map(r => partSimilarity(part, r)));
+    const isMiddle = index > 0 && index < parts.length - 1;
+    // A middle name either matches nearly exactly or is treated as absent;
+    // a short middle name ("Iya") scores spuriously against long words.
+    if (isMiddle && best < 0.85) return;
+    const weight = index === parts.length - 1 ? 2 : 1;
     weighted += best * weight;
     weightTotal += weight;
     if (best < 1) exact = false;

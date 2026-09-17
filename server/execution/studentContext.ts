@@ -35,7 +35,16 @@ const NOT_A_NAME_START = new Set([
   "review", "prepare", "explain", "summarise", "summarize", "confirm", "advise", "draft", "write", "list", "compare", "assess",
 ]);
 /** Capitalised words that appear inside a run but belong to WSA vocabulary, not a name. */
-const NOT_A_NAME_WORD = new Set(["University", "College", "School", "Institute", "Academy", "Pipedrive", "CRM", "WSA", "UK", "USA", "CAS", "UKVI", "IELTS", "UCAS", "MSc", "MA", "MBA", "PhD", "BSc", "BA", "Status", "Stage", "Offer", "Visa", "Application", "September", "October", "November", "December", "January", "February", "March", "April", "May", "June", "July", "August", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday"]);
+const NOT_A_NAME_WORD = new Set([
+  "University", "College", "School", "Institute", "Academy", "Pipedrive", "CRM", "WSA", "UK", "USA", "CAS", "UKVI", "IELTS", "UCAS", "MSc", "MA", "MBA", "PhD", "BSc", "BA",
+  "Status", "Stage", "Offer", "Visa", "Application", "September", "October", "November", "December", "January", "February", "March", "April", "May", "June", "July", "August",
+  "Monday", "Tuesday", "Wednesday", "Thursday", "Friday",
+  // Where a name stops and an employer or address begins. Tom Arrington's
+  // question of 16 September 2026 read "Joyce Kitakang Federal Ministry of
+  // Environment ...", and the whole run was taken as the name.
+  "Federal", "Ministry", "Department", "District", "Government", "State", "Bank", "Company", "Limited", "Ltd", "Hospital", "Office", "Council", "Authority", "Agency", "Commission",
+  "Nigeria", "Abuja", "Lagos", "Ibadan", "Kano", "Kenya", "Nairobi", "Ghana", "Accra", "Uganda", "Kampala", "Cameroon", "London", "England", "Scotland", "Germany", "Canada",
+]);
 
 const WORD = /^[A-Z][A-Za-z'’-]*$/;
 const LENIENT_WORD = /^[A-Za-z][A-Za-z'’-]{1,}$/;
@@ -57,8 +66,11 @@ export function extractNameCandidates(text: string, options: { lenient?: boolean
   let run: string[] = [];
   const flush = () => {
     while (run.length > 0 && NOT_A_NAME_START.has(run[0].toLowerCase())) run.shift();
+    // A vocabulary word ends the name: what precedes it may still be one.
+    const stop = run.findIndex(w => NOT_A_NAME_WORD.has(w) || (options.lenient && NOT_A_NAME_START.has(w.toLowerCase())));
+    if (stop >= 0) run = run.slice(0, stop);
     while (run.length > 0 && NOT_A_NAME_START.has(run[run.length - 1].toLowerCase())) run.pop();
-    if (run.length >= 2 && run.length <= 4 && !run.some(w => NOT_A_NAME_WORD.has(w) || (options.lenient && NOT_A_NAME_START.has(w.toLowerCase())))) {
+    if (run.length >= 2 && run.length <= 4) {
       const name = run.join(" ");
       if (!out.includes(name)) out.push(name);
     }
@@ -173,11 +185,17 @@ export async function resolveStudentByName(input: ResolveInput, deps: LookupDeps
   return { kind: "none", note: `No CRM student matching "${input.name}" is within the staff member's access, including near spellings and short forms of the name.${withheld} Ask for the student's email address or telephone number, or the name as it was given at sign-up.` };
 }
 
-/** The full name, then first and last, then the surname alone; never a first name alone. */
+/**
+ * The full name, then first and last, then (for a long run) the first two
+ * words, then the surname alone; never a first name alone. The first two
+ * words matter because a pasted line often carries the person's employer
+ * or address after the name.
+ */
 export function searchTerms(name: string): string[] {
   const parts = name.trim().split(/\s+/).filter(Boolean);
   const out = [parts.join(" ")];
   if (parts.length >= 3) out.push(`${parts[0]} ${parts[parts.length - 1]}`);
+  if (parts.length >= 3) out.push(`${parts[0]} ${parts[1]}`);
   if (parts.length >= 2) out.push(parts[parts.length - 1]);
   return Array.from(new Set(out));
 }
