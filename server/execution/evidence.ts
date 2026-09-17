@@ -24,7 +24,7 @@
  * guess, which is what Universal Worker Instructions section 6 requires.
  */
 import { readPipedriveRecord, searchPipedrive } from "../workforce/connectors/pipedrive";
-import { extractNameCandidates, extractSingleNameCandidate, resolveStudentByName, type StudentResolution } from "./studentContext";
+import { extractNameCandidates, extractSingleNameCandidate, resolveStudentByName, type ListedStudent, type StudentResolution } from "./studentContext";
 import { readSharePointRecord } from "../workforce/connectors/sharepoint";
 import { WORKER_CRM_SCOPE } from "../workforce/crmScope";
 import { WORKER_SHAREPOINT_LOCATIONS } from "../workforce/sharePointLocations";
@@ -45,9 +45,22 @@ export interface EvidenceNote {
   note: string;
 }
 
+/** Several students matched one name: the list the worker must give in full. */
+export interface StudentList {
+  /** The name as the staff member typed it. */
+  typed: string;
+  students: ListedStudent[];
+}
+
 export interface GatheredEvidence {
   blocks: EvidenceBlock[];
   notes: EvidenceNote[];
+  /**
+   * Lists of matching students, structured, alongside the notes that
+   * describe them in words. The execution layer checks the reply names
+   * every student in each list and completes it when it does not.
+   */
+  studentLists?: StudentList[];
 }
 
 const EMAIL = /[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/g;
@@ -83,6 +96,7 @@ export async function gatherConnectorEvidence(input: {
 }): Promise<GatheredEvidence> {
   const blocks: EvidenceBlock[] = [];
   const notes: EvidenceNote[] = [];
+  const studentLists: StudentList[] = [];
   const base = { workerId: input.workerId, staffUserId: input.staffUserId, authMethod: input.authMethod, caseId: input.caseId };
 
   // CRM: only where the controlled record grants anything, and only for a
@@ -125,6 +139,9 @@ export async function gatherConnectorEvidence(input: {
           notes.push({ source: "pipedrive", note: explanation });
         } else {
           notes.push({ source: "pipedrive", note: resolution.note });
+          if (resolution.kind === "many" && resolution.students && resolution.students.length > 0) {
+            studentLists.push({ typed: resolution.typed ?? name, students: resolution.students });
+          }
         }
       }
     }
@@ -152,5 +169,5 @@ export async function gatherConnectorEvidence(input: {
     }
   }
 
-  return { blocks, notes };
+  return { blocks, notes, studentLists };
 }
