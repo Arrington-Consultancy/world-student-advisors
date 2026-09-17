@@ -276,7 +276,7 @@ describe("resolveStudentByName with a first name alone", () => {
     expect(r.note).toContain("Tom Adeyemi");
     expect(r.note).toContain("Thomas Okafor (Getting to know you, counsellor Eldah Therone)");
     expect(r.note).not.toContain("Tomasz");
-    expect(r.note).toContain("ask which one they mean");
+    expect(r.note).toContain("ask which one the staff member means");
     expect(d.searches[0]).toBe("name:Tom");
     expect(d.searches).toContain("name:Thomas");
   });

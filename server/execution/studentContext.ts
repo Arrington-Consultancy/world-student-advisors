@@ -283,7 +283,8 @@ async function resolveByFirstName(
     kind: "many",
     note:
       `${all.length} CRM students are recorded with the name "${typed}"${formsText}: ${shown.map(describe).join("; ")}${more}. ` +
-      "Give the staff member this list, with each student's stage and counsellor, and ask which one they mean before using any single record.",
+      "Your reply must name every one of these students, one per line, each with their stage and counsellor exactly as given here; " +
+      "a count or a summary in place of the names is not an answer. Then ask which one the staff member means before using any single record.",
   };
 }
 
