@@ -37,7 +37,7 @@ export function renderStudentList(list: StudentList): string {
   const lines = list.students.map(
     s => `- ${s.name}: ${s.stageLabel}${s.counsellor ? `, counsellor ${s.counsellor}` : ", no counsellor recorded"}`,
   );
-  return `Every student recorded as "${list.typed}" or a form of that name (${list.students.length}):\n${lines.join("\n")}`;
+  return `Every student recorded as "${list.typed}" or a form of that name (${list.students.length}):\n${lines.join("\n")}\nSay which of these you mean and I will use that record.`;
 }
 
 export interface CompletedReply {
