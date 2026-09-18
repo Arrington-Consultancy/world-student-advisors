@@ -81,7 +81,11 @@ for (const heading of ["QUESTION", "WHAT I AM TESTING", "EXPECTED CONTENT", "FOL
   check(interviewer.toUpperCase().includes(heading), `interviewer structure carries ${heading}`);
 }
 check(/\b85\b/.test(interviewer), "interviewer structure states the 85 threshold");
-check(!/\b\d{1,3}\s*(\/|out of)\s*100\b(?![^.]*(after|only|threshold))/i.test(interviewer), "no readiness score is given before the live mock");
+// A score given now would read "scored 62 out of 100" or "readiness score: 70/100". The framework's own
+// sentence stating the 85 threshold is not a score, so a sentence naming the threshold is excepted.
+const scoreSentences = interviewer.split(/(?<=[.!?])\s+|\n+/).filter(sentence =>
+  /\b\d{1,3}\s*(\/|out of)\s*100\b/i.test(sentence) && !/threshold|\b85\b/i.test(sentence));
+check(scoreSentences.length === 0, "no readiness score is given before the live mock", scoreSentences.slice(0, 2).join(" | "));
 const g1 = guardInterviewOutput(student, kind);
 const g2 = guardInterviewOutput(interviewer, kind);
 check(g1.ok && g2.ok, "both documents pass the guards as released", [...g1.failed, ...g2.failed].join("; "));
