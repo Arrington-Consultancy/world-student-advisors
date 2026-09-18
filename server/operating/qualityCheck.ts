@@ -36,7 +36,8 @@ export type QualityFindingCode =
   | "heading_spam"
   | "repeated_summary"
   | "one_sentence_paragraph_run"
-  | "artificial_warmth";
+  | "artificial_warmth"
+  | "false_completion_claim";
 
 export interface QualityFinding {
   code: QualityFindingCode;
@@ -106,6 +107,10 @@ export const FINDING_GUIDANCE: Readonly<Record<QualityFindingCode, { rule: strin
     rule: "WSA Writing Standards, plain language",
     remedy: "Cut it. Warmth that is not felt reads as a script, and staff notice faster than anyone.",
   },
+  false_completion_claim: {
+    rule: "Universal Worker Instructions, section 6, evidence before assertion; Tom Arrington, 18 September 2026",
+    remedy: "Nothing exists until it is written. Produce the work in this reply, or say plainly that it has not been produced yet.",
+  },
   formulaic_contrast: {
     rule: "WSA Writing Standards, plain language",
     remedy: "State what it is. The contrast adds rhythm, not meaning.",
@@ -173,6 +178,12 @@ export interface QualityCheckInput {
   workerBoundaryBreaches: readonly string[];
   /** True where every contributing specialist was on insufficient evidence (§17). */
   evidenceInsufficient: boolean;
+  /**
+   * The reply claims something was already produced, sent or shared, and
+   * the conversation shows it was not. The execution layer establishes this
+   * from the stored turns; the text is the claim itself, for the excerpt.
+   */
+  unfoundedCompletionClaim?: string | null;
 }
 
 export interface QualityCheckResult {
@@ -301,6 +312,15 @@ export function runQualityCheck(input: QualityCheckInput): QualityCheckResult {
   if (input.hasUnresolvedDisagreement && !input.disagreementVisibleInText) {
     findings.push(finding("unresolved_disagreement_hidden", "blocking",
       "Specialists disagree materially but the output does not say so."));
+  }
+
+  // A thing said to exist that the conversation does not contain. Tom
+  // Arrington, 18 September 2026: "I have already produced the handover
+  // note", about a note nobody had written.
+  if (input.unfoundedCompletionClaim) {
+    findings.push(finding("false_completion_claim", "blocking",
+      `The reply says work was already produced or sent ("${input.unfoundedCompletionClaim}"), and nothing earlier in this conversation contains it.`,
+      input.unfoundedCompletionClaim));
   }
 
   // Student protection: no guarantees (WSA Core §4.5 and §6).

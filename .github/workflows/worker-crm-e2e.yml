@@ -30,6 +30,10 @@ on:
         description: "Worker id to force (default: whatever the router chooses)"
         required: false
         default: ""
+      follow_up:
+        description: "e2e mode: optional short second message sent into the same conversation after the first answer (e.g. yes, go ahead, no thanks)"
+        required: false
+        default: ""
       show_questions:
         description: "diagnose mode only: 1 prints the acting staff member's own stored questions inside from..to"
         required: false
@@ -81,6 +85,7 @@ jobs:
           E2E_QUESTION: ${{ github.event.inputs.question }}
           E2E_STAFF_EMAIL: ${{ github.event.inputs.staff_email }}
           E2E_WORKER: ${{ github.event.inputs.worker }}
+          E2E_FOLLOW_UP: ${{ github.event.inputs.follow_up }}
           E2E_MODE: ${{ github.event.inputs.mode }}
           E2E_SHOW_QUESTIONS: ${{ github.event.inputs.show_questions }}
           E2E_FROM: ${{ github.event.inputs.from }}
@@ -90,7 +95,7 @@ jobs:
           if [ "$E2E_MODE" = "inspect" ]; then SCRIPT=scripts/worker-answer-shape.ts; fi
           if [ "$E2E_MODE" = "diagnose" ]; then SCRIPT=scripts/worker-question-diagnose.ts; fi
           railway run --service "world-student-advisors" --environment "production" -- \
-            sh -c "DATABASE_URL=\"\$WORKER_E2E_DATABASE_URL\" E2E_QUESTION=\"\$E2E_QUESTION\" E2E_STAFF_EMAIL=\"\$E2E_STAFF_EMAIL\" E2E_WORKER=\"\$E2E_WORKER\" E2E_SURNAME=\"\$E2E_QUESTION\" E2E_SHOW_QUESTIONS=\"\$E2E_SHOW_QUESTIONS\" E2E_FROM=\"\$E2E_FROM\" E2E_TO=\"\$E2E_TO\" pnpm exec tsx $SCRIPT"
+            sh -c "DATABASE_URL=\"\$WORKER_E2E_DATABASE_URL\" E2E_QUESTION=\"\$E2E_QUESTION\" E2E_STAFF_EMAIL=\"\$E2E_STAFF_EMAIL\" E2E_WORKER=\"\$E2E_WORKER\" E2E_FOLLOW_UP=\"\$E2E_FOLLOW_UP\" E2E_SURNAME=\"\$E2E_QUESTION\" E2E_SHOW_QUESTIONS=\"\$E2E_SHOW_QUESTIONS\" E2E_FROM=\"\$E2E_FROM\" E2E_TO=\"\$E2E_TO\" pnpm exec tsx $SCRIPT"
       - name: Remove the temporary database URL reference
         if: always()
         env:

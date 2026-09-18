@@ -75,6 +75,36 @@ export function extractIdentifiers(text: string): { emails: string[]; phones: st
   return { emails, phones, personIds };
 }
 
+/**
+ * The student names a message proposes: capitalised runs first, then a
+ * message typed without capitals read leniently, then a lone first name
+ * ("any Toms on Pipedrive"); at most two.
+ */
+export function nameCandidatesIn(text: string): string[] {
+  const strict = extractNameCandidates(text);
+  const runs = strict.length > 0 ? strict : extractNameCandidates(text, { lenient: true });
+  const single = runs.length === 0 ? extractSingleNameCandidate(text) : null;
+  return (runs.length > 0 ? runs : single ? [single] : []).slice(0, 2);
+}
+
+function namesSomebody(text: string): boolean {
+  const ids = extractIdentifiers(text);
+  return ids.personIds.length > 0 || ids.emails.length > 0 || ids.phones.length > 0 || nameCandidatesIn(text).length > 0;
+}
+
+/**
+ * Which message the student is read from. The current one when it names
+ * anybody; otherwise the most recent earlier message from the staff member
+ * that does, so "yes" three turns into a conversation about one student is
+ * still about that student. Falls back to the current text, which then
+ * yields no evidence and an honest note.
+ */
+export function evidenceSourceText(requestText: string, priorRequests: readonly string[]): string {
+  if (namesSomebody(requestText)) return requestText;
+  for (const earlier of priorRequests) if (namesSomebody(earlier)) return earlier;
+  return requestText;
+}
+
 /** Designated locations this request names, by their first path segment. */
 export function mentionedLocations(text: string, workerId: WorkerId): string[] {
   const lower = text.toLowerCase();
@@ -93,6 +123,14 @@ export async function gatherConnectorEvidence(input: {
   caseId?: string;
   /** Test seam only; production uses the real staff lookup on the WSA OAuth grant. */
   resolveByName?: typeof resolveStudentByName;
+  /**
+   * The staff member's earlier messages in this conversation, newest
+   * first. When the current message names nobody ("yes", "go ahead"), the
+   * student is the one they named before, and their record is gathered
+   * again so the worker answers the follow-up from evidence, not from
+   * memory of its own words. Tom Arrington, 18 September 2026.
+   */
+  priorRequests?: readonly string[];
 }): Promise<GatheredEvidence> {
   const blocks: EvidenceBlock[] = [];
   const notes: EvidenceNote[] = [];
@@ -109,19 +147,16 @@ export async function gatherConnectorEvidence(input: {
   // Operational Standard v1.0 section 12: use the live record so staff do not
   // re-enter known history; never merge ambiguous identities silently.
   if (WORKER_CRM_SCOPE[input.workerId]) {
-    const ids = extractIdentifiers(input.requestText);
+    // The text the student is read from: this message, or, when it names
+    // nobody and carries no identifier, the most recent earlier message
+    // from the same staff member that does.
+    const sourceText = evidenceSourceText(input.requestText, input.priorRequests ?? []);
+    const ids = extractIdentifiers(sourceText);
     const personIds = new Set<number>(ids.personIds);
     const labels = new Map<number, string>();
     if (ids.personIds.length === 0 && ids.emails.length === 0 && ids.phones.length === 0) {
       const resolve = input.resolveByName ?? resolveStudentByName;
-      // Capitalised names first; a message typed without capitals is read
-      // leniently only when that finds nothing.
-      const strict = extractNameCandidates(input.requestText);
-      const runs = strict.length > 0 ? strict : extractNameCandidates(input.requestText, { lenient: true });
-      // A lone first name ("any Toms on Pipedrive") only when no fuller name
-      // was found; the resolver lists everybody of that name.
-      const single = runs.length === 0 ? extractSingleNameCandidate(input.requestText) : null;
-      const names = (runs.length > 0 ? runs : single ? [single] : []).slice(0, 2);
+      const names = nameCandidatesIn(sourceText);
       for (const name of names) {
         const resolution: StudentResolution = await resolve({ name, workerId: input.workerId, staffUserId: input.staffUserId, authMethod: input.authMethod });
         if (resolution.kind === "one") {
