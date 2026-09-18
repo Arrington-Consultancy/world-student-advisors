@@ -29,6 +29,14 @@ import type { ControlledBrief } from "./briefs";
 import { composeUniversalSection } from "./universalInstructions";
 import type { WorkerContext } from "../workforce/context";
 import type { GatheredEvidence } from "./evidence";
+import { listWorkers } from "../workforce/registry";
+
+/** The approved, Staff Portal authorised specialists a worker may name, from the register. */
+function staffFacingRoster() {
+  return listWorkers().filter(
+    w => w.id !== "staff_receptionist" && w.id !== "wsa_governance_assurance" && w.staffPortalExecutionStatus === "staff_portal_authorised",
+  );
+}
 
 export interface ContributorInput {
   fromWorkerId: string;
@@ -141,6 +149,20 @@ export function composeSystemPrompt(inputs: PromptInputs): string {
   // the note already existed. The platform now tells the worker when a short
   // reply answers its own previous offer (FOLLOW-UP CONTEXT in the request);
   // these are the standing terms for that situation.
+  // Tom Arrington, 18 September 2026: asked which specialist should handle a
+  // scholarship case, a worker could not name Harper although the Worker
+  // Register is authoritative. Every worker now carries the register's
+  // roster, so "who handles this" is answered by name, with the boundary.
+  lines.push("WSA SPECIALISTS, FROM THE APPROVED WORKER REGISTER (the only colleagues you may name).");
+  for (const colleague of staffFacingRoster()) {
+    lines.push(`- ${colleague.canonicalName}, ${colleague.roleTitle}: ${colleague.personality.whatFor} Not: ${colleague.personality.whatNotFor}`);
+  }
+  lines.push(
+    "- When asked who should handle something, name the specialist above who owns it and say where your own " +
+    "remit ends and theirs begins. Never invent a specialist or a role that is not listed.",
+  );
+  lines.push("");
+
   lines.push("FOLLOW-UPS AND OFFERS.");
   lines.push(
     "- The messages before this one are this same conversation. A short reply from the staff member answers " +

@@ -21,6 +21,7 @@ import { lookupStudents, type LookupDeps } from "../crm/staffLookup";
 import { oauthLookupDeps } from "../crm/lookupDeps";
 import { WORKER_FUNCTIONAL_SCOPE } from "../access/workerScope";
 import { fuzzySearchTerms, isKnownNameForm, nameForms, normaliseNamePart, rankNameMatches, sameNameForm } from "./nameMatch";
+import { isVocabularyWord } from "../workforce/intent";
 import type { AuditAuthMethod } from "../workforce/audit";
 import type { WorkerId } from "../workforce/types";
 
@@ -68,6 +69,10 @@ export function extractNameCandidates(text: string, options: { lenient?: boolean
   const propose = (segment: string[]) => {
     while (segment.length > 0 && NOT_A_NAME_START.has(segment[0].toLowerCase())) segment.shift();
     while (segment.length > 0 && NOT_A_NAME_START.has(segment[segment.length - 1].toLowerCase())) segment.pop();
+    // In lower-case text a run of ordinary English ("now needs", "help
+    // finding") is not a name. Tom Arrington, 18 September 2026: such a run
+    // became a CRM search and surfaced four unrelated students.
+    if (options.lenient && segment.some(w => isVocabularyWord(w))) return;
     if (segment.length >= 2 && segment.length <= 4) {
       const name = segment.join(" ");
       if (!out.includes(name)) out.push(name);
@@ -186,6 +191,12 @@ export async function resolveStudentByName(input: ResolveInput, deps: LookupDeps
   // the lookup itself.
   const near = new Map<number, { personId: number; name: string; stageLabel: string; counsellor: string | null }>();
   const describe = (c: { name: string; stageLabel: string; counsellor: string | null }) => `${c.name} (${c.stageLabel}${c.counsellor ? `, counsellor ${c.counsellor}` : ""})`;
+  // Does what was typed read as a person's name at all: two or more parts,
+  // none an ordinary English or WSA vocabulary word? If not, only an exact
+  // hit counts. A stray phrase ("now needs") never earns a probable match or
+  // a list of real students' names. Tom Arrington, 18 September 2026.
+  const nameParts = input.name.trim().split(/\s+/).filter(Boolean);
+  const readsAsName = nameParts.length >= 2 && nameParts.every(p => p.length >= 2 && !isVocabularyWord(p));
   for (const term of searchTerms(input.name)) {
     const result = await lookupStudents(
       { staffUserId: input.staffUserId, authMethod: input.authMethod, term, by: "name", scope },
@@ -204,6 +215,7 @@ export async function resolveStudentByName(input: ResolveInput, deps: LookupDeps
       const one = ranking.match.candidate;
       return { kind: "one", personId: one.personId, name: one.name };
     }
+    if (!readsAsName) continue;
     if (ranking.kind === "probable") {
       const m = ranking.match.candidate;
       return { kind: "probable", personId: m.personId, name: m.name, typed: input.name, score: Math.round(ranking.match.score * 100) / 100, alternatives: ranking.others.map(o => describe(o.candidate)) };
@@ -223,6 +235,9 @@ export async function resolveStudentByName(input: ResolveInput, deps: LookupDeps
   // alternative spellings, then rank whatever comes back against what was
   // typed. One clear near match is offered as probable and questioned; a
   // few are put to the person by name; none stays none.
+  if (!readsAsName) {
+    return { kind: "none", note: `"${input.name}" does not read as a student's name and no record is recorded exactly under it. If a particular student is meant, ask for their full name, email address or telephone number.` };
+  }
   for (const term of fuzzySearchTerms(input.name)) {
     const result = await lookupStudents(
       { staffUserId: input.staffUserId, authMethod: input.authMethod, term, by: "name", scope },

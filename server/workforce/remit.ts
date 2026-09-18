@@ -108,7 +108,8 @@ export type Concept =
   | "cold" | "prospect" | "outreach"
   | "count" | "report" | "trend" | "most" | "channel_source"
   | "person_specific"
-  | "crm" | "counsellor" | "managing" | "stage" | "named_person";
+  | "crm" | "counsellor" | "managing" | "stage" | "named_person"
+  | "hypothetical" | "who_handles";
 
 /** An outcome and what has to be present in a request for it to be the one being asked for. */
 export interface OutcomeDefinition {
@@ -341,7 +342,11 @@ export const OUTCOMES: readonly OutcomeDefinition[] = [
       ["managing", "student"], ["managing", "lead"], ["managing", "case"], ["managing", "enquiry"], ["managing", "named_person"],
       ["stage", "student"], ["stage", "lead"], ["stage", "case"], ["stage", "enquiry"], ["stage", "named_person"],
     ],
-    blockedBy: ["count", "report", "trend", "most"],
+    // A generic or hypothetical question ("a student who ...", "which
+    // specialist should handle ...") is about a kind of case, not a record.
+    // Tom Arrington, 18 September 2026: such a question must not become a
+    // CRM lookup, and it routes on its subject (here, scholarships) instead.
+    blockedBy: ["count", "report", "trend", "most", "hypothetical", "who_handles"],
     specificity: 8,
   },
   {

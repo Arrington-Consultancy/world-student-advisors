@@ -203,11 +203,28 @@ const CONCEPT_FORMS: Record<Concept, string[]> = {
   // managing this lead?", "who has this student?").
   crm: ["pipedrive", "crm", "on the system", "in the system", "on record", "on file", "in the records"],
   counsellor: ["counsellor", "counselor", "counsellors", "counselors", "adviser", "advisor", "case owner"],
+  // "handle" alone is not here: "which specialist should handle a student
+  // who ..." is a routing question about a kind of case, not a record.
   managing: [
-    "managing", "manages", "managed by", "who has", "who is handling", "handling", "dealing with", "looking after",
-    "looks after", "assigned to", "owner", "who owns",
+    "managing", "manages", "managed by", "who has", "who is handling", "who is managing", "dealing with", "looking after",
+    "looks after", "assigned to", "owner", "who owns", "who is looking after",
   ],
   stage: ["stage", "status", "where are we with", "how far", "progress", "getting on", "what is happening with", "update on"],
+  // A kind of case rather than a case: the question is generic or
+  // hypothetical, so no student record is involved and none is looked up.
+  hypothetical: [
+    "a student who", "a student that", "a student with", "any student", "students who", "students that", "students with",
+    "if a student", "when a student", "an applicant who", "someone who", "somebody who", "in general", "generally",
+    "hypothetically", "for example", "what is the process", "what would", "how do we", "how should we", "how would we",
+    "what should we", "what happens when", "what happens if",
+  ],
+  // Which colleague owns a kind of work. Answered from the Worker Register,
+  // by the specialist who owns the subject.
+  who_handles: [
+    "which specialist", "which worker", "which wsa specialist", "who should handle", "who handles", "who covers",
+    "who deals with", "who should take", "who should deal", "who is responsible for", "who looks after", "who owns",
+    "who would handle", "who should i ask", "who do i ask", "who should i send", "who should this go to", "who takes",
+  ],
   // No lexical forms: set by conceptsIn when the sentence carries what looks
   // like a person's name (two or more capitalised words in a row, not at the
   // start of the sentence, none of them WSA vocabulary).
@@ -344,6 +361,21 @@ export function conceptsIn(text: string): Set<Concept> {
   }
   if (carriesNamedPerson(text)) found.add("named_person");
   return found;
+}
+
+/**
+ * Is this an ordinary word WSA's vocabulary knows (a concept form, or
+ * protected everyday English)? A run of such words is not a person's name,
+ * whatever case it is typed in. Used by the student-name extractor so that
+ * "now needs" or "help finding" never becomes a CRM search. Tom Arrington,
+ * 18 September 2026.
+ */
+export function isVocabularyWord(word: string): boolean {
+  const lower = word.toLowerCase().replace(/[^a-z']/g, "");
+  if (lower === "") return true;
+  if (ABBREVIATIONS[lower]) return true;
+  if (NEVER_REPAIRED.has(lower)) return true;
+  return KNOWN_WORDS.has(stem(lower));
 }
 
 /** Exposed so a test can assert the shorthand list stays small and honest. */
