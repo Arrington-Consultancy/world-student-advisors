@@ -24,8 +24,9 @@
  * guessing. An unclear reading becomes one focused question. Several
  * offers made one after another are each accepted by a yes, which chooses
  * nothing for the person; offers put as alternatives ("a summary, or the
- * email?") are the one case where "yes" cannot say which, and become the
- * question "which one?".
+ * email?") are done together where they can be, and only where they
+ * genuinely exclude one another does "yes" become the question "which
+ * one?".
  */
 import { extractNameCandidates, extractSingleNameCandidate } from "./studentContext";
 import { extractIdentifiers } from "./evidence";
@@ -47,8 +48,9 @@ export interface FollowUp {
   referent: string | null;
   /**
    * True when the offers are alternatives to one another ("a summary, or
-   * shall I draft the email?"), so an acceptance cannot say which; the
-   * referent is then null however many offers there are. False when they
+   * shall I draft the email?"); the referent is then null however many
+   * offers there are, and an acceptance does them together where it can
+   * and asks only where they exclude one another. False when they
    * are cumulative ("I can also ..."): an acceptance then accepts all of
    * them, which chooses nothing for the person.
    */
@@ -192,9 +194,15 @@ export function frameFollowUp(followUp: FollowUp): string {
     lines.push("This short reply answers your previous message, which ended with more than one offer or question:");
     followUp.offers.forEach((o, i) => lines.push(`${i + 1}. "${o}"`));
   }
-  if (followUp.alternatives) {
+  if (followUp.alternatives && followUp.polarity === "accepts") {
     lines.push(
-      "Reading: you offered these as alternatives, so it is not clear which one the staff member means. Ask which, naming them briefly; do not choose for them and do not produce any of them yet.",
+      "Reading: the staff member ACCEPTS, and you put some of these as alternatives. If they can all reasonably be done in this reply, do them all now, in full, from the evidence available to you. " +
+      "Only if they genuinely exclude one another, ask which in one question that names them briefly; do not choose for the staff member. " +
+      "Nothing you offered has been produced yet in this conversation: do not say that it has, and do not ask the staff member to say again what they want.",
+    );
+  } else if (followUp.alternatives) {
+    lines.push(
+      "Reading: you offered these as alternatives and the reply does not clearly accept or decline. Ask which, naming them briefly; do not choose for them and do not produce any of them yet.",
     );
   } else if (followUp.polarity === "accepts") {
     const scope = followUp.referent

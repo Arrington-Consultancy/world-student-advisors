@@ -108,7 +108,7 @@ describe("readFollowUp: the exchange of 18 September 2026 and its natural varian
     const declined = frameFollowUp(readFollowUp("no thanks", history)!);
     expect(declined).toContain("DECLINES all of these");
   });
-  it("several offers put as alternatives: the reading is to ask which, never to choose", () => {
+  it("several offers put as alternatives: a yes does them together where it can and asks only where they exclude one another", () => {
     const history = [
       HISTORY[0],
       { role: "worker" as const, content: "Her record is up to date. Would you like the offer conditions listed, or shall I draft the CAS request checklist instead?" },
@@ -116,8 +116,14 @@ describe("readFollowUp: the exchange of 18 September 2026 and its natural varian
     const fu = readFollowUp("yes", history);
     expect(fu!.referent).toBeNull();
     expect(fu!.alternatives).toBe(true);
-    expect(frameFollowUp(fu!)).toContain("Ask which, naming them briefly; do not choose");
-    expect(frameFollowUp(fu!)).not.toContain("ACCEPTS");
+    const framed = frameFollowUp(fu!);
+    expect(framed).toContain("ACCEPTS");
+    expect(framed).toContain("If they can all reasonably be done in this reply, do them all now");
+    expect(framed).toContain("Only if they genuinely exclude one another, ask which");
+    expect(framed).toContain("do not ask the staff member to say again what they want");
+    const unclear = frameFollowUp(readFollowUp("hmm", history)!);
+    expect(unclear).toContain("Ask which, naming them briefly; do not choose");
+    expect(unclear).not.toContain("ACCEPTS");
     const twoSentences = [
       HISTORY[0],
       { role: "worker" as const, content: "Would you like the offer conditions listed? Or I could draft the CAS request checklist instead." },

@@ -37,6 +37,26 @@ describe("generic and hypothetical questions reach no student record", () => {
   ])("%j is a kind of case, not a record", text => {
     expect(studentRecordIntent(text).intent).toBe(false);
   });
+  it("a field of study, a qualification or a nationality written with capitals is not a person (18 September 2026 enquiry)", () => {
+    const enquiry =
+      "A Nigerian national with a 2:1 in Mechanical Engineering wants to study an MSc in Artificial Intelligence in the UK, starting September 2027. Am I eligible and where should I apply?";
+    expect(extractNameCandidates(enquiry)).toEqual([]);
+    expect(extractNameCandidates(enquiry, { lenient: true })).toEqual([]);
+    const intent = studentRecordIntent(enquiry);
+    expect(intent.intent).toBe(false);
+    expect(intent.names).toEqual([]);
+    for (const t of [
+      "She holds a BSc in Computer Science from the University of Lagos and wants an MSc in Data Science at University College London.",
+      "Enquiry: Nigerian student, 2:1 Mechanical Engineering, wants MSc Artificial Intelligence UK Sept 2027. Is he eligible?",
+      "Does an MBA in International Business Management need IELTS 7.0?",
+    ]) {
+      expect(extractNameCandidates(t)).toEqual([]);
+      expect(studentRecordIntent(t).intent).toBe(false);
+    }
+    // The person before the subject is still the person.
+    expect(extractNameCandidates("Grace Okoro holds a BSc Computer Science from Covenant University.")).toEqual(["Grace Okoro"]);
+    expect(extractNameCandidates("Is Chidi Okafor eligible for an MSc in Artificial Intelligence?")).toEqual(["Chidi Okafor"]);
+  });
   it("ordinary lower-case English never becomes a name", () => {
     for (const t of ["now needs help finding", "she now needs help finding and applying", "help finding and applying for a scholarship"]) {
       expect(extractNameCandidates(t, { lenient: true })).toEqual([]);
@@ -150,6 +170,13 @@ describe("data minimisation: a stray phrase never earns a list of real students"
   };
   it("a phrase of ordinary English resolves to none, and the note names nobody", async () => {
     const r = await resolveStudentByName({ name: "now needs", workerId: "sophie", staffUserId: 7, authMethod: "entra_sso" }, deps);
+    expect(r.kind).toBe("none");
+    if (r.kind !== "none") return;
+    expect(r.note).not.toContain("Aneeka");
+    expect(r.note).not.toContain("Newton");
+  });
+  it("a subject written with capitals earns no near match either, even if it reaches the resolver", async () => {
+    const r = await resolveStudentByName({ name: "Mechanical Engineering", workerId: "sophie", staffUserId: 7, authMethod: "entra_sso" }, deps);
     expect(r.kind).toBe("none");
     if (r.kind !== "none") return;
     expect(r.note).not.toContain("Aneeka");

@@ -46,7 +46,27 @@ const NOT_A_NAME_WORD = new Set([
   // Environment ...", and the whole run was taken as the name.
   "Federal", "Ministry", "Department", "District", "Government", "State", "Bank", "Company", "Limited", "Ltd", "Hospital", "Office", "Council", "Authority", "Agency", "Commission",
   "Nigeria", "Abuja", "Lagos", "Ibadan", "Kano", "Kenya", "Nairobi", "Ghana", "Accra", "Uganda", "Kampala", "Cameroon", "London", "England", "Scotland", "Germany", "Canada",
+  // A field of study, a qualification or a nationality written with capitals
+  // is not a person. Tom Arrington, 18 September 2026: an enquiry about "a
+  // 2:1 in Mechanical Engineering" and "an MSc in Artificial Intelligence"
+  // named nobody, yet both phrases became CRM searches and the worker told
+  // the staff member that no record could be matched.
+  "Engineering", "Science", "Sciences", "Intelligence", "Artificial", "Mechanical", "Electrical", "Electronic", "Civil", "Chemical", "Computer", "Computing",
+  "Data", "Software", "Mathematics", "Maths", "Physics", "Chemistry", "Biology", "Biomedical", "Medicine", "Medical", "Nursing", "Pharmacy", "Dentistry", "Health", "Public",
+  "Business", "Management", "Administration", "Finance", "Financial", "Accounting", "Economics", "Marketing", "Law", "International", "Relations", "Development", "Studies",
+  "Psychology", "Sociology", "Politics", "Political", "History", "Philosophy", "Literature", "Linguistics", "English", "Education", "Teaching", "Architecture", "Design", "Arts",
+  "Humanities", "Media", "Communications", "Journalism", "Environmental", "Environment", "Energy", "Petroleum", "Agriculture", "Technology", "Information", "Systems", "Security",
+  "Cyber", "Analytics", "Machine", "Learning", "Robotics", "Aerospace", "Automotive", "Supply", "Chain", "Logistics", "Hospitality", "Tourism", "Sport", "Sports",
+  "Bachelor", "Bachelors", "Master", "Masters", "Doctorate", "Diploma", "Certificate", "Foundation", "Degree", "Postgraduate", "Undergraduate", "Honours", "Honors",
+  "Nigerian", "Kenyan", "Ghanaian", "Ugandan", "Cameroonian", "Indian", "Pakistani", "Bangladeshi", "Chinese", "British", "American", "Canadian", "European", "African", "Asian",
+  "United", "Kingdom", "States", "Europe", "Africa", "Asia", "India", "Pakistan", "Bangladesh", "China", "Manchester", "Birmingham", "Leeds", "Glasgow", "Edinburgh", "Cardiff", "Bristol", "Sheffield", "Nottingham", "Coventry", "Liverpool",
 ]);
+
+const NOT_A_NAME_WORD_LOWER = new Set(Array.from(NOT_A_NAME_WORD, w => w.toLowerCase()));
+/** A word that is WSA vocabulary, ordinary English, a subject, a qualification, a place or a nationality: never part of a person's name. */
+export function isNotAPersonWord(word: string): boolean {
+  return isVocabularyWord(word) || NOT_A_NAME_WORD_LOWER.has(word.toLowerCase());
+}
 
 const WORD = /^[A-Z][A-Za-z'’-]*$/;
 const LENIENT_WORD = /^[A-Za-z][A-Za-z'’-]{1,}$/;
@@ -196,7 +216,7 @@ export async function resolveStudentByName(input: ResolveInput, deps: LookupDeps
   // hit counts. A stray phrase ("now needs") never earns a probable match or
   // a list of real students' names. Tom Arrington, 18 September 2026.
   const nameParts = input.name.trim().split(/\s+/).filter(Boolean);
-  const readsAsName = nameParts.length >= 2 && nameParts.every(p => p.length >= 2 && !isVocabularyWord(p));
+  const readsAsName = nameParts.length >= 2 && nameParts.every(p => p.length >= 2 && !isNotAPersonWord(p));
   for (const term of searchTerms(input.name)) {
     const result = await lookupStudents(
       { staffUserId: input.staffUserId, authMethod: input.authMethod, term, by: "name", scope },

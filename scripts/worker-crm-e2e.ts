@@ -188,12 +188,12 @@ if (followUpText && result.conversationId) {
   const t2 = second.visibleText ?? "";
   const claim = claimsPriorCompletion(t2);
   check(claim === null, "follow-up answer does not claim the work already existed", claim ? `claimed: "${claim}"` : "");
-  if (reading?.polarity === "accepts" && reading.alternatives) {
-    // Offers put as alternatives are the one case where a yes cannot say
-    // which: the right answer is one question naming them.
-    check(/\?/.test(t2), "alternatives were offered, so the follow-up answer asks which one", `${t2.length} characters`);
-  } else if (reading?.polarity === "accepts") {
-    check(t2.length > 300, "an accepted offer is done in full, not deferred", `${t2.length} characters`);
+  if (reading?.polarity === "accepts") {
+    // Where some offers were put as alternatives, the worker does them
+    // together if it can and asks which only if they exclude one another:
+    // substance, or one question naming them, is right; a bare deferral is not.
+    if (reading.alternatives) check(t2.length > 300 || /\?/.test(t2), "alternatives were offered: the follow-up answer does the work or asks which", `${t2.length} characters`);
+    else check(t2.length > 300, "an accepted offer is done in full, not deferred", `${t2.length} characters`);
     const sentences = t2.split(/(?<=[.!?])\s+/).filter(Boolean);
     const questions = sentences.filter(x => x.trim().endsWith("?")).length;
     check(questions < sentences.length, "the follow-up answer is not only a question back", `${questions} of ${sentences.length} sentences are questions`);
