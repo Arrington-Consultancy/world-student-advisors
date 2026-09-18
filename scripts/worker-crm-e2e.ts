@@ -26,6 +26,9 @@
  *   E2E_STAFF_EMAIL  the staff account to act as; defaults to ACCESS_BOOTSTRAP_EMAIL.
  *   E2E_QUESTION     the natural question, naming the student.
  *   E2E_WORKER       optional worker id; default: whatever the router chooses.
+ *   E2E_FOLLOW_UP    optional short second message ("yes", "go ahead", "no thanks") sent
+ *                    into the same conversation after the first answer, to prove a
+ *                    follow-up is read against the worker's own offer (18 September 2026).
  * Exit 0 only when the routed worker answers from a CRM record for exactly
  * one student and does not say it lacks access.
  */
@@ -144,6 +147,40 @@ if (listMode) {
 check(!/\u2014|&mdash;/i.test(text), "answer as shown to the staff member carries no em dash");
 console.log(`  release: ${result.reason}`);
 console.log(`  brief: ${result.briefReference ?? "none"}`);
+
+// 7. A follow-up in the same conversation. Tom Arrington, 18 September 2026:
+// the worker offered a handover note, the staff member said "yes", and the
+// worker asked what they meant and said the note already existed. The second
+// message goes through the same deployed procedure with the conversation id.
+// Printed: booleans and counts only; never the answer.
+const followUpText = (process.env.E2E_FOLLOW_UP ?? "").trim();
+if (followUpText && result.conversationId) {
+  console.log(`\n=== 7. Follow-up in the same conversation (${followUpText.split(/\s+/).length} word(s)) ===`);
+  const { readFollowUp, claimsPriorCompletion } = await import("../server/execution/followUp");
+  const reading = readFollowUp(followUpText, [{ role: "staff", content: question }, { role: "worker", content: text }]);
+  check(Boolean(reading), "the first answer ended with an offer or question the follow-up can answer", reading ? `${reading.offers.length} offer(s); reading ${reading.polarity}` : "none found");
+  const second = await caller.workforce.ask({ token, workerId, request: followUpText, conversationId: result.conversationId });
+  check(second.outcome === "answered", "worker answered the follow-up", `${second.outcome}: ${second.reason.slice(0, 200)}`);
+  const t2 = second.visibleText ?? "";
+  const claim = claimsPriorCompletion(t2);
+  check(claim === null, "follow-up answer does not claim the work already existed", claim ? `claimed: "${claim}"` : "");
+  if (reading?.polarity === "accepts") {
+    check(t2.length > 300, "an accepted offer is done in full, not deferred", `${t2.length} characters`);
+    const sentences = t2.split(/(?<=[.!?])\s+/).filter(Boolean);
+    const questions = sentences.filter(x => x.trim().endsWith("?")).length;
+    check(questions < sentences.length, "the follow-up answer is not only a question back", `${questions} of ${sentences.length} sentences are questions`);
+    check(!/what (would you like|do you mean|exactly|specifically)|could you clarify|which (one|part) (do you|would you)/i.test(t2), "the follow-up answer does not ask the staff member to say again what they want");
+  }
+  if (reading?.polarity === "declines") {
+    check(t2.length < 600, "a declined offer is acknowledged briefly", `${t2.length} characters`);
+  }
+  check(!/\*\*|__|^#{1,6}\s|`/m.test(t2), "follow-up answer carries no Markdown markers");
+  check(!/\u2014|&mdash;/i.test(t2), "follow-up answer carries no em dash");
+  const stored2 = await listConversation(result.conversationId, staff.id, workerId);
+  check(stored2.length === 4, "two exchanges stored in one conversation", `${stored2.length} turn(s)`);
+  check(stored2[2]?.content === followUpText && stored2[3]?.content === t2, "the follow-up and its reply are stored as typed and as shown");
+  console.log(`  release: ${second.reason}`);
+}
 
 console.log(`\nRESULT: ${failures === 0 ? (listMode ? "the worker listed the matching students from the live WSA records and asked which one is meant" : "the worker found the student by name and answered from the live WSA record") : `${failures} check(s) failed`}.`);
 process.exit(failures === 0 ? 0 : 1);

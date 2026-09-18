@@ -22,6 +22,7 @@
  */
 import { invokeLLM } from "../_core/llm";
 import { completeStudentLists } from "./listCompleteness";
+import { readFollowUp, frameFollowUp, priorCompletionClaimIsUnfounded } from "./followUp";
 import { getWorker } from "../workforce/registry";
 import { evaluateStaffPortalExecutionPermission } from "../workforce/permissions";
 import { buildWorkerContext, type CaseData, type UpstreamOutput } from "../workforce/context";
@@ -148,17 +149,31 @@ export async function executeWorker(request: ExecutionRequest): Promise<Executio
   // 4b. Evidence from WSA systems, through the gated connector path. Every
   //     call inside is permission-checked and audited; a refusal becomes a
   //     note the worker can state rather than a gap it might paper over.
+  //     A short reply ("yes", "go ahead", "no thanks") names no student, so
+  //     the student is read from the staff member's earlier messages in this
+  //     conversation and their record gathered again. Tom Arrington, 18
+  //     September 2026.
+  const history = request.history ?? [];
+  const priorRequests = history.filter(t => t.role === "staff").map(t => t.content).reverse();
   const evidence = await gatherConnectorEvidence({
     workerId: request.workerId,
     requestText: request.requestText,
     staffUserId: request.staffUserId,
     authMethod: request.authMethod ?? (request.staffUserId === null ? "shared_password" : "entra_sso"),
     caseId: request.caseId,
+    priorRequests,
   });
+
+  // 4c. A short reply that answers the worker's own previous offer or
+  //     question is read against that offer, which is quoted back to the
+  //     model with the reading (accepts, declines, unclear) so "yes" is
+  //     resolved rather than guessed at. Tom Arrington, 18 September 2026.
+  const followUp = readFollowUp(request.requestText, history);
+  const effectiveRequest = followUp ? frameFollowUp(followUp) : request.requestText;
 
   const promptInputs = { brief, context, contributions: request.contributions ?? [], evidence };
   const system = composeSystemPrompt(promptInputs);
-  const user = composeUserMessage(request.requestText, promptInputs);
+  const user = composeUserMessage(effectiveRequest, promptInputs);
 
   // 5. Model execution. Model choice is configuration; the worker's
   //    governance says nothing about which model runs it.
@@ -242,6 +257,45 @@ export async function executeWorker(request: ExecutionRequest): Promise<Executio
     listSummary = completed.summary;
   }
 
+  // 5d. Nothing exists until it is written. A reply that says the offered
+  //     work was already produced, sent or shared, when nothing earlier in
+  //     this conversation contains it, is put back to the model once and,
+  //     if the claim stands, withheld. Tom Arrington, 18 September 2026.
+  let unfoundedClaim = priorCompletionClaimIsUnfounded(modelText, followUp, history);
+  let completionSummary: string | null = null;
+  if (unfoundedClaim) {
+    try {
+      const again = await invokeLLM({
+        messages: [
+          { role: "system", content: system },
+          ...history.map(turn => ({
+            role: turn.role === "staff" ? ("user" as const) : ("assistant" as const),
+            content: turn.content,
+          })),
+          { role: "user", content: user },
+          { role: "assistant", content: modelText },
+          {
+            role: "user",
+            content:
+              `Your reply says "${unfoundedClaim}". Nothing earlier in this conversation contains that work: it has not been produced, sent or shared. ` +
+              "Rewrite your whole reply without that claim. If the staff member accepted an offer, do the offered work now, in full, from the evidence available; " +
+              "otherwise say plainly that it has not been produced yet and what you need in order to produce it.",
+          },
+        ],
+        maxTokens: 4096,
+      });
+      const c = again.choices[0];
+      const rewritten = c?.finish_reason === "length" ? "" : (c?.message?.content ?? "").trim();
+      if (rewritten !== "" && !priorCompletionClaimIsUnfounded(rewritten, followUp, history)) {
+        modelText = rewritten;
+        unfoundedClaim = null;
+        completionSummary = "The reply was rewritten once because it said work already existed that this conversation does not contain.";
+      }
+    } catch {
+      // The claim stands and is withheld below.
+    }
+  }
+
   // 6. Priya's boundary, checked on the output rather than trusted to
   //    the prompt. Her permitted work is preparation, and a model asked
   //    to prepare a case will drift into answering it, usually while
@@ -299,6 +353,7 @@ export async function executeWorker(request: ExecutionRequest): Promise<Executio
     disagreementVisibleInText: false,
     workerBoundaryBreaches: [],
     evidenceInsufficient: false,
+    unfoundedCompletionClaim: unfoundedClaim,
   });
 
   if (!quality.passed) {
@@ -319,7 +374,7 @@ export async function executeWorker(request: ExecutionRequest): Promise<Executio
   return {
     outcome: "answered",
     visibleText: releaseText,
-    reason: `${worker.canonicalName} answered under ${brief.sourceDocument}.${listSummary ? ` ${listSummary}` : ""}${release.summary ? ` ${release.summary}` : ""}`,
+    reason: `${worker.canonicalName} answered under ${brief.sourceDocument}.${completionSummary ? ` ${completionSummary}` : ""}${listSummary ? ` ${listSummary}` : ""}${release.summary ? ` ${release.summary}` : ""}`,
     workerId: request.workerId,
     workerName: worker.canonicalName,
     briefReference: brief.sourceDocument,

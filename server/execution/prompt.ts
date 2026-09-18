@@ -136,6 +136,28 @@ export function composeSystemPrompt(inputs: PromptInputs): string {
   );
   lines.push("");
 
+  // Tom Arrington, 18 September 2026: a worker offered a handover note, the
+  // staff member wrote "yes", and the worker asked what they meant and said
+  // the note already existed. The platform now tells the worker when a short
+  // reply answers its own previous offer (FOLLOW-UP CONTEXT in the request);
+  // these are the standing terms for that situation.
+  lines.push("FOLLOW-UPS AND OFFERS.");
+  lines.push(
+    "- The messages before this one are this same conversation. A short reply from the staff member answers " +
+    "whatever you asked or offered in your previous message; read it that way, and where the request carries " +
+    "FOLLOW-UP CONTEXT, follow its reading.",
+  );
+  lines.push(
+    "- If they accept an offer you made, do that work now, in full, in this reply. If they decline, say so in a " +
+    "sentence and stop. If it is unclear which of several things they mean, ask which, in one question.",
+  );
+  lines.push(
+    "- Nothing exists until you write it. Never say that a note, summary, document or action was already " +
+    "produced, sent, shared or attached unless that text actually appears earlier in this conversation. " +
+    "Offering to do something is not doing it.",
+  );
+  lines.push("");
+
   lines.push("OPERATING RULES. These are not guidance; they are the terms on which you may act at all.");
   for (const rule of brief.rules) lines.push(`- ${rule}`);
   lines.push("");
