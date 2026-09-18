@@ -158,7 +158,11 @@ if (followUpText && result.conversationId) {
   console.log(`\n=== 7. Follow-up in the same conversation (${followUpText.split(/\s+/).length} word(s)) ===`);
   const { readFollowUp, claimsPriorCompletion } = await import("../server/execution/followUp");
   const reading = readFollowUp(followUpText, [{ role: "staff", content: question }, { role: "worker", content: text }]);
-  check(Boolean(reading), "the first answer ended with an offer or question the follow-up can answer", reading ? `${reading.offers.length} offer(s); reading ${reading.polarity}` : "none found");
+  // Whether the first answer offered anything is the model's choice, not the
+  // platform's; when it did not, the acceptance checks below do not apply and
+  // the follow-up is still checked for a false completion claim.
+  if (reading) check(true, "the first answer ended with an offer or question the follow-up answers", `${reading.offers.length} offer(s); reading ${reading.polarity}`);
+  else console.log("  note the first answer made no offer, so the follow-up is a plain short message here; acceptance checks not applicable");
   const second = await caller.workforce.ask({ token, workerId, request: followUpText, conversationId: result.conversationId });
   check(second.outcome === "answered", "worker answered the follow-up", `${second.outcome}: ${second.reason.slice(0, 200)}`);
   const t2 = second.visibleText ?? "";

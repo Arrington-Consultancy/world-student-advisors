@@ -135,8 +135,9 @@ describe("claims of prior completion", () => {
       "I have already produced the handover note above. Which part would you like me to expand?",
       "As I mentioned earlier, the handover note has been prepared.",
       "The summary I sent earlier covers this.",
-      "That has already been done and shared with you.",
+      "I have already done that and shared it with you.",
       "The handover note is in my previous message.",
+      "That handover note has already been prepared.",
     ]) expect(claimsPriorCompletion(t)).not.toBeNull();
   });
   it("does not fire on ordinary statements about the record or on doing the work now", () => {
@@ -145,6 +146,9 @@ describe("claims of prior completion", () => {
       "Her offer was already made on 3 September 2026 and the conditions are outstanding.",
       "I can produce that now if you want.",
       "The university has already sent the CAS.",
+      "Her CAS request has been done by the university and the visa application was submitted on 12 September.",
+      "The offer was sent to her on 3 September and the deposit has been paid.",
+      "Vivian's documents were provided to the university last week.",
     ]) expect(claimsPriorCompletion(t)).toBeNull();
   });
   it("is unfounded when it answers an accepted offer, or when no worker has spoken before", () => {

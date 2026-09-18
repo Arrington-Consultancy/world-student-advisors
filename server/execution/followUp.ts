@@ -185,13 +185,24 @@ export function frameFollowUp(followUp: FollowUp): string {
  * Whether such a claim is true is decided by the caller from the
  * conversation; this only finds the claim.
  */
+const ARTEFACT = "(handover notes?|handover|notes?|summary|document|report|picture|list|draft|plan|checklist|overview|brief|breakdown|timeline|analysis|write-up|writeup)";
+const PRODUCED = "(produced|prepared|pulled together|put together|compiled|drafted|written|sent|shared|provided|attached|created|set out|completed|done|delivered)";
+const EARLIER = "(earlier|above|before|previously|already|in (my|the) (last|previous|earlier) (message|reply|answer))";
 const PRIOR_COMPLETION_CLAIMS = [
-  /\b(i|we)('ve| have)? (already|previously|earlier) (produced|prepared|pulled together|put together|compiled|drafted|written|sent|shared|provided|attached|created|set out|completed|done)\b/i,
-  /\b(i|we) (produced|prepared|pulled together|put together|compiled|drafted|wrote|sent|shared|provided|attached|created|set out|completed) (that|this|the|it|a|your)\b[^.]{0,80}\b(earlier|above|before|previously|already|in my (last|previous|earlier) (message|reply|answer))\b/i,
-  /\bas (i )?(mentioned|noted|set out|shared|provided|sent|said|outlined|explained) (earlier|above|before|previously|in my (last|previous|earlier) (message|reply|answer))\b/i,
-  /\b(has|have|had) (already )?been (produced|prepared|pulled together|put together|compiled|drafted|sent|shared|provided|attached|created|completed|done|written|delivered)\b/i,
-  /\b(the|that|this|your) (note|summary|handover|document|report|picture|list|draft|plan|overview) (i|we) (sent|shared|provided|produced|prepared|attached|gave)( you)? (earlier|above|before|previously)\b/i,
-  /\b(is|was) (already )?(above|attached|included|provided|sent|shared|in my (last|previous|earlier) (message|reply|answer))\b/i,
+  // "I have already produced ...", "we previously sent ..."
+  new RegExp(`\\b(i|we)('ve| have|'d| had)? (already|previously|earlier) ${PRODUCED}\\b`, "i"),
+  // "I produced that above", "I put the note together in my previous message"
+  new RegExp(`\\b(i|we) ${PRODUCED} (that|this|the|it|a|your)\\b[^.]{0,80}\\b${EARLIER}\\b`, "i"),
+  // "As I mentioned earlier, ..." (about the worker's own earlier output)
+  new RegExp(`\\bas (i|we) (mentioned|noted|set out|shared|provided|sent|said|outlined|explained|prepared|produced) ${EARLIER}\\b`, "i"),
+  // "The handover note has already been prepared", "that note has been sent"
+  new RegExp(`\\b(the|that|this|your|my) ${ARTEFACT}( i| we)?( have| has| had)? (already )?(been )?${PRODUCED}\\b`, "i"),
+  // "The note I sent earlier", "the summary I gave you before"
+  new RegExp(`\\b(the|that|this|your) ${ARTEFACT} (i|we) ${PRODUCED}( you)? ${EARLIER}\\b`, "i"),
+  // "It is in my previous message", "the note is above / attached"
+  new RegExp(`\\b(is|was|are) (already )?(in (my|the) (last|previous|earlier) (message|reply|answer)|set out above|included above|attached|above)\\b`, "i"),
+  // "I have already done that", "we have done this"
+  new RegExp(`\\b(i|we) (have|had|'ve) (already )?(done|completed|finished) (that|this|it)\\b`, "i"),
 ];
 
 export function claimsPriorCompletion(text: string): string | null {
