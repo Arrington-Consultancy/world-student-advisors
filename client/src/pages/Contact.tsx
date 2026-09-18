@@ -206,13 +206,16 @@ function StudentForm() {
   }, []);
 
   const mutation = trpc.contact.submitStudent.useMutation({
-    onSuccess: result => {
+    onSuccess: (result, submitted) => {
       if (result.success) {
         setSubmitted(true);
         // The honeypot bypass also returns success:true (with an empty
         // leadId) so bots get no signal they were caught — only report a
         // conversion for a submission that actually reached Pipedrive.
-        if (result.leadId) reportSignupConversion();
+        // The hashed identifiers are taken from what was actually sent, not
+        // from current form state, and the promise is not awaited because
+        // the confirmation view must not wait on it.
+        if (result.leadId) void reportSignupConversion({ email: submitted.email, phone: submitted.phone });
       } else {
         setSubmitError(result.error);
         setTurnstileToken("");
