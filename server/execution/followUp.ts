@@ -21,8 +21,11 @@
  * closed set of acknowledgement words and handed to the model as a
  * reading, with the offer quoted back, so the model resolves "yes", "go
  * ahead", "do that" or "no thanks" against the referent rather than
- * guessing. An unclear reading, or several offers, becomes one focused
- * question, never a choice made for the person.
+ * guessing. An unclear reading becomes one focused question. Several
+ * offers made one after another are each accepted by a yes, which chooses
+ * nothing for the person; offers put as alternatives ("a summary, or the
+ * email?") are the one case where "yes" cannot say which, and become the
+ * question "which one?".
  */
 import { extractNameCandidates, extractSingleNameCandidate } from "./studentContext";
 import { extractIdentifiers } from "./evidence";
@@ -42,6 +45,14 @@ export interface FollowUp {
   offers: string[];
   /** The single offer the reply answers, when there is exactly one. */
   referent: string | null;
+  /**
+   * True when the offers are alternatives to one another ("a summary, or
+   * shall I draft the email?"), so an acceptance cannot say which; the
+   * referent is then null however many offers there are. False when they
+   * are cumulative ("I can also ..."): an acceptance then accepts all of
+   * them, which chooses nothing for the person.
+   */
+  alternatives: boolean;
 }
 
 /** Cues that a sentence offers to do something or asks the staff member something. */
@@ -137,12 +148,35 @@ export function readFollowUp(text: string, history: readonly ConversationTurnLik
   if (!last || last.role !== "worker") return null;
   const offers = extractOffers(last.content);
   if (offers.length === 0) return null;
+  const alternatives = offersAreAlternatives(offers);
   return {
     reply: text.trim(),
     polarity: polarityOf(text),
     offers,
-    referent: offers.length === 1 ? offers[0] : null,
+    referent: offers.length === 1 && !alternatives ? offers[0] : null,
+    alternatives,
   };
+}
+
+const OFFER_CUE_TEXT = "(shall i|would you (like|prefer|rather)|do you want|want me to|i (can|could)|if you (want|like|prefer|would like))";
+const ALTERNATIVE_CUES = [
+  // "..., or shall I ...", "either ... or I could ...": a choice between two offers in one sentence.
+  new RegExp(`\\b(or|either)\\b[^.?!]*\\b${OFFER_CUE_TEXT}\\b`, "i"),
+  // An offer that opens by contrast with the one before it.
+  /^(or|alternatively|instead|otherwise)\b/i,
+  /\b(instead|alternatively|whichever you prefer|rather than)\b/i,
+];
+
+/**
+ * Offers are alternatives when the worker put a choice between them: "a
+ * summary, or shall I draft the email?", "Or I could ... instead". A yes
+ * cannot say which, so the reading is to ask. An "or" inside one piece of
+ * work ("offers or refusals") is not a choice between offers. Offers made
+ * one after another ("I can also ...") are cumulative: each was offered,
+ * so a yes accepts each.
+ */
+export function offersAreAlternatives(offers: readonly string[]): boolean {
+  return offers.some(o => ALTERNATIVE_CUES.some(re => re.test(o.trim())));
 }
 
 /**
@@ -158,19 +192,22 @@ export function frameFollowUp(followUp: FollowUp): string {
     lines.push("This short reply answers your previous message, which ended with more than one offer or question:");
     followUp.offers.forEach((o, i) => lines.push(`${i + 1}. "${o}"`));
   }
-  if (!followUp.referent) {
+  if (followUp.alternatives) {
     lines.push(
-      "Reading: it is not clear which one the staff member means. Ask which, naming them briefly; do not choose for them and do not produce any of them yet.",
+      "Reading: you offered these as alternatives, so it is not clear which one the staff member means. Ask which, naming them briefly; do not choose for them and do not produce any of them yet.",
     );
   } else if (followUp.polarity === "accepts") {
+    const scope = followUp.referent
+      ? "Do the offered work now, in full, in this reply, from the evidence available to you. "
+      : "Each of these was offered and the staff member has said yes to your message, so do every piece of offered work now, in full, in this reply, from the evidence available to you; where one of them was a question to the staff member, take the answer as yes. ";
     lines.push(
-      "Reading: the staff member ACCEPTS. Do the offered work now, in full, in this reply, from the evidence available to you. " +
+      "Reading: the staff member ACCEPTS. " + scope +
       "Nothing you offered has been produced yet in this conversation: do not say that it has, do not refer to it as already sent or shared, " +
-      "and do not ask the staff member to say again what they want.",
+      "and do not ask the staff member to say again what they want or which one they mean.",
     );
   } else if (followUp.polarity === "declines") {
     lines.push(
-      "Reading: the staff member DECLINES. Acknowledge that in one sentence, do not produce the offered work, and ask briefly whether anything else is needed.",
+      "Reading: the staff member DECLINES" + (followUp.referent ? "" : " all of these") + ". Acknowledge that in one sentence, do not produce the offered work, and ask briefly whether anything else is needed.",
     );
   } else {
     lines.push(

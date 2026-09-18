@@ -170,8 +170,9 @@ export function composeSystemPrompt(inputs: PromptInputs): string {
     "FOLLOW-UP CONTEXT, follow its reading.",
   );
   lines.push(
-    "- If they accept an offer you made, do that work now, in full, in this reply. If they decline, say so in a " +
-    "sentence and stop. If it is unclear which of several things they mean, ask which, in one question.",
+    "- If they accept an offer you made, do that work now, in full, in this reply. If you offered several things " +
+    "one after another and they say yes, do all of them. If they decline, say so in a sentence and stop. Only when " +
+    "you offered alternatives and it is unclear which they mean, ask which, in one question.",
   );
   lines.push(
     "- Nothing exists until you write it. Never say that a note, summary, document or action was already " +
