@@ -10,6 +10,7 @@ import { sectionFromSearch, writeSectionToUrl, type StaffSection } from "@/lib/s
 import { ChannelsPanel } from "@/components/staff/ChannelsPanel";
 import { TeamPanel } from "@/components/staff/TeamPanel";
 import { ContentCheckPanel } from "@/components/staff/ContentCheckPanel";
+import { InterviewPreparationPanel } from "@/components/staff/InterviewPreparationPanel";
 import { SocialMediaPanel } from "@/components/staff/SocialMediaPanel";
 import { Receptionist } from "@/components/workforce/Receptionist";
 import { AccessBanner } from "@/components/workforce/AccessBanner";
@@ -536,6 +537,13 @@ const DAILY_WORK: { id: StaffSection; label: string; blurb: string; icon: typeof
     tint: "bg-sky-50 text-sky-700",
   },
   {
+    id: "interviews",
+    label: "Interview preparation",
+    blurb: "Upload a student's CV, Personal Statement and RIQ for the two mock interview documents.",
+    icon: FileCheck2,
+    tint: "bg-teal-50 text-teal-700",
+  },
+  {
     id: "uniportals",
     label: "University portals",
     blurb: "Application links and guidance for each university.",
@@ -816,6 +824,7 @@ function WorkforceHome({ token, onLogout }: { token: string; onLogout: () => voi
             )}
             {section === "uniportals" && <UniversityPortalsPanel token={token} />}
             {section === "students" && <StudentLookup token={token} />}
+            {section === "interviews" && <InterviewPreparationPanel token={token} />}
             {section === "social" && <SocialMediaPanel token={token} />}
             {section === "channels" && <ChannelsPanel token={token} />}
             {section === "team" && <TeamPanel token={token} />}

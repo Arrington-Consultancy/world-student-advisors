@@ -69,6 +69,7 @@ async function requireAccessAdmin(
   return { allowed: true, staffUserId, reason: "Holds access_admin." };
 }
 import { resolveStaffSession } from "./staffSession";
+import { prepareInterview } from "./documents/interviewPreparation";
 import { recordRoutingGap, isGap, recordReview, recordStaffNextAction, reviewGaps } from "./workforce/routingGap";
 import { REMITS, OUTCOMES, UNOWNED_OUTCOMES } from "./workforce/remit";
 import { getPipedriveStatus } from "./workforce/connectors/pipedrive";
@@ -911,6 +912,46 @@ export const appRouter = router({
           { staffUserId, authMethod: session.authMethod, term: input.term, by: input.by },
           productionLookupDeps,
         );
+      }),
+
+    /**
+     * Interview preparation from the student's own documents. Tim Hunt,
+     * 18 September 2026; set up in the portal at Tom Arrington's request so
+     * the team has one consistent process. The three documents are read in
+     * memory and never stored; the owning worker (James for the university
+     * interviews, Priya for UKVI) produces the two documents under its own
+     * brief and guards. See server/documents/interviewPreparation.ts.
+     */
+    interviewPreparation: publicProcedure
+      .input(
+        z.object({
+          token: z.string(),
+          kind: z.enum(["university_course_credibility", "university_cas", "ukvi_credibility"]),
+          studentName: z.string().min(2).max(120),
+          documents: z
+            .array(
+              z.object({
+                role: z.enum(["cv", "personal_statement", "riq"]),
+                filename: z.string().max(260).optional(),
+                // 8 MB of file is about 11 MB of base64; the JSON body limit is 50 MB.
+                contentBase64: z.string().max(12 * 1024 * 1024).optional(),
+                text: z.string().max(80_000).optional(),
+              }),
+            )
+            .min(3)
+            .max(3),
+        }),
+      )
+      .mutation(async ({ input }) => {
+        const session = await resolveStaffSession(input.token);
+        const staffUserId = session.authMethod === "entra_sso" ? session.staffUserId : null;
+        return prepareInterview({
+          staffUserId,
+          authMethod: session.authMethod,
+          kind: input.kind,
+          studentName: input.studentName,
+          documents: input.documents,
+        });
       }),
 
     googleSsoStatus: publicProcedure.query(() => ({ configured: isGoogleStaffSsoConfigured() })),
