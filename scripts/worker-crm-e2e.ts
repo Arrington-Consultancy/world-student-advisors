@@ -39,6 +39,7 @@ import { describePipedriveGrant, isWsaCompany } from "../server/crm/pipedriveOAu
 import { routeStaffRequest } from "../server/workforce/router";
 import { gatherConnectorEvidence, studentRecordIntent } from "../server/execution/evidence";
 import { getWorker } from "../server/workforce/registry";
+import { conceptsIn } from "../server/workforce/intent";
 import { appRouter } from "../server/routers";
 import { mintStaffIdentityToken } from "../server/staffIdentityAuth";
 import { listConversation } from "../server/execution/conversation";
@@ -153,13 +154,18 @@ if (listMode) {
   // The list is put back to the staff member: a question, or an invitation
   // to say which one, or to confirm. The exact wording is the worker's.
   check(/\?|which|let me know|tell me|confirm|point me|say who/i.test(text), "answer puts the choice back to the staff member");
-} else if (routingMode) {
+} else if (routingMode && conceptsIn(question).includes("who_handles")) {
   // The question asks who owns the work: the answer names that specialist
   // from the Worker Register (the worker the router chose), and says what
   // they do first.
   const specialist = getWorker(workerId).canonicalName;
   check(new RegExp(`\\b${specialist}\\b`).test(text), "answer names the specialist from the Worker Register", specialist);
   check(/\bfirst\b|\bnext\b|\bstep\b|\bstart\b|\bbegin\b|\bshould\b/i.test(text), "answer says what the specialist does first");
+} else if (routingMode) {
+  // A generic question about a kind of case, answered by the specialist who
+  // owns the subject: no record, so no stage or counsellor to state, but the
+  // answer still says what happens next or what is needed.
+  check(/\bnext\b|\bstep\b|\bshould\b|\bneeds? to\b|\bthen\b|\bnow\b|\bfirst\b|\bwould need\b|\brequire/i.test(text), "answer addresses what happens next or what is needed");
 } else {
   // The wording is the worker's: "next", "the next step", "what should happen now", "then".
   check(/\bnext\b|\bstep\b|\bshould\b|\bneeds? to\b|\bthen\b|\bnow\b|\bfollow(ing|-up)?\b/i.test(text), "answer addresses what happens next");
@@ -213,5 +219,5 @@ if (followUpText && result.conversationId) {
   console.log(`  release: ${second.reason}`);
 }
 
-console.log(`\nRESULT: ${failures === 0 ? (routingMode ? "the question named nobody, no CRM search was made, and the specialist was named from the Worker Register" : listMode ? "the worker listed the matching students from the live WSA records and asked which one is meant" : "the worker found the student by name and answered from the live WSA record") : `${failures} check(s) failed`}.`);
+console.log(`\nRESULT: ${failures === 0 ? (routingMode ? "the question named nobody, no CRM search was made, and the specialist who owns the subject answered" : listMode ? "the worker listed the matching students from the live WSA records and asked which one is meant" : "the worker found the student by name and answered from the live WSA record") : `${failures} check(s) failed`}.`);
 process.exit(failures === 0 ? 0 : 1);
