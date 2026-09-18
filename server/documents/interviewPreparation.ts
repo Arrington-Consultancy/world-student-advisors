@@ -36,6 +36,7 @@
  * check, and never supply a figure. This is stricter than the team's manual
  * ChatGPT method, which did verify rankings, and the record says so.
  */
+import { PREPARATION_CHECKLIST_HEADING } from "../../shared/interviewDocumentStructure";
 import { invokeLLM, type Message } from "../_core/llm";
 import { getControlledBrief } from "../execution/briefs";
 import { composeSystemPrompt } from "../execution/prompt";
@@ -335,7 +336,7 @@ function askStudentFeedback(studentName: string, findings: Findings): string {
     'headed "PREPARATION FOR YOUR WSA MOCK INTERVIEW". Identify specifically what they need to research, correct, clarify, understand or prepare ' +
     "before the mock interview, prioritising career path, course knowledge, why this course, why this university, comparison with other universities and rankings. " +
     "Explain weaknesses clearly but constructively, quoting their own documents where that helps. Number the areas. " +
-    'Finish with a concise checklist headed exactly: "Before your mock interview you must be able to explain without notes". ' +
+    `Finish with a concise checklist headed exactly: "${PREPARATION_CHECKLIST_HEADING}". ` +
     "Aim for 900 to 1,400 words. Reply with the document text only.\n\nFINDINGS:\n" + JSON.stringify(findings, null, 1)
   );
 }

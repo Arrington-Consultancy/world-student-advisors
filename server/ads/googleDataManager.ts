@@ -26,6 +26,7 @@
  *     will not accept a service account as a user.
  * Either way the scope is the one the API declares, and only that one.
  */
+import { normaliseEmail, normalisePhone } from "../../shared/googleUserData";
 import * as jose from "jose";
 import { createHash } from "crypto";
 
@@ -270,35 +271,12 @@ export function sha256Hex(value: string): string {
 }
 
 /**
- * Lower case, whitespace removed; for gmail.com and googlemail.com the dots
- * in the local part are removed as well. Null when it is not an address.
+ * The normalisation rules now live in shared/googleUserData.ts, because
+ * the browser sends hashed user data alongside the web conversion too and
+ * the two sides must normalise identically or no hash ever matches.
+ * Re-exported here so this module stays the one place the ads code looks.
  */
-export function normaliseEmail(raw: string | null | undefined): string | null {
-  if (!raw) return null;
-  const value = raw.replace(/\s+/g, "").toLowerCase();
-  const at = value.lastIndexOf("@");
-  if (at <= 0 || at === value.length - 1 || !value.includes(".", at)) return null;
-  let local = value.slice(0, at);
-  const domain = value.slice(at + 1);
-  if (domain === "gmail.com" || domain === "googlemail.com") local = local.replace(/\./g, "");
-  return `${local}@${domain}`;
-}
-
-/**
- * E.164 only: a leading plus followed by 8 to 15 digits. Punctuation and
- * spaces are dropped, "00" becomes "+". A number with no country code is
- * refused rather than guessed, because a wrong identifier is worse than
- * none. The website already sends Nigerian numbers in international form.
- */
-export function normalisePhone(raw: string | null | undefined): string | null {
-  if (!raw) return null;
-  // "(0)" is the written trunk prefix ("+44 (0)7555 ..."), never part of the
-  // international number, so it goes before the ordinary punctuation does.
-  let value = raw.replace(/\(0\)/g, "").replace(/[\s().-]/g, "");
-  if (value.startsWith("00")) value = `+${value.slice(2)}`;
-  if (!/^\+[1-9]\d{7,14}$/.test(value)) return null;
-  return value;
-}
+export { normaliseEmail, normalisePhone };
 
 export function emailIdentifier(raw: string | null | undefined): UserIdentifier | null {
   const n = normaliseEmail(raw);
