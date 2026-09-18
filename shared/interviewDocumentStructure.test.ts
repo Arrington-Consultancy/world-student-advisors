@@ -120,6 +120,17 @@ describe("the WSA Mock Interview Structure", () => {
     expect(student).toEqual({ type: "labelled", label: "Student", text: "Ada Okonkwo-Test" });
   });
 
+  it("reads an area heading as a heading whatever the case of its title", () => {
+    // Production writes this both ways. Run 35330725418 gave "AREA 1: CAREER
+    // PLAN CONSISTENCY"; run 35349265515, on the same build, gave "AREA 1:
+    // Career plan and its logic". Both are section headings.
+    const mixed = parseInterviewDocument(
+      "CONFIDENTIAL WSA MOCK INTERVIEW STRUCTURE\n\nAREA 1: Career plan and its logic\n\nQUESTION: Which is your actual plan?",
+    );
+    expect(mixed[1]).toEqual({ type: "heading", text: "AREA 1: Career plan and its logic", level: 1 });
+    expect(mixed[2]).toEqual({ type: "labelled", label: "QUESTION", text: "Which is your actual plan?" });
+  });
+
   it("reads a whole line in capitals as a heading, colon and all", () => {
     const headings = texts(blocks, "heading");
     expect(headings).toContain("AREA 1: CAREER PLAN CONSISTENCY");

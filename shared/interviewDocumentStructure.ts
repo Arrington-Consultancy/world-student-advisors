@@ -58,6 +58,17 @@ const SENTENCE_LABEL = /^([A-Z][A-Za-z]{2,14}(?: [a-z]{2,12})?):[ \t]+(\S.*)$/;
 const NUMBERED = /^(\d{1,2})\.[ \t]+(\S.*)$/;
 const NUMBERED_HEADING_MAX = 110;
 
+/**
+ * The interviewer document's own section headings. The worker is told to
+ * give each area as "AREA, QUESTION, WHAT I AM TESTING, ...", and it writes
+ * the heading as "AREA 1: ...". It capitalises the title on some runs
+ * ("AREA 1: CAREER PLAN CONSISTENCY") and not on others ("AREA 1: Career
+ * plan and its logic"), so the heading is recognised by its opening rather
+ * than by its case, or half the interviewer's headings would come out as
+ * ordinary labelled lines and Word's navigation pane would be missing them.
+ */
+const AREA_HEADING = /^AREA(?:[ \t]+\d{1,2})?[ \t]*:/;
+
 /** A bullet. The worker writes "- "; an en or em dash is accepted too. */
 const BULLET = /^[-\u2013\u2014][ \t]+(\S.*)$/;
 
@@ -102,6 +113,14 @@ export function parseInterviewDocument(text: string): InterviewBlock[] {
     // PLAN CONSISTENCY" or "PRINCIPAL CREDIBILITY RISKS, IN ORDER". The
     // colon inside the first is part of the heading, not a label.
     if (isUpperCase(line) && line.length <= 90) {
+      blocks.push({ type: "heading", text: line, level: 1 });
+      continue;
+    }
+
+    // A section heading of the interviewer document, whatever the case of
+    // its title. Before the label rule, which would otherwise read the
+    // title as the text of a label called "AREA 1".
+    if (AREA_HEADING.test(line) && line.length <= 90) {
       blocks.push({ type: "heading", text: line, level: 1 });
       continue;
     }
