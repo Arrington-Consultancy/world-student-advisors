@@ -49,8 +49,7 @@ function readFileAsBase64(file: File): Promise<string> {
   });
 }
 
-function download(filename: string, text: string) {
-  const blob = new Blob([text], { type: "text/plain;charset=utf-8" });
+function save(filename: string, blob: Blob) {
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;
@@ -70,6 +69,8 @@ export function InterviewPreparationPanel({ token }: { token: string }) {
   const [pasteOpen, setPasteOpen] = useState<Record<Role, boolean>>({ cv: false, personal_statement: false, riq: false });
   const [reading, setReading] = useState(false);
   const [copied, setCopied] = useState<"student" | "interviewer" | null>(null);
+  const [saving, setSaving] = useState<"student" | "interviewer" | null>(null);
+  const [saveError, setSaveError] = useState<string | null>(null);
 
   const mutation = trpc.staffPortal.interviewPreparation.useMutation();
   const result = mutation.data;
@@ -108,6 +109,33 @@ export function InterviewPreparationPanel({ token }: { token: string }) {
       setTimeout(() => setCopied(null), 1500);
     } catch {
       /* the download button remains */
+    }
+  };
+
+  const saveWord = async (
+    which: "student" | "interviewer",
+    text: string,
+    documentName: string,
+    filename: string,
+  ) => {
+    setSaving(which);
+    setSaveError(null);
+    try {
+      const { interviewDocxBlob } = await import("@/lib/interviewDocx");
+      const blob = await interviewDocxBlob({
+        text,
+        documentName,
+        studentName: studentName.trim() || "Student",
+        interviewName: KINDS.find(k => k.id === kind)?.label ?? "WSA mock interview",
+        confidential: which === "interviewer",
+      });
+      save(filename, blob);
+    } catch {
+      // The text is on the screen either way: say so rather than leaving a
+      // button that appears to do nothing.
+      setSaveError("The Word file could not be produced. Use Copy and paste the text into a document.");
+    } finally {
+      setSaving(null);
     }
   };
 
@@ -217,14 +245,15 @@ export function InterviewPreparationPanel({ token }: { token: string }) {
               )}
             </p>
             <p className="mt-1 text-xs text-gray-500">{result.statusMeaning}</p>
+            {saveError && <p className="mt-2 text-xs text-wsa-red">{saveError}</p>}
             <p className="mt-1 text-xs text-gray-500">
               Read: {result.documents.map(d => `${d.role === "cv" ? "CV" : d.role === "personal_statement" ? "Personal Statement" : "RIQ"} (${d.source}, ${d.characters.toLocaleString()} characters)`).join("; ")}.
             </p>
           </div>
 
           {[
-            { which: "student" as const, title: "Student Preparation Feedback", note: "Send this to the student before the mock interview.", text: result.studentPreparationFeedback ?? "", file: `${safeName(studentName)} - Student Preparation Feedback.txt` },
-            { which: "interviewer" as const, title: "WSA Mock Interview Structure", note: "Confidential. For the person conducting the mock interview only.", text: result.mockInterviewStructure ?? "", file: `${safeName(studentName)} - WSA Mock Interview Structure.txt` },
+            { which: "student" as const, title: "Student Preparation Feedback", note: "Send this to the student before the mock interview.", text: result.studentPreparationFeedback ?? "", file: `${safeName(studentName)} - Student Preparation Feedback.docx` },
+            { which: "interviewer" as const, title: "WSA Mock Interview Structure", note: "Confidential. For the person conducting the mock interview only.", text: result.mockInterviewStructure ?? "", file: `${safeName(studentName)} - WSA Mock Interview Structure.docx` },
           ].map(doc => (
             <article key={doc.which} className="rounded-lg border border-wsa-navy/10 p-4">
               <div className="flex flex-wrap items-start justify-between gap-2">
@@ -236,8 +265,14 @@ export function InterviewPreparationPanel({ token }: { token: string }) {
                   <button type="button" onClick={() => copy(doc.which, doc.text)} className="inline-flex items-center gap-1 rounded-lg border border-wsa-navy/20 px-3 py-1.5 text-sm text-wsa-navy hover:border-wsa-red">
                     <Copy className="h-4 w-4" aria-hidden /> {copied === doc.which ? "Copied" : "Copy"}
                   </button>
-                  <button type="button" onClick={() => download(doc.file, doc.text)} className="inline-flex items-center gap-1 rounded-lg border border-wsa-navy/20 px-3 py-1.5 text-sm text-wsa-navy hover:border-wsa-red">
-                    <Download className="h-4 w-4" aria-hidden /> Download
+                  <button
+                    type="button"
+                    disabled={saving !== null}
+                    onClick={() => saveWord(doc.which, doc.text, doc.title, doc.file)}
+                    className="inline-flex items-center gap-1 rounded-lg border border-wsa-navy/20 px-3 py-1.5 text-sm text-wsa-navy hover:border-wsa-red disabled:opacity-60"
+                  >
+                    <Download className="h-4 w-4" aria-hidden />
+                    {saving === doc.which ? "Preparing…" : "Download Word"}
                   </button>
                 </div>
               </div>
