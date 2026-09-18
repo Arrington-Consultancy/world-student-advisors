@@ -1,0 +1,71 @@
+name: Interview preparation end-to-end (fictional student)
+
+# Manual only. Runs the Staff Portal's interview preparation exactly as the
+# deployed procedure does, acting as the deployment's bootstrap staff account,
+# with three synthetic documents for a student who does not exist. Because
+# the student is fictional the two produced documents are printed in full so
+# their quality can be read. Touches no CRM record and no real student's
+# documents. Runs inside the service's variables with a public database URL
+# substituted, following worker-crm-e2e.
+# Auth: githubactionsprod, the production-scoped Railway Project Token.
+on:
+  workflow_dispatch:
+    inputs:
+      kind:
+        description: "Interview type"
+        required: false
+        default: "university_course_credibility"
+        type: choice
+        options: [university_course_credibility, university_cas, ukvi_credibility]
+      staff_email:
+        description: "Staff account to act as (default: the deployment's ACCESS_BOOTSTRAP_EMAIL)"
+        required: false
+        default: ""
+
+jobs:
+  e2e:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Install Railway CLI
+        run: npm install -g @railway/cli
+      - name: Discover the MySQL public-URL variable NAME (key only, value never printed)
+        id: discover
+        env:
+          RAILWAY_TOKEN: ${{ secrets.githubactionsprod }}
+        run: |
+          KEYS=$(railway variables --service "MySQL" --environment "production" --json | jq -r 'keys[]')
+          PUBLIC_KEY=$(echo "$KEYS" | grep -i -E '^(MYSQL_PUBLIC_URL|DATABASE_PUBLIC_URL)$' | head -n1)
+          if [ -z "$PUBLIC_KEY" ]; then echo "No public-URL-shaped variable found on MySQL. Stopping."; exit 1; fi
+          echo "public_key=$PUBLIC_KEY" >> "$GITHUB_OUTPUT"
+      - name: Set a temporary database URL reference on the app service
+        env:
+          RAILWAY_TOKEN: ${{ secrets.githubactionsprod }}
+          PUBLIC_KEY: ${{ steps.discover.outputs.public_key }}
+        run: |
+          REF=$(printf '\044{{%s.%s}}' "MySQL" "$PUBLIC_KEY")
+          railway variables --service "world-student-advisors" --environment "production" \
+            --set "WORKER_E2E_DATABASE_URL=${REF}" --skip-deploys
+      - name: Run the end-to-end test inside the service variables
+        timeout-minutes: 10
+        env:
+          RAILWAY_TOKEN: ${{ secrets.githubactionsprod }}
+          E2E_KIND: ${{ github.event.inputs.kind }}
+          E2E_STAFF_EMAIL: ${{ github.event.inputs.staff_email }}
+        run: |
+          railway run --service "world-student-advisors" --environment "production" -- \
+            sh -c "DATABASE_URL=\"\$WORKER_E2E_DATABASE_URL\" E2E_KIND=\"\$E2E_KIND\" E2E_STAFF_EMAIL=\"\$E2E_STAFF_EMAIL\" pnpm exec tsx scripts/interview-preparation-e2e.ts"
+      - name: Remove the temporary database URL reference
+        if: always()
+        env:
+          RAILWAY_TOKEN: ${{ secrets.githubactionsprod }}
+        run: |
+          railway variables --service "world-student-advisors" --environment "production" \
+            --set "WORKER_E2E_DATABASE_URL=" --skip-deploys
