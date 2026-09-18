@@ -23,23 +23,30 @@ const docs: SuppliedDocument[] = [
   { role: "riq", text: RIQ },
 ];
 
-function answer(overrides: Partial<Record<string, unknown>> = {}) {
-  return JSON.stringify({
-    contradictions: [{ kind: "different_explanation_university_choice", detail: "The Personal Statement names Portsmouth and Lincoln; the RIQ says the other universities cannot be disclosed." }],
-    weakAreas: [{ kind: "weak_course_knowledge", detail: "Module titles are listed without what they cover.", risk: "high" }],
-    missingInformation: [{ kind: "career_path", detail: "Where the student intends to work immediately after qualifying." }],
-    studentPreparationFeedback:
-      "PREPARATION FOR YOUR WSA MOCK INTERVIEW\n\nAda, your Personal Statement names Portsmouth and Lincoln but your RIQ says you cannot disclose the other universities. You must be able to say which universities you compared and what you compared. You list module titles without saying what they cover; go back to the current Salford course page and be able to explain at least three modules. Verify any ranking you intend to mention against the published table and its year, and be ready to say where it came from.\n\nBefore your mock interview you must be able to explain without notes\nYour exact course title; three modules in detail; your career path; why Salford; how you compared Portsmouth and Lincoln.",
-    mockInterviewStructure:
-      "CONFIDENTIAL WSA MOCK INTERVIEW STRUCTURE\n\nPrincipal credibility risks: the university comparison contradiction; thin course knowledge.\n\nAREA: Other universities considered\nQUESTION: Which other universities did you consider and how did you compare them?\nWHAT I AM TESTING: consistency with the Personal Statement.\nEXPECTED CONTENT: Portsmouth and Lincoln, and the factors compared.\nFOLLOW UP / PROBE QUESTIONS: What did Portsmouth offer that Salford did not?\nRED FLAGS: refusing to name them.\nDOCUMENT CROSS CHECK: Personal Statement paragraph 3 against RIQ answer 1.\n\nAssessment framework: naturalness, depth of knowledge, evidence of research, personal credibility, consistency, rehearsal risk, AI or stock-answer risk, failure to answer. Threshold 85 out of 100, scored only after the live mock interview.",
-    ...overrides,
-  });
-}
+const FINDINGS = JSON.stringify({
+  contradictions: [{ kind: "different_explanation_university_choice", detail: "The Personal Statement names Portsmouth and Lincoln; the RIQ says the other universities cannot be disclosed." }],
+  weakAreas: [{ kind: "weak_course_knowledge", detail: "Module titles are listed without what they cover.", risk: "high" }],
+  missingInformation: [{ kind: "career_path", detail: "Where the student intends to work immediately after qualifying." }],
+});
+const STUDENT =
+  "PREPARATION FOR YOUR WSA MOCK INTERVIEW\n\nAda, your Personal Statement names Portsmouth and Lincoln but your RIQ says you cannot disclose the other universities. You must be able to say which universities you compared and what you compared. You list module titles without saying what they cover; go back to the current Salford course page and be able to explain at least three modules. Verify any ranking you intend to mention against the published table and its year, and be ready to say where it came from.\n\nBefore your mock interview you must be able to explain without notes\nYour exact course title; three modules in detail; your career path; why Salford; how you compared Portsmouth and Lincoln.";
+const INTERVIEWER =
+  "CONFIDENTIAL WSA MOCK INTERVIEW STRUCTURE\n\nPrincipal credibility risks: the university comparison contradiction; thin course knowledge.\n\nAREA: Other universities considered\nQUESTION: Which other universities did you consider and how did you compare them?\nWHAT I AM TESTING: consistency with the Personal Statement.\nEXPECTED CONTENT: Portsmouth and Lincoln, and the factors compared.\nFOLLOW UP / PROBE QUESTIONS: What did Portsmouth offer that Salford did not?\nRED FLAGS: refusing to name them.\nDOCUMENT CROSS CHECK: Personal Statement paragraph 3 against RIQ answer 1.\n\nAssessment framework: naturalness, depth of knowledge, evidence of research, personal credibility, consistency, rehearsal risk, AI or stock-answer risk, failure to answer. Threshold 85 out of 100, scored only after the live mock interview.";
+const SCRIPTED = 'You should say "I chose Salford for its simulation suite". Before your mock interview you must be able to explain without notes: your course.';
 
-function modelReplies(...contents: string[]) {
+type Reply = string | { content: string; finish: string };
+function modelReplies(...replies: Reply[]) {
   const fn = vi.mocked(invokeLLM);
   fn.mockReset();
-  for (const c of contents) fn.mockResolvedValueOnce({ choices: [{ index: 0, message: { role: "assistant", content: c }, finish_reason: "stop" }] });
+  for (const r of replies) {
+    const content = typeof r === "string" ? r : r.content;
+    const finish = typeof r === "string" ? "stop" : r.finish;
+    fn.mockResolvedValueOnce({ choices: [{ index: 0, message: { role: "assistant", content }, finish_reason: finish }] });
+  }
+}
+function lastUserMessage(callIndex: number): string {
+  const msgs = vi.mocked(invokeLLM).mock.calls[callIndex][0].messages;
+  return [...msgs].reverse().find(m => m.role === "user")?.content ?? "";
 }
 
 beforeEach(() => {
@@ -105,9 +112,11 @@ describe("the guards on both documents", () => {
 });
 
 describe("preparing the two documents", () => {
-  it("produces both documents under the owning worker, derives the readiness status from the findings, stores nothing of the documents and audits the run", async () => {
-    modelReplies(answer());
-    const result = await prepareInterview({ staffUserId: 1, authMethod: "entra_sso", kind: "university_course_credibility", studentName: "Ada Test", documents: docs });
+  const base = { staffUserId: 1, authMethod: "entra_sso" as const, studentName: "Ada Test", documents: docs };
+
+  it("three tasks in one conversation: findings as JSON, then each document as text under the owning worker; status derived; nothing of the documents stored; audited", async () => {
+    modelReplies(FINDINGS, STUDENT, INTERVIEWER);
+    const result = await prepareInterview({ ...base, kind: "university_course_credibility" });
     expect(result.outcome).toBe("prepared");
     expect(result.owner).toBe("james");
     expect(result.ownerName).toBe("James");
@@ -116,13 +125,18 @@ describe("preparing the two documents", () => {
     expect(result.mockInterviewStructure).toContain("FOLLOW UP / PROBE QUESTIONS");
     expect(result.counts).toEqual({ contradictions: 1, weakAreas: 1, missingInformation: 1 });
     expect(result.documents.map(d => d.role)).toEqual(["cv", "personal_statement", "riq"]);
-    // The model saw the three documents under James's brief and the task, and nothing about a CRM record.
-    const call = vi.mocked(invokeLLM).mock.calls[0][0];
-    expect(call.messages[0].content).toContain("YOUR REMIT");
-    expect(call.messages[0].content).toContain("Admissions, Application and Pre-arrival");
-    expect(call.messages[1].content).toContain("===== CV");
-    expect(call.messages[1].content).toContain("University Course Credibility Interview");
-    expect(call.messages[1].content).toContain("no web access");
+    expect(vi.mocked(invokeLLM)).toHaveBeenCalledTimes(3);
+    const first = vi.mocked(invokeLLM).mock.calls[0][0];
+    expect(first.messages[0].content).toContain("YOUR REMIT");
+    expect(first.messages[0].content).toContain("Admissions, Application and Pre-arrival");
+    expect(first.messages[1].content).toContain("===== CV");
+    expect(first.messages[1].content).toContain("University Course Credibility Interview");
+    expect(first.messages[1].content).toContain("no web access");
+    expect(first.messages[1].content).toContain("TASK 1 OF 3");
+    expect(lastUserMessage(1)).toContain("TASK 2 OF 3");
+    expect(lastUserMessage(2)).toContain("TASK 3 OF 3");
+    // The findings travel into the later tasks, so the documents build on the same analysis.
+    expect(lastUserMessage(2)).toContain("Portsmouth and Lincoln");
     const audit = getAuditLog();
     expect(audit).toHaveLength(1);
     expect(audit[0].workerId).toBe("james");
@@ -132,47 +146,63 @@ describe("preparing the two documents", () => {
   });
 
   it("the UKVI interview runs under Priya", async () => {
-    modelReplies(answer());
-    const result = await prepareInterview({ staffUserId: 1, authMethod: "entra_sso", kind: "ukvi_credibility", studentName: "Ada Test", documents: docs });
+    modelReplies(FINDINGS, STUDENT, INTERVIEWER);
+    const result = await prepareInterview({ ...base, kind: "ukvi_credibility" });
     expect(result.outcome).toBe("prepared");
     expect(result.owner).toBe("priya");
-    expect(vi.mocked(invokeLLM).mock.calls[0][0].messages[0].content).toContain("Visa");
-    expect(vi.mocked(invokeLLM).mock.calls[0][0].messages[1].content).toContain("Immigration is engaged");
+    const first = vi.mocked(invokeLLM).mock.calls[0][0];
+    expect(first.messages[0].content).toContain("Visa");
+    expect(first.messages[1].content).toContain("Immigration is engaged");
   });
 
-  it("a scripted answer is put back to the model once, and withheld if it survives", async () => {
-    const scripted = answer({ studentPreparationFeedback: 'You should say "I chose Salford for its simulation suite". Before your mock interview you must be able to explain without notes: your course.' });
-    modelReplies(scripted, answer());
-    const fixed = await prepareInterview({ staffUserId: 1, authMethod: "entra_sso", kind: "university_course_credibility", studentName: "Ada Test", documents: docs });
+  it("a scripted answer is put back to the model once, and both documents are withheld if it survives", async () => {
+    modelReplies(FINDINGS, SCRIPTED, STUDENT, INTERVIEWER);
+    const fixed = await prepareInterview({ ...base, kind: "university_course_credibility" });
     expect(fixed.outcome).toBe("prepared");
-    expect(vi.mocked(invokeLLM)).toHaveBeenCalledTimes(2);
-    expect(vi.mocked(invokeLLM).mock.calls[1][0].messages.at(-1)?.content).toContain("scripted answer");
+    expect(vi.mocked(invokeLLM)).toHaveBeenCalledTimes(4);
+    expect(lastUserMessage(2)).toContain("scripted answer");
 
-    modelReplies(scripted, scripted);
-    const withheld = await prepareInterview({ staffUserId: 1, authMethod: "entra_sso", kind: "university_course_credibility", studentName: "Ada Test", documents: docs });
+    modelReplies(FINDINGS, SCRIPTED, SCRIPTED);
+    const withheld = await prepareInterview({ ...base, kind: "university_course_credibility" });
     expect(withheld.outcome).toBe("withheld");
     expect(withheld.studentPreparationFeedback).toBeNull();
+    expect(withheld.mockInterviewStructure).toBeNull();
     expect(withheld.reason).toBe(PREPARATION_WITHHELD_NOTICE);
+    expect(vi.mocked(invokeLLM)).toHaveBeenCalledTimes(3);
     expect(getAuditLog().at(-1)?.success).toBe(false);
+  });
+
+  it("a document cut off at the length limit is asked for again, more concisely", async () => {
+    modelReplies(FINDINGS, { content: STUDENT.slice(0, 200), finish: "length" }, STUDENT, INTERVIEWER);
+    const result = await prepareInterview({ ...base, kind: "university_course_credibility" });
+    expect(result.outcome).toBe("prepared");
+    expect(vi.mocked(invokeLLM)).toHaveBeenCalledTimes(4);
+    expect(lastUserMessage(2)).toContain("cut off at the length limit");
+    expect(result.studentPreparationFeedback).toContain("Before your mock interview");
   });
 
   it("refuses before any model call when the staff member cannot reach the owning worker, or a document is missing", async () => {
     vi.mocked(checkAccessForStaffUser).mockResolvedValueOnce({ allowed: false, reason: "No assignment." } as never);
-    modelReplies(answer());
-    const refused = await prepareInterview({ staffUserId: 9, authMethod: "entra_sso", kind: "university_course_credibility", studentName: "Ada Test", documents: docs });
+    modelReplies(FINDINGS, STUDENT, INTERVIEWER);
+    const refused = await prepareInterview({ ...base, staffUserId: 9, kind: "university_course_credibility" });
     expect(refused.outcome).toBe("refused_staff_access");
     expect(vi.mocked(invokeLLM)).not.toHaveBeenCalled();
 
-    const missing = await prepareInterview({ staffUserId: 1, authMethod: "entra_sso", kind: "university_course_credibility", studentName: "Ada Test", documents: docs.slice(0, 2) });
+    const missing = await prepareInterview({ ...base, kind: "university_course_credibility", documents: docs.slice(0, 2) });
     expect(missing.outcome).toBe("documents_unreadable");
     expect(missing.reason).toContain("RIQ");
     expect(vi.mocked(invokeLLM)).not.toHaveBeenCalled();
   });
 
-  it("a model reply that is not the JSON object is asked for again", async () => {
-    modelReplies("Here are my thoughts in prose.", answer());
-    const result = await prepareInterview({ staffUserId: 1, authMethod: "entra_sso", kind: "university_cas", studentName: "Ada Test", documents: docs });
+  it("findings that are not the JSON object are asked for again; twice, and the run is withheld", async () => {
+    modelReplies("Here are my thoughts in prose.", FINDINGS, STUDENT, INTERVIEWER);
+    const result = await prepareInterview({ ...base, kind: "university_cas" });
     expect(result.outcome).toBe("prepared");
-    expect(vi.mocked(invokeLLM)).toHaveBeenCalledTimes(2);
+    expect(vi.mocked(invokeLLM)).toHaveBeenCalledTimes(4);
+
+    modelReplies("prose", "more prose");
+    const withheld = await prepareInterview({ ...base, kind: "university_cas" });
+    expect(withheld.outcome).toBe("withheld");
+    expect(withheld.reason).toContain("findings could not be read");
   });
 });

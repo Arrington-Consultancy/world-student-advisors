@@ -187,7 +187,7 @@ export async function extractDocumentText(doc: SuppliedDocument): Promise<Extrac
   return { role: doc.role, text: cleaned.slice(0, MAX_DOCUMENT_CHARACTERS), source, characters: cleaned.length };
 }
 
-/* ── The model's structured answer ───────────────────────────────────── */
+/* ── The model's findings ────────────────────────────────────────────── */
 
 interface ModelFinding {
   kind: string;
@@ -195,30 +195,22 @@ interface ModelFinding {
   risk?: "high" | "medium" | "low";
 }
 
-interface ModelAnswer {
+export interface Findings {
   contradictions: ModelFinding[];
   weakAreas: ModelFinding[];
   missingInformation: ModelFinding[];
-  studentPreparationFeedback: string;
-  mockInterviewStructure: string;
 }
 
-function parseModelAnswer(raw: string): ModelAnswer | null {
+export function parseFindings(raw: string): Findings | null {
   try {
     const start = raw.indexOf("{");
     const end = raw.lastIndexOf("}");
     if (start < 0 || end < 0) return null;
-    const parsed = JSON.parse(raw.slice(start, end + 1)) as Partial<ModelAnswer>;
-    if (typeof parsed.studentPreparationFeedback !== "string" || typeof parsed.mockInterviewStructure !== "string") return null;
+    const parsed = JSON.parse(raw.slice(start, end + 1)) as Partial<Findings>;
     const list = (v: unknown): ModelFinding[] =>
       Array.isArray(v) ? v.filter(x => x && typeof x === "object" && typeof (x as ModelFinding).detail === "string") as ModelFinding[] : [];
-    return {
-      contradictions: list(parsed.contradictions),
-      weakAreas: list(parsed.weakAreas),
-      missingInformation: list(parsed.missingInformation),
-      studentPreparationFeedback: parsed.studentPreparationFeedback,
-      mockInterviewStructure: parsed.mockInterviewStructure,
-    };
+    if (!Array.isArray(parsed.contradictions) || !Array.isArray(parsed.weakAreas) || !Array.isArray(parsed.missingInformation)) return null;
+    return { contradictions: list(parsed.contradictions), weakAreas: list(parsed.weakAreas), missingInformation: list(parsed.missingInformation) };
   } catch {
     return null;
   }
@@ -296,10 +288,10 @@ export const CREDIBILITY_AREAS = Object.freeze([
   "UNIVERSITY RANKINGS: whether the student knows the ranking of their chosen university and of the ones they considered, with the ranking table and year.",
 ]);
 
-function taskInstructions(kind: InterviewKind, studentName: string, docs: readonly ExtractedDocument[]): string {
+function sharedPreamble(kind: InterviewKind, studentName: string, docs: readonly ExtractedDocument[]): string {
   const def = interviewKind(kind);
   const lines: string[] = [];
-  lines.push(`INTERVIEW PREPARATION TASK for ${studentName}.`);
+  lines.push(`INTERVIEW PREPARATION for ${studentName}.`);
   lines.push(`Interview type: ${def.label}. The real interview is conducted by ${def.interviewer}.`);
   lines.push(
     "You have the student's three documents below, as submitted. Cross-check ALL THREE together. Pay particular attention to the WSA credibility areas:",
@@ -320,19 +312,7 @@ function taskInstructions(kind: InterviewKind, studentName: string, docs: readon
     lines.push("- Immigration is engaged. You may state what a published rule requires only with its official source and the date it was checked. You may not apply a rule to this student, predict an outcome or advise a course of action. Where you cannot cite the source, do not state the rule.");
   }
   lines.push("- Do not give a readiness score. A score is given only after the live mock interview, from the student's actual answers.");
-  lines.push("PRODUCE, AS ONE JSON OBJECT WITH EXACTLY THESE KEYS:");
-  lines.push('- "contradictions": array of {kind, detail}, each detail quoting what each document says and why it matters.');
-  lines.push('- "weakAreas": array of {kind, detail, risk} where risk is "high", "medium" or "low".');
-  lines.push('- "missingInformation": array of {kind, detail}: what the student has not provided and why it is needed.');
-  lines.push(
-    `- "studentPreparationFeedback": plain text written directly to ${studentName}, headed "PREPARATION FOR YOUR WSA MOCK INTERVIEW". ` +
-      "Identify specifically what they need to research, correct, clarify, understand or prepare before the mock interview, prioritising career path, course knowledge, why this course, why this university, comparison with other universities and rankings. Explain weaknesses clearly but constructively. Finish with a concise checklist headed exactly: \"Before your mock interview you must be able to explain without notes\".",
-  );
-  lines.push(
-    '- "mockInterviewStructure": plain text for the WSA interviewer, headed "CONFIDENTIAL WSA MOCK INTERVIEW STRUCTURE". ' +
-      "State the principal credibility risks first. Then, for each important area, give QUESTION, WHAT I AM TESTING, EXPECTED CONTENT (what the student's own documents say they should be able to cover, never a script), FOLLOW UP / PROBE QUESTIONS, RED FLAGS and DOCUMENT CROSS CHECK, specific to this student's CV, Personal Statement and RIQ. Where an answer sounds memorised or generic, give follow-ups that test genuine understanding. End with the WSA mock interview assessment framework: naturalness, depth of knowledge, evidence of research, personal credibility, consistency, rehearsal risk, AI or stock-answer risk, failure to answer; the readiness threshold is 85 out of 100 and the score is given only after the live mock interview.",
-  );
-  lines.push("Write in plain text without Markdown symbols. Use blank lines between sections. Use the student's first name where you address them.");
+  lines.push("- Write in plain text without Markdown symbols (no #, *, or backticks). Use blank lines between sections.");
   lines.push("");
   for (const d of docs) {
     lines.push(`===== ${DOCUMENT_LABEL[d.role]} (as submitted, ${d.characters} characters) =====`);
@@ -340,6 +320,35 @@ function taskInstructions(kind: InterviewKind, studentName: string, docs: readon
     lines.push("");
   }
   return lines.join("\n");
+}
+
+const ASK_FINDINGS =
+  "TASK 1 OF 3. Reply with ONE JSON object and nothing else, with exactly these keys: " +
+  '"contradictions": array of {kind, detail}, each detail quoting what each document says and why it matters; ' +
+  '"weakAreas": array of {kind, detail, risk} where risk is "high", "medium" or "low"; ' +
+  '"missingInformation": array of {kind, detail}: what the student has not provided and why it is needed. ' +
+  "Be specific to these documents. Keep each detail to two or three sentences.";
+
+function askStudentFeedback(studentName: string, findings: Findings): string {
+  return (
+    `TASK 2 OF 3. Using the findings below, write the STUDENT PREPARATION FEEDBACK as plain text addressed directly to ${studentName}, ` +
+    'headed "PREPARATION FOR YOUR WSA MOCK INTERVIEW". Identify specifically what they need to research, correct, clarify, understand or prepare ' +
+    "before the mock interview, prioritising career path, course knowledge, why this course, why this university, comparison with other universities and rankings. " +
+    "Explain weaknesses clearly but constructively, quoting their own documents where that helps. Number the areas. " +
+    'Finish with a concise checklist headed exactly: "Before your mock interview you must be able to explain without notes". ' +
+    "Aim for 900 to 1,400 words. Reply with the document text only.\n\nFINDINGS:\n" + JSON.stringify(findings, null, 1)
+  );
+}
+
+function askInterviewStructure(studentName: string, findings: Findings): string {
+  return (
+    `TASK 3 OF 3. Using the findings below, write the CONFIDENTIAL WSA MOCK INTERVIEW STRUCTURE for the WSA staff member who will interview ${studentName}, ` +
+    'headed "CONFIDENTIAL WSA MOCK INTERVIEW STRUCTURE". State the principal credibility risks first, in order. ' +
+    "Then for each important area (six to eight areas) give, on separate lines: AREA, QUESTION, WHAT I AM TESTING, EXPECTED CONTENT (what the student's own documents say they should be able to cover, never a script), FOLLOW UP / PROBE QUESTIONS, RED FLAGS, DOCUMENT CROSS CHECK. " +
+    "Make every question specific to this student's CV, Personal Statement and RIQ. Where an answer sounds memorised or generic, give follow-ups that test genuine understanding. " +
+    "End with the WSA mock interview assessment framework: naturalness, depth of knowledge, evidence of research, personal credibility, consistency, rehearsal risk, AI or stock-answer risk, failure to answer; state that the readiness threshold is 85 out of 100 and that the score is given only after the live mock interview. " +
+    "Aim for 1,200 to 1,800 words. Reply with the document text only.\n\nFINDINGS:\n" + JSON.stringify(findings, null, 1)
+  );
 }
 
 /* ── The procedure ───────────────────────────────────────────────────── */
@@ -440,47 +449,76 @@ export async function prepareInterview(request: PreparationRequest): Promise<Pre
     },
     contributions: [],
   });
-  const task = taskInstructions(request.kind, request.studentName.trim(), extracted);
+  const studentName = request.studentName.trim();
+  const preamble = sharedPreamble(request.kind, studentName, extracted);
 
-  let answer: ModelAnswer | null = null;
-  let guardFeedback: string | null = null;
-  let studentText = "";
-  let interviewerText = "";
-  for (let attempt = 0; attempt < 2; attempt += 1) {
-    let raw: string;
+  // One conversation, three tasks: the findings as JSON, then each document
+  // as plain text from those findings. Three shorter replies rather than
+  // one long JSON object, because the first production run of this
+  // procedure hit the output length limit and the truncated JSON could not
+  // be read (18 September 2026).
+  const conversation: Message[] = [
+    { role: "system", content: system },
+    { role: "user", content: preamble + "\n\n" + ASK_FINDINGS },
+  ];
+
+  const call = async (maxTokens: number): Promise<{ text: string; complete: boolean } | { error: string }> => {
     try {
-      const messages: Message[] = [
-        { role: "system", content: system },
-        { role: "user", content: task },
-      ];
-      if (guardFeedback) {
-        messages.push({ role: "assistant", content: JSON.stringify(answer) });
-        messages.push({ role: "user", content: guardFeedback });
-      }
-      const response = await invokeLLM({ messages, responseFormat: { type: "json_object" }, maxTokens: 8000 });
-      raw = response.choices[0]?.message.content ?? "";
+      const response = await invokeLLM({ messages: [...conversation], maxTokens });
+      const choice = response.choices[0];
+      return { text: choice?.message.content ?? "", complete: (choice?.finish_reason ?? "stop") === "stop" };
     } catch (err) {
-      return refuse("model_unavailable", err instanceof Error ? err.message : String(err), request, owner, documentSummary);
+      return { error: err instanceof Error ? err.message : String(err) };
     }
-    const parsed = parseModelAnswer(raw);
-    if (!parsed) {
-      guardFeedback = "Your reply was not one JSON object with the five required keys. Reply again with exactly that object and nothing else.";
-      answer = null;
-      continue;
-    }
-    answer = parsed;
-    studentText = prepareForRelease(parsed.studentPreparationFeedback).text;
-    interviewerText = prepareForRelease(parsed.mockInterviewStructure).text;
-    const g1 = guardInterviewOutput(studentText, request.kind);
-    const g2 = guardInterviewOutput(interviewerText, request.kind);
-    if (g1.ok && g2.ok) break;
-    const failed = Array.from(new Set([...g1.failed, ...g2.failed]));
-    const violations = [...g1.violations, ...g2.violations].slice(0, 8);
-    guardFeedback =
-      `Your output broke these rules: ${failed.join("; ")}. The sentences at fault were: ${violations.map(v => `"${v}"`).join(" ")} ` +
-      "Reply again with the same JSON object, keeping everything else, with those sentences removed or rewritten so that no rule is broken.";
-    if (attempt === 1) answer = null;
+  };
+
+  // Task 1: findings, asked again once if the reply is not the JSON object.
+  let findings: Findings | null = null;
+  for (let attempt = 0; attempt < 2 && !findings; attempt += 1) {
+    const reply = await call(4000);
+    if ("error" in reply) return refuse("model_unavailable", reply.error, request, owner, documentSummary);
+    findings = parseFindings(reply.text);
+    conversation.push({ role: "assistant", content: reply.text });
+    if (!findings) conversation.push({ role: "user", content: "That was not one JSON object with the three required keys. Reply again with exactly that object and nothing else." });
   }
+  if (!findings) {
+    recordAuditEvent({
+      staffUserId: request.staffUserId, authMethod: request.authMethod, workerId: owner,
+      workerSpecificationVersion: worker.specificationVersion, requestedCapability: `interview_preparation:${request.kind}`,
+      permissionDecision: "allowed", permissionReason: "The model did not return the findings as JSON twice.",
+      success: false, errorCategory: "validation_error",
+    });
+    return refuse("withheld", "The findings could not be read from the model twice. Run the preparation again.", request, owner, documentSummary);
+  }
+
+  // Tasks 2 and 3: each document as text, guarded; a guard failure or a
+  // reply cut off at the length limit is put back once.
+  const produce = async (ask: string, maxTokens: number): Promise<string | null> => {
+    conversation.push({ role: "user", content: ask });
+    for (let attempt = 0; attempt < 2; attempt += 1) {
+      const reply = await call(maxTokens);
+      if ("error" in reply) return null;
+      conversation.push({ role: "assistant", content: reply.text });
+      if (!reply.complete) {
+        conversation.push({ role: "user", content: "That reply was cut off at the length limit. Write the same document again, more concisely, so that it finishes." });
+        continue;
+      }
+      const text = prepareForRelease(reply.text).text;
+      const guard = guardInterviewOutput(text, request.kind);
+      if (guard.ok) return text;
+      conversation.push({
+        role: "user",
+        content:
+          `Your document broke these rules: ${guard.failed.join("; ")}. The sentences at fault were: ${guard.violations.slice(0, 8).map(v => `"${v}"`).join(" ")} ` +
+          "Write the same document again, keeping everything else, with those sentences removed or rewritten so that no rule is broken.",
+      });
+    }
+    return null;
+  };
+
+  const studentText = await produce(askStudentFeedback(studentName, findings), 12000);
+  const interviewerText = studentText === null ? null : await produce(askInterviewStructure(studentName, findings), 14000);
+  const answer = studentText !== null && interviewerText !== null ? findings : null;
 
   const kindOwnerAudit = {
     staffUserId: request.staffUserId, authMethod: request.authMethod, workerId: owner,
@@ -497,9 +535,9 @@ export async function prepareInterview(request: PreparationRequest): Promise<Pre
   }
 
   const status = deriveReadiness(
-    answer.contradictions.map(c => ({ kind: "different_explanation_course_choice" as const, applicationRecordSays: "", educationDnaSays: "", whyItMatters: c.detail, questionForCounsellor: "" })),
-    answer.missingInformation.map(m => ({ what: m.detail, whyItIsNeeded: "", requiredFromStudent: true as const })),
-    answer.weakAreas.map(w => ({ kind: "vulnerable_to_follow_up" as const, observation: w.detail, risk: w.risk ?? "medium", whatTheStudentNeedsToUnderstand: "" })),
+    findings.contradictions.map(c => ({ kind: "different_explanation_course_choice" as const, applicationRecordSays: "", educationDnaSays: "", whyItMatters: c.detail, questionForCounsellor: "" })),
+    findings.missingInformation.map(m => ({ what: m.detail, whyItIsNeeded: "", requiredFromStudent: true as const })),
+    findings.weakAreas.map(w => ({ kind: "vulnerable_to_follow_up" as const, observation: w.detail, risk: w.risk ?? "medium", whatTheStudentNeedsToUnderstand: "" })),
   );
 
   recordAuditEvent({
@@ -513,6 +551,6 @@ export async function prepareInterview(request: PreparationRequest): Promise<Pre
     reason: `${worker.canonicalName} prepared both documents under ${brief.sourceDocument}.`,
     status, statusMeaning: READINESS_MEANING, documents: documentSummary,
     studentPreparationFeedback: studentText, mockInterviewStructure: interviewerText,
-    counts: { contradictions: answer.contradictions.length, weakAreas: answer.weakAreas.length, missingInformation: answer.missingInformation.length },
+    counts: { contradictions: findings.contradictions.length, weakAreas: findings.weakAreas.length, missingInformation: findings.missingInformation.length },
   };
 }
