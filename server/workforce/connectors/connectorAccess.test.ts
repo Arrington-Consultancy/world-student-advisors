@@ -169,18 +169,16 @@ describe("3. the wrong worker is denied", () => {
 });
 
 describe("4. a student outside the remit or the case scope is denied", () => {
-  it("Olivia may not read a student who is not yet confirmed", async () => {
-    vi.stubGlobal("fetch", fakePipedrive(18));
+  it("a worker retired by merger (Olivia, 18 September 2026) may not read any student, confirmed or not, and makes no call", async () => {
+    vi.stubGlobal("fetch", fakePipedrive(21));
     const r = await readPipedriveRecord({ ...entra, workerId: "olivia", resourceScope: "person/501" });
     expect(r.success).toBe(false);
-    expect(r.message).toContain("not a confirmed student");
-    vi.stubGlobal("fetch", fakePipedrive(21));
-    expect((await readPipedriveRecord({ ...entra, workerId: "olivia", resourceScope: "person/501" })).success).toBe(true);
+    expect(fetch).not.toHaveBeenCalled();
   });
   it("a staff member with a suspended account is denied before any call", async () => {
     vi.mocked(resolveStaffAccessProfile).mockImplementation(async id => (id === null ? UNRESOLVED : profile({ status: "suspended" })) as never);
     vi.stubGlobal("fetch", fakePipedrive());
-    expect((await readPipedriveRecord({ ...entra, workerId: "daniel", resourceScope: "person/501" })).success).toBe(false);
+    expect((await readPipedriveRecord({ ...entra, workerId: "sophie", resourceScope: "person/501" })).success).toBe(false);
     expect(fetch).not.toHaveBeenCalled();
   });
 });

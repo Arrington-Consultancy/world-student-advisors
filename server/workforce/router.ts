@@ -32,11 +32,7 @@ const ROUTING_DOMAINS: RoutingDomain[] = [
     keywords: [
       "enquiry", "triage", "new enquiry", "new student enquiry", "first contact", "new lead", "who should take this",
       "route this", "incoming", "student got in touch", "someone asked",
-    ],
-  },
-  {
-    workerId: "daniel",
-    keywords: [
+      // Student discovery, Daniel's terms until his merger into Sophie (18 September 2026).
       "discovery", "background", "background information", "student profile", "academic profile",
       "student discovery", "gather background", "find out about the student", "what do we know about",
       "profile", "prior study", "academic history",
@@ -49,11 +45,7 @@ const ROUTING_DOMAINS: RoutingDomain[] = [
       "module", "curriculum", "syllabus", "english course", "english language", "foundation year",
       "pre-masters", "pathway", "study option", "what do we offer", "university information",
       "institution information", "entry profile", "entry requirement", "subject", "tuition fee", "ranking",
-    ],
-  },
-  {
-    workerId: "oliver",
-    keywords: [
+      // Suitability, Oliver's terms until his merger into Amelia (18 September 2026).
       "suitability", "suitable", "compare option", "compare universities", "compare courses", "trade off",
       "which option", "best fit", "better fit", "better option", "which university", "which of these",
       "right for this student", "recommend an option",
@@ -70,6 +62,10 @@ const ROUTING_DOMAINS: RoutingDomain[] = [
       "admission", "admissions requirement", "application", "application requirement", "application deadline", "apply", "submit",
       "submission", "deadline", "meets the entry requirement", "offer letter", "conditional offer", "ucas",
       "supporting document", "personal statement", "reference letter",
+      // Pre-arrival, Olivia's terms until her merger into James (18 September 2026).
+      "pre-arrival", "arrival", "arrive", "they arrive", "orientation", "student success", "settling in",
+      "transition", "accommodation", "airport", "before they travel", "enrol", "enrolment", "enrollment",
+      "got their offer", "has their offer",
     ],
   },
   {
@@ -79,14 +75,6 @@ const ROUTING_DOMAINS: RoutingDomain[] = [
   {
     workerId: "harper",
     keywords: ["scholarship", "funding", "financial", "tuition fee", "fees", "affordability", "funding gap", "bursary", "cost of study", "how much"],
-  },
-  {
-    workerId: "olivia",
-    keywords: [
-      "pre-arrival", "arrival", "arrive", "they arrive", "orientation", "student success", "settling in",
-      "transition", "accommodation", "airport", "before they travel", "enrol", "enrolment", "enrollment",
-      "got their offer", "has their offer",
-    ],
   },
   {
     workerId: "grace",

@@ -20,13 +20,13 @@ describe("evaluateHandoff — prerequisite gate", () => {
     expect(result.reason).toMatch(/no controlled evidence/i);
   });
 
-  it("recognises a genuinely evidenced handoff (sophie -> daniel) once prerequisites are satisfied", () => {
-    const result = evaluateHandoff("sophie", "daniel", satisfied);
+  it("recognises a genuinely evidenced handoff (sophie -> amelia, since Daniel's merger into Sophie) once prerequisites are satisfied", () => {
+    const result = evaluateHandoff("sophie", "amelia", satisfied);
     expect(result.handoffValid).toBe(true);
   });
 
   it("a downstream worker cannot silently bypass a required upstream gate — an evidenced handoff with unmet prerequisites still fails", () => {
-    const result = evaluateHandoff("oliver", "james", unmet);
+    const result = evaluateHandoff("amelia", "james", unmet);
     expect(result.handoffValid).toBe(false);
   });
 
@@ -34,9 +34,9 @@ describe("evaluateHandoff — prerequisite gate", () => {
     // Both are true for an approved downstream worker, and the point is
     // that they are computed separately: a valid handoff has never been
     // what authorises the worker receiving it.
-    const result = evaluateHandoff("sophie", "daniel", satisfied);
+    const result = evaluateHandoff("sophie", "amelia", satisfied);
     expect(result.handoffValid).toBe(true);
-    expect(result.downstreamExecutionAuthorised).toBe(getWorker("daniel").staffPortalExecutionAuthorised);
+    expect(result.downstreamExecutionAuthorised).toBe(getWorker("amelia").staffPortalExecutionAuthorised);
 
     // A procedurally valid handoff into a worker that cannot execute
     // still reports the handoff valid and the execution refused.

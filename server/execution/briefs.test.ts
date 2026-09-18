@@ -8,8 +8,8 @@ import { WORKER_CRM_SCOPE } from "../workforce/crmScope";
 import { WORKER_SHAREPOINT_LOCATIONS } from "../workforce/sharePointLocations";
 
 const CASE_WORKERS: WorkerId[] = [
-  "sophie", "daniel", "amelia", "oliver", "james", "priya",
-  "harper", "olivia", "grace", "ethan", "maya", "alex", "nia",
+  "sophie", "amelia", "james", "priya",
+  "harper", "grace", "ethan", "maya", "alex", "nia",
 ];
 
 describe("controlled briefs — coverage and provenance", () => {
@@ -92,11 +92,11 @@ describe("a brief is not an authorisation", () => {
 describe("worker isolation in the composed prompt", () => {
   it("a worker's prompt contains its own remit and no other worker's rules", () => {
     const oliverPrompt = composeSystemPrompt({
-      brief: getControlledBrief("oliver")!,
-      context: { workerId: "oliver", denied: false, caseData: null } as never,
+      brief: getControlledBrief("amelia")!,
+      context: { workerId: "amelia", denied: false, caseData: null } as never,
       contributions: [],
     });
-    expect(oliverPrompt).toContain("Education Suitability");
+    expect(oliverPrompt).toContain("Education Research and Suitability");
     // Harper's funding arithmetic rule is distinctive and must not appear.
     expect(oliverPrompt).not.toContain("funding gap");
     expect(oliverPrompt).not.toContain("Student Enquiry and Triage");
@@ -145,12 +145,9 @@ describe("worker isolation in the composed prompt", () => {
 describe("boundaries between specialists are stated, not implied", () => {
   const expectations: Array<[WorkerId, RegExp]> = [
     ["sophie", /suitability|admissions|visa/i],
-    ["daniel", /recommend|conclusion/i],
-    ["amelia", /rank|suitab/i],
-    ["oliver", /research|application|visa/i],
+    ["amelia", /decision for them|application|visa/i],
     ["james", /visa|immigration/i],
     ["harper", /visa|immigration|investment/i],
-    ["olivia", /visa|immigration|payment/i],
     ["grace", /rewrit|case owner/i],
     ["ethan", /paid media|advertis|social/i],
     ["maya", /destructive|retention/i],

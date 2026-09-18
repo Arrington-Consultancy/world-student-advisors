@@ -9,9 +9,9 @@ describe("routing domain integrity", () => {
 });
 
 describe("routeStaffRequest — representative cases across student, admissions, visa, funding, QA and marketing work", () => {
-  it("student discovery request routes to Daniel", () => {
+  it("student discovery request routes to Sophie, who carries discovery since Daniel's merger (18 September 2026)", () => {
     const result = routeStaffRequest("Can you help gather background information on this new student's academic profile?");
-    expect(result.responsibleWorkerId).toBe("daniel");
+    expect(result.responsibleWorkerId).toBe("sophie");
   });
 
   it("admissions request routes to James", () => {

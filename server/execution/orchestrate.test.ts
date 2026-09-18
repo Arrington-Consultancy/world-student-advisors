@@ -41,11 +41,11 @@ describe("choosing one lead", () => {
       status: "on_track",
       nextControlledAction: "Route to discovery",
     };
-    expect(selectLead(["daniel", "amelia"], stage)).toBe("sophie");
+    expect(selectLead(["james", "amelia"], stage)).toBe("sophie");
   });
 
   it("falls back to the first candidate that can execute", () => {
-    expect(selectLead(["daniel", "sophie", "amelia"])).toBe("daniel");
+    expect(selectLead(["daniel", "sophie", "amelia"])).toBe("sophie");
   });
 
   it("returns no lead where nothing can execute, rather than picking one anyway", () => {
@@ -231,7 +231,9 @@ describe("contributors stay isolated", () => {
       // one-line purpose each) so a worker can say who owns what; a roster
       // line is a directory entry, not another worker's brief.
       expect(system.split("YOUR REMIT:").length - 1).toBe(1);
-      for (const other of ["daniel", "amelia", "oliver", "james", "priya", "harper"] as const) {
+      // The only candidate that can execute is Sophie, so every prompt is
+      // hers and carries her remit; no other specialist's remit may appear.
+      for (const other of ["amelia", "james", "priya", "harper"] as const) {
         const brief = getControlledBrief(other);
         if (brief && brief.remit.length > 40) expect(system).not.toContain(brief.remit);
       }

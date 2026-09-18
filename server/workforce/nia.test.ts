@@ -121,6 +121,7 @@ describe("the estate remains closed apart from the one authorised worker", () =>
       expect(w.connectorUseAuthorised, w.id).toBe(granted);
       expect(w.writesAuthorised, w.id).toBe(false);
     }
-    expect(listWorkers()).toHaveLength(16);
+    expect(listWorkers()).toHaveLength(13);
+    expect(listWorkers({ includeRetired: true })).toHaveLength(16);
   });
 });

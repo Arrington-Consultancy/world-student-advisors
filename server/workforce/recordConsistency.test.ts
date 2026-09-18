@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { listWorkers } from "./registry";
+import { getWorker, listWorkers } from "./registry";
 import { evaluateStaffPortalExecutionPermission } from "./permissions";
 
 /**
@@ -33,16 +33,26 @@ import { evaluateStaffPortalExecutionPermission } from "./permissions";
  * so the three records cannot drift apart again silently.
  */
 const SUBSTANTIVE = [
-  "sophie", "daniel", "amelia", "oliver", "james", "priya", "harper",
-  "olivia", "grace", "ethan", "maya", "alex", "nia",
+  "sophie", "amelia", "james", "priya", "harper",
+  "grace", "ethan", "maya", "alex", "nia",
 ] as const;
+/** Retired by merger on 18 September 2026 (Register v0.47): kept for history, unreachable. */
+const RETIRED = ["daniel", "oliver", "olivia"] as const;
 
 const workers = listWorkers();
 const substantive = workers.filter(w => (SUBSTANTIVE as readonly string[]).includes(w.id));
 
 describe("worker execution approval is recorded for every substantive worker", () => {
-  it("covers all thirteen, so the list itself cannot silently shrink", () => {
+  it("covers all ten, so the list itself cannot silently shrink", () => {
     expect(substantive).toHaveLength(SUBSTANTIVE.length);
+  });
+
+  it.each(RETIRED)("%s is retired by merger: approved on record, not executable, and its remit named to a live worker", id => {
+    const worker = getWorker(id);
+    expect(worker.staffPortalExecutionStatus).toBe("retired_merged");
+    expect(evaluateStaffPortalExecutionPermission(id).allowed).toBe(false);
+    expect(workers.find(w => w.id === id)).toBeUndefined();
+    expect(evaluateStaffPortalExecutionPermission(worker.retirement!.mergedInto).allowed).toBe(true);
   });
 
   it.each(SUBSTANTIVE)("%s is approved and authorised to execute in the Staff Portal", id => {
@@ -122,8 +132,8 @@ describe("every shut capability names the decision that shuts it", () => {
       const needsConnector = worker.capabilities.filter(c => c.requiresConnector);
       if (shut.length === 0 && needsConnector.length === 0) orphaned.push(worker.id);
     }
-    // Daniel, Oliver, Olivia record blockers governing matters beyond a
-    // single capability, so this is reported rather than asserted empty.
+    // A worker may record blockers governing matters beyond a single
+    // capability, so this is reported rather than asserted empty.
     // What it must never be is EVERY worker, which would mean blockers had
     // stopped meaning anything.
     expect(orphaned.length).toBeLessThan(substantive.length);

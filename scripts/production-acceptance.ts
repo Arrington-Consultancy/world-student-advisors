@@ -298,15 +298,19 @@ async function main() {
     `every connector operation is denied for every worker (${connectorPermitted} permitted of ${connectorTotal})`);
 
   // Execution must match the controlled record exactly — not merely be
-  // non-zero, and not merely include the thirteen. A worker the Register
-  // does not authorise must still be refused.
+  // non-zero, and not merely include the ten. A worker the Register does
+  // not authorise must still be refused, and a worker retired by merger
+  // (Daniel, Oliver, Olivia; Register v0.47, 18 September 2026) most of all.
   const SUBSTANTIVE = [
-    "sophie", "daniel", "amelia", "oliver", "james", "priya", "harper",
-    "olivia", "grace", "ethan", "maya", "alex", "nia",
+    "sophie", "amelia", "james", "priya", "harper",
+    "grace", "ethan", "maya", "alex", "nia",
   ];
-  const executable = listWorkers().filter(w => evaluateStaffPortalExecutionPermission(w.id).allowed).map(w => w.id).sort();
+  const executable = listWorkers({ includeRetired: true }).filter(w => evaluateStaffPortalExecutionPermission(w.id).allowed).map(w => w.id).sort();
   check(JSON.stringify(executable) === JSON.stringify([...SUBSTANTIVE].sort()),
-    `exactly the thirteen Register-authorised workers may execute, and no other (found ${executable.length}: ${executable.join(", ")})`);
+    `exactly the ten Register-authorised workers may execute, and no other (found ${executable.length}: ${executable.join(", ")})`);
+  for (const retired of ["daniel", "oliver", "olivia"] as const) {
+    check(!evaluateStaffPortalExecutionPermission(retired).allowed, `${retired} is retired by merger and cannot be opened`);
+  }
 
   for (const id of ["wsa_core_brain", "wsa_governance_assurance", "staff_receptionist"]) {
     if (!listWorkers().some(w => w.id === id)) continue;
@@ -513,13 +517,13 @@ async function main() {
   // worker nobody will use, however correct it is in isolation.
   const ROUTES: ReadonlyArray<readonly [string, string]> = [
     ["A new student has emailed us asking for help, can someone triage this enquiry", "sophie"],
-    ["Help me understand what this student is actually looking for and their background", "daniel"],
+    ["Help me understand what this student is actually looking for and their background", "sophie"],
     ["Help me research English courses for this student", "amelia"],
-    ["Which of these two universities is the better fit for this student", "oliver"],
+    ["Which of these two universities is the better fit for this student", "amelia"],
     ["What is the application deadline and what do we need for admissions", "james"],
     ["What does the visa rule say about maintenance funds", "priya"],
     ["What scholarship and funding options could close this student's funding gap", "harper"],
-    ["The student has their offer, what do they need before they arrive and enrol", "olivia"],
+    ["The student has their offer, what do they need before they arrive and enrol", "james"],
     ["Can you quality check this case file before it goes out", "grace"],
     ["How can we improve the website search ranking for this page", "ethan"],
     ["How should we structure our SharePoint records and retention", "maya"],

@@ -126,9 +126,10 @@ describe("subject ownership is separate from authority to conclude", () => {
 });
 
 describe("three operational states, from the controlled records", () => {
-  it("all thirteen substantive workers are approved and active", () => {
+  it("all ten substantive workers are approved and active; the three retired by merger are not listed", () => {
     const substantive = listWorkers().filter(w => w.specificationStatus === "approved");
-    expect(substantive.length).toBe(13);
+    expect(substantive.length).toBe(10);
+    expect(listWorkers({ includeRetired: true }).filter(w => w.staffPortalExecutionStatus === "retired_merged").map(w => w.id).sort()).toEqual(["daniel", "oliver", "olivia"]);
     for (const w of substantive) expect(operationalStateOf(w.id).state).toBe("approved_active");
   });
 

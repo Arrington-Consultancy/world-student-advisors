@@ -95,7 +95,7 @@ describe("workforce endpoints accept both session types", () => {
     const token = await getSharedPasswordToken(caller);
     const result = await caller.workforce.listWorkers({ token });
     expect(result.session).toEqual({ authMethod: "shared_password", displayName: null });
-    expect(result.workers.length).toBeGreaterThanOrEqual(15);
+    expect(result.workers.length).toBeGreaterThanOrEqual(12);
   });
 
   it("listWorkers works with an Entra session and reports the named principal", async () => {

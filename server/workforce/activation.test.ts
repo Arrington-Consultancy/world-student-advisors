@@ -6,8 +6,8 @@ import { WORKER_CRM_SCOPE } from "./crmScope";
 import { WORKER_SHAREPOINT_LOCATIONS } from "./sharePointLocations";
 
 const CASE_WORKERS = [
-  "sophie", "daniel", "amelia", "oliver", "james", "priya",
-  "harper", "olivia", "grace", "ethan", "maya", "alex", "nia",
+  "sophie", "amelia", "james", "priya",
+  "harper", "grace", "ethan", "maya", "alex", "nia",
 ] as const;
 
 describe("execution authority and connector authority are separate questions", () => {

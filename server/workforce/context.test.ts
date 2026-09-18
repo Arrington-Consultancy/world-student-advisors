@@ -80,18 +80,18 @@ describe("buildWorkerContext — case and student isolation (permission override
 });
 
 describe("buildWorkerContext — upstream output isolation", () => {
-  const fromDanielToMe: UpstreamOutput = { fromWorkerId: "daniel", caseId: "case-A", summary: "discovery notes for case-A" };
+  const fromDanielToMe: UpstreamOutput = { fromWorkerId: "sophie", caseId: "case-A", summary: "discovery notes for case-A" };
   const fromGraceUnrelated: UpstreamOutput = { fromWorkerId: "grace", caseId: "case-A", summary: "QA findings not handed to Amelia" };
-  const fromDanielWrongCase: UpstreamOutput = { fromWorkerId: "daniel", caseId: "case-B", summary: "discovery notes for a different case" };
+  const fromDanielWrongCase: UpstreamOutput = { fromWorkerId: "sophie", caseId: "case-B", summary: "discovery notes for a different case" };
 
   it("a worker receives another worker's output only where the registry records an evidenced handoff into it", () => {
-    // amelia's registry entry follows daniel (daniel.evidencedHandoffs includes "amelia")
+    // amelia's registry entry follows sophie (sophie.evidencedHandoffs includes "amelia"; discovery merged into Sophie 18 September 2026)
     const context = buildWorkerContext(
       { workerId: "amelia", caseId: "case-A", requestedByStudentId: "student-1", availableCases: [], availableUpstreamOutputs: [fromDanielToMe] },
       allowAll,
     );
     expect(context.upstreamOutputs).toHaveLength(1);
-    expect(context.upstreamOutputs[0].fromWorkerId).toBe("daniel");
+    expect(context.upstreamOutputs[0].fromWorkerId).toBe("sophie");
   });
 
   it("worker A cannot receive worker B's output when no handoff is evidenced between them", () => {

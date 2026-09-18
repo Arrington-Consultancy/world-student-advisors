@@ -70,7 +70,8 @@ describe("workforce.listWorkers — requires a valid Staff Portal session", () =
     const caller = makeCaller();
     const token = await getValidToken(caller);
     const result = await caller.workforce.listWorkers({ token });
-    expect(result.workers.length).toBeGreaterThanOrEqual(15);
+    expect(result.workers.length).toBeGreaterThanOrEqual(12);
+    expect(result.workers.map(w => w.id)).not.toContain("daniel");
     // The endpoint reports the register rather than deciding anything.
     for (const w of result.workers) {
       expect(w.specificationStatus, w.id).toBe(getWorker(w.id as WorkerId).specificationStatus);

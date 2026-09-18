@@ -45,8 +45,8 @@ describe("reception routes the questions staff actually ask", () => {
     ["what should we post on instagram this week", "nia"],
     ["how much are the tuition fees", "harper"],
     ["where is the document filed in sharepoint", "maya"],
-    ["is this student suitable for engineering", "oliver"],
-    ["Can you help gather background information on this new student's academic profile?", "daniel"],
+    ["is this student suitable for engineering", "amelia"],
+    ["Can you help gather background information on this new student's academic profile?", "sophie"],
     ["how is our google ads campaign doing", "alex"],
     ["can someone audit this case", "grace"],
   ];
