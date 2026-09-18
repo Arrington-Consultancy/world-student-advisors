@@ -413,10 +413,14 @@ export const REMITS: readonly WorkerRemit[] = [
     // September 2026 on the staff student lookup; recorded in Change Entries
     // 106 to 108. The remit's cited source below remains the Handover role
     // scope, which places first contact and the enquiry record with her.
-    produces: ["enquiry_triage", "student_record_lookup"],
+    // student_profile and discovery_gap: Daniel's remit, merged into Sophie
+    // by Tom Arrington on 18 September 2026 (Register v0.47, Change Entry
+    // 112), so first contact and the student profile are one conversation.
+    produces: ["enquiry_triage", "student_record_lookup", "student_profile", "discovery_gap"],
     identifiesButMayNotConclude: [],
     excludes: [
-      { outcome: "option_comparison", belongsTo: "oliver", source: HANDOVER_ROLE_SCOPE },
+      { outcome: "course_facts", belongsTo: "amelia", source: HANDOVER_ROLE_SCOPE },
+      { outcome: "option_comparison", belongsTo: "amelia", source: HANDOVER_ROLE_SCOPE },
       { outcome: "application_readiness", belongsTo: "james", source: HANDOVER_ROLE_SCOPE },
       { outcome: "immigration_rule", belongsTo: "priya", source: HANDOVER_ROLE_SCOPE },
     ],
@@ -425,24 +429,16 @@ export const REMITS: readonly WorkerRemit[] = [
     pipelineStage: 1,
   },
   {
-    workerId: "daniel",
-    produces: ["student_profile", "discovery_gap"],
-    identifiesButMayNotConclude: [],
-    excludes: [
-      { outcome: "course_facts", belongsTo: "amelia", source: HANDOVER_ROLE_SCOPE },
-      { outcome: "option_comparison", belongsTo: "oliver", source: HANDOVER_ROLE_SCOPE },
-    ],
-    source: HANDOVER_ROLE_SCOPE,
-    approvalSource: APPROVAL_RECORD,
-    pipelineStage: 2,
-  },
-  {
     workerId: "amelia",
-    produces: ["institution_inventory", "course_facts", "league_ranking"],
+    // option_comparison: Oliver's remit, merged into Amelia by Tom Arrington
+    // on 18 September 2026 (Register v0.47, Change Entry 112): the evidence
+    // and the weighing of it are one conversation.
+    produces: ["institution_inventory", "course_facts", "league_ranking", "option_comparison"],
     identifiesButMayNotConclude: [],
     excludes: [
-      { outcome: "option_comparison", belongsTo: "oliver", source: HANDOVER_ROLE_SCOPE },
       { outcome: "application_readiness", belongsTo: "james", source: HANDOVER_ROLE_SCOPE },
+      { outcome: "application_submission", belongsTo: "james", source: HANDOVER_ROLE_SCOPE },
+      { outcome: "immigration_rule", belongsTo: "priya", source: HANDOVER_ROLE_SCOPE },
       { outcome: "organic_search_performance", belongsTo: "ethan", source: HANDOVER_ROLE_SCOPE },
     ],
     source: HANDOVER_ROLE_SCOPE,
@@ -450,21 +446,11 @@ export const REMITS: readonly WorkerRemit[] = [
     pipelineStage: 3,
   },
   {
-    workerId: "oliver",
-    produces: ["option_comparison"],
-    identifiesButMayNotConclude: [],
-    excludes: [
-      { outcome: "application_submission", belongsTo: "james", source: HANDOVER_ROLE_SCOPE },
-      { outcome: "immigration_rule", belongsTo: "priya", source: HANDOVER_ROLE_SCOPE },
-      { outcome: "course_facts", belongsTo: "amelia", source: HANDOVER_ROLE_SCOPE },
-    ],
-    source: HANDOVER_ROLE_SCOPE,
-    approvalSource: APPROVAL_RECORD,
-    pipelineStage: 4,
-  },
-  {
     workerId: "james",
-    produces: ["application_readiness", "application_requirements", "application_submission"],
+    // prearrival_plan: Olivia's remit, merged into James by Tom Arrington on
+    // 18 September 2026 (Register v0.47, Change Entry 112): offer to arrival
+    // is one conversation. Its gates travel with it.
+    produces: ["application_readiness", "application_requirements", "application_submission", "prearrival_plan"],
     identifiesButMayNotConclude: [],
     excludes: [
       { outcome: "scholarship_options", belongsTo: "harper", source: HANDOVER_ROLE_SCOPE },
@@ -504,18 +490,6 @@ export const REMITS: readonly WorkerRemit[] = [
     source: HANDOVER_ROLE_SCOPE,
     approvalSource: APPROVAL_RECORD,
     pipelineStage: null,
-  },
-  {
-    workerId: "olivia",
-    produces: ["prearrival_plan"],
-    identifiesButMayNotConclude: [],
-    excludes: [
-      { outcome: "immigration_rule", belongsTo: "priya", source: HANDOVER_ROLE_SCOPE },
-      { outcome: "affordability", belongsTo: "harper", source: HANDOVER_ROLE_SCOPE },
-    ],
-    source: HANDOVER_ROLE_SCOPE,
-    approvalSource: APPROVAL_RECORD,
-    pipelineStage: 7,
   },
   {
     workerId: "grace",
@@ -576,7 +550,7 @@ export const REMITS: readonly WorkerRemit[] = [
       { outcome: "seo_recommendation", belongsTo: "ethan", source: NIA_BOUNDED_SCOPE },
       { outcome: "paid_media_analysis", belongsTo: "alex", source: NIA_BOUNDED_SCOPE },
       { outcome: "course_facts", belongsTo: "amelia", source: NIA_BOUNDED_SCOPE },
-      { outcome: "option_comparison", belongsTo: "oliver", source: NIA_BOUNDED_SCOPE },
+      { outcome: "option_comparison", belongsTo: "amelia", source: NIA_BOUNDED_SCOPE },
       { outcome: "scholarship_options", belongsTo: "harper", source: NIA_BOUNDED_SCOPE },
       { outcome: "immigration_rule", belongsTo: "priya", source: NIA_BOUNDED_SCOPE },
     ],

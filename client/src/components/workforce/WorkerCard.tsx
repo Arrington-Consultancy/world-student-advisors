@@ -6,7 +6,7 @@ export interface WorkforceWorker {
   canonicalName: string;
   roleTitle: string;
   specificationStatus: "approved" | "approval_blocked" | "not_approved" | "active" | "infrastructure";
-  staffPortalExecutionStatus: "pending_channel_decision" | "prohibited" | "not_configured" | "available_routing_only" | "not_applicable";
+  staffPortalExecutionStatus: "pending_channel_decision" | "prohibited" | "not_configured" | "available_routing_only" | "not_applicable" | "retired_merged";
   currentNextControl: string;
   materialBlockers: string[];
   personality: { summary: string; whatFor: string; whatNotFor: string };

@@ -124,9 +124,14 @@ describe("Pipedrive CRM gate — eight approved read scopes, nothing else", () =
   });
 
   it("WORKER_CRM_SCOPE is total over WorkerId and grants exactly the eight approved read scopes", () => {
-    expect(Object.keys(WORKER_CRM_SCOPE)).toHaveLength(listWorkers().length);
-    const granted = listWorkers().filter(w => WORKER_CRM_SCOPE[w.id] !== null).map(w => w.id).sort();
+    expect(Object.keys(WORKER_CRM_SCOPE)).toHaveLength(listWorkers({ includeRetired: true }).length);
+    // Daniel, Oliver and Olivia keep their recorded grants on the map for
+    // history; retired by merger on 18 September 2026, none can execute, so
+    // none can use them. Their remits now run under Sophie's, Amelia's and
+    // James's own grants.
+    const granted = listWorkers({ includeRetired: true }).filter(w => WORKER_CRM_SCOPE[w.id] !== null).map(w => w.id).sort();
     expect(granted).toEqual(["daniel", "grace", "harper", "james", "oliver", "olivia", "priya", "sophie"]);
+    expect(listWorkers().filter(w => WORKER_CRM_SCOPE[w.id] !== null).map(w => w.id).sort()).toEqual(["grace", "harper", "james", "priya", "sophie"]);
     for (const w of ["amelia", "ethan", "maya", "alex", "nia", "wsa_core_brain", "wsa_governance_assurance", "staff_receptionist"] as const) {
       expect(WORKER_CRM_SCOPE[w]).toBeNull();
     }

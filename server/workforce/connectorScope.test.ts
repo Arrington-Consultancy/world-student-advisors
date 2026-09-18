@@ -95,7 +95,7 @@ describe("SharePoint grants are transcribed from Access Matrix v0.2 section 2", 
   });
 
   it("the map is total over WorkerId", () => {
-    expect(Object.keys(WORKER_CONNECTOR_SCOPE)).toHaveLength(listWorkers().length);
+    expect(Object.keys(WORKER_CONNECTOR_SCOPE)).toHaveLength(listWorkers({ includeRetired: true }).length);
   });
 });
 

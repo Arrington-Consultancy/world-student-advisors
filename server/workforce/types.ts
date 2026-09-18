@@ -61,6 +61,16 @@ export type StaffPortalExecutionStatus =
   | "prohibited"
   | "not_configured"
   | "available_routing_only"
+  /**
+   * Retired by merger into another worker. Tom Arrington, 18 September
+   * 2026 (Worker Register v0.47): Daniel into Sophie, Oliver into Amelia,
+   * Olivia into James. The entry stays in the registry so that stored
+   * conversations, audit rows and routing-gap rows that name the id still
+   * resolve; it is excluded from routing, the roster, the directory and
+   * execution, and `retirement.mergedInto` names the worker who now owns
+   * its remit.
+   */
+  | "retired_merged"
   | "not_applicable";
 
 /**
@@ -187,6 +197,8 @@ export interface WorkerRegistryEntry {
    * record (see WSA Student Journey, not inspected in this build pass).
    */
   evidencedHandoffs: WorkerId[];
+  /** Present only on a worker retired by merger: who owns its remit now, when, and on whose authority. */
+  retirement?: { mergedInto: WorkerId; on: string; authority: string };
   /** Always Tom Arrington in every controlled document inspected — the sole named approval/escalation authority. */
   escalationRoute: string;
   /**

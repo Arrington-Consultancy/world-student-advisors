@@ -49,13 +49,10 @@ interface WorkerCase {
 
 const WORKERS: WorkerCase[] = [
   { id: "sophie", inScopeRequest: "a new enquiry came in from a student", outOfScopeTopic: /visa|suitability|admissions/i },
-  { id: "daniel", inScopeRequest: "I need the student's academic background and goals", outOfScopeTopic: /recommend|conclusion/i },
-  { id: "amelia", inScopeRequest: "research entry requirements for this course", outOfScopeTopic: /rank|suitab/i },
-  { id: "oliver", inScopeRequest: "compare the suitability of these two options", outOfScopeTopic: /research|visa/i },
+  { id: "amelia", inScopeRequest: "research entry requirements for this course", outOfScopeTopic: /decision for them|application|visa/i },
   { id: "james", inScopeRequest: "check the application is complete for submission", outOfScopeTopic: /visa|immigration/i },
   { id: "priya", inScopeRequest: "what visa evidence does this student need", outOfScopeTopic: /rule|eligib/i },
   { id: "harper", inScopeRequest: "work out the scholarship and funding gap", outOfScopeTopic: /visa|investment/i },
-  { id: "olivia", inScopeRequest: "pre-arrival checklist for a confirmed student", outOfScopeTopic: /visa|payment/i },
   { id: "grace", inScopeRequest: "audit this case for defects and missing evidence", outOfScopeTopic: /rewrit|case owner/i },
   { id: "ethan", inScopeRequest: "improve our organic search position", outOfScopeTopic: /paid media|social/i },
   { id: "maya", inScopeRequest: "sort out the sharepoint records structure", outOfScopeTopic: /destructive|retention/i },

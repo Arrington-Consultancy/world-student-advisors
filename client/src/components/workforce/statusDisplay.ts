@@ -21,7 +21,8 @@ export type WorkerListItem = {
     | "prohibited"
     | "not_configured"
     | "available_routing_only"
-    | "not_applicable";
+    | "not_applicable"
+    | "retired_merged";
   canOpenForLiveExecution: boolean;
   gatekeeperReview?: "passed_cleared_for_approval" | "pending" | "not_applicable";
   /** Capabilities currently switched off, with the reason. */

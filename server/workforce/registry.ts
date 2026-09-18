@@ -133,21 +133,24 @@ const REGISTRY_LIST: WorkerRegistryEntry[] = [
   entry({
     id: "sophie",
     canonicalName: "Sophie",
-    roleTitle: "Student Enquiry & Triage",
-    specificationVersion: "v1.1",
+    roleTitle: "Student Enquiry, Triage & Discovery",
+    specificationVersion: "v1.1 + Register v0.47 merger",
     specificationStatus: "approved",
     staffPortalExecutionStatus: "staff_portal_authorised",
     currentNextControl:
       "Deployment channel resolved to the Staff Portal by Tom Arrington's recorded decision. Live in the Staff " +
       "Portal for enquiry and triage. Connector actions remain closed, so a case record is prepared for a human " +
-      "to file rather than written directly.",
+      "to file rather than written directly. From 18 September 2026 (Register v0.47) Sophie also carries " +
+      "structured student discovery, formerly Daniel's remit, so first contact and the student profile are " +
+      "one conversation.",
     materialBlockers: ["Deployment channel not yet decided (Custom GPT vs. Staff Portal)"],
     personality: {
       summary: "Warm, brisk and reassuring. Makes first contact feel human without becoming sales-led.",
       whatFor:
-        "First contact and triage for a new student enquiry, and finding a named student's CRM record: who is " +
-        "managing them, what stage they are at, whether they are recorded at all.",
-      whatNotFor: "No suitability, admissions or visa advice.",
+        "First contact and triage for a new student enquiry, finding a named student's CRM record (who is " +
+        "managing them, what stage they are at, whether they are recorded at all), and structured discovery of " +
+        "a student's academic position, goals, budget and circumstances so a researcher or adviser can work from it.",
+      whatNotFor: "No research conclusions or recommendations; no suitability, admissions or visa advice.",
     },
     connectorIntent: {
       sharePoint: "Relevant enquiry/triage records; designated triage write-back.",
@@ -155,10 +158,20 @@ const REGISTRY_LIST: WorkerRegistryEntry[] = [
       pipedrive: CRM_READ_INTENT_APPROVED,
       hardBoundary: "No suitability, admissions or visa advice.",
     },
-    evidencedHandoffs: ["daniel"],
+    evidencedHandoffs: ["amelia"],
     escalationRoute: TOM_ARRINGTON,
     gatekeeperReview: "passed_cleared_for_approval",
     capabilities: [
+      {
+        id: "discovery",
+        name: "Build a student profile from what staff provide",
+        description:
+          "Gather and structure a student's background, prior study and circumstances from staff input and case context. Formerly Daniel's capability; merged 18 September 2026.",
+        worksWithoutConnector: true,
+        requiresConnector: null,
+        unavailableBecause:
+          null,
+      },
       {
         id: "triage",
         name: "Take and triage an enquiry",
@@ -186,74 +199,67 @@ const REGISTRY_LIST: WorkerRegistryEntry[] = [
   entry({
     id: "daniel",
     canonicalName: "Daniel",
-    roleTitle: "Student Discovery",
+    roleTitle: "Student Discovery (retired, merged into Sophie)",
     specificationVersion: "v0.4",
     specificationStatus: "approved",
-    staffPortalExecutionStatus: "staff_portal_authorised",
+    staffPortalExecutionStatus: "retired_merged",
+    retirement: { mergedInto: "sophie", on: "18 September 2026", authority: "Tom Arrington, 18 September 2026, recorded in WSA_AI_Worker_Register_v0.47.docx and Change Entry 112" },
     currentNextControl:
-      "Independent Gatekeeper review passed (29 August 2026). Awaiting Tom Arrington's consolidated approval decision; the triage-QC entry proposal remains open and non-operative.",
-    materialBlockers: ["Tom Arrington's consolidated approval decision pending", "Triage-QC entry decision open"],
+      "Retired 18 September 2026 by merger into Sophie (Worker Register v0.47, Tom Arrington). Structured " +
+      "student discovery is now Sophie's capability. This entry remains so that earlier conversations and audit " +
+      "rows naming Daniel still resolve; it routes nowhere and cannot be opened.",
+    materialBlockers: [],
     personality: {
       summary: "Curious, patient and organised. Asks useful questions without interrogating the student.",
-      whatFor: "Structured discovery of a student's academic position, goals and circumstances.",
-      whatNotFor: "No research conclusions or recommendations.",
+      whatFor: "Retired. Structured discovery of a student's academic position, goals and circumstances now sits with Sophie.",
+      whatNotFor: "Retired worker: not reachable.",
     },
     connectorIntent: {
-      sharePoint: "Discovery profile inputs and designated discovery output.",
-      googleDrive: "None by default.",
-      pipedrive: CRM_READ_INTENT_APPROVED,
-      hardBoundary: "No research conclusions or recommendations.",
+      sharePoint: "None: retired.",
+      googleDrive: "None.",
+      pipedrive: "None: retired. Sophie's approved CRM read intent covers discovery.",
+      hardBoundary: "Retired worker: no execution.",
     },
-    evidencedHandoffs: ["amelia"],
+    evidencedHandoffs: [],
     escalationRoute: TOM_ARRINGTON,
     gatekeeperReview: "passed_cleared_for_approval",
-    capabilities: [
-      {
-        id: "discovery",
-        name: "Build a student profile from what staff provide",
-        description:
-          "Gather and structure a student's background, prior study and circumstances from staff input and case context.",
-        worksWithoutConnector: true,
-        requiresConnector: null,
-        unavailableBecause:
-          null,
-      },
-    ],
-    controlledBriefReference: `${SHAREPOINT_SITE}/17_Senior Management Team/AI_Operating_System/01_Working_Drafts/`,
+    capabilities: [],
+    controlledBriefReference: `${APPROVED_STANDARDS}/WSA_AI_Worker_Register_v0.47.docx`,
   }),
 
   entry({
     id: "amelia",
     canonicalName: "Amelia",
-    roleTitle: "Education Research",
-    specificationVersion: "v0.3",
+    roleTitle: "Education Research & Suitability",
+    specificationVersion: "v0.3 + Register v0.47 merger",
     specificationStatus: "approved",
     staffPortalExecutionStatus: "staff_portal_authorised",
     // The education-option definition was recorded as open. It is resolved
-    // by the existing worker architecture rather than by a new decision:
-    // Amelia identifies and structures factual education options and the
-    // authoritative evidence attached to them, Oliver owns comparative
-    // suitability and trade-offs, James owns admissions execution. That is
-    // the narrowest reading consistent with the approved workflow, and it
-    // takes nothing from either neighbour.
+    // by the worker architecture rather than by a new decision: Amelia
+    // identifies and structures factual education options and the
+    // authoritative evidence attached to them and, since the 18 September
+    // 2026 merger of Oliver into her, weighs comparative suitability across
+    // those options; James owns admissions execution.
     currentNextControl:
       "Approved 31 August 2026 under Tom Arrington's consolidated completion and activation authority. " +
       "Live for controlled education research: identifying and structuring factual education options and " +
-      "their authoritative evidence, with source and date. Suitability remains Oliver's and admissions " +
-      "remain James's. Web research is unavailable pending connector authorisation.",
+      "their authoritative evidence, with source and date, and, from 18 September 2026 (Register v0.47), for " +
+      "comparative suitability across those options, formerly Oliver's remit. The decision remains the " +
+      "student's and the recommendation an authorised human's. Admissions remain James's. Web research is " +
+      "unavailable pending connector authorisation.",
     materialBlockers: ["Web research unavailable: no authorised research connector"],
     personality: {
-      summary: "Meticulous, neutral researcher. Quietly sceptical of weak or stale evidence.",
-      whatFor: "Locating and structuring authoritative education research evidence.",
-      whatNotFor: "No suitability ranking or application decision.",
+      summary: "Meticulous, neutral researcher. Quietly sceptical of weak or stale evidence; explains trade-offs rather than selling a winner.",
+      whatFor: "Locating and structuring authoritative education research evidence, and weighing suitability trade-offs across researched options before a student decides.",
+      whatNotFor: "No final student decision, application or visa advice.",
     },
     connectorIntent: {
       sharePoint: "Approved discovery/research records; research-pack write-back.",
       googleDrive: "None by default.",
       pipedrive: NO_CONTROLLED_CRM_DECISION,
-      hardBoundary: "No suitability ranking or application decision.",
+      hardBoundary: "No final student decision, application or visa advice.",
     },
-    evidencedHandoffs: ["oliver"],
+    evidencedHandoffs: ["james"],
     escalationRoute: TOM_ARRINGTON,
     gatekeeperReview: "passed_cleared_for_approval",
     capabilities: [
@@ -262,6 +268,16 @@ const REGISTRY_LIST: WorkerRegistryEntry[] = [
         name: "Answer from controlled WSA education evidence",
         description:
           "Course, programme and institution information drawn from controlled WSA records and staff-supplied material.",
+        worksWithoutConnector: true,
+        requiresConnector: null,
+        unavailableBecause:
+          null,
+      },
+      {
+        id: "suitability",
+        name: "Compare options against a student's evidenced profile",
+        description:
+          "Weigh education options for one student using the controlled evidence and the recorded student profile. Formerly Oliver's capability; merged 18 September 2026.",
         worksWithoutConnector: true,
         requiresConnector: null,
         unavailableBecause:
@@ -284,60 +300,56 @@ const REGISTRY_LIST: WorkerRegistryEntry[] = [
   entry({
     id: "oliver",
     canonicalName: "Oliver",
-    roleTitle: "Education Suitability",
+    roleTitle: "Education Suitability (retired, merged into Amelia)",
     specificationVersion: "v0.2",
     specificationStatus: "approved",
-    staffPortalExecutionStatus: "staff_portal_authorised",
+    staffPortalExecutionStatus: "retired_merged",
+    retirement: { mergedInto: "amelia", on: "18 September 2026", authority: "Tom Arrington, 18 September 2026, recorded in WSA_AI_Worker_Register_v0.47.docx and Change Entry 112" },
     currentNextControl:
-      "Approved 31 August 2026 under Tom Arrington's consolidated completion and activation authority. " +
-      "Live for comparative suitability across already-researched options. The decision itself remains the " +
-      "student's and the recommendation an authorised human's.",
-    materialBlockers: ["Tom Arrington's consolidated approval decision pending", "Suitability governance open"],
+      "Retired 18 September 2026 by merger into Amelia (Worker Register v0.47, Tom Arrington). Comparative " +
+      "suitability across researched options is now Amelia's capability. This entry remains so that earlier " +
+      "conversations and audit rows naming Oliver still resolve; it routes nowhere and cannot be opened.",
+    materialBlockers: [],
     personality: {
       summary: "Balanced, analytical and plain-spoken. Explains trade-offs rather than selling a winner.",
-      whatFor: "Weighing suitability trade-offs across researched options before a student decides.",
-      whatNotFor: "No final student decision, application or visa advice.",
+      whatFor: "Retired. Weighing suitability trade-offs across researched options now sits with Amelia.",
+      whatNotFor: "Retired worker: not reachable.",
     },
     connectorIntent: {
-      sharePoint: "QC-passed discovery and research packs; suitability output.",
-      googleDrive: "None by default.",
-      pipedrive: CRM_READ_INTENT_APPROVED,
-      hardBoundary: "No final student decision, application or visa advice.",
+      sharePoint: "None: retired.",
+      googleDrive: "None.",
+      pipedrive: "None: retired.",
+      hardBoundary: "Retired worker: no execution.",
     },
-    evidencedHandoffs: ["james"],
+    evidencedHandoffs: [],
     escalationRoute: TOM_ARRINGTON,
     gatekeeperReview: "passed_cleared_for_approval",
-    capabilities: [
-      {
-        id: "suitability",
-        name: "Compare options against a student's evidenced profile",
-        description:
-          "Weigh education options for one student using Amelia's controlled evidence and the recorded student profile.",
-        worksWithoutConnector: true,
-        requiresConnector: null,
-        unavailableBecause:
-          null,
-      },
-    ],
-    controlledBriefReference: `${SHAREPOINT_SITE}/17_Senior Management Team/AI_Operating_System/01_Working_Drafts/`,
+    capabilities: [],
+    controlledBriefReference: `${APPROVED_STANDARDS}/WSA_AI_Worker_Register_v0.47.docx`,
   }),
 
   entry({
     id: "james",
     canonicalName: "James",
-    roleTitle: "Admissions & Application",
-    specificationVersion: "v0.3 + Control Pack v0.1",
+    roleTitle: "Admissions, Application & Pre-arrival",
+    specificationVersion: "v0.3 + Control Pack v0.1 + Register v0.47 merger",
     specificationStatus: "approved",
     staffPortalExecutionStatus: "staff_portal_authorised",
     currentNextControl:
       "Approved 31 August 2026 under Tom Arrington's consolidated completion and activation authority, on " +
       "formal test 30/30 pass. Live for application completeness tracking and preparation. Submission stays " +
-      "blocked: it is a consequential external action and no submission authority was granted.",
-    materialBlockers: ["Submission unavailable: consequential external action, not authorised"],
+      "blocked: it is a consequential external action and no submission authority was granted. From 18 " +
+      "September 2026 (Register v0.47) James also carries practical pre-arrival readiness for a confirmed " +
+      "student, formerly Olivia's remit, so offer to arrival is one conversation; safeguarding, payments and " +
+      "every consequential action remain gated.",
+    materialBlockers: [
+      "Submission unavailable: consequential external action, not authorised",
+      "Pre-arrival: GOV-O1 to GOV-O3 and DD-O1 to DD-O3 remain open (carried from Olivia)",
+    ],
     personality: {
-      summary: "Precise, dependable admissions operator. Formal with institutions, clear with staff and students.",
-      whatFor: "Application completeness and admissions requirements tracking.",
-      whatNotFor: "No unsupported submission or portal action.",
+      summary: "Precise, dependable admissions operator. Formal with institutions, clear with staff and students; practical about what a confirmed student must do next.",
+      whatFor: "Application completeness and admissions requirements tracking, and practical pre-arrival readiness once a student's place is confirmed.",
+      whatNotFor: "No unsupported submission or portal action. Safeguarding, payments and consequential actions remain gated.",
     },
     connectorIntent: {
       sharePoint: "Application evidence, admissions records and authorised application outputs.",
@@ -354,6 +366,16 @@ const REGISTRY_LIST: WorkerRegistryEntry[] = [
         name: "Prepare an application and check entry requirements",
         description:
           "Assemble and check an application package against recorded entry requirements.",
+        worksWithoutConnector: true,
+        requiresConnector: null,
+        unavailableBecause:
+          null,
+      },
+      {
+        id: "prearrival",
+        name: "Plan pre-arrival and readiness steps",
+        description:
+          "Practical transition and readiness support for a confirmed student. Formerly Olivia's capability; merged 18 September 2026.",
         worksWithoutConnector: true,
         requiresConnector: null,
         unavailableBecause:
@@ -533,42 +555,33 @@ const REGISTRY_LIST: WorkerRegistryEntry[] = [
   entry({
     id: "olivia",
     canonicalName: "Olivia",
-    roleTitle: "Pre-arrival & Student Success",
+    roleTitle: "Pre-arrival & Student Success (retired, merged into James)",
     specificationVersion: "v0.2",
     specificationStatus: "approved",
-    staffPortalExecutionStatus: "staff_portal_authorised",
+    staffPortalExecutionStatus: "retired_merged",
+    retirement: { mergedInto: "james", on: "18 September 2026", authority: "Tom Arrington, 18 September 2026, recorded in WSA_AI_Worker_Register_v0.47.docx and Change Entry 112" },
     currentNextControl:
-      "Approved 31 August 2026 under Tom Arrington's consolidated completion and activation authority. " +
-      "Live for practical pre-arrival readiness on a confirmed student. Safeguarding, payments and every " +
-      "consequential action remain gated regardless of approval.",
-    materialBlockers: ["GOV-O1 to GOV-O3 open", "DD-O1 to DD-O3 deployment dependencies open"],
+      "Retired 18 September 2026 by merger into James (Worker Register v0.47, Tom Arrington). Practical " +
+      "pre-arrival readiness for a confirmed student is now James's capability, with its gates. This entry " +
+      "remains so that earlier conversations and audit rows naming Olivia still resolve; it routes nowhere and " +
+      "cannot be opened.",
+    materialBlockers: [],
     personality: {
       summary: "Reassuring, practical and organised. Focuses on what the student needs to do next.",
-      whatFor: "Practical transition and readiness support once a student is confirmed, once approved.",
-      whatNotFor: "Safeguarding, payments and consequential actions remain gated regardless of approval.",
+      whatFor: "Retired. Practical pre-arrival readiness for a confirmed student now sits with James.",
+      whatNotFor: "Retired worker: not reachable.",
     },
     connectorIntent: {
-      sharePoint: "Minimum necessary pre-arrival/student-success records.",
-      googleDrive: "None by default.",
-      pipedrive: CRM_READ_INTENT_APPROVED,
-      hardBoundary: "Safeguarding, payments and consequential actions remain gated.",
+      sharePoint: "None: retired.",
+      googleDrive: "None.",
+      pipedrive: "None: retired.",
+      hardBoundary: "Retired worker: no execution.",
     },
     evidencedHandoffs: [],
     escalationRoute: TOM_ARRINGTON,
     gatekeeperReview: "passed_cleared_for_approval",
-    capabilities: [
-      {
-        id: "prearrival",
-        name: "Plan pre-arrival and readiness steps",
-        description:
-          "Practical transition and readiness support for a confirmed student.",
-        worksWithoutConnector: true,
-        requiresConnector: null,
-        unavailableBecause:
-          null,
-      },
-    ],
-    controlledBriefReference: `${SHAREPOINT_SITE}/17_Senior Management Team/AI_Operating_System/01_Working_Drafts/`,
+    capabilities: [],
+    controlledBriefReference: `${APPROVED_STANDARDS}/WSA_AI_Worker_Register_v0.47.docx`,
   }),
 
   entry({
@@ -933,8 +946,20 @@ export function getWorker(id: WorkerId): WorkerRegistryEntry {
   return worker;
 }
 
-export function listWorkers(): WorkerRegistryEntry[] {
-  return Array.from(WORKER_REGISTRY.values());
+/** True for a worker retired by merger (Worker Register v0.47): kept for history, excluded from everything live. */
+export function isRetired(worker: WorkerRegistryEntry): boolean {
+  return worker.staffPortalExecutionStatus === "retired_merged";
+}
+
+/**
+ * The workers that exist now. A worker retired by merger is left out
+ * unless `includeRetired` is set, which only history views should do:
+ * routing, the roster, the directory, acceptance and execution all see the
+ * estate as the Register now describes it.
+ */
+export function listWorkers(options: { includeRetired?: boolean } = {}): WorkerRegistryEntry[] {
+  const all = Array.from(WORKER_REGISTRY.values());
+  return options.includeRetired ? all : all.filter(w => !isRetired(w));
 }
 
 /** The estate-wide control recorded in the Worker Register as of v0.39 — not a per-worker blocker, so it lives here rather than on any one entry. */

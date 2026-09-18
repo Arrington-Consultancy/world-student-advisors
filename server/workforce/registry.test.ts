@@ -26,7 +26,7 @@ const EXPECTED_IDS: WorkerId[] = [
 
 describe("worker registry integrity", () => {
   it("contains exactly the controlled estate — every worker in the Register plus the receptionist, nothing invented", () => {
-    const ids = listWorkers()
+    const ids = listWorkers({ includeRetired: true })
       .map(w => w.id)
       .sort();
     expect(ids).toEqual([...EXPECTED_IDS].sort());
@@ -81,10 +81,24 @@ describe("approval status comes from the controlled record, not from code", () =
     "sophie", "daniel", "amelia", "oliver", "james", "priya",
     "harper", "olivia", "grace", "ethan", "maya", "alex", "nia",
   ];
+  /** Retired by merger, Worker Register v0.47, Tom Arrington, 18 September 2026. */
+  const RETIRED_18_SEPTEMBER: WorkerId[] = ["daniel", "oliver", "olivia"];
 
-  it("the approved list is exactly the workers the controlled record names", () => {
-    const approved = listWorkers().filter(w => w.specificationStatus === "approved").map(w => w.id);
+  it("the approved list is exactly the workers the controlled record names; the merged three are retired, not un-approved", () => {
+    const approved = listWorkers({ includeRetired: true }).filter(w => w.specificationStatus === "approved").map(w => w.id);
     expect(approved.sort()).toEqual([...APPROVED_31_AUGUST].sort());
+    const live = listWorkers().filter(w => w.specificationStatus === "approved").map(w => w.id).sort();
+    expect(live).toEqual(APPROVED_31_AUGUST.filter(id => !RETIRED_18_SEPTEMBER.includes(id)).sort());
+    for (const id of RETIRED_18_SEPTEMBER) {
+      const w = getWorker(id);
+      expect(w.staffPortalExecutionStatus).toBe("retired_merged");
+      expect(w.staffPortalExecutionAuthorised).toBe(false);
+      expect(w.retirement?.mergedInto).toBeDefined();
+      expect(getWorker(w.retirement!.mergedInto).staffPortalExecutionAuthorised).toBe(true);
+    }
+    expect(getWorker("daniel").retirement?.mergedInto).toBe("sophie");
+    expect(getWorker("oliver").retirement?.mergedInto).toBe("amelia");
+    expect(getWorker("olivia").retirement?.mergedInto).toBe("james");
   });
 
   it("execution authority is opened by the register and by nothing else", () => {
@@ -110,7 +124,8 @@ describe("approval status comes from the controlled record, not from code", () =
       expect(w.writesAuthorised, `${w.id}`).toBe(false);
     }
     const authorised = listWorkers().filter(w => w.connectorUseAuthorised).map(w => w.id).sort();
-    expect(authorised).toEqual(["alex", "amelia", "daniel", "ethan", "grace", "harper", "james", "maya", "nia", "oliver", "olivia", "priya", "sophie"]);
+    expect(authorised).toEqual(["alex", "amelia", "ethan", "grace", "harper", "james", "maya", "nia", "priya", "sophie"]);
+    for (const id of RETIRED_18_SEPTEMBER) expect(getWorker(id).connectorUseAuthorised, id).toBe(false);
   });
 
   it("Priya is approved for a bounded scope, with regulated advice still shut", () => {

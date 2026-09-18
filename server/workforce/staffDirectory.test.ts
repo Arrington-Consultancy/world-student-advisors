@@ -15,7 +15,7 @@ describe("Staff Portal specialist directory", () => {
     const { workers, mode } = directoryFor(roster);
     expect(mode).toBe("all");
     expect(workers.map(w => w.id)).toEqual(roster.filter(w => !HIDDEN_FROM_DIRECTORY.has(w.id)).map(w => w.id));
-    expect(workers.length).toBe(13);
+    expect(workers.length).toBe(10);
   });
 
   it("shows only the specialists the member can reach when any are reachable", () => {
@@ -29,7 +29,7 @@ describe("Staff Portal specialist directory", () => {
     const odd = roster.map(w => ({ ...w, reachableByYou: true }));
     const { workers } = directoryFor(odd);
     for (const w of workers) expect(HIDDEN_FROM_DIRECTORY.has(w.id)).toBe(false);
-    expect(workers.length).toBe(13);
+    expect(workers.length).toBe(10);
   });
 
   it("does not reorder or rename anyone: the roster order from the register is kept", () => {

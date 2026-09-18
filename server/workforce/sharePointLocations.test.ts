@@ -31,7 +31,7 @@ describe("the designations are exactly the approved ones, 11 September 2026", ()
   });
 
   it("the map is total over WorkerId", () => {
-    expect(Object.keys(WORKER_SHAREPOINT_LOCATIONS)).toHaveLength(listWorkers().length);
+    expect(Object.keys(WORKER_SHAREPOINT_LOCATIONS)).toHaveLength(listWorkers({ includeRetired: true }).length);
   });
 
   it("a worker with no designation is refused every path, and the reason names the missing designation", () => {
