@@ -154,7 +154,7 @@ if (listMode) {
   // The list is put back to the staff member: a question, or an invitation
   // to say which one, or to confirm. The exact wording is the worker's.
   check(/\?|which|let me know|tell me|confirm|point me|say who/i.test(text), "answer puts the choice back to the staff member");
-} else if (routingMode && conceptsIn(question).includes("who_handles")) {
+} else if (routingMode && conceptsIn(question).has("who_handles")) {
   // The question asks who owns the work: the answer names that specialist
   // from the Worker Register (the worker the router chose), and says what
   // they do first.
