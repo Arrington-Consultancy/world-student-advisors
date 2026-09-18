@@ -91,7 +91,7 @@ describe("readFollowUp: the exchange of 18 September 2026 and its natural varian
     expect(fu!.polarity).toBe("unclear");
     expect(frameFollowUp(fu!)).toContain("Ask one focused question");
   });
-  it("several offers: the reading is to ask which, never to choose", () => {
+  it("several cumulative offers: a yes accepts each of them, which chooses nothing for the person", () => {
     const history = [
       HISTORY[0],
       { role: "worker" as const, content: "Her record is up to date. Would you like the offer conditions listed? I can also draft the CAS request checklist." },
@@ -99,7 +99,57 @@ describe("readFollowUp: the exchange of 18 September 2026 and its natural varian
     const fu = readFollowUp("yes", history);
     expect(fu!.referent).toBeNull();
     expect(fu!.offers).toHaveLength(2);
-    expect(frameFollowUp(fu!)).toContain("Ask which, naming them briefly; do not choose");
+    expect(fu!.alternatives).toBe(false);
+    const framed = frameFollowUp(fu!);
+    expect(framed).toContain("ACCEPTS");
+    expect(framed).toContain("do every piece of offered work now, in full");
+    expect(framed).toContain("do not ask the staff member to say again what they want or which one they mean");
+    expect(framed).not.toContain("Ask which");
+    const declined = frameFollowUp(readFollowUp("no thanks", history)!);
+    expect(declined).toContain("DECLINES all of these");
+  });
+  it("several offers put as alternatives: a yes does them together where it can and asks only where they exclude one another", () => {
+    const history = [
+      HISTORY[0],
+      { role: "worker" as const, content: "Her record is up to date. Would you like the offer conditions listed, or shall I draft the CAS request checklist instead?" },
+    ];
+    const fu = readFollowUp("yes", history);
+    expect(fu!.referent).toBeNull();
+    expect(fu!.alternatives).toBe(true);
+    const framed = frameFollowUp(fu!);
+    expect(framed).toContain("ACCEPTS");
+    expect(framed).toContain("If they can all reasonably be done in this reply, do them all now");
+    expect(framed).toContain("Only if they genuinely exclude one another, ask which");
+    expect(framed).toContain("do not ask the staff member to say again what they want");
+    const unclear = frameFollowUp(readFollowUp("hmm", history)!);
+    expect(unclear).toContain("Ask which, naming them briefly; do not choose");
+    expect(unclear).not.toContain("ACCEPTS");
+    const twoSentences = [
+      HISTORY[0],
+      { role: "worker" as const, content: "Would you like the offer conditions listed? Or I could draft the CAS request checklist instead." },
+    ];
+    expect(readFollowUp("yes", twoSentences)!.alternatives).toBe(true);
+  });
+  it("an or inside one piece of offered work is not a choice between offers", () => {
+    const history = [
+      HISTORY[0],
+      { role: "worker" as const, content: "If you want, I can pull together her admissions history, including offers or refusals, as a handover note." },
+    ];
+    const fu = readFollowUp("yes", history);
+    expect(fu!.alternatives).toBe(false);
+    expect(fu!.referent).toContain("handover note");
+    expect(frameFollowUp(fu!)).toContain("ACCEPTS");
+  });
+  it("the production shape: a record answer ending with three offers in a row, then yes, is accepted in full", () => {
+    const history = [
+      HISTORY[0],
+      { role: "worker" as const, content: "Vivian is at CAS / Visa / Pre-Departure with Glenice as counsellor. I can pull together a clean picture of her admissions history as a handover note. I could also list the documents still outstanding. Would you like me to flag the CAS timing to Glenice?" },
+    ];
+    const fu = readFollowUp("yes", history);
+    expect(fu!.offers).toHaveLength(3);
+    expect(fu!.alternatives).toBe(false);
+    expect(fu!.polarity).toBe("accepts");
+    expect(frameFollowUp(fu!)).toContain("do every piece of offered work now, in full");
   });
   it("is not a follow-up when the worker offered nothing, when there is no history, or when the message is a request of its own", () => {
     expect(readFollowUp("yes", [HISTORY[0], { role: "worker", content: "Vivian is at Offer Received. Her counsellor is Glenice." }])).toBeNull();

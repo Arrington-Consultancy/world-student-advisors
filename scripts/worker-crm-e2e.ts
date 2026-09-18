@@ -37,7 +37,9 @@ import { getDb } from "../server/db";
 import { staffUsers } from "../drizzle/schema";
 import { describePipedriveGrant, isWsaCompany } from "../server/crm/pipedriveOAuth";
 import { routeStaffRequest } from "../server/workforce/router";
-import { gatherConnectorEvidence } from "../server/execution/evidence";
+import { gatherConnectorEvidence, studentRecordIntent } from "../server/execution/evidence";
+import { getWorker } from "../server/workforce/registry";
+import { conceptsIn } from "../server/workforce/intent";
 import { appRouter } from "../server/routers";
 import { mintStaffIdentityToken } from "../server/staffIdentityAuth";
 import { listConversation } from "../server/execution/conversation";
@@ -77,6 +79,14 @@ check(listWorkers().some(w => w.id === workerId), "worker to execute", workerId 
 if (!workerId) process.exit(1);
 
 console.log("\n=== 4. Evidence gathered for the request (labels and counts only) ===");
+// Tom Arrington, 18 September 2026: a generic or routing question ("which
+// specialist should handle a student who ...") carries no intent to reach a
+// record. The correct evidence for it is none: no CRM call, so no unrelated
+// student can be surfaced. The harness checks that, and that the answer
+// names the specialist from the Worker Register.
+const intent = studentRecordIntent(question);
+const routingMode = !intent.intent;
+if (routingMode) console.log(`  no record intent (${intent.reason}): a generic or routing question, answered without a CRM search`);
 const evidence = await gatherConnectorEvidence({ workerId, requestText: question, staffUserId: staff.id, authMethod: "entra_sso" });
 for (const b of evidence.blocks) console.log(`  block: ${b.label}`);
 for (const n of evidence.notes) console.log(`  note: ${n.note.replace(/[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/g, "<email>")}`);
@@ -87,14 +97,17 @@ const crmBlocks = evidence.blocks.filter(b => b.source === "pipedrive");
 // to the staff member. That is the correct evidence for such a question.
 const listNote = evidence.notes.find(n => n.source === "pipedrive" && /are recorded with the name|closest matches are|CRM students match/.test(n.note));
 const listedNames = listNote ? Array.from(listNote.note.matchAll(/(?:: |; )([^(;:]+?) \(/g)).map(m => m[1].trim()) : [];
-const listMode = crmBlocks.length === 0 && listedNames.length >= 2;
-if (listMode) {
+const listMode = !routingMode && crmBlocks.length === 0 && listedNames.length >= 2;
+if (routingMode) {
+  check(crmBlocks.length === 0, "no CRM record was read for a question that names nobody", `${crmBlocks.length} record(s)`);
+  check(!evidence.notes.some(n => n.source === "pipedrive"), "no CRM search note, so no unrelated student was surfaced", `${evidence.notes.filter(n => n.source === "pipedrive").length} note(s)`);
+} else if (listMode) {
   check(true, "several students were listed for the staff member to choose from", `${listedNames.length} listed`);
 } else {
   check(crmBlocks.length === 1, "exactly one CRM record was read for the named student", `${crmBlocks.length} record(s)`);
 }
 const record = crmBlocks[0]?.data as { stageLabel?: string; counsellor?: string | null; fields?: Record<string, unknown> } | undefined;
-if (!listMode) {
+if (!listMode && !routingMode) {
   check(Boolean(record?.stageLabel), "record carries a stage", record?.stageLabel ?? "none");
   check(record?.counsellor !== undefined, "record carries a counsellor field", record?.counsellor ? "named" : "none");
   check(Boolean(record?.fields && Object.keys(record.fields).length > 0), "record carries the worker's approved remit fields", record?.fields ? `${Object.keys(record.fields).length} field(s)` : "none");
@@ -141,8 +154,21 @@ if (listMode) {
   // The list is put back to the staff member: a question, or an invitation
   // to say which one, or to confirm. The exact wording is the worker's.
   check(/\?|which|let me know|tell me|confirm|point me|say who/i.test(text), "answer puts the choice back to the staff member");
+} else if (routingMode && conceptsIn(question).has("who_handles")) {
+  // The question asks who owns the work: the answer names that specialist
+  // from the Worker Register (the worker the router chose), and says what
+  // they do first.
+  const specialist = getWorker(workerId).canonicalName;
+  check(new RegExp(`\\b${specialist}\\b`).test(text), "answer names the specialist from the Worker Register", specialist);
+  check(/\bfirst\b|\bnext\b|\bstep\b|\bstart\b|\bbegin\b|\bshould\b/i.test(text), "answer says what the specialist does first");
+} else if (routingMode) {
+  // A generic question about a kind of case, answered by the specialist who
+  // owns the subject: no record, so no stage or counsellor to state, but the
+  // answer still says what happens next or what is needed.
+  check(/\bnext\b|\bstep\b|\bshould\b|\bneeds? to\b|\bthen\b|\bnow\b|\bfirst\b|\bwould need\b|\brequire/i.test(text), "answer addresses what happens next or what is needed");
 } else {
-  check(text.toLowerCase().includes("next"), "answer addresses what happens next");
+  // The wording is the worker's: "next", "the next step", "what should happen now", "then".
+  check(/\bnext\b|\bstep\b|\bshould\b|\bneeds? to\b|\bthen\b|\bnow\b|\bfollow(ing|-up)?\b/i.test(text), "answer addresses what happens next");
 }
 check(!/\u2014|&mdash;/i.test(text), "answer as shown to the staff member carries no em dash");
 console.log(`  release: ${result.reason}`);
@@ -161,7 +187,7 @@ if (followUpText && result.conversationId) {
   // Whether the first answer offered anything is the model's choice, not the
   // platform's; when it did not, the acceptance checks below do not apply and
   // the follow-up is still checked for a false completion claim.
-  if (reading) check(true, "the first answer ended with an offer or question the follow-up answers", `${reading.offers.length} offer(s); reading ${reading.polarity}`);
+  if (reading) check(true, "the first answer ended with an offer or question the follow-up answers", `${reading.offers.length} offer(s)${reading.alternatives ? ", put as alternatives" : ""}; reading ${reading.polarity}`);
   else console.log("  note the first answer made no offer, so the follow-up is a plain short message here; acceptance checks not applicable");
   const second = await caller.workforce.ask({ token, workerId, request: followUpText, conversationId: result.conversationId });
   check(second.outcome === "answered", "worker answered the follow-up", `${second.outcome}: ${second.reason.slice(0, 200)}`);
@@ -169,11 +195,18 @@ if (followUpText && result.conversationId) {
   const claim = claimsPriorCompletion(t2);
   check(claim === null, "follow-up answer does not claim the work already existed", claim ? `claimed: "${claim}"` : "");
   if (reading?.polarity === "accepts") {
-    check(t2.length > 300, "an accepted offer is done in full, not deferred", `${t2.length} characters`);
+    // Where some offers were put as alternatives, the worker does them
+    // together if it can and asks which only if they exclude one another:
+    // substance, or one question naming them, is right; a bare deferral is not.
+    if (reading.alternatives) check(t2.length > 300 || /\?/.test(t2), "alternatives were offered: the follow-up answer does the work or asks which", `${t2.length} characters`);
+    else check(t2.length > 300, "an accepted offer is done in full, not deferred", `${t2.length} characters`);
     const sentences = t2.split(/(?<=[.!?])\s+/).filter(Boolean);
     const questions = sentences.filter(x => x.trim().endsWith("?")).length;
     check(questions < sentences.length, "the follow-up answer is not only a question back", `${questions} of ${sentences.length} sentences are questions`);
-    check(!/what (would you like|do you mean|exactly|specifically)|could you clarify|which (one|part) (do you|would you)/i.test(t2), "the follow-up answer does not ask the staff member to say again what they want");
+    // The matched phrase is the worker's own words about what the staff
+    // member wants, never the record; it is printed so a failure can be read.
+    const restate = /what (would you like|do you mean|exactly|specifically)|could you clarify|which (one|part|of these) (do you|would you|did you)|let me know which/i.exec(t2);
+    check(restate === null, "the follow-up answer does not ask the staff member to say again what they want", restate ? `asked: "${restate[0]}"` : "");
   }
   if (reading?.polarity === "declines") {
     check(t2.length < 600, "a declined offer is acknowledged briefly", `${t2.length} characters`);
@@ -186,5 +219,5 @@ if (followUpText && result.conversationId) {
   console.log(`  release: ${second.reason}`);
 }
 
-console.log(`\nRESULT: ${failures === 0 ? (listMode ? "the worker listed the matching students from the live WSA records and asked which one is meant" : "the worker found the student by name and answered from the live WSA record") : `${failures} check(s) failed`}.`);
+console.log(`\nRESULT: ${failures === 0 ? (routingMode ? "the question named nobody, no CRM search was made, and the specialist who owns the subject answered" : listMode ? "the worker listed the matching students from the live WSA records and asked which one is meant" : "the worker found the student by name and answered from the live WSA record") : `${failures} check(s) failed`}.`);
 process.exit(failures === 0 ? 0 : 1);

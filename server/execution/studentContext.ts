@@ -21,6 +21,7 @@ import { lookupStudents, type LookupDeps } from "../crm/staffLookup";
 import { oauthLookupDeps } from "../crm/lookupDeps";
 import { WORKER_FUNCTIONAL_SCOPE } from "../access/workerScope";
 import { fuzzySearchTerms, isKnownNameForm, nameForms, normaliseNamePart, rankNameMatches, sameNameForm } from "./nameMatch";
+import { isVocabularyWord } from "../workforce/intent";
 import type { AuditAuthMethod } from "../workforce/audit";
 import type { WorkerId } from "../workforce/types";
 
@@ -45,7 +46,27 @@ const NOT_A_NAME_WORD = new Set([
   // Environment ...", and the whole run was taken as the name.
   "Federal", "Ministry", "Department", "District", "Government", "State", "Bank", "Company", "Limited", "Ltd", "Hospital", "Office", "Council", "Authority", "Agency", "Commission",
   "Nigeria", "Abuja", "Lagos", "Ibadan", "Kano", "Kenya", "Nairobi", "Ghana", "Accra", "Uganda", "Kampala", "Cameroon", "London", "England", "Scotland", "Germany", "Canada",
+  // A field of study, a qualification or a nationality written with capitals
+  // is not a person. Tom Arrington, 18 September 2026: an enquiry about "a
+  // 2:1 in Mechanical Engineering" and "an MSc in Artificial Intelligence"
+  // named nobody, yet both phrases became CRM searches and the worker told
+  // the staff member that no record could be matched.
+  "Engineering", "Science", "Sciences", "Intelligence", "Artificial", "Mechanical", "Electrical", "Electronic", "Civil", "Chemical", "Computer", "Computing",
+  "Data", "Software", "Mathematics", "Maths", "Physics", "Chemistry", "Biology", "Biomedical", "Medicine", "Medical", "Nursing", "Pharmacy", "Dentistry", "Health", "Public",
+  "Business", "Management", "Administration", "Finance", "Financial", "Accounting", "Economics", "Marketing", "Law", "International", "Relations", "Development", "Studies",
+  "Psychology", "Sociology", "Politics", "Political", "History", "Philosophy", "Literature", "Linguistics", "English", "Education", "Teaching", "Architecture", "Design", "Arts",
+  "Humanities", "Media", "Communications", "Journalism", "Environmental", "Environment", "Energy", "Petroleum", "Agriculture", "Technology", "Information", "Systems", "Security",
+  "Cyber", "Analytics", "Machine", "Learning", "Robotics", "Aerospace", "Automotive", "Supply", "Chain", "Logistics", "Hospitality", "Tourism", "Sport", "Sports",
+  "Bachelor", "Bachelors", "Master", "Masters", "Doctorate", "Diploma", "Certificate", "Foundation", "Degree", "Postgraduate", "Undergraduate", "Honours", "Honors",
+  "Nigerian", "Kenyan", "Ghanaian", "Ugandan", "Cameroonian", "Indian", "Pakistani", "Bangladeshi", "Chinese", "British", "American", "Canadian", "European", "African", "Asian",
+  "United", "Kingdom", "States", "Europe", "Africa", "Asia", "India", "Pakistan", "Bangladesh", "China", "Manchester", "Birmingham", "Leeds", "Glasgow", "Edinburgh", "Cardiff", "Bristol", "Sheffield", "Nottingham", "Coventry", "Liverpool",
 ]);
+
+const NOT_A_NAME_WORD_LOWER = new Set(Array.from(NOT_A_NAME_WORD, w => w.toLowerCase()));
+/** A word that is WSA vocabulary, ordinary English, a subject, a qualification, a place or a nationality: never part of a person's name. */
+export function isNotAPersonWord(word: string): boolean {
+  return isVocabularyWord(word) || NOT_A_NAME_WORD_LOWER.has(word.toLowerCase());
+}
 
 const WORD = /^[A-Z][A-Za-z'’-]*$/;
 const LENIENT_WORD = /^[A-Za-z][A-Za-z'’-]{1,}$/;
@@ -68,6 +89,10 @@ export function extractNameCandidates(text: string, options: { lenient?: boolean
   const propose = (segment: string[]) => {
     while (segment.length > 0 && NOT_A_NAME_START.has(segment[0].toLowerCase())) segment.shift();
     while (segment.length > 0 && NOT_A_NAME_START.has(segment[segment.length - 1].toLowerCase())) segment.pop();
+    // In lower-case text a run of ordinary English ("now needs", "help
+    // finding") is not a name. Tom Arrington, 18 September 2026: such a run
+    // became a CRM search and surfaced four unrelated students.
+    if (options.lenient && segment.some(w => isVocabularyWord(w))) return;
     if (segment.length >= 2 && segment.length <= 4) {
       const name = segment.join(" ");
       if (!out.includes(name)) out.push(name);
@@ -186,6 +211,12 @@ export async function resolveStudentByName(input: ResolveInput, deps: LookupDeps
   // the lookup itself.
   const near = new Map<number, { personId: number; name: string; stageLabel: string; counsellor: string | null }>();
   const describe = (c: { name: string; stageLabel: string; counsellor: string | null }) => `${c.name} (${c.stageLabel}${c.counsellor ? `, counsellor ${c.counsellor}` : ""})`;
+  // Does what was typed read as a person's name at all: two or more parts,
+  // none an ordinary English or WSA vocabulary word? If not, only an exact
+  // hit counts. A stray phrase ("now needs") never earns a probable match or
+  // a list of real students' names. Tom Arrington, 18 September 2026.
+  const nameParts = input.name.trim().split(/\s+/).filter(Boolean);
+  const readsAsName = nameParts.length >= 2 && nameParts.every(p => p.length >= 2 && !isNotAPersonWord(p));
   for (const term of searchTerms(input.name)) {
     const result = await lookupStudents(
       { staffUserId: input.staffUserId, authMethod: input.authMethod, term, by: "name", scope },
@@ -204,6 +235,7 @@ export async function resolveStudentByName(input: ResolveInput, deps: LookupDeps
       const one = ranking.match.candidate;
       return { kind: "one", personId: one.personId, name: one.name };
     }
+    if (!readsAsName) continue;
     if (ranking.kind === "probable") {
       const m = ranking.match.candidate;
       return { kind: "probable", personId: m.personId, name: m.name, typed: input.name, score: Math.round(ranking.match.score * 100) / 100, alternatives: ranking.others.map(o => describe(o.candidate)) };
@@ -223,6 +255,9 @@ export async function resolveStudentByName(input: ResolveInput, deps: LookupDeps
   // alternative spellings, then rank whatever comes back against what was
   // typed. One clear near match is offered as probable and questioned; a
   // few are put to the person by name; none stays none.
+  if (!readsAsName) {
+    return { kind: "none", note: `"${input.name}" does not read as a student's name and no record is recorded exactly under it. If a particular student is meant, ask for their full name, email address or telephone number.` };
+  }
   for (const term of fuzzySearchTerms(input.name)) {
     const result = await lookupStudents(
       { staffUserId: input.staffUserId, authMethod: input.authMethod, term, by: "name", scope },

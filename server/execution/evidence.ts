@@ -27,6 +27,7 @@ import { readPipedriveRecord, searchPipedrive } from "../workforce/connectors/pi
 import { extractNameCandidates, extractSingleNameCandidate, resolveStudentByName, type ListedStudent, type StudentResolution } from "./studentContext";
 import { readSharePointRecord } from "../workforce/connectors/sharepoint";
 import { WORKER_CRM_SCOPE } from "../workforce/crmScope";
+import { conceptsIn } from "../workforce/intent";
 import { WORKER_SHAREPOINT_LOCATIONS } from "../workforce/sharePointLocations";
 import type { AuditAuthMethod } from "../workforce/audit";
 import type { WorkerId } from "../workforce/types";
@@ -87,9 +88,34 @@ export function nameCandidatesIn(text: string): string[] {
   return (runs.length > 0 ? runs : single ? [single] : []).slice(0, 2);
 }
 
-function namesSomebody(text: string): boolean {
+/**
+ * Whether a message shows intent to reach one student's record, as opposed
+ * to asking about a kind of case. Tom Arrington, 18 September 2026: a
+ * generic question ("a student who already has an unconditional offer ...")
+ * must never become a CRM search because ordinary words happen to look like
+ * a name. An identifier or a capitalised personal name is intent on its
+ * own. A lower-case or lone-first-name candidate counts only when the
+ * message also speaks of a record (the CRM, a counsellor, who is managing,
+ * a stage, a lead or enquiry) and is not framed as hypothetical or as a
+ * routing question.
+ */
+export function studentRecordIntent(text: string): { intent: boolean; names: string[]; reason: string } {
   const ids = extractIdentifiers(text);
-  return ids.personIds.length > 0 || ids.emails.length > 0 || ids.phones.length > 0 || nameCandidatesIn(text).length > 0;
+  if (ids.personIds.length > 0 || ids.emails.length > 0 || ids.phones.length > 0) return { intent: true, names: [], reason: "identifier" };
+  // A capitalised personal name is intent on its own, whatever else the
+  // sentence does: "What would Grace Okoro need for her visa?" is about Grace.
+  const strict = extractNameCandidates(text);
+  if (strict.length > 0) return { intent: true, names: strict.slice(0, 2), reason: "named_person" };
+  const concepts = conceptsIn(text);
+  if (concepts.has("hypothetical") || concepts.has("who_handles")) return { intent: false, names: [], reason: "generic_or_routing_question" };
+  const recordWords = ["crm", "counsellor", "managing", "stage", "lead", "enquiry", "case", "named_person"] as const;
+  if (!recordWords.some(c => concepts.has(c as never))) return { intent: false, names: [], reason: "no_record_intent" };
+  const names = nameCandidatesIn(text);
+  return names.length > 0 ? { intent: true, names, reason: "record_intent_with_name" } : { intent: false, names: [], reason: "no_name" };
+}
+
+function namesSomebody(text: string): boolean {
+  return studentRecordIntent(text).intent;
 }
 
 /**
@@ -151,12 +177,15 @@ export async function gatherConnectorEvidence(input: {
     // nobody and carries no identifier, the most recent earlier message
     // from the same staff member that does.
     const sourceText = evidenceSourceText(input.requestText, input.priorRequests ?? []);
-    const ids = extractIdentifiers(sourceText);
+    const intent = studentRecordIntent(sourceText);
+    const ids = intent.intent ? extractIdentifiers(sourceText) : { emails: [], phones: [], personIds: [] };
     const personIds = new Set<number>(ids.personIds);
     const labels = new Map<number, string>();
-    if (ids.personIds.length === 0 && ids.emails.length === 0 && ids.phones.length === 0) {
+    // No intent to reach a record means no CRM search at all: data
+    // minimisation, and no unrelated student is ever surfaced as noise.
+    if (intent.intent && ids.personIds.length === 0 && ids.emails.length === 0 && ids.phones.length === 0) {
       const resolve = input.resolveByName ?? resolveStudentByName;
-      const names = nameCandidatesIn(sourceText);
+      const names = intent.names;
       for (const name of names) {
         const resolution: StudentResolution = await resolve({ name, workerId: input.workerId, staffUserId: input.staffUserId, authMethod: input.authMethod });
         if (resolution.kind === "one") {

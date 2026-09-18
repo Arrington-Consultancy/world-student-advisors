@@ -9,6 +9,7 @@ vi.mock("../access/enforcement", () => ({
 }));
 
 import { orchestrateCaseRequest, selectLead } from "./orchestrate";
+import { getControlledBrief } from "./briefs";
 import type { CaseData } from "../workforce/context";
 import type { CaseStage } from "../workforce/caseModel";
 import type { WorkerId } from "../workforce/types";
@@ -224,14 +225,16 @@ describe("contributors stay isolated", () => {
 
     for (const call of invokeLLM.mock.calls) {
       const system = call[0].messages[0].content as string;
-      // Each system prompt is built from exactly one brief. Sophie's
-      // remit must never appear alongside another worker's.
-      const remits = [
-        "Student Enquiry and Triage",
-        "Student Discovery",
-        "Education Research",
-      ].filter(r => system.includes(r));
-      expect(remits.length).toBeLessThanOrEqual(1);
+      // Each system prompt is built from exactly one brief: one remit, and
+      // no other worker's remit text. Since 18 September 2026 every prompt
+      // also carries the Worker Register roster (names, role titles and a
+      // one-line purpose each) so a worker can say who owns what; a roster
+      // line is a directory entry, not another worker's brief.
+      expect(system.split("YOUR REMIT:").length - 1).toBe(1);
+      for (const other of ["daniel", "amelia", "oliver", "james", "priya", "harper"] as const) {
+        const brief = getControlledBrief(other);
+        if (brief && brief.remit.length > 40) expect(system).not.toContain(brief.remit);
+      }
     }
   });
 
