@@ -1,0 +1,35 @@
+name: Speak to Juliet notification recipients (production, read-only)
+
+# Manual-only, READ-ONLY. Resolves, inside the production environment
+# variables, who a Speak to Juliet enquiry notifies and who an ordinary
+# enquiry notifies, and checks them against the set Tom Arrington authorised
+# on 19 September 2026: exactly Juliet, Tim, Glenice and Eldah for the
+# campaign, the unchanged general list for everything else.
+#
+# It sends no mail, creates no lead and reads no student data. It prints
+# recipient addresses, which are WSA staff addresses already published on the
+# site, and no credential of any kind.
+# Auth: githubactionsprod, the production-scoped Railway Project Token.
+on:
+  workflow_dispatch:
+
+jobs:
+  recipients:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Install Railway CLI
+        run: npm install -g @railway/cli
+      - name: Resolve the recipients inside the production variables
+        env:
+          RAILWAY_TOKEN: ${{ secrets.githubactionsprod }}
+        run: |
+          railway run --service "world-student-advisors" --environment "production" -- \
+            pnpm exec tsx scripts/speak-to-juliet-recipients.ts
