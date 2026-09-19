@@ -48,3 +48,36 @@ export const CAMPAIGN_LABELS: Readonly<Record<CampaignSlug, string>> = Object.fr
 export const CAMPAIGN_PATHS: Readonly<Record<CampaignSlug, string>> = Object.freeze({
   "speak-to-juliet": "/speak-to-juliet",
 });
+
+/**
+ * Campaigns whose own recipient list REPLACES the general staff
+ * notification, rather than being sent alongside it.
+ *
+ * Tom Arrington, 19 September 2026, resolving the conflict between Tim Hunt's
+ * master draft and the earlier implementation brief in favour of the master:
+ * a Speak to Juliet enquiry is to notify exactly Juliet, Tim, Glenice and
+ * Eldah, and to exclude Manet, Tom and Claudia. Tom authorised his own
+ * exclusion. Sending the general notification as well would defeat that, so
+ * for a campaign listed here the general one is not sent and the campaign's
+ * list receives the full enquiry instead of a summary.
+ *
+ * A campaign NOT listed here keeps the original behaviour: the general list
+ * is notified as always and the campaign's own recipients additionally.
+ *
+ * This changes nothing for an ordinary enquiry, which carries no campaign at
+ * all and is unaffected by any of this.
+ *
+ * SCOPE. This governs the new-enquiry notification only. Failure alerts (a
+ * sign-up that could not be saved, a portal account that could not be
+ * created) still go to the general staff list whatever the campaign, because
+ * they are operational alerts for whoever fixes the system rather than
+ * enquiry routing.
+ */
+export const CAMPAIGN_REPLACES_GENERAL_NOTIFICATION: ReadonlySet<CampaignSlug> = Object.freeze(
+  new Set<CampaignSlug>(["speak-to-juliet"]),
+);
+
+/** Whether this campaign's recipients replace the general staff list. */
+export function campaignReplacesGeneralNotification(slug: CampaignSlug): boolean {
+  return CAMPAIGN_REPLACES_GENERAL_NOTIFICATION.has(slug);
+}

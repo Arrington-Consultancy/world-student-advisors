@@ -61,28 +61,69 @@ describe("the closed list", () => {
   });
 });
 
-describe("the enquiry reaches Juliet", () => {
-  it("has her as the recipient for her own page", () => {
-    expect(ENV_SOURCE).toContain('"speak-to-juliet": ["juliet@worldstudentadvisors.com"]');
+/**
+ * The authorised recipient set for Speak to Juliet. Tim Hunt's master draft
+ * of 19 September 2026 names these four and excludes Manet, Tom and Claudia;
+ * Tom Arrington confirmed it the same day, authorising his own exclusion.
+ */
+const JULIET_AUTHORISED = [
+  "juliet@worldstudentadvisors.com",
+  "tim.hunt@worldstudentadvisors.com",
+  "glenice@worldstudentadvisors.com",
+  "eldah@worldstudentadvisors.com",
+];
+
+const MUST_NOT_RECEIVE = {
+  Manet: "manet@worldstudentadvisors.com",
+  Tom: "tom@arringtonconsultancy.com",
+  Claudia: "claudia",
+};
+
+/** The recipients ENV actually resolves for a campaign, read as the server does. */
+async function recipientsFor(slug: string): Promise<string[]> {
+  const { ENV } = await import("../_core/env");
+  return ENV.campaignNotifyEmails[slug] ?? [];
+}
+
+describe("who a Speak to Juliet enquiry notifies", () => {
+  it("uses exactly Juliet, Tim, Glenice and Eldah", async () => {
+    const recipients = await recipientsFor("speak-to-juliet");
+    expect([...recipients].sort()).toEqual([...JULIET_AUTHORISED].sort());
+    expect(recipients).toHaveLength(4);
   });
 
-  it("sends through a campaign notifier that refuses an unconfigured campaign", () => {
-    expect(NOTIFICATION).toContain("export async function notifyCampaignOwner");
-    expect(NOTIFICATION).toContain("if (recipients.length === 0)");
-    expect(NOTIFICATION).toContain("return false;");
+  it("does not notify Manet, Tom or Claudia", async () => {
+    const recipients = (await recipientsFor("speak-to-juliet")).join(" ").toLowerCase();
+    for (const [person, address] of Object.entries(MUST_NOT_RECEIVE)) {
+      expect(recipients, `${person} must not receive this campaign`).not.toContain(address.toLowerCase());
+    }
   });
 
-  it("is sent only for a value that survives the guard", () => {
-    expect(ROUTER).toContain("if (isCampaignSlug(effectiveInput.campaign))");
-    expect(ROUTER).toContain("notifyCampaignOwner(slug, {");
+  it("replaces the general notification rather than adding to it", async () => {
+    const { campaignReplacesGeneralNotification } = await import("../../shared/campaignEnquiry");
+    expect(campaignReplacesGeneralNotification("speak-to-juliet")).toBe(true);
+    // The general notification is skipped for such a campaign, so the
+    // excluded people are not reached by the other route either.
+    expect(ROUTER).toContain("if (!campaignReplacesGeneral) {");
+    expect(ROUTER).toContain("notifyStaff({ title: enquiryTitle, content: enquiryContent })");
   });
 
-  it("never replaces the general staff notification", () => {
-    expect(ROUTER.indexOf("notifyStaff({\n          title: `New Student Enquiry"))
-      .toBeLessThan(ROUTER.indexOf("notifyCampaignOwner(slug, {"));
+  it("gives those four the same detail the general list would have had", () => {
+    // One content array, used by both, so the two cannot drift apart and the
+    // campaign's recipients lose nothing by the general one being skipped.
+    expect(ROUTER).toContain("const enquiryContent = [");
+    expect(ROUTER.match(/const enquiryContent = \[/g) ?? []).toHaveLength(1);
+    const campaignCall = ROUTER.slice(ROUTER.indexOf("notifyCampaignOwner(campaignSlug, {"));
+    expect(campaignCall.slice(0, 900)).toContain("enquiryContent");
   });
 
-  it("leaves the general staff list exactly as it was", () => {
+  it("tells them plainly that nobody else was notified", () => {
+    expect(ROUTER).toContain("The general WSA staff list has not been notified of it.");
+  });
+});
+
+describe("an ordinary enquiry is untouched", () => {
+  it("still uses the existing global recipient list, unchanged", () => {
     for (const address of [
       "tim.hunt@worldstudentadvisors.com",
       "eldah@worldstudentadvisors.com",
@@ -92,9 +133,65 @@ describe("the enquiry reaches Juliet", () => {
       "tom@arringtonconsultancy.com",
       "pipedrive@worldstudentadvisors.com",
     ]) {
-      expect(ENV_SOURCE, `${address} must stay on the staff list`).toContain(address);
+      expect(ENV_SOURCE, `${address} must stay on the general staff list`).toContain(address);
     }
   });
+
+  it("carries no campaign, so the general notification is sent as always", () => {
+    // campaignSlug is null without a valid slug, so the guard is false and
+    // notifyStaff runs exactly as it did before any of this existed.
+    expect(ROUTER).toContain("const campaignSlug = isCampaignSlug(effectiveInput.campaign) ? effectiveInput.campaign : null;");
+    expect(ROUTER).toContain("const campaignReplacesGeneral = campaignSlug !== null && campaignReplacesGeneralNotification(campaignSlug);");
+  });
+
+  it("keeps failure alerts on the general staff list whatever the campaign", () => {
+    // A sign-up that could not be saved, or a portal account that could not
+    // be created, is an operational alert for whoever fixes the system. Those
+    // calls are untouched by the campaign routing.
+    expect(ROUTER).toContain("Sign-up FAILED to save:");
+    expect(ROUTER).toContain("Portal account creation FAILED:");
+    const failureBlock = ROUTER.slice(ROUTER.indexOf("Sign-up FAILED to save:"), ROUTER.indexOf("Notify staff of the new sign-up"));
+    expect(failureBlock).not.toContain("campaignReplacesGeneral");
+  });
+});
+
+describe("a crafted campaign value cannot alter recipients", () => {
+  it("resolves no recipients for anything off the closed list", async () => {
+    for (const crafted of ["", "speak-to-juliet ", "SPEAK-TO-JULIET", "../admin", "juliet", "<script>", "unknown-campaign"]) {
+      expect(isCampaignSlug(crafted), `"${crafted}" must not be a slug`).toBe(false);
+      expect(await recipientsFor(crafted), `"${crafted}" must resolve no recipients`).toEqual([]);
+    }
+  });
+
+  it("sends nothing at all when a campaign has no recipients", () => {
+    expect(NOTIFICATION).toContain("const recipients = ENV.campaignNotifyEmails[slug] ?? [];");
+    expect(NOTIFICATION).toContain("if (recipients.length === 0)");
+  });
+
+  it("cannot suppress the general notification with an unknown value", async () => {
+    const { campaignReplacesGeneralNotification } = await import("../../shared/campaignEnquiry");
+    // The guard requires a valid slug first, so an unknown value leaves
+    // campaignSlug null and the general notification is sent as normal.
+    for (const crafted of ["unknown-campaign", "../admin", ""]) {
+      expect(isCampaignSlug(crafted)).toBe(false);
+    }
+    expect(campaignReplacesGeneralNotification("speak-to-juliet")).toBe(true);
+  });
+});
+
+describe("the enquiry reaches Juliet", () => {
+
+  it("sends through a campaign notifier that refuses an unconfigured campaign", () => {
+    expect(NOTIFICATION).toContain("export async function notifyCampaignOwner");
+    expect(NOTIFICATION).toContain("if (recipients.length === 0)");
+    expect(NOTIFICATION).toContain("return false;");
+  });
+
+  it("is sent only for a value that survives the guard", () => {
+    expect(ROUTER).toContain("isCampaignSlug(effectiveInput.campaign)");
+    expect(ROUTER).toContain("notifyCampaignOwner(campaignSlug, {");
+  });
+
 });
 
 describe("the enquiry is identifiable in the CRM", () => {

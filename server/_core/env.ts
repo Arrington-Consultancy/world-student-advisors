@@ -19,12 +19,26 @@ const staffNotifyEmails = (process.env.STAFF_NOTIFY_EMAILS ?? DEFAULT_STAFF_NOTI
  * staffNotifyEmails, never instead of it: the general list still receives
  * every enquiry, and this list receives the ones from its own page.
  *
- * Juliet Nnajiofor-Uyi, for the Speak to Juliet page. Her address is the one
- * Tim Hunt supplied for that page on 18 September 2026. Overridable per
- * campaign, so a recipient can be changed without a deploy.
+ * For a campaign in CAMPAIGN_REPLACES_GENERAL_NOTIFICATION this list is the
+ * whole recipient set for that campaign's enquiries and the general staff
+ * list is not used; for any other campaign it is additional to it.
+ *
+ * SPEAK TO JULIET: exactly Juliet, Tim, Glenice and Eldah. Tim Hunt's master
+ * draft of 19 September 2026 requires those four and excludes Manet, Tom and
+ * Claudia; Tom Arrington confirmed it on the same date, authorising his own
+ * exclusion. Sarafina Kihumbu and the pipedrive mailbox are on the general
+ * list and are therefore not on this one either, which follows from "exactly
+ * these four" and is reported rather than quietly assumed.
+ *
+ * Overridable per campaign, so a recipient can be changed without a deploy.
  */
 const DEFAULT_CAMPAIGN_NOTIFY_EMAILS: Record<string, string[]> = {
-  "speak-to-juliet": ["juliet@worldstudentadvisors.com"],
+  "speak-to-juliet": [
+    "juliet@worldstudentadvisors.com",
+    "tim.hunt@worldstudentadvisors.com",
+    "glenice@worldstudentadvisors.com",
+    "eldah@worldstudentadvisors.com",
+  ],
 };
 
 const campaignNotifyEmails: Record<string, string[]> = Object.fromEntries(
