@@ -34,8 +34,10 @@ import type { CampaignSlug } from "@shared/campaignEnquiry";
 /**
  * How an enquiry from this page is identified. The signup procedure validates
  * it against the closed list in shared/campaignEnquiry.ts, records it in the
- * Lead note, and emails Juliet as well as the usual staff list. It is not a
- * counsellor allocation and sets no Pipedrive field.
+ * Lead note, and emails this campaign's own recipient list in place of the
+ * general staff list, so exactly one notification is sent and it goes to the
+ * people Tom Arrington authorised. It is not a counsellor allocation and sets
+ * no Pipedrive field.
  */
 export const CAMPAIGN_SLUG: CampaignSlug = "speak-to-juliet";
 
