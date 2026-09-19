@@ -49,6 +49,7 @@ import DDVavita from "./pages/DDVavita";
 import UKMastersStudy from "./pages/UKMastersStudy";
 import UKMastersNigeria from "./pages/UKMastersNigeria";
 import NigeriaPostgraduate from "./pages/NigeriaPostgraduate";
+import SpeakToJuliet from "./pages/SpeakToJuliet";
 
 
 function Router() {
@@ -107,6 +108,7 @@ function Router() {
       {/* Working draft landing page. Noindex and out of the sitemap until the
           Google Ads brief is reconciled with the MPhil/MRes/PhD scope. */}
       <Route path={"/nigeria-postgraduate"} component={NigeriaPostgraduate} />
+      <Route path={"/speak-to-juliet"} component={SpeakToJuliet} />
       <Route path={"/404"} component={NotFound} />
       <Route component={NotFound} />
     </Switch>

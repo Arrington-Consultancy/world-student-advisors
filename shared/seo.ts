@@ -172,6 +172,11 @@ export const SEO_MAP: Record<string, SeoEntry> = {
     description:
       "Taught Master's, MPhil, MRes and PhD abroad for Nigerian graduates, UK first then Germany and Canada, with your own Personal Student Counsellor from first question to visa preparation.",
   },
+  "/speak-to-juliet": {
+    title: "Speak to Juliet in Lagos | World Student Advisors",
+    description:
+      "Juliet Nnajiofor-Uyi is a WSA Higher Education Advisor in Lagos. Message her about studying abroad, from UK boarding school to a PhD, with Glenice Owino as your WSA Student Counsellor when you apply.",
+  },
 };
 
 export const CANONICAL_PATHS: Record<string, string> = {
@@ -193,6 +198,12 @@ export const CANONICAL_PATHS: Record<string, string> = {
   "/podcasts": "/student-support-library",
   "/webukvisa": "/WebUKVisa",
   "/ddvavita": "/DDVavita",
+  // Tim Hunt asked for a short link he can put in print and messaging. It is
+  // an alias, not a second page: both spellings 301 to the canonical route so
+  // crawlers and analytics see one URL. Express matches req.path with its own
+  // case, so the lower-case spelling is listed too, as /webukvisa is.
+  "/LPJuliet": "/speak-to-juliet",
+  "/lpjuliet": "/speak-to-juliet",
 };
 
 export const NOINDEX_PATH_PREFIXES = ["/portal", "/staff-portal"];
@@ -200,7 +211,12 @@ export const NOINDEX_PATH_PREFIXES = ["/portal", "/staff-portal"];
 // 12 September 2026 until Tom Arrington's GO the same day, when noindex, the
 // draft banner, the sitemap entry and the prerender entry all changed
 // together (Change Entry 097). Paid traffic is a separate decision.
-export const NOINDEX_PATHS = new Set(["/404"]);
+// /speak-to-juliet carries provisional copy pending Tim Hunt's revised brief
+// and has not been reviewed by Tom Arrington, so it is noindex and absent
+// from the sitemap and the prerender list. Publishing it is one change:
+// remove it from this set and add it to both lists, as /nigeria-postgraduate
+// did on its GO.
+export const NOINDEX_PATHS = new Set(["/404", "/speak-to-juliet"]);
 
 export function getCanonicalPath(path: string): string {
   return CANONICAL_PATHS[path] ?? path;
