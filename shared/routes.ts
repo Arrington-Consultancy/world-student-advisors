@@ -64,6 +64,12 @@ export const VALID_CLIENT_ROUTES = [
   // but noindex and absent from the sitemap and the prerender list until the
   // Google Ads brief is reconciled with the MPhil/MRes/PhD scope.
   "/nigeria-postgraduate",
+  // Speak to Juliet, the Nigeria landing page for Juliet Nnajiofor-Uyi.
+  // Built 19 September 2026. A real route so it can be reviewed, but
+  // noindex and absent from the sitemap and the prerender list while the
+  // copy is provisional and Tim Hunt's revised brief is outstanding.
+  // /LPJuliet 301s here (CANONICAL_PATHS).
+  "/speak-to-juliet",
   "/404",
 ] as const;
 

@@ -1,4 +1,5 @@
 import { isDesiredLevelValue, isDestinationValue } from "@shared/studentEnquiryOptions";
+import { isCampaignSlug } from "@shared/campaignEnquiry";
 import { ArrowRight, MapPin, Phone, Mail, CheckCircle, Loader2 } from "lucide-react";
 import { Link } from "wouter";
 import CountrySelect from "@/components/CountrySelect";
@@ -144,6 +145,7 @@ function StudentForm() {
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [turnstileToken, setTurnstileToken] = useState("");
+  const [campaign, setCampaign] = useState("");
   const turnstileRef = useRef<TurnstileWidgetHandle>(null);
   const turnstileSiteKey = useTurnstileSiteKey();
 
@@ -193,6 +195,11 @@ function StudentForm() {
     const phone = take("phone", 40);
     const desiredLevel = take("desiredLevel", 40);
     const preferredDestination = take("preferredDestination", 60);
+    // Which campaign landing page sent them here, if any. Held separately
+    // from the form: it is not the student's answer to anything, it is not
+    // shown, and it is not editable. Only a known slug survives the server.
+    const campaignParam = take("campaign", 64);
+    if (isCampaignSlug(campaignParam)) setCampaign(campaignParam);
     if (!firstName && !email && !phone && !desiredLevel && !preferredDestination) return;
     setFormData(prev => ({
       ...prev,
@@ -267,7 +274,7 @@ function StudentForm() {
       setSubmitError("Please complete the verification check below, then try again.");
       return;
     }
-    mutation.mutate({ ...formData, turnstileToken, googlePrefillToken, ...getStoredAdClickIds() });
+    mutation.mutate({ ...formData, turnstileToken, googlePrefillToken, campaign, ...getStoredAdClickIds() });
   };
 
   if (submitted) {

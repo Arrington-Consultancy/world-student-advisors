@@ -3,6 +3,7 @@ import { TRPCError } from "@trpc/server";
 import { SPONSOR_STATUS_OPTIONS, SCHOLARSHIP_STATUS_OPTIONS } from "../shared/fundingStatus";
 import {
   notifyStaff,
+  notifyCampaignOwner,
   notifyInterviewCoachResult,
   sendApplicantConfirmation,
   sendPortalSetupEmail,
@@ -11,6 +12,7 @@ import {
 import { systemRouter } from "./_core/systemRouter";
 import { publicProcedure, router } from "./_core/trpc";
 import { ENV } from "./_core/env";
+import { CAMPAIGN_LABELS, CAMPAIGN_PATHS, campaignReplacesGeneralNotification, isCampaignSlug } from "../shared/campaignEnquiry";
 import { createStudentLead } from "./pipedrive";
 import { recordFailedSubmission, recordInterviewCoachSession } from "./db";
 import {
@@ -218,6 +220,12 @@ const studentSignupSchema = z.object({
   referredToWSA: z.string().optional().default(""),
   referredByWhom: z.string().optional().default(""),
   recommendedCounsellor: z.string().optional().default(""),
+  /**
+   * The campaign landing page this enquiry came from. Free text is accepted
+   * and then thrown away: only a slug in shared/campaignEnquiry.ts has any
+   * effect, so a crafted value cannot reach a recipient list or the CRM note.
+   */
+  campaign: z.string().max(64).optional().default(""),
   gdprConsent: z.boolean(),
   /** Honeypot — real users never see or fill this field; bots often do. */
   website: z.string().optional().default(""),
@@ -418,9 +426,15 @@ export const appRouter = router({
         // readable from an inbox list view without opening the email —
         // this is the student's stated preference at signup, not a claim
         // about who Pipedrive has actually assigned as the Lead's owner.
-        notifyStaff({
-          title: `New Student Enquiry (Rec: ${result.recommendedCounsellorLabel}): ${effectiveInput.firstName} ${effectiveInput.lastName} - ${effectiveInput.desiredLevel}`,
-          content: [
+        //
+        // WHO RECEIVES IT. An ordinary enquiry goes to the general staff
+        // list, unchanged. An enquiry from a campaign whose own list
+        // REPLACES that one (shared/campaignEnquiry.ts) goes to the
+        // campaign's recipients instead, and to nobody else. Either way the
+        // recipients get the same detail, because both are built from the
+        // one array below rather than from two that could drift apart.
+        const enquiryTitle = `New Student Enquiry (Rec: ${result.recommendedCounsellorLabel}): ${effectiveInput.firstName} ${effectiveInput.lastName} - ${effectiveInput.desiredLevel}`;
+        const enquiryContent = [
             `Name: ${effectiveInput.firstName} ${effectiveInput.lastName}`,
             `Email: ${effectiveInput.email}`,
             effectiveInput.phone ? `Phone: ${effectiveInput.phone}` : "",
@@ -459,8 +473,36 @@ export const appRouter = router({
             result.reusedExistingPerson ? `\n(Matched an existing Pipedrive Person by email or phone, so it was updated rather than duplicated.)` : "",
             ``,
             `Pipedrive Lead ID: ${result.leadId}`,
-          ].filter(Boolean).join("\n"),
-        }).catch(err => console.error("[Notification] Failed to send staff notification:", err));
+          ].filter(Boolean).join("\n");
+
+        const campaignSlug = isCampaignSlug(effectiveInput.campaign) ? effectiveInput.campaign : null;
+        const campaignReplacesGeneral = campaignSlug !== null && campaignReplacesGeneralNotification(campaignSlug);
+
+        if (!campaignReplacesGeneral) {
+          notifyStaff({ title: enquiryTitle, content: enquiryContent })
+            .catch(err => console.error("[Notification] Failed to send staff notification:", err));
+        }
+
+        // The campaign's own recipients. The same enquiry detail, with the
+        // page it came from named at the top, and a line saying plainly
+        // whether anybody else was told.
+        //
+        // This allocates nothing: no counsellor, no owner, no Pipedrive
+        // field. A value that is not a known slug never reaches here, so
+        // nothing a visitor can type can change who is emailed.
+        if (campaignSlug) {
+          notifyCampaignOwner(campaignSlug, {
+            title: `${CAMPAIGN_LABELS[campaignSlug]}: ${enquiryTitle}`,
+            content: [
+              `This enquiry came from ${CAMPAIGN_LABELS[campaignSlug]} (${CAMPAIGN_PATHS[campaignSlug]}).`,
+              campaignReplacesGeneral
+                ? `It has been sent to this campaign's recipients only. The general WSA staff list has not been notified of it.`
+                : `The general WSA staff list has been notified of this enquiry as well.`,
+              ``,
+              enquiryContent,
+            ].join("\n"),
+          }).catch(err => console.error("[Notification] Failed to send campaign notification:", err));
+        }
 
         // Confirm to the applicant — best-effort, logged rather than swallowed.
         sendApplicantConfirmation(effectiveInput.email, effectiveInput.firstName).catch(err =>
