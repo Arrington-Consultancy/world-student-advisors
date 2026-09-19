@@ -417,7 +417,7 @@ export const BRIEF_CONFLICTS: ReadonlyArray<BriefConflict> = Object.freeze([
   {
     master: "Copies of the lead to Juliet, Tim, Glenice and Eldah, excluding Manet, Tom and Claudia.",
     built:
-      "Nothing changed. The implementation brief names the same list but keeps Tom in it and says not to remove him. The two documents differ only over Tom. In any case the notification list is site-wide, not per page, so neither version can be applied to this page alone without a mechanism that does not exist.",
+      "Settled by Tom Arrington on 19 September 2026 in favour of Tim's list, authorising his own exclusion. The two documents differed only over Tom. An enquiry from this page now notifies exactly those four in place of the general staff list, through the campaign recipients in server/_core/env.ts. The general list is unchanged for every other enquiry. Sarafina Kihumbu and the pipedrive mailbox are on that general list and so are not on this one, which follows from \"exactly these four\" rather than from any judgement made here.",
   },
   {
     master: "\"Free Service from WSA\" as a heading, and \"The service is free\" as a key message.",
