@@ -1,0 +1,47 @@
+name: Speak to Juliet lead evidence (production, read-only)
+
+# Manual-only, READ-ONLY. Reads the Leads created in a time window from the
+# real production Pipedrive account and prints, for each, when it was
+# created, who owns it, and the Source line of its pinned note.
+#
+# That Source line is the decisive evidence about a campaign enquiry,
+# because the sign-up procedure derives both it and the choice of
+# notification from the same validated value in the same request.
+#
+# GET requests only. It sends no mail, creates nothing and changes nothing.
+# Auth: githubactionsprod, the production-scoped Railway Project Token,
+# used only to read PIPEDRIVE_API_TOKEN from the production environment.
+on:
+  workflow_dispatch:
+    inputs:
+      since:
+        description: "Window start, ISO 8601 UTC"
+        required: true
+        default: "2026-09-19T18:00:00Z"
+      until:
+        description: "Window end, ISO 8601 UTC"
+        required: true
+        default: "2026-09-19T23:59:59Z"
+
+jobs:
+  evidence:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Install Railway CLI
+        run: npm install -g @railway/cli
+      - name: Read the leads and the resolved recipients
+        env:
+          RAILWAY_TOKEN: ${{ secrets.githubactionsprod }}
+          SINCE: ${{ github.event.inputs.since }}
+          UNTIL: ${{ github.event.inputs.until }}
+        run: |
+          railway run --service "world-student-advisors" --environment "production" -- \
+            pnpm exec tsx scripts/speak-to-juliet-lead-evidence.ts
