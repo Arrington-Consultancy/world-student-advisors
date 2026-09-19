@@ -2,6 +2,8 @@ import { describe, expect, it } from "vitest";
 import { readFileSync } from "fs";
 import {
   AVAILABILITY_NOTE,
+  BRIEF_CONFLICTS,
+  DESTINATIONS,
   DESTINATIONS_LINE,
   FORM_STUDY_OPTIONS,
   GLENICE,
@@ -12,6 +14,7 @@ import {
   JULIET_VIDEO,
   STEPS,
   STUDY_FAMILIES,
+  SUPPORT_STEPS,
   UNSUPPORTED_ENQUIRY_ROUTES,
   WHATSAPP_FIRST_MESSAGE,
   whatsappHref,
@@ -51,6 +54,26 @@ function stripComments(src: string): string {
 
 const PAGE_CODE = stripComments(PAGE_SOURCE);
 const LIB_CODE = stripComments(readFileSync("client/src/lib/speakToJuliet.ts", "utf8"));
+
+/**
+ * Every string the page actually renders. BRIEF_CONFLICTS deliberately quotes
+ * wording the page rejects, so a check on what the visitor reads must look at
+ * the rendered copy and not at the source file.
+ */
+function renderedCopy(): string {
+  return [
+    HERO.eyebrow, HERO.headline, HERO.supporting, HERO.primaryCta, HERO.secondaryCta,
+    JULIET.name, JULIET.role, JULIET.location ?? "", JULIET.photoAlt,
+    GLENICE.name, GLENICE.role, GLENICE.photoAlt, GLENICE_QUOTE,
+    DESTINATIONS_LINE, AVAILABILITY_NOTE,
+    ...STUDY_FAMILIES.map(f => `${f.title} ${f.body}`),
+    ...DESTINATIONS.map(d => `${d.name} ${d.body}`),
+    ...STEPS.map(s => `${s.title} ${s.body}`),
+    ...SUPPORT_STEPS,
+    ...FORM_STUDY_OPTIONS.map(o => o.label),
+    JULIET_VIDEO.title, JULIET_VIDEO.blurb,
+  ].join(" ");
+}
 
 describe("the page creates no lead of its own", () => {
   it("hands the student's answers to the controlled signup and calls no CRM directly", () => {
@@ -190,6 +213,8 @@ describe("what the page says", () => {
       HERO.supporting, HERO.headline, HERO.secondaryCta, DESTINATIONS_LINE, AVAILABILITY_NOTE,
       ...STEPS.map(s => `${s.title} ${s.body}`),
       ...STUDY_FAMILIES.map(f => `${f.title} ${f.body}`),
+      ...DESTINATIONS.map(d => `${d.name} ${d.body}`),
+      ...SUPPORT_STEPS,
     ].join(" ").toLowerCase();
     for (const promise of ["24 hour", "24-hour", "48 hour", "within a day", "same day", "immediately"]) {
       expect(allCopy, `must not promise "${promise}"`).not.toContain(promise);
@@ -206,7 +231,11 @@ describe("what the page says", () => {
   });
 
   it("describes no destination in terms of work, migration or settlement", () => {
-    const allCopy = [DESTINATIONS_LINE, AVAILABILITY_NOTE, ...STUDY_FAMILIES.map(f => f.body)].join(" ").toLowerCase();
+    const allCopy = [
+      DESTINATIONS_LINE, AVAILABILITY_NOTE,
+      ...STUDY_FAMILIES.map(f => f.body),
+      ...DESTINATIONS.map(d => `${d.name} ${d.body}`),
+    ].join(" ").toLowerCase();
     for (const banned of ["skilled", "employment", "job", "career opportunit", "migrat", "settle", "residency", "work permit", "work visa"]) {
       expect(allCopy, `must not mention "${banned}"`).not.toContain(banned);
     }
@@ -216,6 +245,8 @@ describe("what the page says", () => {
     const allCopy = [
       HERO.supporting, DESTINATIONS_LINE, AVAILABILITY_NOTE,
       ...STEPS.map(s => s.body), ...STUDY_FAMILIES.map(f => f.body),
+      ...DESTINATIONS.map(d => `${d.name} ${d.body}`),
+      ...SUPPORT_STEPS,
     ].join(" ").toLowerCase();
     for (const banned of ["ranked", "ranking", "top 10", "success rate", "guarantee", "partner universit", "accredited"]) {
       expect(allCopy, `must not claim "${banned}"`).not.toContain(banned);
@@ -241,9 +272,9 @@ describe("the two people", () => {
     expect(GLENICE.role).toBe("Senior Student Counsellor");
     expect(GLENICE).not.toHaveProperty("location");
     // No location reaches the page for her, under any wording.
-    expect(LIB_CODE).not.toContain("Head Office");
-    expect(LIB_CODE).not.toContain("Nairobi");
-    expect(JSON.stringify(GLENICE)).not.toContain("Kenya");
+    for (const place of ["Head Office", "Nairobi", "Kenya", "United Kingdom, UK"]) {
+      expect(renderedCopy(), `Glenice must not be placed at "${place}"`).not.toContain(place);
+    }
   });
 
   it("quotes Glenice in her own approved words, so the page needs no fresh sign off", () => {
@@ -306,5 +337,78 @@ describe("mobile and accessibility", () => {
     const heroImg = PAGE_SOURCE.slice(PAGE_SOURCE.indexOf("src={JULIET.photo}"));
     expect(heroImg).toContain("width={600}");
     expect(heroImg).toContain("height={800}");
+  });
+});
+
+describe("Tim Hunt's master draft of 19 September 2026", () => {
+  it("names every destination he listed", () => {
+    const names = DESTINATIONS.map(d => d.name).join(" ");
+    for (const country of ["United Kingdom", "United States", "Canada", "Germany", "Europe"]) {
+      expect(names).toContain(country);
+    }
+  });
+
+  it("keeps the European markets he named", () => {
+    const europe = DESTINATIONS.find(d => d.name.includes("Europe"));
+    for (const place of ["Cyprus", "Hungary", "France", "Netherlands"]) {
+      expect(europe?.body).toContain(place);
+    }
+  });
+
+  it("drops the relationship and ranking claims from his destination copy", () => {
+    const copy = DESTINATIONS.map(d => d.body).join(" ").toLowerCase();
+    for (const claim of ["strong network", "strong links", "world-leading", "world leading", "education partners"]) {
+      expect(copy, `must not claim "${claim}"`).not.toContain(claim);
+    }
+  });
+
+  it("closes the destinations with his own approved line, verbatim", () => {
+    expect(DESTINATIONS_LINE).toBe(
+      "Your WSA counsellor will help you compare countries, universities, courses and costs to find the options that best fit your ambitions and budget.",
+    );
+  });
+
+  it("carries his list of what WSA does, without his cost heading", () => {
+    expect(SUPPORT_STEPS).toHaveLength(7);
+    for (const step of ["Course and university selection", "Visa preparation", "Interview and mock interview preparation", "Pre-departure support"]) {
+      expect(SUPPORT_STEPS).toContain(step);
+    }
+    // "Free Service from WSA" was his heading for this list. The cost rule is
+    // not confirmed, so the heading does not carry it.
+    const heading = readFileSync("client/src/lib/speakToJuliet.ts", "utf8");
+    expect(heading).toContain('SUPPORT_HEADING = PROVISIONAL("What WSA helps you with")');
+  });
+
+  it("keeps the study routes he grouped, including the summer and sports camps", () => {
+    const copy = STUDY_FAMILIES.map(f => f.body).join(" ").toLowerCase();
+    for (const route of ["phd", "top-up", "international foundation", "gcse", "a level", "football", "summer camps", "online courses"]) {
+      expect(copy, `must still name "${route}"`).toContain(route);
+    }
+  });
+
+  it("records every point where his draft and the implementation brief differ", () => {
+    expect(BRIEF_CONFLICTS.length).toBeGreaterThanOrEqual(9);
+    const all = BRIEF_CONFLICTS.map(c => `${c.master} ${c.built}`).join(" ");
+    for (const subject of ["Personal Assistant", "Head Office", "Tom", "free", "Source Owner", "family name", "Other", "Summer School", "Pipedrive"]) {
+      expect(all, `conflict over "${subject}" must be recorded`).toContain(subject);
+    }
+    for (const c of BRIEF_CONFLICTS) {
+      expect(c.master.length).toBeGreaterThan(20);
+      expect(c.built.length).toBeGreaterThan(40);
+    }
+  });
+
+  it("does not adopt his Personal Assistant or head office wording for Glenice", () => {
+    expect(GLENICE.role).toBe("Senior Student Counsellor");
+    // The phrases appear in BRIEF_CONFLICTS, which records what his draft
+    // says. What matters is that neither reaches the visitor.
+    expect(renderedCopy()).not.toContain("Personal Assistant");
+    expect(renderedCopy()).not.toContain("Head Office");
+    expect(LIB_CODE).toContain("Personal Assistant");
+  });
+
+  it("uses the podcast he links in his own draft", () => {
+    // https://www.youtube.com/watch?v=SZjjr2T3qTU
+    expect(JULIET_VIDEO.youtubeId).toBe("SZjjr2T3qTU");
   });
 });

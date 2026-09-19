@@ -1,9 +1,10 @@
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { Link } from "wouter";
-import { ArrowRight, Mail, MessageCircle, Play } from "lucide-react";
+import { ArrowRight, Check, Mail, MessageCircle, Play } from "lucide-react";
 import {
   AVAILABILITY_NOTE,
   CAMPAIGN_DESTINATIONS,
+  DESTINATIONS,
   DESTINATIONS_LINE,
   FORM,
   FORM_STUDY_OPTIONS,
@@ -15,6 +16,8 @@ import {
   JULIET_VIDEO,
   STEPS,
   STUDY_FAMILIES,
+  SUPPORT_HEADING,
+  SUPPORT_STEPS,
   WHATSAPP_FIRST_MESSAGE,
   whatsappHref,
 } from "@/lib/speakToJuliet";
@@ -363,8 +366,36 @@ export default function SpeakToJuliet() {
               </div>
             ))}
           </div>
-          <p className="mt-6 max-w-3xl text-base leading-relaxed text-gray-700">{DESTINATIONS_LINE}</p>
-          <p className="mt-2.5 max-w-3xl text-sm leading-relaxed text-gray-500">{AVAILABILITY_NOTE}</p>
+          <p className="mt-5 max-w-3xl text-sm leading-relaxed text-gray-500">{AVAILABILITY_NOTE}</p>
+
+          {/* What WSA does alongside the student. Tim Hunt's list, under a
+              heading that makes no cost claim while the charging wording is
+              unconfirmed. */}
+          <h3 className="mt-10 text-lg font-semibold text-wsa-navy">{SUPPORT_HEADING}</h3>
+          <ul className="mt-3 grid gap-x-6 gap-y-2 sm:grid-cols-2 lg:grid-cols-3">
+            {SUPPORT_STEPS.map(s => (
+              <li key={s} className="flex items-start gap-2 text-base leading-relaxed text-gray-700">
+                <Check className="mt-1 h-4 w-4 shrink-0 text-wsa-red" aria-hidden />
+                <span>{s}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      </section>
+
+      {/* ── Destinations ─────────────────────────────────────────── */}
+      <section className="border-t border-wsa-navy/10 bg-white px-4 py-12 sm:px-6 lg:py-16">
+        <div className="mx-auto max-w-6xl">
+          <h2 className="text-2xl font-bold tracking-tight text-wsa-navy sm:text-3xl">Where you could study</h2>
+          <dl className="mt-7 grid gap-x-8 gap-y-5 sm:grid-cols-2">
+            {DESTINATIONS.map(d => (
+              <div key={d.name} className="border-l-2 border-wsa-red/30 pl-4">
+                <dt className="text-base font-semibold text-wsa-navy">{d.name}</dt>
+                <dd className="mt-0.5 text-base leading-relaxed text-gray-700">{d.body}</dd>
+              </div>
+            ))}
+          </dl>
+          <p className="mt-7 max-w-3xl text-base leading-relaxed text-gray-700">{DESTINATIONS_LINE}</p>
         </div>
       </section>
 

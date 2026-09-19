@@ -3,9 +3,18 @@
  * component so it can be tested without React, as the Nigeria postgraduate
  * page does.
  *
- * AUTHORITY. Tim Hunt's Juliet landing page brief of 18 September 2026, the
- * WSA pre-build review of 19 September 2026, and Tom Arrington's
- * implementation brief of 19 September 2026.
+ * AUTHORITY, in the order it is applied:
+ *   1. Tom Arrington's WSA Claude Implementation Brief of 19 September 2026,
+ *      which is the approval authority and carries the refinements he
+ *      accepted after independent review.
+ *   2. Tim Hunt's "Draft Landing Page Juliet 19 September 2026.docx", the
+ *      master content brief, for everything the implementation brief does
+ *      not deliberately modify.
+ *   3. The controlled repository, where it is newer or more specific.
+ * Both live in 16_WEBSITE_Ai/05 Landing Pages/Juliet. Where Tim's master and
+ * the implementation brief disagree, the implementation brief is followed and
+ * the difference is recorded in BRIEF_CONFLICTS below rather than resolved
+ * quietly.
  *
  * PROVISIONAL COPY. Tim is revising the landing page and Juliet's podcast.
  * Everything he may reword is gathered in this file rather than spread
@@ -156,30 +165,95 @@ export const STUDY_FAMILIES: ReadonlyArray<StudyFamily> = Object.freeze([
   {
     title: PROVISIONAL("Degrees abroad"),
     body: PROVISIONAL(
-      "Undergraduate degrees, top-up degrees, international foundation programmes, taught Master's, MPhil, MRes and PhD.",
+      "PhD and Master's degrees, undergraduate degrees, top-up degrees and International Foundation Programmes.",
     ),
   },
   {
     title: PROVISIONAL("School and sixth form"),
-    body: PROVISIONAL("UK boarding schools for GCSE, A Level and foundation routes."),
+    body: PROVISIONAL("UK boarding schools for GCSE, A Level and foundation courses."),
   },
   {
     title: PROVISIONAL("Sport and summer"),
-    body: PROVISIONAL("Boarding schools with football academies, and summer and sports programmes."),
+    body: PROVISIONAL(
+      "UK boarding schools with football academies, and UK summer camps with football and other sports in July and August.",
+    ),
   },
   {
     title: PROVISIONAL("Online study"),
-    body: PROVISIONAL("Courses you can study from home in Nigeria."),
+    body: PROVISIONAL("Online courses and flexible study options you can take from home in Nigeria."),
   },
 ]);
 
 /**
- * Destinations, in education wording only. No country is described in terms
- * of work, migration, settlement or professional opportunity, and no claim is
- * made about universities, rankings, visa prospects or outcomes.
+ * What WSA does alongside the student, from Tim Hunt's master draft of 19
+ * September 2026, where it sits under the heading "Free Service from WSA".
+ *
+ * The list is his. The heading is not: the cost wording is unconfirmed (see
+ * COST_WORDING_PENDING), so the page states what WSA does and leaves what it
+ * costs to the one scoped sentence in the hero.
+ */
+export const SUPPORT_STEPS: ReadonlyArray<string> = Object.freeze([
+  PROVISIONAL("Course and university selection"),
+  PROVISIONAL("Applications and offers"),
+  PROVISIONAL("Payment guidance"),
+  PROVISIONAL("Visa preparation"),
+  PROVISIONAL("Interview and mock interview preparation"),
+  PROVISIONAL("Pre-departure support"),
+  PROVISIONAL("Support throughout your studies"),
+]);
+
+export const SUPPORT_HEADING = PROVISIONAL("What WSA helps you with");
+
+export interface Destination {
+  name: string;
+  body: string;
+}
+
+/**
+ * The destinations, from Tim Hunt's master draft of 19 September 2026, in
+ * education wording only.
+ *
+ * WHAT WAS TAKEN OUT, AND WHY. Tim's draft describes the United Kingdom as
+ * "supported by WSA's strong network of UK universities and education
+ * partners" and Europe as "WSA has strong links across Europe". Both are
+ * claims about WSA's relationships with universities, which the
+ * implementation brief rules out without evidence, so neither appears. His
+ * "world-leading universities" for the United States is a ranking claim and
+ * is out for the same reason. The countries, the programme types and the
+ * named European markets are all his and all stay. See BRIEF_CONFLICTS.
+ *
+ * Canada carries no reference to skilled work, migration or settlement.
+ * Tim's own 19 September wording had already dropped it.
+ */
+export const DESTINATIONS: ReadonlyArray<Destination> = Object.freeze([
+  {
+    name: PROVISIONAL("United Kingdom"),
+    body: PROVISIONAL("WSA's main destination, and where most WSA students go."),
+  },
+  {
+    name: PROVISIONAL("United States"),
+    body: PROVISIONAL("A large choice of undergraduate and postgraduate programmes."),
+  },
+  {
+    name: PROVISIONAL("Canada"),
+    body: PROVISIONAL("A major international study destination, with a wide choice of universities, colleges and programmes."),
+  },
+  {
+    name: PROVISIONAL("Germany"),
+    body: PROVISIONAL("Worth considering for postgraduate study, with Master's programmes taught in English and many competitively priced options."),
+  },
+  {
+    name: PROVISIONAL("Elsewhere in Europe"),
+    body: PROVISIONAL("Including Cyprus, Hungary, France and the Netherlands. Each one is considered on its own merits."),
+  },
+]);
+
+/**
+ * Tim Hunt's own closing line, supplied verbatim in his master draft and
+ * already approved as the equivalent line on the Nigeria postgraduate page.
  */
 export const DESTINATIONS_LINE = PROVISIONAL(
-  "The United Kingdom, the United States, Canada, Germany and elsewhere in Europe. Juliet will help you compare countries, universities, courses and costs.",
+  "Your WSA counsellor will help you compare countries, universities, courses and costs to find the options that best fit your ambitions and budget.",
 );
 
 /** Availability, stated once so no family reads as a standing guarantee. */
@@ -301,3 +375,72 @@ export const FORM = Object.freeze({
  * register of claims the Nigeria page removed for the same reason.
  */
 export const NO_RESPONSE_TIME_PROMISE = true;
+
+/* ------------------------------------------------------------------ */
+/* Where Tim's master and the implementation brief disagree            */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Every point on which "Draft Landing Page Juliet 19 September 2026.docx"
+ * and Tom Arrington's implementation brief of the same date say different
+ * things, with what the page does about it.
+ *
+ * The implementation brief is the approval authority, so it wins each time.
+ * None of these is a judgement about who is right: they are recorded here so
+ * that Tom can settle them with Tim, and so nobody later reads the page as a
+ * silent decision that one document beat the other.
+ */
+export interface BriefConflict {
+  /** What Tim's 19 September master draft says. */
+  master: string;
+  /** What the page does, and under whose authority. */
+  built: string;
+}
+
+export const BRIEF_CONFLICTS: ReadonlyArray<BriefConflict> = Object.freeze([
+  {
+    master: "Glenice Owino is described as \"Juliet's Personal Assistant\" at \"WSA Head Office, UK\".",
+    built:
+      "Senior Student Counsellor, with no location line. Her controlled team record and her own approved biography both give that role, the biography places her in Kenya rather than the UK, and the implementation brief rules out the head office wording. Tim's own body copy two lines later calls her \"your dedicated Student Counsellor\", so his draft disagrees with itself here.",
+  },
+  {
+    master: "Copies of the lead to Juliet, Tim, Glenice and Eldah, excluding Manet, Tom and Claudia.",
+    built:
+      "Nothing changed. The implementation brief names the same list but keeps Tom in it and says not to remove him. The two documents differ only over Tom. In any case the notification list is site-wide, not per page, so neither version can be applied to this page alone without a mechanism that does not exist.",
+  },
+  {
+    master: "\"Free Service from WSA\" as a heading, and \"The service is free\" as a key message.",
+    built:
+      "One scoped sentence in the hero, at no cost to students working with WSA. The implementation brief forbids an absolute free claim until Tim confirms the charging rule. See COST_WORDING_PENDING.",
+  },
+  {
+    master: "Source Owner = Juliet Nnajiofor-Uyi, Lead Owner = Glenice Owino, set in the CRM.",
+    built:
+      "Neither is set. Pipedrive's recommended counsellor field offers Eldah, Glenice, Manet, Sarafina and help me choose; Juliet is not an option and there is no source owner field at all. Reported rather than mapped to something close.",
+  },
+  {
+    master: "The form carries a family name field.",
+    built:
+      "Omitted. The implementation brief says to leave it out unless the controlled handoff needs it, and the signup form collects it on the next page.",
+  },
+  {
+    master: "The destination list ends with \"Other\".",
+    built:
+      "\"Help me decide\", which records the same controlled value and invites an undecided visitor in. The implementation brief asks for this wording.",
+  },
+  {
+    master: "The study list offers UK Summer School and UK Sports Camp as choices.",
+    built:
+      "Named in the page copy, absent from the dropdown. Neither has a controlled enquiry value or a Pipedrive option. See UNSUPPORTED_ENQUIRY_ROUTES.",
+  },
+  {
+    master: "The United Kingdom is \"supported by WSA's strong network of UK universities and education partners\", Europe has \"strong links\", and the United States has \"world-leading universities\".",
+    built:
+      "The countries and programme types are kept and the relationship and ranking claims are not. The implementation brief rules out unsupported claims about university relationships and rankings.",
+  },
+  {
+    master: "The form is to be built in Pipedrive as a prototype for other Spokes and LSGs, with an automatic reply from Juliet set up by Tim in Pipedrive.",
+    built:
+      "The page hands off to the existing controlled signup and creates no second path. The automatic reply is Tim's own Pipedrive configuration and is outside the website. If a dedicated Pipedrive form is genuinely wanted, what would change is set out for Tom before anything is built.",
+  },
+]);
