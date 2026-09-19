@@ -37,6 +37,34 @@ export async function notifyStaff(payload: NotificationPayload): Promise<boolean
 }
 
 /**
+ * Emails the owner of a campaign landing page about an enquiry that came from
+ * their page (server/_core/env.ts campaignNotifyEmails, keyed by the slug in
+ * shared/campaignEnquiry.ts).
+ *
+ * ADDITIONAL, never instead. The general staff notification still goes out
+ * for the same enquiry, unchanged. Returns false rather than throwing when
+ * the campaign has no recipients configured, so a missing list can never fail
+ * an enquiry that has already been saved.
+ */
+export async function notifyCampaignOwner(slug: string, payload: NotificationPayload): Promise<boolean> {
+  if (!isNonEmptyString(payload.title) || !isNonEmptyString(payload.content)) {
+    console.warn("[Notification] Missing title or content, skipping campaign notification.");
+    return false;
+  }
+
+  const recipients = ENV.campaignNotifyEmails[slug] ?? [];
+  if (recipients.length === 0) {
+    console.warn(`[Notification] No recipients configured for campaign "${slug}", skipping:`, payload.title);
+    return false;
+  }
+
+  const title = payload.title.trim().slice(0, TITLE_MAX_LENGTH);
+  const content = payload.content.trim().slice(0, CONTENT_MAX_LENGTH);
+
+  return sendGraphMail({ to: recipients, subject: title, text: content });
+}
+
+/**
  * Emails a fixed, smaller recipient list (server/_core/env.ts
  * interviewCoachNotifyEmails — separate from the general staff list) the
  * results of a completed AI Interview Coach session. Same delivery

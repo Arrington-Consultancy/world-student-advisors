@@ -1,3 +1,4 @@
+import { CAMPAIGN_LABELS, CAMPAIGN_PATHS, isCampaignSlug } from "../shared/campaignEnquiry";
 import { ENV } from "./_core/env";
 
 const PIPEDRIVE_BASE = "https://api.pipedrive.com/v1";
@@ -31,6 +32,13 @@ interface StudentFormData {
   referredToWSA: string;
   referredByWhom?: string;
   recommendedCounsellor: string;
+  /**
+   * The campaign landing page this enquiry came from, if any: a slug from
+   * shared/campaignEnquiry.ts, already validated by the caller. It appears in
+   * the Lead note so a Lead can be traced back to its page. It sets no
+   * Pipedrive field, no owner and no counsellor.
+   */
+  campaign?: string;
   gdprConsent: boolean;
   /** Google Ads click identifiers, captured client-side from the landing URL. */
   gclid?: string;
@@ -435,7 +443,9 @@ function buildNote(data: StudentFormData): string {
     ...(data.gbraid ? [`**Google Click ID (gbraid):** ${data.gbraid}`] : []),
     ...(data.wbraid ? [`**Google Click ID (wbraid):** ${data.wbraid}`] : []),
     ``,
-    `**Source:** WSA Website - Sign-up Form`,
+    data.campaign && isCampaignSlug(data.campaign)
+      ? `**Source:** WSA Website - Sign-up Form, from ${CAMPAIGN_LABELS[data.campaign]} (${CAMPAIGN_PATHS[data.campaign]})`
+      : `**Source:** WSA Website - Sign-up Form`,
   ];
   return lines.join("\n");
 }

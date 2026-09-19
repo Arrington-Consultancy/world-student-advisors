@@ -29,6 +29,15 @@
  * and creates no second student record.
  */
 import { CAMPAIGN_DESTINATIONS, type DesiredLevelValue } from "@shared/studentEnquiryOptions";
+import type { CampaignSlug } from "@shared/campaignEnquiry";
+
+/**
+ * How an enquiry from this page is identified. The signup procedure validates
+ * it against the closed list in shared/campaignEnquiry.ts, records it in the
+ * Lead note, and emails Juliet as well as the usual staff list. It is not a
+ * counsellor allocation and sets no Pipedrive field.
+ */
+export const CAMPAIGN_SLUG: CampaignSlug = "speak-to-juliet";
 
 /** Marks a string Tim may still reword. Identity at runtime, a signal in the source. */
 const PROVISIONAL = (s: string) => s;

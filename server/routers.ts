@@ -3,6 +3,7 @@ import { TRPCError } from "@trpc/server";
 import { SPONSOR_STATUS_OPTIONS, SCHOLARSHIP_STATUS_OPTIONS } from "../shared/fundingStatus";
 import {
   notifyStaff,
+  notifyCampaignOwner,
   notifyInterviewCoachResult,
   sendApplicantConfirmation,
   sendPortalSetupEmail,
@@ -11,6 +12,7 @@ import {
 import { systemRouter } from "./_core/systemRouter";
 import { publicProcedure, router } from "./_core/trpc";
 import { ENV } from "./_core/env";
+import { CAMPAIGN_LABELS, CAMPAIGN_PATHS, isCampaignSlug } from "../shared/campaignEnquiry";
 import { createStudentLead } from "./pipedrive";
 import { recordFailedSubmission, recordInterviewCoachSession } from "./db";
 import {
@@ -218,6 +220,12 @@ const studentSignupSchema = z.object({
   referredToWSA: z.string().optional().default(""),
   referredByWhom: z.string().optional().default(""),
   recommendedCounsellor: z.string().optional().default(""),
+  /**
+   * The campaign landing page this enquiry came from. Free text is accepted
+   * and then thrown away: only a slug in shared/campaignEnquiry.ts has any
+   * effect, so a crafted value cannot reach a recipient list or the CRM note.
+   */
+  campaign: z.string().max(64).optional().default(""),
   gdprConsent: z.boolean(),
   /** Honeypot — real users never see or fill this field; bots often do. */
   website: z.string().optional().default(""),
@@ -461,6 +469,35 @@ export const appRouter = router({
             `Pipedrive Lead ID: ${result.leadId}`,
           ].filter(Boolean).join("\n"),
         }).catch(err => console.error("[Notification] Failed to send staff notification:", err));
+
+        // An enquiry from a named campaign landing page also reaches whoever
+        // owns that page. ADDITIONAL to the staff notification above, which
+        // is unchanged and still goes to everybody it always did.
+        //
+        // This is what makes the Speak to Juliet page's "Juliet will come
+        // back to you" true. It allocates nothing: no counsellor, no owner,
+        // no Pipedrive field. A value that is not a known slug is ignored,
+        // so nothing a visitor can type reaches a recipient list.
+        if (isCampaignSlug(effectiveInput.campaign)) {
+          const slug = effectiveInput.campaign;
+          notifyCampaignOwner(slug, {
+            title: `${CAMPAIGN_LABELS[slug]}: new enquiry from ${effectiveInput.firstName} ${effectiveInput.lastName}`,
+            content: [
+              `This enquiry came from ${CAMPAIGN_LABELS[slug]} (${CAMPAIGN_PATHS[slug]}).`,
+              ``,
+              `Name: ${effectiveInput.firstName} ${effectiveInput.lastName}`,
+              `Email: ${effectiveInput.email}`,
+              effectiveInput.phone ? `WhatsApp or phone: ${effectiveInput.phone}` : "",
+              `Country: ${effectiveInput.country}`,
+              `Wants to study: ${effectiveInput.desiredLevel}`,
+              `Preferred destination: ${effectiveInput.preferredDestination}`,
+              ``,
+              `Pipedrive Lead ID: ${result.leadId}`,
+              ``,
+              `The WSA staff list has been notified of this enquiry as well.`,
+            ].filter(Boolean).join("\n"),
+          }).catch(err => console.error("[Notification] Failed to send campaign notification:", err));
+        }
 
         // Confirm to the applicant — best-effort, logged rather than swallowed.
         sendApplicantConfirmation(effectiveInput.email, effectiveInput.firstName).catch(err =>

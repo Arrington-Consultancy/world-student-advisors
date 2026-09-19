@@ -22,6 +22,7 @@ import {
   whatsappHref,
 } from "@/lib/speakToJuliet";
 import { toInternationalNigerianNumber, NIGERIA_DIALLING_CODE } from "@/lib/nigeriaLanding";
+import { CAMPAIGN_SLUG } from "@/lib/speakToJuliet";
 
 /**
  * Speak to Juliet. The Nigeria landing page whose one job is to put a visitor
@@ -93,7 +94,7 @@ function JulietVideo() {
           alt=""
           width={600}
           height={800}
-          loading="lazy"
+          decoding="async"
           className="aspect-video w-full max-w-full object-cover object-[center_25%]"
         />
         <span className="absolute inset-0 flex items-center justify-center bg-wsa-navy/25 transition group-hover:bg-wsa-navy/35">
@@ -150,6 +151,9 @@ function FallbackForm({ id }: { id: string }) {
     if (international) params.set("phone", international);
     if (level) params.set("desiredLevel", level);
     if (destination) params.set("preferredDestination", destination);
+    // Marks the enquiry as Juliet's, so it reaches her and is identifiable in
+    // the CRM. It allocates nothing and sets no counsellor.
+    params.set("campaign", CAMPAIGN_SLUG);
     window.location.assign(`/contact?${params.toString()}#student-signup`);
   };
 
@@ -426,7 +430,7 @@ export default function SpeakToJuliet() {
               alt={GLENICE.photoAlt}
               width={80}
               height={107}
-              loading="lazy"
+              decoding="async"
               className="block aspect-[3/4] w-20 shrink-0 rounded-xl border border-wsa-navy/10 bg-wsa-stone object-cover object-top"
             />
             <div className="min-w-0">

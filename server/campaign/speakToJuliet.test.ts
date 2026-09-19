@@ -5,6 +5,8 @@ import {
   BRIEF_CONFLICTS,
   DESTINATIONS,
   DESTINATIONS_LINE,
+  CAMPAIGN_SLUG,
+  FORM,
   FORM_STUDY_OPTIONS,
   GLENICE,
   GLENICE_QUOTE,
@@ -88,9 +90,24 @@ describe("the page creates no lead of its own", () => {
     }
   });
 
-  it("carries only the five prefill keys the signup form reads", () => {
+  it("carries the five prefill keys, plus the campaign marker and nothing else", () => {
     const keys = [...PAGE_SOURCE.matchAll(/params\.set\("([a-zA-Z]+)"/g)].map(m => m[1]);
-    expect(new Set(keys)).toEqual(new Set(["firstName", "email", "phone", "desiredLevel", "preferredDestination"]));
+    // The five are the student's own answers. "campaign" is not one of them:
+    // it is how the enquiry is identified as Juliet's, so it reaches her and
+    // is traceable in the CRM. It is validated against a closed list on the
+    // server and allocates nothing.
+    expect(new Set(keys)).toEqual(
+      new Set(["firstName", "email", "phone", "desiredLevel", "preferredDestination", "campaign"]),
+    );
+  });
+
+  it("the form's promise that Juliet will come back is one the flow now keeps", () => {
+    expect(FORM.supporting).toContain("Juliet will come back to you");
+    expect(FORM.submit).toBe("Send to Juliet");
+    // Which is only true because the enquiry is marked as hers and she is the
+    // recipient for that campaign. Both are asserted in campaignEnquiry.test.ts.
+    expect(PAGE_SOURCE).toContain('params.set("campaign", CAMPAIGN_SLUG)');
+    expect(CAMPAIGN_SLUG).toBe("speak-to-juliet");
   });
 
   it("asks for neither funding nor family name at first contact", () => {
