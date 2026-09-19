@@ -232,7 +232,21 @@ describe("no second CRM path", () => {
 
   it("the campaign rides with the submission the signup form already makes", () => {
     expect(CONTACT).toContain("campaign, ...getStoredAdClickIds()");
-    expect(CONTACT).toContain("if (isCampaignSlug(campaignParam)) setCampaign(campaignParam);");
+    // The form takes the marker from the URL when it is there, and from what
+    // the tab remembers when it is not, which is how a return from Google
+    // sign-in keeps it. Asserted as the two sources rather than as one exact
+    // line, because pinning the line is what let the Google journey through:
+    // the wording matched while the journey did not work.
+    expect(CONTACT).toContain("isCampaignSlug(campaignParam)");
+    expect(CONTACT).toContain("rememberCampaign(campaignParam)");
+    expect(CONTACT).toContain("recallCampaign()");
+    // What actually proves the journey is
+    // server/campaign/speakToJulietEndToEnd.test.ts, which runs it.
+  });
+
+  it("hands the campaign to the Google round trip, which would otherwise drop it", () => {
+    expect(CONTACT).toContain("startGoogleSignup(campaign)");
+    expect(CONTACT).toContain("&campaign=${encodeURIComponent(campaign)}");
   });
 
   it("keeps the bot check and the validation in front of it", () => {

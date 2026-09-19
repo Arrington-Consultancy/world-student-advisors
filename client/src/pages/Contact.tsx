@@ -10,6 +10,7 @@ import { useTurnstileSiteKey } from "@/hooks/useTurnstileSiteKey";
 import { useRef, useState, useEffect } from "react";
 import { trpc } from "@/lib/trpc";
 import { getStoredAdClickIds } from "@/lib/adClickIds";
+import { recallCampaign, rememberCampaign } from "@/lib/campaignHandoff";
 import { reportSignupConversion } from "@/lib/googleAdsConversion";
 import { SPONSOR_STATUS_OPTIONS, SCHOLARSHIP_STATUS_OPTIONS } from "@shared/fundingStatus";
 
@@ -32,9 +33,14 @@ const BLANK_FUNDING_DETAILS = {
 };
 
 /** Navigates to the Google OAuth start endpoint with flow=signup. */
-function startGoogleSignup() {
+function startGoogleSignup(campaign: string) {
   const origin = window.location.origin;
-  window.location.href = `/api/portal/auth/google?origin=${encodeURIComponent(origin)}&flow=signup`;
+  // The campaign has to be handed to the server here, because the OAuth
+  // callback rebuilds the /contact URL from scratch and anything not carried
+  // through the state is lost. Without this the enquiry comes back looking
+  // like an ordinary one and notifies the general staff list.
+  const campaignParam = campaign ? `&campaign=${encodeURIComponent(campaign)}` : "";
+  window.location.href = `/api/portal/auth/google?origin=${encodeURIComponent(origin)}&flow=signup${campaignParam}`;
 }
 
 /**
@@ -199,7 +205,16 @@ function StudentForm() {
     // from the form: it is not the student's answer to anything, it is not
     // shown, and it is not editable. Only a known slug survives the server.
     const campaignParam = take("campaign", 64);
-    if (isCampaignSlug(campaignParam)) setCampaign(campaignParam);
+    if (isCampaignSlug(campaignParam)) {
+      setCampaign(campaignParam);
+      rememberCampaign(campaignParam);
+    } else {
+      // No slug in the URL. It may still be this journey: a return from
+      // Google sign-in, a reload, or a wander off the page and back. What the
+      // tab remembers is only ever a slug this same journey put there.
+      const remembered = recallCampaign();
+      if (remembered) setCampaign(remembered);
+    }
     if (!firstName && !email && !phone && !desiredLevel && !preferredDestination) return;
     setFormData(prev => ({
       ...prev,
@@ -300,7 +315,7 @@ function StudentForm() {
         <>
           <button
             type="button"
-            onClick={() => startGoogleSignup()}
+            onClick={() => startGoogleSignup(campaign)}
             className="w-full h-11 flex items-center justify-center gap-3 border border-gray-300 bg-white hover:bg-gray-50 transition-colors rounded-none mb-4 text-sm font-medium text-gray-700"
           >
             <svg className="w-5 h-5" viewBox="0 0 24 24" aria-hidden="true">
