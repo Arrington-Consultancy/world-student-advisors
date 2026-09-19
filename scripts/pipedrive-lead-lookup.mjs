@@ -14,11 +14,27 @@ const KNOWN_OWNERS = {
   25633455: "Sarafina Kihumbu",
 };
 
-const email = process.env.LOOKUP_EMAIL;
-if (!email) {
+const term = process.env.LOOKUP_EMAIL;
+if (!term) {
   console.error("LOOKUP_EMAIL is not set.");
   process.exit(1);
 }
+
+// The same input accepts a phone number as well as an address, because the
+// thing you have to hand after a form submission is not always the address.
+// A UK national number is also tried in international form, since that is
+// what the sign-up form stores.
+const isEmail = term.includes("@");
+const digits = term.replace(/[^0-9+]/g, "");
+const candidates = isEmail
+  ? [term]
+  : [...new Set([
+      digits,
+      digits.startsWith("0") ? `+44${digits.slice(1)}` : "",
+      digits.startsWith("0") ? `44${digits.slice(1)}` : "",
+      digits.startsWith("+") ? digits.slice(1) : "",
+    ].filter(Boolean))];
+const field = isEmail ? "email" : "phone";
 if (!process.env.PIPEDRIVE_API_TOKEN) {
   console.error("PIPEDRIVE_API_TOKEN is not set in this environment.");
   process.exit(1);
@@ -35,18 +51,27 @@ async function pipedriveGet(path) {
 }
 
 try {
-  const search = await pipedriveGet(
-    `/persons/search?term=${encodeURIComponent(email)}&fields=email&exact_match=true`
-  );
-  const items = search?.data?.items ?? [];
-  const personId = items[0]?.item?.id;
+  let personId;
+  let matched;
+  for (const candidate of candidates) {
+    const search = await pipedriveGet(
+      `/persons/search?term=${encodeURIComponent(candidate)}&fields=${field}&exact_match=true`
+    );
+    const items = search?.data?.items ?? [];
+    if (items[0]?.item?.id) {
+      personId = items[0].item.id;
+      matched = candidate;
+      break;
+    }
+    console.log(`  no ${field} match for ${candidate}`);
+  }
 
   if (!personId) {
-    console.log(`No Pipedrive Person found for ${email}.`);
+    console.log(`No Pipedrive Person found for ${term}.`);
     process.exit(0);
   }
 
-  console.log(`Person found: id=${personId}`);
+  console.log(`Person found: id=${personId} (matched ${field} ${matched})`);
 
   const leadsResult = await pipedriveGet(`/leads?person_id=${personId}&limit=10`);
   const leads = leadsResult?.data ?? [];
