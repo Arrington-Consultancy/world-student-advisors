@@ -26,6 +26,10 @@ on:
         description: "Optional comma-separated emails or phone numbers to cross-check"
         required: false
         default: ""
+      form_inventory:
+        description: "Also run the read-only Pipedrive form inventory (yes/no)"
+        required: false
+        default: "no"
 
 jobs:
   evidence:
@@ -50,3 +54,10 @@ jobs:
         run: |
           railway run --service "world-student-advisors" --environment "production" -- \
             pnpm exec tsx scripts/speak-to-juliet-lead-evidence.ts
+      - name: Pipedrive form inventory, read-only
+        if: ${{ github.event.inputs.form_inventory == 'yes' }}
+        env:
+          RAILWAY_TOKEN: ${{ secrets.githubactionsprod }}
+        run: |
+          railway run --service "world-student-advisors" --environment "production" -- \
+            pnpm exec tsx scripts/pipedrive-juliet-form-inventory.ts
