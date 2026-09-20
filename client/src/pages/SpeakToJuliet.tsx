@@ -13,7 +13,10 @@ import {
   HELP_ME_DECIDE,
   HERO,
   JULIET,
-  JULIET_VIDEO,
+  JULIET_PODCAST,
+  GLENICE_HEAD_OFFICE_LINE,
+  KEY_MESSAGE,
+  type PersonCard,
   STEPS,
   STUDY_FAMILIES,
   SUPPORT_HEADING,
@@ -47,6 +50,28 @@ const WHATSAPP_GREEN = "#128C7E";
 
 /* ------------------------------------------------------------------ */
 
+const FLAG_GREEN = "#008751";
+
+/**
+ * The Nigerian flag, drawn rather than fetched, so the hero has no image
+ * dependency and nothing to go missing. Tim Hunt asked for it on 19
+ * September 2026: it identifies the page as Nigeria's at a glance and
+ * reinforces Juliet as WSA's person on the ground there.
+ */
+function NigerianFlag({ className = "" }: { className?: string }) {
+  return (
+    <span
+      className={`inline-flex overflow-hidden rounded-[2px] border border-black/10 ${className}`}
+      role="img"
+      aria-label="Flag of Nigeria"
+    >
+      <span className="block h-full w-1/3" style={{ backgroundColor: FLAG_GREEN }} />
+      <span className="block h-full w-1/3 bg-white" />
+      <span className="block h-full w-1/3" style={{ backgroundColor: FLAG_GREEN }} />
+    </span>
+  );
+}
+
 function WhatsAppButton({
   className = "",
   children,
@@ -59,7 +84,7 @@ function WhatsAppButton({
   return (
     <a
       ref={onRef}
-      href={whatsappHref(JULIET.whatsappDigits, WHATSAPP_FIRST_MESSAGE)}
+      href={whatsappHref(JULIET.whatsappDigits ?? "", WHATSAPP_FIRST_MESSAGE)}
       target="_blank"
       rel="noopener noreferrer"
       style={{ backgroundColor: WHATSAPP_GREEN }}
@@ -72,12 +97,29 @@ function WhatsAppButton({
 }
 
 /**
- * Juliet's introduction, shown as a poster with a play control. The YouTube
- * iframe does not exist until a visitor asks for it, so the page never
- * autoplays and never spends a visitor's data on a video they did not start.
+ * Juliet's introduction.
+ *
+ * Tim Hunt is replacing the old recording with one made to match this page,
+ * so there is no video id yet and the old one must not be used. Until the id
+ * is set the section holds the space with a short, honest line: it is
+ * provision for the new podcast rather than a broken player, and it makes no
+ * request to YouTube at all.
+ *
+ * Once JULIET_PODCAST.youtubeId is set, the poster and player below appear
+ * with no other change. The iframe is still only created when a visitor asks
+ * for it, so nothing autoplays.
  */
-function JulietVideo() {
+function JulietPodcast() {
   const [playing, setPlaying] = useState(false);
+
+  if (!JULIET_PODCAST.youtubeId) {
+    return (
+      <div className="rounded-2xl border border-dashed border-wsa-navy/20 bg-white/60 p-5">
+        <p className="text-sm font-semibold text-wsa-navy">{JULIET_PODCAST.title}</p>
+        <p className="mt-1.5 text-sm leading-relaxed text-gray-600">{JULIET_PODCAST.awaitingLine}</p>
+      </div>
+    );
+  }
 
   if (!playing) {
     return (
@@ -86,9 +128,9 @@ function JulietVideo() {
         onClick={() => setPlaying(true)}
         className="group relative block w-full overflow-hidden rounded-2xl border border-wsa-navy/12 bg-wsa-stone focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-wsa-navy"
       >
-        {/* Juliet's own photograph, not YouTube's thumbnail. It is served
-            from this site, so it always loads, and the page makes no request
-            to a third party before a visitor has asked to watch anything. */}
+        {/* Juliet's own photograph is the poster, served from this site, so it
+            always loads and the page makes no third-party request before a
+            visitor has asked to watch anything. */}
         <img
           src={JULIET.photo}
           alt=""
@@ -104,9 +146,9 @@ function JulietVideo() {
         </span>
         <span className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-wsa-navy/85 to-transparent px-4 pb-3 pt-8 text-left">
           <span className="block text-sm font-semibold text-white">
-            {JULIET_VIDEO.title}, {JULIET_VIDEO.duration}
+            {JULIET_PODCAST.title}{JULIET_PODCAST.duration ? `, ${JULIET_PODCAST.duration}` : ""}
           </span>
-          <span className="mt-0.5 block text-xs leading-snug text-white/85">{JULIET_VIDEO.blurb}</span>
+          <span className="mt-0.5 block text-xs leading-snug text-white/85">{JULIET_PODCAST.blurb}</span>
         </span>
       </button>
     );
@@ -115,8 +157,8 @@ function JulietVideo() {
   return (
     <div className="overflow-hidden rounded-2xl border border-wsa-navy/12 bg-black">
       <iframe
-        src={`https://www.youtube-nocookie.com/embed/${JULIET_VIDEO.youtubeId}?autoplay=1&rel=0`}
-        title={`${JULIET_VIDEO.title}. ${JULIET_VIDEO.blurb}`}
+        src={`https://www.youtube-nocookie.com/embed/${JULIET_PODCAST.youtubeId}?autoplay=1&rel=0`}
+        title={`${JULIET_PODCAST.title}. ${JULIET_PODCAST.blurb}`}
         allow="accelerometer; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
         allowFullScreen
         className="aspect-video w-full max-w-full border-0"
@@ -253,7 +295,14 @@ function FallbackForm({ id }: { id: string }) {
 
 /* ------------------------------------------------------------------ */
 
-function ContactLines({ person }: { person: { whatsapp: string; whatsappDigits: string; email: string; name: string } }) {
+/**
+ * Contact details for a person who has them. Glenice has none on this page,
+ * by Tim Hunt's instruction of 19 September 2026, so this renders nothing
+ * rather than an empty row: Juliet is the contact, and the page should not
+ * hint otherwise.
+ */
+function ContactLines({ person }: { person: PersonCard }) {
+  if (!person.whatsappDigits || !person.whatsapp || !person.email) return null;
   return (
     <div className="mt-4 flex flex-wrap gap-2">
       <a
@@ -306,7 +355,10 @@ export default function SpeakToJuliet() {
       <section className="px-4 pb-10 pt-8 sm:px-6 lg:pb-14 lg:pt-12">
         <div className="mx-auto grid max-w-6xl gap-8 lg:grid-cols-[1.05fr_minmax(300px,400px)] lg:items-center lg:gap-12">
           <div className="min-w-0">
-            <p className="text-sm font-semibold uppercase tracking-wider text-wsa-red">{HERO.eyebrow}</p>
+            <p className="flex items-center gap-2.5 text-sm font-semibold uppercase tracking-wider text-wsa-red">
+              <NigerianFlag className="h-4 w-6 shrink-0" />
+              {HERO.eyebrow}
+            </p>
             <h1 className="mt-3 text-3xl font-bold leading-[1.12] tracking-tight text-wsa-navy sm:text-4xl lg:text-5xl">
               {HERO.headline}
             </h1>
@@ -353,7 +405,7 @@ export default function SpeakToJuliet() {
             <ContactLines person={JULIET} />
           </div>
           <div className="min-w-0">
-            <JulietVideo />
+            <JulietPodcast />
           </div>
         </div>
       </section>
@@ -436,9 +488,30 @@ export default function SpeakToJuliet() {
             <div className="min-w-0">
               <h2 className="text-lg font-semibold leading-tight text-wsa-navy">{GLENICE.name}</h2>
               <p className="mt-0.5 text-base text-gray-700">{GLENICE.role}</p>
+              <p className="mt-0.5 text-sm text-gray-500">{GLENICE_HEAD_OFFICE_LINE}</p>
               <p className="mt-3 text-base leading-relaxed text-gray-700">{GLENICE_QUOTE}</p>
-              <ContactLines person={GLENICE} />
+              <p className="mt-3 text-sm leading-relaxed text-gray-600">
+                Glenice does not contact you at this stage. Juliet speaks to you first, and introduces you to
+                Glenice when you decide to go ahead.
+              </p>
             </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ── Tim Hunt's key message ───────────────────────────────── */}
+      {/* His own summary of what the page has to leave the reader with,
+          in his words. It is the last thing before the form for that
+          reason: whatever else a visitor skims, this is the point. */}
+      <section className="border-t border-wsa-navy/10 bg-wsa-navy px-4 py-12 sm:px-6 lg:py-14">
+        <div className="mx-auto max-w-3xl">
+          <ul className="space-y-2.5">
+            {KEY_MESSAGE.map(m => (
+              <li key={m} className="text-lg leading-relaxed text-white sm:text-xl">{m}</li>
+            ))}
+          </ul>
+          <div className="mt-7">
+            <WhatsAppButton className="w-full sm:w-auto">Speak to Juliet</WhatsAppButton>
           </div>
         </div>
       </section>

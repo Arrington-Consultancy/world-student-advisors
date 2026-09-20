@@ -13,9 +13,12 @@ import {
   HELP_ME_DECIDE,
   HERO,
   JULIET,
-  JULIET_VIDEO,
+  JULIET_PODCAST,
+  GLENICE_HEAD_OFFICE_LINE,
+  KEY_MESSAGE,
   STEPS,
   STUDY_FAMILIES,
+  SUPPORT_HEADING,
   SUPPORT_STEPS,
   UNSUPPORTED_ENQUIRY_ROUTES,
   WHATSAPP_FIRST_MESSAGE,
@@ -66,14 +69,15 @@ function renderedCopy(): string {
   return [
     HERO.eyebrow, HERO.headline, HERO.supporting, HERO.primaryCta, HERO.secondaryCta,
     JULIET.name, JULIET.role, JULIET.location ?? "", JULIET.photoAlt,
-    GLENICE.name, GLENICE.role, GLENICE.photoAlt, GLENICE_QUOTE,
+    GLENICE.name, GLENICE.role, GLENICE.photoAlt, GLENICE_QUOTE, GLENICE_HEAD_OFFICE_LINE,
+    SUPPORT_HEADING, ...KEY_MESSAGE,
     DESTINATIONS_LINE, AVAILABILITY_NOTE,
     ...STUDY_FAMILIES.map(f => `${f.title} ${f.body}`),
     ...DESTINATIONS.map(d => `${d.name} ${d.body}`),
     ...STEPS.map(s => `${s.title} ${s.body}`),
     ...SUPPORT_STEPS,
     ...FORM_STUDY_OPTIONS.map(o => o.label),
-    JULIET_VIDEO.title, JULIET_VIDEO.blurb,
+    JULIET_PODCAST.title, JULIET_PODCAST.blurb, JULIET_PODCAST.awaitingLine,
   ].join(" ");
 }
 
@@ -165,9 +169,10 @@ describe("WhatsApp, the primary action", () => {
   });
 
   it("the digits match the number shown on the page, with no punctuation", () => {
-    expect(JULIET.whatsapp).toBe("+234 803 583 7934");
-    expect(JULIET.whatsappDigits).toBe(JULIET.whatsapp.replace(/[^0-9]/g, ""));
-    expect(GLENICE.whatsappDigits).toBe(GLENICE.whatsapp.replace(/[^0-9]/g, ""));
+    // Only Juliet has contact details on this page now, by Tim Hunt's
+    // instruction of 19 September 2026.
+    expect(JULIET.whatsappDigits).toBe(JULIET.whatsapp?.replace(/[^0-9]/g, ""));
+    expect(JULIET.whatsappDigits).toMatch(/^[0-9]+$/);
   });
 
   it("the first message names Juliet and says what the person wants, without promising anything", () => {
@@ -238,13 +243,14 @@ describe("what the page says", () => {
     }
   });
 
-  it("makes no unscoped claim that WSA is free", () => {
-    // The only cost statement is scoped to students working with WSA, which
-    // is the wording already published on the Nigeria postgraduate page.
-    expect(HERO.supporting).toContain("at no cost to students working with WSA");
-    for (const unscoped of ["completely free", "free service", "always free", "free for everyone"]) {
-      expect(HERO.supporting.toLowerCase()).not.toContain(unscoped);
-    }
+  it("states plainly that the service is free, which Tim Hunt has now confirmed", () => {
+    // He settled the charging rule in writing on 19 September 2026: "The
+    // service is free." The earlier scoped hedge is therefore gone.
+    expect(HERO.supporting).toBe(
+      "Free, personal support for Nigerian students and families from Juliet and the WorldStudentAdvisors team.",
+    );
+    expect(KEY_MESSAGE).toContain("The service is free.");
+    expect(SUPPORT_HEADING).toBe("Free service from WSA");
   });
 
   it("describes no destination in terms of work, migration or settlement", () => {
@@ -284,14 +290,18 @@ describe("the two people", () => {
     expect(PAGE_SOURCE.indexOf("{JULIET.name}")).toBeLessThan(PAGE_SOURCE.indexOf("{GLENICE.name}"));
   });
 
-  it("gives Glenice her controlled role and no location line at all", () => {
-    expect(GLENICE.name).toBe("Glenice Owino");
-    expect(GLENICE.role).toBe("Senior Student Counsellor");
-    expect(GLENICE).not.toHaveProperty("location");
-    // No location reaches the page for her, under any wording.
-    for (const place of ["Head Office", "Nairobi", "Kenya", "United Kingdom, UK"]) {
-      expect(renderedCopy(), `Glenice must not be placed at "${place}"`).not.toContain(place);
-    }
+  it("gives Glenice Tim Hunt's role wording, links her to head office without placing her there, and publishes no contact detail for her", () => {
+    expect(GLENICE.role).toBe("Juliet's dedicated Student Counsellor");
+    expect(GLENICE_HEAD_OFFICE_LINE).toBe("Linked to WSA UK Head Office");
+    // Linked to, never based at: her own approved biography places her in Kenya.
+    expect(GLENICE.location).toBeUndefined();
+    expect(renderedCopy()).not.toMatch(/based (at|in) .{0,20}head office/i);
+    // The contact details are absent from the record, not merely unrendered.
+    expect(GLENICE.whatsapp).toBeUndefined();
+    expect(GLENICE.whatsappDigits).toBeUndefined();
+    expect(GLENICE.email).toBeUndefined();
+    expect(renderedCopy()).not.toContain("glenice@worldstudentadvisors.com");
+    expect(renderedCopy()).not.toContain("447459720726");
   });
 
   it("quotes Glenice in her own approved words, so the page needs no fresh sign off", () => {
@@ -299,12 +309,13 @@ describe("the two people", () => {
     expect(bio).toContain(GLENICE_QUOTE);
   });
 
-  it("names Glenice as the counsellor who takes the application forward", () => {
-    const third = STEPS[2];
-    expect(third.body).toContain("Glenice Owino");
-    expect(third.body).toContain("Senior Student Counsellor");
-    // And Juliet does not disappear at the handover.
-    expect(third.body).toContain("Juliet");
+  it("states the workflow Tim Hunt specified: Juliet first, Glenice only once the student goes ahead", () => {
+    const steps = STEPS.map(x => `${x.title} ${x.body}`).join(" ");
+    expect(steps).toContain("Glenice Owino");
+    expect(steps).toContain("dedicated Student Counsellor");
+    expect(steps).toMatch(/Juliet (is the person you deal with|talks it through)/);
+    // And the page tells the student plainly that Glenice does not call yet.
+    expect(PAGE_SOURCE).toMatch(/Glenice does not contact you at this stage/i);
   });
 
   it("Juliet's photograph is the one in the controlled team record", () => {
@@ -314,9 +325,13 @@ describe("the two people", () => {
 });
 
 describe("the video", () => {
-  it("is the WSA library recording of Juliet", () => {
-    const library = readFileSync("client/src/lib/studentSupportLibrary.ts", "utf8");
-    expect(library).toContain(JULIET_VIDEO.youtubeId);
+  it("holds the podcast slot open for Tim Hunt's replacement and never uses the old recording", () => {
+    // He re-recorded it to match this page, 19 September 2026, and asked for
+    // provision rather than the out-of-date one.
+    expect(JULIET_PODCAST.youtubeId).toBe("");
+    expect(JULIET_PODCAST.youtubeId).not.toBe("SZjjr2T3qTU");
+    expect(LIB_CODE).not.toContain("SZjjr2T3qTU");
+    expect(JULIET_PODCAST.awaitingLine.length).toBeGreaterThan(20);
   });
 
   it("never autoplays until a visitor asks for it", () => {
@@ -385,15 +400,11 @@ describe("Tim Hunt's master draft of 19 September 2026", () => {
     );
   });
 
-  it("carries his list of what WSA does, without his cost heading", () => {
-    expect(SUPPORT_STEPS).toHaveLength(7);
-    for (const step of ["Course and university selection", "Visa preparation", "Interview and mock interview preparation", "Pre-departure support"]) {
+  it("carries his list of what WSA does, under his own heading", () => {
+    for (const step of ["Course and university selection", "Applications and offers", "Payment guidance", "Visa preparation"]) {
       expect(SUPPORT_STEPS).toContain(step);
     }
-    // "Free Service from WSA" was his heading for this list. The cost rule is
-    // not confirmed, so the heading does not carry it.
-    const heading = readFileSync("client/src/lib/speakToJuliet.ts", "utf8");
-    expect(heading).toContain('SUPPORT_HEADING = PROVISIONAL("What WSA helps you with")');
+    expect(SUPPORT_HEADING).toBe("Free service from WSA");
   });
 
   it("keeps the study routes he grouped, including the summer and sports camps", () => {
@@ -415,17 +426,17 @@ describe("Tim Hunt's master draft of 19 September 2026", () => {
     }
   });
 
-  it("does not adopt his Personal Assistant or head office wording for Glenice", () => {
-    expect(GLENICE.role).toBe("Senior Student Counsellor");
-    // The phrases appear in BRIEF_CONFLICTS, which records what his draft
-    // says. What matters is that neither reaches the visitor.
+  it("does not call Glenice a Personal Assistant, and uses his linked-to wording for head office", () => {
+    expect(GLENICE.role).toBe("Juliet's dedicated Student Counsellor");
     expect(renderedCopy()).not.toContain("Personal Assistant");
-    expect(renderedCopy()).not.toContain("Head Office");
+    // Head office now appears, because Tim Hunt asked for it on 19 September
+    // and explained the basis. It appears only as "linked to".
+    expect(renderedCopy()).toContain("Linked to WSA UK Head Office");
     expect(LIB_CODE).toContain("Personal Assistant");
   });
 
-  it("uses the podcast he links in his own draft", () => {
-    // https://www.youtube.com/watch?v=SZjjr2T3qTU
-    expect(JULIET_VIDEO.youtubeId).toBe("SZjjr2T3qTU");
+  it("leaves the podcast he is replacing out of the page entirely", () => {
+    expect(JULIET_PODCAST.youtubeId).toBe("");
+    expect(PAGE_CODE).not.toContain("SZjjr2T3qTU");
   });
 });
