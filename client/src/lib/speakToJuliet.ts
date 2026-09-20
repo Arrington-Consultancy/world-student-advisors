@@ -53,10 +53,18 @@ export interface PersonCard {
   role: string;
   /** Omitted where WSA's controlled records do not support a location line. */
   location?: string;
-  whatsapp: string;
+  /**
+   * Contact details are OPTIONAL, and their absence is the guarantee.
+   * Tim Hunt, 19 September 2026: Glenice's telephone, WhatsApp and email must
+   * not appear on this page, because Juliet contacts the lead and Glenice
+   * does not, until the student becomes a Deal. Leaving the values out of the
+   * data is stronger than leaving them in and choosing not to render them:
+   * there is nothing for a later edit to expose by accident.
+   */
+  whatsapp?: string;
   /** The digits wa.me needs: international, no plus and no punctuation. */
-  whatsappDigits: string;
-  email: string;
+  whatsappDigits?: string;
+  email?: string;
   photo: string;
   photoAlt: string;
 }
@@ -83,31 +91,29 @@ export const JULIET: PersonCard = Object.freeze({
 });
 
 /**
- * Glenice's details are taken from the controlled team record, not from the
- * brief, because that record already carries them and they are already
- * published on the site.
+ * Glenice, as Tim Hunt specified her on 19 September 2026.
  *
- * NO LOCATION LINE. Her own approved biography describes her as based in
- * Kenya, so the "WSA Head Office, UK" wording of the draft is wrong. Rather
- * than correct it to Kenya on a page about Nigeria, the line is left out:
- * what matters to the reader is that she is the counsellor who takes the
- * application forward.
+ * HER ROLE LINE IS HIS WORDING. "Juliet's dedicated Student Counsellor",
+ * "linked to WSA UK Head Office". He explained the wording himself: she works
+ * remotely but is part of the UK Head Office operation and has a +44 number.
+ * The page therefore says she is LINKED TO that office and never that she
+ * sits in it, which is the distinction that keeps the claim true. Her own
+ * approved biography places her in Kenya, so no location line is given.
+ *
+ * NO CONTACT DETAILS. He asked for her telephone, WhatsApp and email to be
+ * off this page. They are absent from the record below rather than merely
+ * unrendered, so nothing downstream can publish them.
  */
 export const GLENICE: PersonCard = Object.freeze({
   name: "Glenice Owino",
-  role: "Senior Student Counsellor",
-  whatsapp: "+44 7459 720 726",
-  whatsappDigits: "447459720726",
-  email: "glenice@worldstudentadvisors.com",
+  role: "Juliet's dedicated Student Counsellor",
   photo: "/team/glenice-owino.jpg",
-  photoAlt: "Glenice Owino, Senior Student Counsellor at World Student Advisors",
+  photoAlt: "Glenice Owino, Student Counsellor at World Student Advisors",
 });
 
-/**
- * Glenice's own words, lifted verbatim from her approved biography in
- * client/src/lib/team.ts. Quoted rather than paraphrased so the page needs no
- * fresh sign off from her.
- */
+/** Tim Hunt's wording, kept separate from the role so neither can drift. */
+export const GLENICE_HEAD_OFFICE_LINE = "Linked to WSA UK Head Office";
+
 export const GLENICE_QUOTE =
   "I support students throughout their journey, from exploring courses and universities to applications, visas and preparing to leave home.";
 
@@ -134,29 +140,37 @@ export function whatsappHref(digits: string, message?: string): string {
 /* ------------------------------------------------------------------ */
 
 export const HERO = Object.freeze({
-  eyebrow: PROVISIONAL("For the people of Nigeria"),
-  headline: PROVISIONAL("Thinking about studying abroad? Speak to Juliet."),
+  eyebrow: "For the people of Nigeria",
+  headline: "Thinking about studying abroad? Speak to Juliet.",
   /**
-   * PROVISIONAL, cost wording. Tom Arrington is checking the final rule with
-   * Tim Hunt: the expected position is that WSA services are free to WSA
-   * applicants, with charging only for visa help to people who are not WSA
-   * applicants. Until that is confirmed this line makes no cost claim at all
-   * beyond the one WSA already publishes elsewhere, which is scoped to
-   * students working with WSA. Replace this single string when Tim confirms.
+   * Tim Hunt's own opening line, quoted exactly from his email of 19
+   * September 2026, where he asked for the warmer wording to be restored.
    */
-  supporting: PROVISIONAL(
-    "Juliet is a WSA Higher Education Advisor in Lagos. Tell her what you are considering and she will talk you through the options, at no cost to students working with WSA.",
-  ),
-  primaryCta: PROVISIONAL("Message Juliet on WhatsApp"),
+  supporting:
+    "Free, personal support for Nigerian students and families from Juliet and the WorldStudentAdvisors team.",
+  primaryCta: "Message Juliet on WhatsApp",
   secondaryCta: PROVISIONAL("Would rather not message? Send your details instead."),
 });
 
 /**
- * What the cost line is waiting on, reported to Tom rather than guessed.
- * Nothing in this file states that every WSA service is free to everybody.
+ * Tim Hunt's key message, from his 19 September master draft and repeated in
+ * his email of the same date. It is what the page has to leave the reader
+ * with, so it is stated in his words rather than paraphrased.
  */
-export const COST_WORDING_PENDING =
-  "Final charging wording is not confirmed. HERO.supporting scopes the no cost statement to students working with WSA, which matches the wording already published on the Nigeria postgraduate page. Tim Hunt to confirm whether WSA services are free to all WSA applicants with charging only for visa help to people who are not WSA applicants.";
+export const KEY_MESSAGE: ReadonlyArray<string> = Object.freeze([
+  "Juliet is your person in Nigeria.",
+  "Glenice is your dedicated WSA Student Counsellor, linked to UK Head Office.",
+  "WSA provides the infrastructure and expertise.",
+  "The service is free.",
+]);
+
+/**
+ * The charging question is closed. Tim Hunt confirmed it in writing on 19
+ * September 2026: "The service is free." The earlier scoped hedge, and the
+ * COST_WORDING_PENDING note that recorded what it was waiting for, are gone
+ * because the thing they were waiting for has happened.
+ */
+export const FREE_SERVICE_LINE = "The service is free.";
 
 /* ------------------------------------------------------------------ */
 /* What Juliet can help with                                           */
@@ -199,9 +213,8 @@ export const STUDY_FAMILIES: ReadonlyArray<StudyFamily> = Object.freeze([
  * What WSA does alongside the student, from Tim Hunt's master draft of 19
  * September 2026, where it sits under the heading "Free Service from WSA".
  *
- * The list is his. The heading is not: the cost wording is unconfirmed (see
- * COST_WORDING_PENDING), so the page states what WSA does and leaves what it
- * costs to the one scoped sentence in the hero.
+ * Both the list and the heading are his, now that he has confirmed in
+ * writing that the service is free.
  */
 export const SUPPORT_STEPS: ReadonlyArray<string> = Object.freeze([
   PROVISIONAL("Course and university selection"),
@@ -213,7 +226,8 @@ export const SUPPORT_STEPS: ReadonlyArray<string> = Object.freeze([
   PROVISIONAL("Support throughout your studies"),
 ]);
 
-export const SUPPORT_HEADING = PROVISIONAL("What WSA helps you with");
+/** Tim Hunt's own heading, usable now that he has confirmed the charging rule. */
+export const SUPPORT_HEADING = "Free service from WSA";
 
 export interface Destination {
   name: string;
@@ -282,24 +296,26 @@ export interface Step {
 }
 
 /**
- * Three steps. This is where the Juliet to Glenice routing is stated, as
- * something the student gets rather than as an internal process, and it is
- * the only place the wider organisation appears on the page.
+ * Three steps, and they state Tim Hunt's actual workflow rather than a
+ * generic one. His instruction of 19 September 2026: Juliet contacts and
+ * develops the lead, Glenice does NOT contact the student at that stage, and
+ * Glenice takes over the course and visa application once the person becomes
+ * a student, which is a Deal in Pipedrive. The page says so plainly, because
+ * a student who is told Juliet will call should not be surprised by somebody
+ * else, and Glenice should not be chasing the same person.
  */
 export const STEPS: ReadonlyArray<Step> = Object.freeze([
   {
-    title: PROVISIONAL("Speak to Juliet"),
-    body: PROVISIONAL("Message her on WhatsApp and tell her what you are thinking about. There is no form to fill in first."),
+    title: "Speak to Juliet",
+    body: "Message her on WhatsApp and tell her what you are thinking about. There is no form to fill in first.",
   },
   {
-    title: PROVISIONAL("Talk it through"),
-    body: PROVISIONAL("Juliet helps you work out what to study, where, and what it is likely to involve."),
+    title: "Juliet talks it through with you",
+    body: "Juliet is the person you deal with in Nigeria. She follows up personally, helps you work out what to study and where, and stays with you while you decide.",
   },
   {
-    title: PROVISIONAL("Your counsellor takes it forward"),
-    body: PROVISIONAL(
-      "When you are ready to apply, Glenice Owino, a WSA Senior Student Counsellor, handles your applications, your offers and your visa preparation. Juliet stays part of the conversation.",
-    ),
+    title: "Glenice takes your application forward",
+    body: "When you decide to go ahead, Juliet introduces you to Glenice Owino, your dedicated Student Counsellor, linked to WSA UK Head Office. Glenice handles your course choice, your applications and your visa preparation. Juliet stays part of the conversation throughout.",
   },
 ]);
 
@@ -308,20 +324,33 @@ export const STEPS: ReadonlyArray<Step> = Object.freeze([
 /* ------------------------------------------------------------------ */
 
 /**
- * WSA 036 in the Student Support Library, "Juliet Nnajiofor-Uyi, Lagos,
- * Nigeria". Tim is revising this podcast to match the landing page, so the id
- * and the label are one constant each: a new recording is a two line change.
+ * PROVISION FOR THE REPLACEMENT PODCAST. There is deliberately no video id
+ * here.
  *
- * Never autoplayed. The page shows a poster and a play control, and the
- * YouTube iframe is only created once a visitor asks for it, so nobody on a
- * metered connection pays for a video they did not start.
+ * Tim Hunt, 19 September 2026: the recording the page carried, WSA 036, is
+ * out of date, and he has re-recorded it specifically to match this page. It
+ * is a few days away. He asked for provision to be left rather than the old
+ * one used, so the page shows a short, honest line in the space the podcast
+ * will occupy and makes no request to YouTube at all meanwhile.
+ *
+ * TO PUBLISH THE NEW ONE: set `youtubeId` to the new recording's id and give
+ * it a duration. The section renders the player automatically once an id is
+ * present, so nothing else has to change.
  */
-export const JULIET_VIDEO = Object.freeze({
-  youtubeId: "SZjjr2T3qTU",
-  title: PROVISIONAL("Meet Juliet"),
-  blurb: PROVISIONAL("Juliet introduces herself and how she works with students and families in Nigeria."),
-  duration: "2:17",
+export const JULIET_PODCAST = Object.freeze({
+  /** Empty until Tim's replacement recording is ready. Never the old id. */
+  youtubeId: "",
+  title: "Meet Juliet",
+  blurb: "Juliet introduces herself and how she works with students and families in Nigeria.",
+  duration: "",
+  /** Shown in the podcast's place while there is no recording to play. */
+  awaitingLine:
+    "Juliet is recording a short introduction for this page. It will appear here once it is ready.",
 });
+
+/** What the podcast slot is waiting on, so the reason survives in the source. */
+export const PODCAST_PENDING =
+  "Tim Hunt is replacing WSA 036 with a recording made to match this page, 19 September 2026. The old recording must not be used. Set JULIET_PODCAST.youtubeId when the new one arrives.";
 
 /* ------------------------------------------------------------------ */
 /* The fallback form                                                   */
@@ -412,7 +441,7 @@ export const BRIEF_CONFLICTS: ReadonlyArray<BriefConflict> = Object.freeze([
   {
     master: "Glenice Owino is described as \"Juliet's Personal Assistant\" at \"WSA Head Office, UK\".",
     built:
-      "Senior Student Counsellor, with no location line. Her controlled team record and her own approved biography both give that role, the biography places her in Kenya rather than the UK, and the implementation brief rules out the head office wording. Tim's own body copy two lines later calls her \"your dedicated Student Counsellor\", so his draft disagrees with itself here.",
+      "Settled by Tim Hunt on 19 September 2026. She is \"Juliet's dedicated Student Counsellor\", and the page says she is LINKED TO WSA UK Head Office rather than based there. He explained the basis himself: she works remotely but is part of that operation and has a +44 number. The Personal Assistant wording is not used, because it contradicts her controlled role and his own body copy. Her telephone, WhatsApp and email are off the page at his instruction, and are absent from the record rather than merely unrendered.",
   },
   {
     master: "Copies of the lead to Juliet, Tim, Glenice and Eldah, excluding Manet, Tom and Claudia.",
@@ -422,7 +451,7 @@ export const BRIEF_CONFLICTS: ReadonlyArray<BriefConflict> = Object.freeze([
   {
     master: "\"Free Service from WSA\" as a heading, and \"The service is free\" as a key message.",
     built:
-      "One scoped sentence in the hero, at no cost to students working with WSA. The implementation brief forbids an absolute free claim until Tim confirms the charging rule. See COST_WORDING_PENDING.",
+      "Adopted. Tim Hunt confirmed the charging rule in writing on 19 September 2026, in the words \"The service is free.\" That was the condition the implementation brief set, so the earlier scoped hedge is gone and both his heading and his key message are used as written.",
   },
   {
     master: "Source Owner = Juliet Nnajiofor-Uyi, Lead Owner = Glenice Owino, set in the CRM.",
