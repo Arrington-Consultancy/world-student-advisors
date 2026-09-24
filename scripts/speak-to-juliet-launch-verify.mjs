@@ -9,8 +9,8 @@
  *
  * What it proves: the page loads, the short link redirects, WhatsApp opens
  * Juliet with the message already written, Tim's Pipedrive form is embedded
- * from his loader and his form URL, his podcast poster renders and the old
- * recording is absent, Glenice's photograph renders above How this works,
+ * from his loader and his form URL, no withdrawn recording is on the page,
+ * Glenice's photograph renders above How this works,
  * neither width overflows or logs an error, and the four pages that must not
  * have moved are still where they were.
  */
@@ -24,7 +24,7 @@ const EXPECTED_MESSAGE = "Hello Juliet, I saw the WSA page and I would like to a
 const EXPECTED_FORM_ID = "6q9NP6Qklnnpo5qbQ9NZiyPUfxG86g8tN4BJztkTp80lcM8G8dExsiKe6jTWJCzYwr";
 const EXPECTED_FORM_URL = `https://webforms.pipedrive.com/f/${EXPECTED_FORM_ID}`;
 const EXPECTED_LOADER = "https://webforms.pipedrive.com/f/loader";
-const OLD_PODCAST_ID = "SZjjr2T3qTU";
+const WITHDRAWN_PODCAST_IDS = ["SZjjr2T3qTU", "fR4j72Jbk5Y"];
 
 let failures = 0;
 const check = (ok, label, detail = "") => {
@@ -83,9 +83,6 @@ for (const [label, width, height] of [["mobile", 390, 844], ["desktop", 1280, 90
   check(Boolean(glenice && glenice.w > 0), "Glenice's photograph renders", glenice ? `${glenice.src} ${glenice.w}px` : "not found");
   const juliet = images.find(i => i.src.includes("juliet"));
   check(Boolean(juliet && juliet.w > 0), "Juliet's photograph renders", juliet ? `${juliet.src} ${juliet.w}px` : "not found");
-  const poster = images.find(i => i.src.includes("juliet-podcast-poster"));
-  check(Boolean(poster && poster.w > 0), "Tim's podcast poster renders", poster ? `${poster.src} ${poster.w}px` : "not found");
-
   // Tim Hunt's 24 September edits: caption under Juliet, Glenice above How
   // this works with a larger photograph, a larger flag, his new recording.
   const caption = (await page.locator("figure figcaption").first().textContent()) ?? "";
@@ -109,8 +106,8 @@ for (const [label, width, height] of [["mobile", 390, 844], ["desktop", 1280, 90
   check(flag >= 40, "the Nigerian flag is the larger size", `${flag}px`);
 
   const html = await page.content();
-  check(!html.includes(OLD_PODCAST_ID), "the withdrawn recording is nowhere on the page");
-  check(html.includes(`Play: `), "the podcast has a named play button");
+  for (const id of WITHDRAWN_PODCAST_IDS) check(!html.includes(id), `withdrawn recording ${id} is nowhere on the page`);
+  check(html.includes("Juliet is recording a short introduction"), "the podcast slot is held open, not a broken player");
   // The player is created only on request, so no YouTube frame before a click.
   const ytFrames = await page.locator('iframe[src*="youtube"]').count();
   check(ytFrames === 0, "no YouTube frame before the visitor presses play", String(ytFrames));

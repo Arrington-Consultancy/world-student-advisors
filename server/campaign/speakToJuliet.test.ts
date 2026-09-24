@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { existsSync, readFileSync } from "fs";
+import { readFileSync } from "fs";
 import {
   AVAILABILITY_NOTE,
   BRIEF_CONFLICTS,
@@ -20,6 +20,7 @@ import {
   SUPPORT_HEADING,
   SUPPORT_STEPS,
   WHATSAPP_FIRST_MESSAGE,
+  WITHDRAWN_PODCAST_IDS,
   whatsappHref,
 } from "../../client/src/lib/speakToJuliet";
 import { CANONICAL_PATHS, NOINDEX_PATHS, SEO_MAP, getCanonicalPath, shouldNoindex } from "../../shared/seo";
@@ -34,7 +35,7 @@ import { ALL_PRERENDER_ROUTES } from "../../shared/prerenderRoutes";
  * What these tests hold, in order of how much damage the failure would do:
  * the page's form is Tim Hunt's Pipedrive form exactly as he supplied it and
  * the page calls nothing else, WhatsApp opens the right number with the
- * right message, the podcast is his new recording and never the old one, the
+ * right message, no withdrawn podcast can come back, the
  * alias redirects to one canonical URL, and no claim appears that WSA cannot
  * evidence.
  */
@@ -71,7 +72,7 @@ function renderedCopy(): string {
     ...DESTINATIONS.map(d => `${d.name} ${d.body}`),
     ...STEPS.map(s => `${s.title} ${s.body}`),
     ...SUPPORT_STEPS,
-    JULIET_PODCAST.title, JULIET_PODCAST.blurb, JULIET_PODCAST.posterAlt,
+    JULIET_PODCAST.title, JULIET_PODCAST.blurb, JULIET_PODCAST.awaitingLine,
     PIPEDRIVE_FORM.heading, PIPEDRIVE_FORM.supporting, PIPEDRIVE_FORM.fallbackLine, PIPEDRIVE_FORM.fallbackCta,
   ].join(" ");
 }
@@ -334,20 +335,18 @@ describe("the two people, as Tim Hunt arranged them on 24 September 2026", () =>
 });
 
 describe("the podcast", () => {
-  it("plays Tim Hunt's new recording of 24 September 2026 and never the old one", () => {
-    expect(JULIET_PODCAST.youtubeId).toBe("fR4j72Jbk5Y");
-    expect(JULIET_PODCAST.youtubeId).not.toBe("SZjjr2T3qTU");
-    expect(LIB_CODE).not.toContain("SZjjr2T3qTU");
-    expect(PAGE_CODE).not.toContain("SZjjr2T3qTU");
-  });
-
-  it("uses his thumbnail as the poster, served from this site, with real alt text and dimensions", () => {
-    expect(JULIET_PODCAST.poster).toBe("/team/juliet-podcast-poster.jpg");
-    expect(existsSync(`client/public${JULIET_PODCAST.poster}`)).toBe(true);
-    expect(JULIET_PODCAST.posterWidth).toBe(800);
-    expect(JULIET_PODCAST.posterHeight).toBe(450);
-    expect(JULIET_PODCAST.posterAlt).toContain("Juliet");
-    expect(PAGE_SOURCE).toContain("src={JULIET_PODCAST.poster}");
+  it("holds the slot open and uses neither recording Tim Hunt has withdrawn", () => {
+    // WSA 036 withdrawn 19 September 2026 as out of date; its replacement
+    // withdrawn 24 September by WhatsApp over a telephone number error, with
+    // the next link to be different.
+    expect(JULIET_PODCAST.youtubeId).toBe("");
+    expect(WITHDRAWN_PODCAST_IDS).toEqual(["SZjjr2T3qTU", "fR4j72Jbk5Y"]);
+    for (const id of WITHDRAWN_PODCAST_IDS) {
+      expect(JULIET_PODCAST.youtubeId).not.toBe(id);
+      expect(PAGE_CODE, `page must not carry withdrawn id ${id}`).not.toContain(id);
+    }
+    expect(JULIET_PODCAST.awaitingLine.length).toBeGreaterThan(20);
+    expect(PAGE_SOURCE).toContain("if (!JULIET_PODCAST.youtubeId)");
   });
 
   it("never autoplays until a visitor asks for it", () => {
@@ -359,9 +358,9 @@ describe("the podcast", () => {
     expect(iframeBlock).toContain("youtube-nocookie.com");
   });
 
-  it("no longer holds a placeholder for a recording that has now arrived", () => {
-    expect(PAGE_CODE).not.toContain("awaitingLine");
-    expect(LIB_CODE).not.toContain("PODCAST_PENDING");
+  it("ships no poster for a recording that does not exist yet", () => {
+    expect(PAGE_CODE).not.toContain("podcast-poster");
+    expect(LIB_CODE).not.toContain("podcast-poster");
   });
 });
 
@@ -370,7 +369,8 @@ describe("mobile and accessibility", () => {
     expect(JULIET.photoAlt).toContain("Juliet Nnajiofor-Uyi");
     expect(GLENICE.photoAlt).toContain("Glenice Owino");
     expect(PAGE_SOURCE).toContain("aria-label={`Play: ${JULIET_PODCAST.title}`}");
-    expect(PAGE_SOURCE).not.toContain('alt=""');
+    // The one decorative image is the poster inside that labelled button.
+    expect(PAGE_SOURCE.match(/alt=""/g)?.length ?? 0).toBe(1);
   });
 
   it("gives the tappable actions a real target size", () => {
@@ -382,8 +382,6 @@ describe("mobile and accessibility", () => {
     const heroImg = PAGE_SOURCE.slice(PAGE_SOURCE.indexOf("src={JULIET.photo}"));
     expect(heroImg).toContain("width={600}");
     expect(heroImg).toContain("height={800}");
-    expect(PAGE_SOURCE).toContain("width={JULIET_PODCAST.posterWidth}");
-    expect(PAGE_SOURCE).toContain("height={JULIET_PODCAST.posterHeight}");
   });
 
   it("keeps the form placeholder and its host inside the viewport", () => {

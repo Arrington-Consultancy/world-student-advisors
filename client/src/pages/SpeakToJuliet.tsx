@@ -95,14 +95,29 @@ function WhatsAppButton({
 }
 
 /**
- * Juliet's podcast, Tim Hunt's recording of 24 September 2026.
+ * Juliet's introduction.
  *
- * The poster is his thumbnail, served from this site, so the page makes no
- * request to YouTube until a visitor presses play. The iframe is created only
- * then, so nothing autoplays on arrival.
+ * Tim Hunt has withdrawn both recordings made so far, the second on 24
+ * September 2026 because of a telephone number error, and the next will have
+ * a different link. Until its id is set the section holds the space with a
+ * short, honest line: provision for the podcast rather than a broken player,
+ * and no request to YouTube at all meanwhile.
+ *
+ * Once JULIET_PODCAST.youtubeId is set, the poster and player below appear
+ * with no other change. The iframe is still only created when a visitor asks
+ * for it, so nothing autoplays.
  */
 function JulietPodcast() {
   const [playing, setPlaying] = useState(false);
+
+  if (!JULIET_PODCAST.youtubeId) {
+    return (
+      <div className="rounded-2xl border border-dashed border-wsa-navy/20 bg-white/60 p-5">
+        <p className="text-sm font-semibold text-wsa-navy">{JULIET_PODCAST.title}</p>
+        <p className="mt-1.5 text-sm leading-relaxed text-gray-600">{JULIET_PODCAST.awaitingLine}</p>
+      </div>
+    );
+  }
 
   if (!playing) {
     return (
@@ -112,15 +127,19 @@ function JulietPodcast() {
         aria-label={`Play: ${JULIET_PODCAST.title}`}
         className="group relative block w-full overflow-hidden rounded-2xl border border-wsa-navy/12 bg-wsa-stone focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-wsa-navy"
       >
+        {/* Juliet's own photograph is the poster, served from this site, so it
+            always loads and the page makes no third-party request before a
+            visitor has asked to watch anything. Decorative here: the button
+            carries the name. */}
         <img
-          src={JULIET_PODCAST.poster}
-          alt={JULIET_PODCAST.posterAlt}
-          width={JULIET_PODCAST.posterWidth}
-          height={JULIET_PODCAST.posterHeight}
+          src={JULIET.photo}
+          alt=""
+          width={600}
+          height={800}
           decoding="async"
-          className="aspect-video w-full max-w-full object-cover"
+          className="aspect-video w-full max-w-full object-cover object-[center_25%]"
         />
-        <span className="absolute inset-0 flex items-center justify-center bg-wsa-navy/20 transition group-hover:bg-wsa-navy/30">
+        <span className="absolute inset-0 flex items-center justify-center bg-wsa-navy/25 transition group-hover:bg-wsa-navy/35">
           <span className="flex h-14 w-14 items-center justify-center rounded-full bg-white/95 shadow">
             <Play className="ml-0.5 h-6 w-6 text-wsa-navy" aria-hidden />
           </span>
@@ -337,7 +356,7 @@ export default function SpeakToJuliet() {
 
       {/* ── Juliet ───────────────────────────────────────────────── */}
       <section className="border-t border-wsa-navy/10 bg-white px-4 py-12 sm:px-6 lg:py-16">
-        <div className="mx-auto grid max-w-6xl gap-8 lg:grid-cols-[1fr_minmax(300px,480px)] lg:items-start lg:gap-12">
+        <div className="mx-auto grid max-w-6xl gap-8 lg:grid-cols-[1fr_minmax(300px,420px)] lg:items-start lg:gap-12">
           <div className="min-w-0">
             <h2 className="text-2xl font-bold tracking-tight text-wsa-navy sm:text-3xl">{JULIET.name}</h2>
             <p className="mt-1 text-lg text-gray-700">{JULIET.role}</p>

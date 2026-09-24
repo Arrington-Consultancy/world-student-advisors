@@ -13,8 +13,9 @@
  *   3. Tim Hunt's edits of 24 September 2026, "Tom_Juliet_LP_edits_24_
  *      September_2026.docx", forwarded by Tom Arrington: a larger flag, a
  *      caption under Juliet's photograph, Glenice moved above How this
- *      works with a larger photograph, the new podcast, and his Pipedrive
- *      form embedded in place of the website form.
+ *      works with a larger photograph, and his Pipedrive form embedded in
+ *      place of the website form. The podcast he supplied that day he
+ *      withdrew the same morning; see JULIET_PODCAST.
  *   4. The controlled repository, where it is newer or more specific.
  * All three documents live in 16_WEBSITE_Ai/05 Landing Pages/Juliet. Where
  * Tim's master and the implementation brief disagreed, the implementation
@@ -22,17 +23,17 @@
  * below, with how each one was later settled.
  *
  * THE COPY IS NO LONGER PROVISIONAL. Tim revised the page on 24 September
- * 2026 and supplied the podcast and the form he had said were coming. What
- * remains here is his wording or Tom's, and any further change is a content
- * edit to this file, never a rebuild of the page.
+ * 2026 and supplied the form he had said was coming. What remains here is
+ * his wording or Tom's, and any further change is a content edit to this
+ * file, never a rebuild of the page. The one open slot is the podcast.
  *
  * WHAT THIS PAGE DOES NOT DO. It creates no lead through this codebase. The
  * enquiry form on the page is Tim Hunt's own Pipedrive web form, embedded by
  * the loader Pipedrive supplies, so a submission goes from the visitor's
  * browser to Pipedrive and never touches this server. The page writes
  * nothing to Pipedrive itself, widens no scope, and creates no second
- * student record. The same form sits behind the QR code in Juliet's podcast,
- * so there is one form and one CRM workflow for both.
+ * student record. The same form will sit behind the QR code in Juliet's
+ * podcast, so there is one form and one CRM workflow for both.
  */
 import type { CampaignSlug } from "@shared/campaignEnquiry";
 
@@ -325,26 +326,42 @@ export const STEPS: ReadonlyArray<Step> = Object.freeze([
 /* ------------------------------------------------------------------ */
 
 /**
- * Tim Hunt's new recording, made to match this page. He supplied the link,
- * https://youtu.be/fR4j72Jbk5Y, and the thumbnail on 24 September 2026,
- * replacing WSA 036, which he had withdrawn as out of date on 19 September.
- * The old recording's id, SZjjr2T3qTU, must not come back.
+ * PROVISION FOR THE REPLACEMENT PODCAST. There is deliberately no video id
+ * here.
  *
- * The poster is his own thumbnail, served from this site, so the page makes
- * no request to YouTube until a visitor presses play. The QR code in the
- * recording points at the same Pipedrive form this page embeds.
+ * Two recordings have now been withdrawn by Tim Hunt and neither may be
+ * used. WSA 036 (SZjjr2T3qTU) he withdrew on 19 September 2026 as out of
+ * date. Its replacement, https://youtu.be/fR4j72Jbk5Y, which he supplied on
+ * 24 September, he withdrew the same morning by WhatsApp to Tom Arrington:
+ * "DO NOT USE JULIET'S PODCAST, a new one required as tel number errors, the
+ * new link will be different." The page therefore shows a short, honest line
+ * in the space the podcast will occupy and makes no request to YouTube.
+ *
+ * TO PUBLISH THE NEXT ONE: set `youtubeId` to the new recording's id, which
+ * must not be either id in WITHDRAWN_PODCAST_IDS, and add the poster Tim
+ * supplies for it. The section renders the player automatically once an id
+ * is present.
  */
 export const JULIET_PODCAST = Object.freeze({
-  youtubeId: "fR4j72Jbk5Y",
-  title: "Study abroad from Nigeria: speak to Juliet",
+  /** Empty until Tim's corrected recording is ready. Never a withdrawn id. */
+  youtubeId: "",
+  title: "Meet Juliet",
   blurb: "Juliet introduces herself and how she works with students and families in Nigeria.",
-  /** Not stated by Tim and not verifiable from the build environment, so not shown. */
   duration: "",
-  poster: "/team/juliet-podcast-poster.jpg",
-  posterAlt: "Juliet Nnajiofor-Uyi and Glenice Owino on the cover of the Study Abroad from Nigeria podcast",
-  posterWidth: 800,
-  posterHeight: 450,
+  /** Shown in the podcast's place while there is no recording to play. */
+  awaitingLine:
+    "Juliet is recording a short introduction for this page. It will appear here once it is ready.",
 });
+
+/**
+ * Recordings Tim Hunt has withdrawn. Kept as data rather than only as a
+ * comment so the guard test can check the live id against the list, and so
+ * a later edit cannot reinstate one by mistake.
+ */
+export const WITHDRAWN_PODCAST_IDS: ReadonlyArray<string> = Object.freeze([
+  "SZjjr2T3qTU",
+  "fR4j72Jbk5Y",
+]);
 
 /* ------------------------------------------------------------------ */
 /* The enquiry form: Tim Hunt's Pipedrive web form                     */
