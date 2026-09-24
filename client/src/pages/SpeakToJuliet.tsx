@@ -1,22 +1,20 @@
-import { useEffect, useRef, useState, type FormEvent } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link } from "wouter";
-import { ArrowRight, Check, Mail, MessageCircle, Play } from "lucide-react";
+import { Check, Mail, MessageCircle, Play } from "lucide-react";
 import {
   AVAILABILITY_NOTE,
-  CAMPAIGN_DESTINATIONS,
   DESTINATIONS,
   DESTINATIONS_LINE,
-  FORM,
-  FORM_STUDY_OPTIONS,
   GLENICE,
   GLENICE_QUOTE,
-  HELP_ME_DECIDE,
   HERO,
   JULIET,
+  JULIET_ORGANISATION,
   JULIET_PODCAST,
   GLENICE_HEAD_OFFICE_LINE,
   KEY_MESSAGE,
   type PersonCard,
+  PIPEDRIVE_FORM,
   STEPS,
   STUDY_FAMILIES,
   SUPPORT_HEADING,
@@ -24,8 +22,6 @@ import {
   WHATSAPP_FIRST_MESSAGE,
   whatsappHref,
 } from "@/lib/speakToJuliet";
-import { toInternationalNigerianNumber, NIGERIA_DIALLING_CODE } from "@/lib/nigeriaLanding";
-import { CAMPAIGN_SLUG } from "@/lib/speakToJuliet";
 
 /**
  * Speak to Juliet. The Nigeria landing page whose one job is to put a visitor
@@ -37,13 +33,14 @@ import { CAMPAIGN_SLUG } from "@/lib/speakToJuliet";
  * once the hero button has scrolled away. The form is offered as the
  * alternative for a visitor who would rather not message.
  *
- * THE FORM CREATES NO LEAD. It hands what the student typed to the /contact
- * signup, exactly as the Nigeria postgraduate page does, because that is the
- * one controlled path into the CRM and it carries the validation, the bot
- * check and the conversion tracking. Nothing here writes to Pipedrive.
+ * THE FORM IS TIM HUNT'S PIPEDRIVE FORM, embedded exactly as he supplied it
+ * on 23 September 2026. Pipedrive's loader replaces the placeholder with the
+ * form in an iframe, the submission goes straight to Pipedrive, and nothing
+ * on this site sees it. This page therefore creates no lead through this
+ * codebase and writes nothing to Pipedrive itself.
  *
- * The copy lives in client/src/lib/speakToJuliet.ts, including everything Tim
- * Hunt may still reword, so his revision does not touch this file.
+ * The copy lives in client/src/lib/speakToJuliet.ts, so a wording change
+ * from Tim does not touch this file.
  */
 
 const WHATSAPP_GREEN = "#128C7E";
@@ -55,13 +52,14 @@ const FLAG_GREEN = "#008751";
 /**
  * The Nigerian flag, drawn rather than fetched, so the hero has no image
  * dependency and nothing to go missing. Tim Hunt asked for it on 19
- * September 2026: it identifies the page as Nigeria's at a glance and
- * reinforces Juliet as WSA's person on the ground there.
+ * September 2026 and for it to be larger on 24 September: it identifies the
+ * page as Nigeria's at a glance and reinforces Juliet as WSA's person on the
+ * ground there.
  */
 function NigerianFlag({ className = "" }: { className?: string }) {
   return (
     <span
-      className={`inline-flex overflow-hidden rounded-[2px] border border-black/10 ${className}`}
+      className={`inline-flex overflow-hidden rounded-[3px] border border-black/10 ${className}`}
       role="img"
       aria-label="Flag of Nigeria"
     >
@@ -99,11 +97,11 @@ function WhatsAppButton({
 /**
  * Juliet's introduction.
  *
- * Tim Hunt is replacing the old recording with one made to match this page,
- * so there is no video id yet and the old one must not be used. Until the id
- * is set the section holds the space with a short, honest line: it is
- * provision for the new podcast rather than a broken player, and it makes no
- * request to YouTube at all.
+ * Tim Hunt has withdrawn both recordings made so far, the second on 24
+ * September 2026 because of a telephone number error, and the next will have
+ * a different link. Until its id is set the section holds the space with a
+ * short, honest line: provision for the podcast rather than a broken player,
+ * and no request to YouTube at all meanwhile.
  *
  * Once JULIET_PODCAST.youtubeId is set, the poster and player below appear
  * with no other change. The iframe is still only created when a visitor asks
@@ -126,11 +124,13 @@ function JulietPodcast() {
       <button
         type="button"
         onClick={() => setPlaying(true)}
+        aria-label={`Play: ${JULIET_PODCAST.title}`}
         className="group relative block w-full overflow-hidden rounded-2xl border border-wsa-navy/12 bg-wsa-stone focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-wsa-navy"
       >
         {/* Juliet's own photograph is the poster, served from this site, so it
             always loads and the page makes no third-party request before a
-            visitor has asked to watch anything. */}
+            visitor has asked to watch anything. Decorative here: the button
+            carries the name. */}
         <img
           src={JULIET.photo}
           alt=""
@@ -170,126 +170,81 @@ function JulietPodcast() {
 /* ------------------------------------------------------------------ */
 
 /**
- * The fallback enquiry form. Five fields, the same five the Nigeria
- * postgraduate page asks for, because that is the least that lets Juliet
- * start. Family name and funding are not asked at first contact: the signup
- * form collects what it needs if the enquiry goes anywhere.
+ * Tim Hunt's Pipedrive form, embedded as he supplied it.
+ *
+ * Pipedrive's loader looks for elements with the data attribute when it runs
+ * and replaces each with the form in an iframe. In a single-page app the
+ * loader has to run AFTER this placeholder is in the document, and again on
+ * every visit to the page, so the script element is appended in an effect
+ * once the placeholder has mounted and removed when the page unmounts. A
+ * fresh script element executes even when the browser serves it from cache,
+ * which is what makes a second visit work.
+ *
+ * The link underneath is the honest fallback: it appears for a visitor
+ * without scripts and stays visible until the iframe has arrived, so a
+ * blocked or slow loader never leaves an empty box with nothing to do.
  */
-function FallbackForm({ id }: { id: string }) {
-  const [firstName, setFirstName] = useState("");
-  const [phone, setPhone] = useState("");
-  const [email, setEmail] = useState("");
-  const [level, setLevel] = useState("");
-  const [destination, setDestination] = useState("");
+function PipedriveForm({ id }: { id: string }) {
+  const host = useRef<HTMLDivElement | null>(null);
+  const [embedded, setEmbedded] = useState(false);
 
-  const submit = (e: FormEvent) => {
-    e.preventDefault();
-    const params = new URLSearchParams();
-    if (firstName.trim()) params.set("firstName", firstName.trim());
-    if (email.trim()) params.set("email", email.trim());
-    // Handed over in international form or not at all. A mangled number is
-    // worse than a missing one.
-    const international = toInternationalNigerianNumber(phone);
-    if (international) params.set("phone", international);
-    if (level) params.set("desiredLevel", level);
-    if (destination) params.set("preferredDestination", destination);
-    // Marks the enquiry as Juliet's, so it reaches her and is identifiable in
-    // the CRM. It allocates nothing and sets no counsellor.
-    params.set("campaign", CAMPAIGN_SLUG);
-    window.location.assign(`/contact?${params.toString()}#student-signup`);
-  };
+  useEffect(() => {
+    const el = host.current;
+    if (!el) return;
 
-  const field =
-    "w-full min-w-0 max-w-full rounded-xl border border-wsa-navy/15 bg-white px-4 py-3 text-base text-wsa-navy placeholder:text-gray-400 focus:border-wsa-red/60 focus:outline-none";
+    const script = document.createElement("script");
+    script.src = PIPEDRIVE_FORM.loaderSrc;
+    script.async = true;
+    document.body.appendChild(script);
+
+    // The loader gives no callback, so the arrival of its iframe is the
+    // signal that the form is on the page.
+    const observer =
+      typeof MutationObserver === "undefined"
+        ? null
+        : new MutationObserver(() => {
+            if (el.querySelector("iframe")) setEmbedded(true);
+          });
+    observer?.observe(el, { childList: true, subtree: true });
+
+    return () => {
+      observer?.disconnect();
+      script.remove();
+    };
+  }, []);
 
   return (
-    <form onSubmit={submit} className="min-w-0 max-w-full space-y-2.5" aria-labelledby={`${id}-heading`}>
+    <div className="min-w-0 max-w-full" aria-labelledby={`${id}-heading`}>
       <p id={`${id}-heading`} className="text-lg font-semibold text-wsa-navy">
-        {FORM.heading}
+        {PIPEDRIVE_FORM.heading}
       </p>
-      <p className="pb-1 text-sm text-gray-600">{FORM.supporting}</p>
+      <p className="pb-3 text-sm text-gray-600">{PIPEDRIVE_FORM.supporting}</p>
 
-      <label className="sr-only" htmlFor={`${id}-first`}>First name</label>
-      <input
-        id={`${id}-first`}
-        value={firstName}
-        onChange={e => setFirstName(e.target.value)}
-        placeholder="First name"
-        autoComplete="given-name"
-        required
-        className={field}
+      <div
+        ref={host}
+        className="pipedriveWebForms min-w-0 max-w-full"
+        data-pd-webforms={PIPEDRIVE_FORM.embedUrl}
       />
 
-      <label className="sr-only" htmlFor={`${id}-phone`}>WhatsApp number</label>
-      <div className="flex min-w-0 max-w-full items-stretch overflow-hidden rounded-xl border border-wsa-navy/15 bg-white focus-within:border-wsa-red/60">
-        <span className="flex items-center border-r border-wsa-navy/10 bg-wsa-stone/60 px-3 text-base text-gray-600" aria-hidden>
-          {NIGERIA_DIALLING_CODE}
-        </span>
-        <input
-          id={`${id}-phone`}
-          type="tel"
-          value={phone}
-          onChange={e => setPhone(e.target.value)}
-          placeholder="WhatsApp number"
-          autoComplete="tel"
-          required
-          className="min-w-0 flex-1 bg-transparent px-4 py-3 text-base text-wsa-navy placeholder:text-gray-400 focus:outline-none"
-        />
-      </div>
+      {!embedded && (
+        <p className="pt-3 text-sm text-gray-600">
+          {PIPEDRIVE_FORM.fallbackLine}{" "}
+          <a
+            href={PIPEDRIVE_FORM.embedUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="font-medium underline underline-offset-2 hover:text-wsa-navy"
+          >
+            {PIPEDRIVE_FORM.fallbackCta}
+          </a>
+        </p>
+      )}
 
-      <label className="sr-only" htmlFor={`${id}-email`}>Email address</label>
-      <input
-        id={`${id}-email`}
-        type="email"
-        value={email}
-        onChange={e => setEmail(e.target.value)}
-        placeholder="Email address"
-        autoComplete="email"
-        required
-        className={field}
-      />
-
-      <label className="sr-only" htmlFor={`${id}-level`}>What you want to study</label>
-      <select
-        id={`${id}-level`}
-        value={level}
-        onChange={e => setLevel(e.target.value)}
-        required
-        className={`${field} ${level ? "" : "text-gray-400"}`}
-      >
-        <option value="">What do you want to study?</option>
-        {FORM_STUDY_OPTIONS.map(o => (
-          <option key={o.value} value={o.value}>{o.label}</option>
-        ))}
-      </select>
-
-      <label className="sr-only" htmlFor={`${id}-destination`}>Preferred destination</label>
-      <select
-        id={`${id}-destination`}
-        value={destination}
-        onChange={e => setDestination(e.target.value)}
-        className={`${field} ${destination ? "" : "text-gray-400"}`}
-      >
-        <option value="">Preferred destination (optional)</option>
-        {CAMPAIGN_DESTINATIONS.map(d => (
-          <option key={d.value} value={d.value}>{d.label}</option>
-        ))}
-        <option value={HELP_ME_DECIDE}>Help me decide</option>
-      </select>
-
-      <button
-        type="submit"
-        className="flex min-h-[3rem] w-full items-center justify-center gap-2 rounded-xl bg-wsa-red px-5 py-3.5 text-base font-semibold text-white transition hover:bg-wsa-red/90"
-      >
-        {FORM.submit}
-        <ArrowRight className="h-4 w-4" aria-hidden />
-      </button>
-
-      <p className="pt-0.5 text-xs leading-relaxed text-gray-500">
-        We use your details to advise you on studying abroad. See our{" "}
+      <p className="pt-3 text-xs leading-relaxed text-gray-500">
+        Your details go to WSA's student records system so that Juliet can contact you. See our{" "}
         <Link href="/privacy-policy" className="underline underline-offset-2 hover:text-wsa-navy">privacy policy</Link>.
       </p>
-    </form>
+    </div>
   );
 }
 
@@ -355,8 +310,8 @@ export default function SpeakToJuliet() {
       <section className="px-4 pb-10 pt-8 sm:px-6 lg:pb-14 lg:pt-12">
         <div className="mx-auto grid max-w-6xl gap-8 lg:grid-cols-[1.05fr_minmax(300px,400px)] lg:items-center lg:gap-12">
           <div className="min-w-0">
-            <p className="flex items-center gap-2.5 text-sm font-semibold uppercase tracking-wider text-wsa-red">
-              <NigerianFlag className="h-4 w-6 shrink-0" />
+            <p className="flex items-center gap-3 text-sm font-semibold uppercase tracking-wider text-wsa-red">
+              <NigerianFlag className="h-7 w-[2.625rem] shrink-0" />
               {HERO.eyebrow}
             </p>
             <h1 className="mt-3 text-3xl font-bold leading-[1.12] tracking-tight text-wsa-navy sm:text-4xl lg:text-5xl">
@@ -378,16 +333,24 @@ export default function SpeakToJuliet() {
           </div>
 
           {/* Juliet's photograph is the point of the hero, so it is not a
-              decorative background: fixed dimensions, no layout shift. */}
-          <div className="min-w-0">
+              decorative background: fixed dimensions, no layout shift. The
+              caption beneath it is Tim Hunt's, 24 September 2026, in his
+              four lines. */}
+          <figure className="mx-auto w-full max-w-[320px] min-w-0 lg:max-w-none">
             <img
               src={JULIET.photo}
               alt={JULIET.photoAlt}
               width={600}
               height={800}
-              className="mx-auto block aspect-[3/4] w-full max-w-[320px] rounded-2xl border border-wsa-navy/10 bg-wsa-stone object-cover object-top shadow-sm lg:max-w-none"
+              className="block aspect-[3/4] w-full rounded-2xl border border-wsa-navy/10 bg-wsa-stone object-cover object-top shadow-sm"
             />
-          </div>
+            <figcaption className="mt-3 text-center leading-snug lg:text-left">
+              <span className="block text-base font-semibold text-wsa-navy">{JULIET.name}</span>
+              <span className="block text-sm text-gray-700">{JULIET.role}</span>
+              <span className="block text-sm text-gray-700">{JULIET_ORGANISATION}</span>
+              <span className="block text-sm text-gray-500">{JULIET.location}</span>
+            </figcaption>
+          </figure>
         </div>
       </section>
 
@@ -424,9 +387,6 @@ export default function SpeakToJuliet() {
           </div>
           <p className="mt-5 max-w-3xl text-sm leading-relaxed text-gray-500">{AVAILABILITY_NOTE}</p>
 
-          {/* What WSA does alongside the student. Tim Hunt's list, under a
-              heading that makes no cost claim while the charging wording is
-              unconfirmed. */}
           <h3 className="mt-10 text-lg font-semibold text-wsa-navy">{SUPPORT_HEADING}</h3>
           <ul className="mt-3 grid gap-x-6 gap-y-2 sm:grid-cols-2 lg:grid-cols-3">
             {SUPPORT_STEPS.map(s => (
@@ -455,6 +415,37 @@ export default function SpeakToJuliet() {
         </div>
       </section>
 
+      {/* ── Glenice ──────────────────────────────────────────────── */}
+      {/* Above How this works, at Tim Hunt's request of 24 September 2026:
+          at the foot of the page she read as an afterthought, and step 3
+          below names her, so the reader should have met her first. Her
+          photograph is larger for the same reason. No contact details:
+          all contact is through Juliet. */}
+      <section className="border-t border-wsa-navy/10 px-4 py-12 sm:px-6 lg:py-16">
+        <div className="mx-auto max-w-3xl rounded-2xl border border-wsa-navy/10 bg-white p-5 sm:p-6">
+          <div className="flex flex-wrap items-start gap-5 sm:flex-nowrap">
+            <img
+              src={GLENICE.photo}
+              alt={GLENICE.photoAlt}
+              width={112}
+              height={149}
+              decoding="async"
+              className="block aspect-[3/4] w-28 shrink-0 rounded-xl border border-wsa-navy/10 bg-wsa-stone object-cover object-top"
+            />
+            <div className="min-w-0">
+              <h2 className="text-xl font-semibold leading-tight text-wsa-navy">{GLENICE.name}</h2>
+              <p className="mt-0.5 text-base text-gray-700">{GLENICE.role}</p>
+              <p className="mt-0.5 text-sm text-gray-500">{GLENICE_HEAD_OFFICE_LINE}</p>
+              <p className="mt-3 text-base leading-relaxed text-gray-700">{GLENICE_QUOTE}</p>
+              <p className="mt-3 text-sm leading-relaxed text-gray-600">
+                Glenice does not contact you at this stage. Juliet speaks to you first, and introduces you to
+                Glenice when you decide to go ahead.
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* ── How it works ─────────────────────────────────────────── */}
       <section className="border-t border-wsa-navy/10 bg-white px-4 py-12 sm:px-6 lg:py-16">
         <div className="mx-auto max-w-6xl">
@@ -470,32 +461,6 @@ export default function SpeakToJuliet() {
               </li>
             ))}
           </ol>
-        </div>
-      </section>
-
-      {/* ── Glenice ──────────────────────────────────────────────── */}
-      <section className="border-t border-wsa-navy/10 px-4 py-12 sm:px-6 lg:py-16">
-        <div className="mx-auto max-w-3xl rounded-2xl border border-wsa-navy/10 bg-white p-5 sm:p-6">
-          <div className="flex flex-wrap items-start gap-4 sm:flex-nowrap">
-            <img
-              src={GLENICE.photo}
-              alt={GLENICE.photoAlt}
-              width={80}
-              height={107}
-              decoding="async"
-              className="block aspect-[3/4] w-20 shrink-0 rounded-xl border border-wsa-navy/10 bg-wsa-stone object-cover object-top"
-            />
-            <div className="min-w-0">
-              <h2 className="text-lg font-semibold leading-tight text-wsa-navy">{GLENICE.name}</h2>
-              <p className="mt-0.5 text-base text-gray-700">{GLENICE.role}</p>
-              <p className="mt-0.5 text-sm text-gray-500">{GLENICE_HEAD_OFFICE_LINE}</p>
-              <p className="mt-3 text-base leading-relaxed text-gray-700">{GLENICE_QUOTE}</p>
-              <p className="mt-3 text-sm leading-relaxed text-gray-600">
-                Glenice does not contact you at this stage. Juliet speaks to you first, and introduces you to
-                Glenice when you decide to go ahead.
-              </p>
-            </div>
-          </div>
         </div>
       </section>
 
@@ -516,10 +481,10 @@ export default function SpeakToJuliet() {
         </div>
       </section>
 
-      {/* ── The fallback form ────────────────────────────────────── */}
+      {/* ── The form ─────────────────────────────────────────────── */}
       <section id="send-details" className="border-t border-wsa-navy/10 bg-white px-4 py-12 sm:px-6 lg:py-16">
         <div className="mx-auto max-w-xl rounded-2xl border border-wsa-navy/12 bg-wsa-warm-white p-5 shadow-sm sm:p-6">
-          <FallbackForm id="juliet-form" />
+          <PipedriveForm id="juliet-form" />
         </div>
       </section>
 

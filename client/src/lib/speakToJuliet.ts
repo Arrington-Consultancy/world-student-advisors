@@ -10,39 +10,43 @@
  *   2. Tim Hunt's "Draft Landing Page Juliet 19 September 2026.docx", the
  *      master content brief, for everything the implementation brief does
  *      not deliberately modify.
- *   3. The controlled repository, where it is newer or more specific.
- * Both live in 16_WEBSITE_Ai/05 Landing Pages/Juliet. Where Tim's master and
- * the implementation brief disagree, the implementation brief is followed and
- * the difference is recorded in BRIEF_CONFLICTS below rather than resolved
- * quietly.
+ *   3. Tim Hunt's edits of 24 September 2026, "Tom_Juliet_LP_edits_24_
+ *      September_2026.docx", forwarded by Tom Arrington: a larger flag, a
+ *      caption under Juliet's photograph, Glenice moved above How this
+ *      works with a larger photograph, and his Pipedrive form embedded in
+ *      place of the website form. The podcast he supplied that day he
+ *      withdrew the same morning; see JULIET_PODCAST.
+ *   4. The controlled repository, where it is newer or more specific.
+ * All three documents live in 16_WEBSITE_Ai/05 Landing Pages/Juliet. Where
+ * Tim's master and the implementation brief disagreed, the implementation
+ * brief was followed and the difference is recorded in BRIEF_CONFLICTS
+ * below, with how each one was later settled.
  *
- * PROVISIONAL COPY. Tim is revising the landing page and Juliet's podcast.
- * Everything he may reword is gathered in this file rather than spread
- * through the markup, and anything still awaiting his decision is marked
- * `PROVISIONAL` with what it is waiting for. His revision should be a small
- * content edit here, never a rebuild of the page.
+ * THE COPY IS NO LONGER PROVISIONAL. Tim revised the page on 24 September
+ * 2026 and supplied the form he had said was coming. What remains here is
+ * his wording or Tom's, and any further change is a content edit to this
+ * file, never a rebuild of the page. The one open slot is the podcast.
  *
- * WHAT THIS PAGE DOES NOT DO. It creates no lead itself. The fallback form
- * hands the student's own answers to the /contact signup, which is the one
- * controlled path into the CRM and carries the validation, the bot check and
- * the conversion tracking. It writes nothing to Pipedrive, widens no scope,
- * and creates no second student record.
+ * WHAT THIS PAGE DOES NOT DO. It creates no lead through this codebase. The
+ * enquiry form on the page is Tim Hunt's own Pipedrive web form, embedded by
+ * the loader Pipedrive supplies, so a submission goes from the visitor's
+ * browser to Pipedrive and never touches this server. The page writes
+ * nothing to Pipedrive itself, widens no scope, and creates no second
+ * student record. The same form will sit behind the QR code in Juliet's
+ * podcast, so there is one form and one CRM workflow for both.
  */
-import { CAMPAIGN_DESTINATIONS, type DesiredLevelValue } from "@shared/studentEnquiryOptions";
 import type { CampaignSlug } from "@shared/campaignEnquiry";
 
 /**
- * How an enquiry from this page is identified. The signup procedure validates
- * it against the closed list in shared/campaignEnquiry.ts, records it in the
- * Lead note, and emails this campaign's own recipient list in place of the
- * general staff list, so exactly one notification is sent and it goes to the
- * people Tom Arrington authorised. It is not a counsellor allocation and sets
- * no Pipedrive field.
+ * How a website enquiry from this page WAS identified while the page
+ * carried its own form, 19 to 24 September 2026. The signup procedure still
+ * accepts the value and still routes such an enquiry to this campaign's own
+ * recipient list, so any /contact?campaign=speak-to-juliet link already in
+ * circulation keeps working. The page itself no longer sends anyone there:
+ * its form is Pipedrive's. Retiring the server route is a separate decision
+ * for Tom Arrington once the Pipedrive form has been seen to work live.
  */
 export const CAMPAIGN_SLUG: CampaignSlug = "speak-to-juliet";
-
-/** Marks a string Tim may still reword. Identity at runtime, a signal in the source. */
-const PROVISIONAL = (s: string) => s;
 
 /* ------------------------------------------------------------------ */
 /* People                                                              */
@@ -55,11 +59,12 @@ export interface PersonCard {
   location?: string;
   /**
    * Contact details are OPTIONAL, and their absence is the guarantee.
-   * Tim Hunt, 19 September 2026: Glenice's telephone, WhatsApp and email must
-   * not appear on this page, because Juliet contacts the lead and Glenice
-   * does not, until the student becomes a Deal. Leaving the values out of the
-   * data is stronger than leaving them in and choosing not to render them:
-   * there is nothing for a later edit to expose by accident.
+   * Tim Hunt, 19 September 2026, repeated on 24 September: Glenice's
+   * telephone, WhatsApp and email must not appear on this page, because
+   * Juliet contacts the lead and Glenice does not, until the student becomes
+   * a Deal. Leaving the values out of the data is stronger than leaving them
+   * in and choosing not to render them: there is nothing for a later edit to
+   * expose by accident.
    */
   whatsapp?: string;
   /** The digits wa.me needs: international, no plus and no punctuation. */
@@ -91,6 +96,14 @@ export const JULIET: PersonCard = Object.freeze({
 });
 
 /**
+ * The organisation line in the caption under Juliet's photograph. Tim Hunt's
+ * edit of 24 September 2026 gives the caption as four lines, name, role,
+ * WorldStudentAdvisors, Lagos, Nigeria, and this is his spelling of the
+ * brand, as it is in his hero line.
+ */
+export const JULIET_ORGANISATION = "WorldStudentAdvisors";
+
+/**
  * Glenice, as Tim Hunt specified her on 19 September 2026.
  *
  * HER ROLE LINE IS HIS WORDING. "Juliet's dedicated Student Counsellor",
@@ -101,7 +114,8 @@ export const JULIET: PersonCard = Object.freeze({
  * approved biography places her in Kenya, so no location line is given.
  *
  * NO CONTACT DETAILS. He asked for her telephone, WhatsApp and email to be
- * off this page. They are absent from the record below rather than merely
+ * off this page, and said so again on 24 September: "all contact through
+ * Juliet". They are absent from the record below rather than merely
  * unrendered, so nothing downstream can publish them.
  */
 export const GLENICE: PersonCard = Object.freeze({
@@ -126,9 +140,8 @@ export const GLENICE_QUOTE =
  * the real hesitation, so the page removes it. Wording from Tom Arrington's
  * implementation brief of 19 September 2026.
  */
-export const WHATSAPP_FIRST_MESSAGE = PROVISIONAL(
-  "Hello Juliet, I saw the WSA page and I would like to ask about studying abroad.",
-);
+export const WHATSAPP_FIRST_MESSAGE =
+  "Hello Juliet, I saw the WSA page and I would like to ask about studying abroad.";
 
 export function whatsappHref(digits: string, message?: string): string {
   const text = message ? `?text=${encodeURIComponent(message)}` : "";
@@ -149,7 +162,7 @@ export const HERO = Object.freeze({
   supporting:
     "Free, personal support for Nigerian students and families from Juliet and the WorldStudentAdvisors team.",
   primaryCta: "Message Juliet on WhatsApp",
-  secondaryCta: PROVISIONAL("Would rather not message? Send your details instead."),
+  secondaryCta: "Would rather not message? Send your details instead.",
 });
 
 /**
@@ -166,9 +179,7 @@ export const KEY_MESSAGE: ReadonlyArray<string> = Object.freeze([
 
 /**
  * The charging question is closed. Tim Hunt confirmed it in writing on 19
- * September 2026: "The service is free." The earlier scoped hedge, and the
- * COST_WORDING_PENDING note that recorded what it was waiting for, are gone
- * because the thing they were waiting for has happened.
+ * September 2026: "The service is free."
  */
 export const FREE_SERVICE_LINE = "The service is free.";
 
@@ -188,45 +199,38 @@ export interface StudyFamily {
  */
 export const STUDY_FAMILIES: ReadonlyArray<StudyFamily> = Object.freeze([
   {
-    title: PROVISIONAL("Degrees abroad"),
-    body: PROVISIONAL(
-      "PhD and Master's degrees, undergraduate degrees, top-up degrees and International Foundation Programmes.",
-    ),
+    title: "Degrees abroad",
+    body: "PhD and Master's degrees, undergraduate degrees, top-up degrees and International Foundation Programmes.",
   },
   {
-    title: PROVISIONAL("School and sixth form"),
-    body: PROVISIONAL("UK boarding schools for GCSE, A Level and foundation courses."),
+    title: "School and sixth form",
+    body: "UK boarding schools for GCSE, A Level and foundation courses.",
   },
   {
-    title: PROVISIONAL("Sport and summer"),
-    body: PROVISIONAL(
-      "UK boarding schools with football academies, and UK summer camps with football and other sports in July and August.",
-    ),
+    title: "Sport and summer",
+    body: "UK boarding schools with football academies, and UK summer camps with football and other sports in July and August.",
   },
   {
-    title: PROVISIONAL("Online study"),
-    body: PROVISIONAL("Online courses and flexible study options you can take from home in Nigeria."),
+    title: "Online study",
+    body: "Online courses and flexible study options you can take from home in Nigeria.",
   },
 ]);
 
 /**
  * What WSA does alongside the student, from Tim Hunt's master draft of 19
  * September 2026, where it sits under the heading "Free Service from WSA".
- *
- * Both the list and the heading are his, now that he has confirmed in
- * writing that the service is free.
  */
 export const SUPPORT_STEPS: ReadonlyArray<string> = Object.freeze([
-  PROVISIONAL("Course and university selection"),
-  PROVISIONAL("Applications and offers"),
-  PROVISIONAL("Payment guidance"),
-  PROVISIONAL("Visa preparation"),
-  PROVISIONAL("Interview and mock interview preparation"),
-  PROVISIONAL("Pre-departure support"),
-  PROVISIONAL("Support throughout your studies"),
+  "Course and university selection",
+  "Applications and offers",
+  "Payment guidance",
+  "Visa preparation",
+  "Interview and mock interview preparation",
+  "Pre-departure support",
+  "Support throughout your studies",
 ]);
 
-/** Tim Hunt's own heading, usable now that he has confirmed the charging rule. */
+/** Tim Hunt's own heading. */
 export const SUPPORT_HEADING = "Free service from WSA";
 
 export interface Destination {
@@ -252,24 +256,24 @@ export interface Destination {
  */
 export const DESTINATIONS: ReadonlyArray<Destination> = Object.freeze([
   {
-    name: PROVISIONAL("United Kingdom"),
-    body: PROVISIONAL("WSA's main destination, and where most WSA students go."),
+    name: "United Kingdom",
+    body: "WSA's main destination, and where most WSA students go.",
   },
   {
-    name: PROVISIONAL("United States"),
-    body: PROVISIONAL("A large choice of undergraduate and postgraduate programmes."),
+    name: "United States",
+    body: "A large choice of undergraduate and postgraduate programmes.",
   },
   {
-    name: PROVISIONAL("Canada"),
-    body: PROVISIONAL("A major international study destination, with a wide choice of universities, colleges and programmes."),
+    name: "Canada",
+    body: "A major international study destination, with a wide choice of universities, colleges and programmes.",
   },
   {
-    name: PROVISIONAL("Germany"),
-    body: PROVISIONAL("Worth considering for postgraduate study, with Master's programmes taught in English and many competitively priced options."),
+    name: "Germany",
+    body: "Worth considering for postgraduate study, with Master's programmes taught in English and many competitively priced options.",
   },
   {
-    name: PROVISIONAL("Elsewhere in Europe"),
-    body: PROVISIONAL("Including Cyprus, Hungary, France and the Netherlands. Each one is considered on its own merits."),
+    name: "Elsewhere in Europe",
+    body: "Including Cyprus, Hungary, France and the Netherlands. Each one is considered on its own merits.",
   },
 ]);
 
@@ -277,14 +281,12 @@ export const DESTINATIONS: ReadonlyArray<Destination> = Object.freeze([
  * Tim Hunt's own closing line, supplied verbatim in his master draft and
  * already approved as the equivalent line on the Nigeria postgraduate page.
  */
-export const DESTINATIONS_LINE = PROVISIONAL(
-  "Your WSA counsellor will help you compare countries, universities, courses and costs to find the options that best fit your ambitions and budget.",
-);
+export const DESTINATIONS_LINE =
+  "Your WSA counsellor will help you compare countries, universities, courses and costs to find the options that best fit your ambitions and budget.";
 
 /** Availability, stated once so no family reads as a standing guarantee. */
-export const AVAILABILITY_NOTE = PROVISIONAL(
-  "What is available depends on your qualifications, the intake and the school or university. Juliet will tell you what fits your situation.",
-);
+export const AVAILABILITY_NOTE =
+  "What is available depends on your qualifications, the intake and the school or university. Juliet will tell you what fits your situation.";
 
 /* ------------------------------------------------------------------ */
 /* How it works                                                        */
@@ -320,25 +322,28 @@ export const STEPS: ReadonlyArray<Step> = Object.freeze([
 ]);
 
 /* ------------------------------------------------------------------ */
-/* Juliet's introduction video                                         */
+/* Juliet's podcast                                                    */
 /* ------------------------------------------------------------------ */
 
 /**
  * PROVISION FOR THE REPLACEMENT PODCAST. There is deliberately no video id
  * here.
  *
- * Tim Hunt, 19 September 2026: the recording the page carried, WSA 036, is
- * out of date, and he has re-recorded it specifically to match this page. It
- * is a few days away. He asked for provision to be left rather than the old
- * one used, so the page shows a short, honest line in the space the podcast
- * will occupy and makes no request to YouTube at all meanwhile.
+ * Two recordings have now been withdrawn by Tim Hunt and neither may be
+ * used. WSA 036 (SZjjr2T3qTU) he withdrew on 19 September 2026 as out of
+ * date. Its replacement, https://youtu.be/fR4j72Jbk5Y, which he supplied on
+ * 24 September, he withdrew the same morning by WhatsApp to Tom Arrington:
+ * "DO NOT USE JULIET'S PODCAST, a new one required as tel number errors, the
+ * new link will be different." The page therefore shows a short, honest line
+ * in the space the podcast will occupy and makes no request to YouTube.
  *
- * TO PUBLISH THE NEW ONE: set `youtubeId` to the new recording's id and give
- * it a duration. The section renders the player automatically once an id is
- * present, so nothing else has to change.
+ * TO PUBLISH THE NEXT ONE: set `youtubeId` to the new recording's id, which
+ * must not be either id in WITHDRAWN_PODCAST_IDS, and add the poster Tim
+ * supplies for it. The section renders the player automatically once an id
+ * is present.
  */
 export const JULIET_PODCAST = Object.freeze({
-  /** Empty until Tim's replacement recording is ready. Never the old id. */
+  /** Empty until Tim's corrected recording is ready. Never a withdrawn id. */
   youtubeId: "",
   title: "Meet Juliet",
   blurb: "Juliet introduces herself and how she works with students and families in Nigeria.",
@@ -348,65 +353,44 @@ export const JULIET_PODCAST = Object.freeze({
     "Juliet is recording a short introduction for this page. It will appear here once it is ready.",
 });
 
-/** What the podcast slot is waiting on, so the reason survives in the source. */
-export const PODCAST_PENDING =
-  "Tim Hunt is replacing WSA 036 with a recording made to match this page, 19 September 2026. The old recording must not be used. Set JULIET_PODCAST.youtubeId when the new one arrives.";
+/**
+ * Recordings Tim Hunt has withdrawn. Kept as data rather than only as a
+ * comment so the guard test can check the live id against the list, and so
+ * a later edit cannot reinstate one by mistake.
+ */
+export const WITHDRAWN_PODCAST_IDS: ReadonlyArray<string> = Object.freeze([
+  "SZjjr2T3qTU",
+  "fR4j72Jbk5Y",
+]);
 
 /* ------------------------------------------------------------------ */
-/* The fallback form                                                   */
+/* The enquiry form: Tim Hunt's Pipedrive web form                     */
 /* ------------------------------------------------------------------ */
 
 /**
- * The study options the form offers.
+ * The form is Pipedrive's, built and tested by Tim Hunt, and supplied as
+ * embed code on 23 September 2026 with the instruction "do not recreate the
+ * form" and "please don't change the form itself". Both values below are
+ * exactly as he sent them. The loader script finds every element carrying
+ * the data attribute and replaces it with the form in an iframe; nothing on
+ * this site sees the submission.
  *
- * ONLY CONTROLLED VALUES. Every value below exists in
- * shared/studentEnquiryOptions.ts and maps to a real Pipedrive option. The
- * labels are grouped the way the page talks about them, but no label is
- * attached to a value that means something else: mapping to the nearest
- * thing is how Australia used to be recorded as New Zealand.
- *
- * THE GAP, REPORTED NOT PAPERED OVER. Three of the routes this page names in
- * its copy have no controlled value of their own: online courses, boarding
- * schools with football academies, and summer and sports programmes. They are
- * named in STUDY_FAMILIES so a visitor can see Juliet covers them, and they
- * are deliberately absent from this list. A student whose interest is one of
- * those three picks "Something else", which is the signup form's own existing
- * catch-all and is not a claim that their interest is anything in particular.
- * See UNSUPPORTED_ENQUIRY_ROUTES.
+ * WHAT THE FORM DOES IN PIPEDRIVE, from the read-only inventory of 22
+ * September and Tim's own note of 24 September: it creates a Lead owned by
+ * Glenice Owino, titled with Juliet's name and carrying the note that Juliet
+ * qualifies the student before Glenice makes contact, and Pipedrive's own
+ * automation distributes it to Tim, Eldah, Juliet and Glenice. It has
+ * reCAPTCHA. It asks first name, family name, email, telephone or WhatsApp,
+ * what the person wants to study and their preferred destination.
  */
-export const FORM_STUDY_OPTIONS: ReadonlyArray<{ value: DesiredLevelValue; label: string }> = Object.freeze([
-  { value: "undergraduate", label: "Undergraduate degree" },
-  { value: "top-up", label: "Top-up degree" },
-  { value: "foundation", label: "International foundation programme" },
-  { value: "postgraduate", label: "Taught Master's" },
-  { value: "mphil", label: "MPhil" },
-  { value: "mres", label: "MRes" },
-  { value: "doctorate", label: "PhD" },
-  { value: "boarding", label: "UK boarding school, GCSE or A Level" },
-  { value: "other", label: "Something else" },
-]);
-
-/**
- * Routes this page names in its copy that the controlled enquiry vocabulary
- * cannot record. Reported to Tom Arrington rather than collapsed into a
- * nearby analytics category. Closing the gap means adding a Pipedrive option
- * and then a value in shared/studentEnquiryOptions.ts, in that order.
- */
-export const UNSUPPORTED_ENQUIRY_ROUTES: ReadonlyArray<string> = Object.freeze([
-  "Online courses",
-  "Boarding schools with football academies",
-  "Summer and sports programmes",
-]);
-
-/** The undecided destination, which the signup form already records as "multiple". */
-export const HELP_ME_DECIDE = "multiple";
-
-export { CAMPAIGN_DESTINATIONS };
-
-export const FORM = Object.freeze({
-  heading: PROVISIONAL("Would rather not message?"),
-  supporting: PROVISIONAL("Leave your details and Juliet will come back to you. Five questions, and the rest only if you decide to go ahead."),
-  submit: PROVISIONAL("Send to Juliet"),
+export const PIPEDRIVE_FORM = Object.freeze({
+  embedUrl: "https://webforms.pipedrive.com/f/6q9NP6Qklnnpo5qbQ9NZiyPUfxG86g8tN4BJztkTp80lcM8G8dExsiKe6jTWJCzYwr",
+  loaderSrc: "https://webforms.pipedrive.com/f/loader",
+  heading: "Would rather not message?",
+  supporting: "Leave your details and Juliet will come back to you.",
+  /** Shown only if the loader has not replaced the placeholder, and for visitors without scripts. */
+  fallbackLine: "If the form does not appear here, open it in a new tab.",
+  fallbackCta: "Open the form",
 });
 
 /**
@@ -417,18 +401,18 @@ export const FORM = Object.freeze({
 export const NO_RESPONSE_TIME_PROMISE = true;
 
 /* ------------------------------------------------------------------ */
-/* Where Tim's master and the implementation brief disagree            */
+/* Where Tim's master and the implementation brief disagreed           */
 /* ------------------------------------------------------------------ */
 
 /**
  * Every point on which "Draft Landing Page Juliet 19 September 2026.docx"
- * and Tom Arrington's implementation brief of the same date say different
- * things, with what the page does about it.
+ * and Tom Arrington's implementation brief of the same date said different
+ * things, with what the page did about it and how the point was settled.
  *
- * The implementation brief is the approval authority, so it wins each time.
- * None of these is a judgement about who is right: they are recorded here so
- * that Tom can settle them with Tim, and so nobody later reads the page as a
- * silent decision that one document beat the other.
+ * The implementation brief is the approval authority, so it won each time
+ * until Tim and Tom settled the point between them. None of these is a
+ * judgement about who was right: they are recorded so nobody later reads the
+ * page as a silent decision that one document beat the other.
  */
 export interface BriefConflict {
   /** What Tim's 19 September master draft says. */
@@ -441,12 +425,12 @@ export const BRIEF_CONFLICTS: ReadonlyArray<BriefConflict> = Object.freeze([
   {
     master: "Glenice Owino is described as \"Juliet's Personal Assistant\" at \"WSA Head Office, UK\".",
     built:
-      "Settled by Tim Hunt on 19 September 2026. She is \"Juliet's dedicated Student Counsellor\", and the page says she is LINKED TO WSA UK Head Office rather than based there. He explained the basis himself: she works remotely but is part of that operation and has a +44 number. The Personal Assistant wording is not used, because it contradicts her controlled role and his own body copy. Her telephone, WhatsApp and email are off the page at his instruction, and are absent from the record rather than merely unrendered.",
+      "Settled by Tim Hunt on 19 September 2026. She is \"Juliet's dedicated Student Counsellor\", and the page says she is LINKED TO WSA UK Head Office rather than based there. He explained the basis himself: she works remotely but is part of that operation and has a +44 number. The Personal Assistant wording is not used on the page, because it contradicts her controlled role and his own body copy. It does appear in the artwork of his podcast thumbnail, which is his asset and is reported to Tom rather than altered. Her telephone, WhatsApp and email are off the page at his instruction, and are absent from the record rather than merely unrendered.",
   },
   {
     master: "Copies of the lead to Juliet, Tim, Glenice and Eldah, excluding Manet, Tom and Claudia.",
     built:
-      "Settled by Tom Arrington on 19 September 2026 in favour of Tim's list, authorising his own exclusion. The two documents differed only over Tom. An enquiry from this page now notifies exactly those four in place of the general staff list, through the campaign recipients in server/_core/env.ts. The general list is unchanged for every other enquiry. Sarafina Kihumbu and the pipedrive mailbox are on that general list and so are not on this one, which follows from \"exactly these four\" rather than from any judgement made here.",
+      "Settled twice. Tom Arrington ruled on 19 September 2026 in favour of Tim's list, authorising his own exclusion, and the website route was built to notify exactly those four. From 24 September the page's form is Tim's Pipedrive form, so the notification is Pipedrive's own automation, which Tim confirms distributes to Tim, Eldah, Juliet and Glenice: the same four. The website route in server/_core/env.ts still exists for any circulated /contact?campaign= link and is unchanged. The general staff list is unchanged for every other enquiry.",
   },
   {
     master: "\"Free Service from WSA\" as a heading, and \"The service is free\" as a key message.",
@@ -456,22 +440,22 @@ export const BRIEF_CONFLICTS: ReadonlyArray<BriefConflict> = Object.freeze([
   {
     master: "Source Owner = Juliet Nnajiofor-Uyi, Lead Owner = Glenice Owino, set in the CRM.",
     built:
-      "Neither is set. Pipedrive's recommended counsellor field offers Eldah, Glenice, Manet, Sarafina and help me choose; Juliet is not an option and there is no source owner field at all. Reported rather than mapped to something close.",
+      "Settled by Tim Hunt's form. Pipedrive has no source owner field and Juliet is not a Pipedrive user, so the website could not set either. His Pipedrive form sets Glenice as Lead Owner and records Juliet as the source by convention: the lead title carries her name and a note states that she qualifies the student first. That is his configuration inside Pipedrive, outside this codebase.",
   },
   {
     master: "The form carries a family name field.",
     built:
-      "Omitted. The implementation brief says to leave it out unless the controlled handoff needs it, and the signup form collects it on the next page.",
+      "Settled by Tim Hunt's form, which asks for family name. The website form omitted it on the implementation brief's instruction; that form is gone from the page as of 24 September 2026.",
   },
   {
     master: "The destination list ends with \"Other\".",
     built:
-      "\"Help me decide\", which records the same controlled value and invites an undecided visitor in. The implementation brief asks for this wording.",
+      "Moot since 24 September 2026. The dropdown is now inside Tim Hunt's Pipedrive form and its options are his own. The website form had offered \"Help me decide\" against the controlled value the signup records; that form is gone from the page.",
   },
   {
     master: "The study list offers UK Summer School and UK Sports Camp as choices.",
     built:
-      "Named in the page copy, absent from the dropdown. Neither has a controlled enquiry value or a Pipedrive option. See UNSUPPORTED_ENQUIRY_ROUTES.",
+      "Named in the page copy under Sport and summer. Whether they are offered as dropdown choices is now a property of Tim Hunt's Pipedrive form, which is his to configure; the inventory of 22 September 2026 recorded his study options as his own wording rather than the controlled enquiry vocabulary, and that difference is reported to Tom rather than mapped.",
   },
   {
     master: "The United Kingdom is \"supported by WSA's strong network of UK universities and education partners\", Europe has \"strong links\", and the United States has \"world-leading universities\".",
@@ -481,6 +465,6 @@ export const BRIEF_CONFLICTS: ReadonlyArray<BriefConflict> = Object.freeze([
   {
     master: "The form is to be built in Pipedrive as a prototype for other Spokes and LSGs, with an automatic reply from Juliet set up by Tim in Pipedrive.",
     built:
-      "The page hands off to the existing controlled signup and creates no second path. The automatic reply is Tim's own Pipedrive configuration and is outside the website. If a dedicated Pipedrive form is genuinely wanted, what would change is set out for Tom before anything is built.",
+      "Adopted on 24 September 2026, on Tom Arrington's authority, once Tim Hunt had supplied the finished form. His Pipedrive form is embedded exactly as he sent it and the website's own form is removed, so there is one form and one CRM workflow, shared with the QR code in his podcast. The automatic reply is his Pipedrive configuration and is outside the website. What the swap gives up on the website side is recorded in the change record: Google Ads click capture and conversion reporting, the Student Portal account and the acknowledgement email, none of which a Pipedrive-hosted form can trigger unless he sets a post-submit redirect to a WSA page.",
   },
 ]);
