@@ -3,15 +3,16 @@
  *
  * Run against the live site after a deploy, from GitHub Actions, because the
  * production domain is not reachable from the build environment. It NEVER
- * submits the signup form, so it creates no lead, no portal account and no
- * notification to anybody.
+ * submits any form, so it creates no lead, no portal account and no
+ * notification to anybody. It never types into Tim Hunt's Pipedrive form
+ * either: that form is his, and this run only proves it arrived.
  *
- * What it proves, in the order Tom Arrington asked for it on 19 September
- * 2026: the page loads, the short link redirects, WhatsApp opens Juliet with
- * the message already written, the fallback form carries the campaign marker
- * to the signup form, Glenice's photograph renders, neither width overflows
- * or logs an error, and the four pages that must not have moved are still
- * where they were.
+ * What it proves: the page loads, the short link redirects, WhatsApp opens
+ * Juliet with the message already written, Tim's Pipedrive form is embedded
+ * from his loader and his form URL, his podcast poster renders and the old
+ * recording is absent, Glenice's photograph renders above How this works,
+ * neither width overflows or logs an error, and the four pages that must not
+ * have moved are still where they were.
  */
 import { chromium } from "playwright";
 import { writeFileSync } from "fs";
@@ -20,6 +21,10 @@ const SITE = process.env.SITE ?? "https://www.worldstudentadvisors.com";
 const OUT = process.env.OUT_DIR ?? ".";
 const EXPECTED_WHATSAPP = "2348035837934";
 const EXPECTED_MESSAGE = "Hello Juliet, I saw the WSA page and I would like to ask about studying abroad.";
+const EXPECTED_FORM_ID = "6q9NP6Qklnnpo5qbQ9NZiyPUfxG86g8tN4BJztkTp80lcM8G8dExsiKe6jTWJCzYwr";
+const EXPECTED_FORM_URL = `https://webforms.pipedrive.com/f/${EXPECTED_FORM_ID}`;
+const EXPECTED_LOADER = "https://webforms.pipedrive.com/f/loader";
+const OLD_PODCAST_ID = "SZjjr2T3qTU";
 
 let failures = 0;
 const check = (ok, label, detail = "") => {
@@ -78,6 +83,37 @@ for (const [label, width, height] of [["mobile", 390, 844], ["desktop", 1280, 90
   check(Boolean(glenice && glenice.w > 0), "Glenice's photograph renders", glenice ? `${glenice.src} ${glenice.w}px` : "not found");
   const juliet = images.find(i => i.src.includes("juliet"));
   check(Boolean(juliet && juliet.w > 0), "Juliet's photograph renders", juliet ? `${juliet.src} ${juliet.w}px` : "not found");
+  const poster = images.find(i => i.src.includes("juliet-podcast-poster"));
+  check(Boolean(poster && poster.w > 0), "Tim's podcast poster renders", poster ? `${poster.src} ${poster.w}px` : "not found");
+
+  // Tim Hunt's 24 September edits: caption under Juliet, Glenice above How
+  // this works with a larger photograph, a larger flag, his new recording.
+  const caption = (await page.locator("figure figcaption").first().textContent()) ?? "";
+  for (const line of ["Juliet Nnajiofor-Uyi", "Higher Education Advisor", "WorldStudentAdvisors", "Lagos, Nigeria"]) {
+    check(caption.includes(line), `the hero caption carries "${line}"`);
+  }
+  const order = await page.evaluate(() => {
+    const glenice = [...document.querySelectorAll("h2")].find(h => h.textContent?.trim() === "Glenice Owino");
+    const how = [...document.querySelectorAll("h2")].find(h => h.textContent?.trim() === "How this works");
+    if (!glenice || !how) return "missing";
+    return glenice.compareDocumentPosition(how) & Node.DOCUMENT_POSITION_FOLLOWING ? "glenice-first" : "how-first";
+  });
+  check(order === "glenice-first", "Glenice sits above How this works", order);
+  const gleniceWidth = await page.evaluate(() =>
+    Math.round(([...document.querySelectorAll("img")].find(i => i.currentSrc.includes("glenice"))?.getBoundingClientRect().width) ?? 0));
+  check(gleniceWidth >= 100, "Glenice's photograph is the larger size", `${gleniceWidth}px`);
+  const flag = await page.evaluate(() => {
+    const el = document.querySelector('[aria-label="Flag of Nigeria"]');
+    return el ? Math.round(el.getBoundingClientRect().width) : 0;
+  });
+  check(flag >= 40, "the Nigerian flag is the larger size", `${flag}px`);
+
+  const html = await page.content();
+  check(!html.includes(OLD_PODCAST_ID), "the withdrawn recording is nowhere on the page");
+  check(html.includes(`Play: `), "the podcast has a named play button");
+  // The player is created only on request, so no YouTube frame before a click.
+  const ytFrames = await page.locator('iframe[src*="youtube"]').count();
+  check(ytFrames === 0, "no YouTube frame before the visitor presses play", String(ytFrames));
 
   // WhatsApp, the primary action.
   const waHrefs = await page.evaluate(() =>
@@ -92,29 +128,43 @@ for (const [label, width, height] of [["mobile", 390, 844], ["desktop", 1280, 90
   await page.close();
 }
 
-/* 3. The fallback form carries the campaign ----------------------------- */
-console.log("\n=== 3. The fallback form (filled, never submitted to the CRM) ===");
+/* 3. Tim Hunt's Pipedrive form is on the page (never filled, never sent) -- */
+console.log("\n=== 3. The Pipedrive form (embedded, never touched) ===");
 {
   const page = await browser.newPage({ viewport: { width: 390, height: 844 } });
   await page.goto(`${SITE}/speak-to-juliet`, { waitUntil: "networkidle" });
-  await page.fill("#juliet-form-first", "Verification");
-  await page.fill("#juliet-form-phone", "803 583 7934");
-  await page.fill("#juliet-form-email", "verification@example.com");
-  await page.selectOption("#juliet-form-level", "doctorate");
-  await page.selectOption("#juliet-form-destination", "uk");
 
-  // This hop only prefills the signup form. It does NOT submit it, so no
-  // lead, no portal account and no notification are created by this run.
-  await Promise.all([
-    page.waitForURL(/\/contact\?/, { timeout: 30000 }),
-    page.click("#juliet-form-first ~ * button[type=submit], form button[type=submit]"),
-  ]);
-  const url = new URL(page.url());
-  check(url.pathname === "/contact", "the form hands off to the controlled signup", url.pathname);
-  check(url.searchParams.get("campaign") === "speak-to-juliet", "it carries campaign=speak-to-juliet", String(url.searchParams.get("campaign")));
-  check(url.searchParams.get("phone") === "+2348035837934", "the Nigerian number is converted to international form", String(url.searchParams.get("phone")));
-  check(url.searchParams.get("desiredLevel") === "doctorate", "the study choice is carried as a controlled value", String(url.searchParams.get("desiredLevel")));
-  writeFileSync(`${OUT}/speak-to-juliet-handoff.png`, await page.screenshot({ fullPage: false }));
+  const placeholder = page.locator(`.pipedriveWebForms[data-pd-webforms="${EXPECTED_FORM_URL}"]`);
+  check((await placeholder.count()) === 1, "exactly one placeholder carries Tim's form URL", String(await placeholder.count()));
+
+  const loaderLoaded = await page.evaluate(src =>
+    [...document.querySelectorAll("script")].some(s => s.src === src), EXPECTED_LOADER);
+  check(loaderLoaded, "Pipedrive's loader script is on the page", EXPECTED_LOADER);
+
+  // The loader replaces the placeholder's contents with an iframe. Give it
+  // time on a slow connection; on failure the page keeps the fallback link.
+  let iframeSrc = "";
+  try {
+    const frame = placeholder.locator("iframe").first();
+    await frame.waitFor({ state: "attached", timeout: 30000 });
+    iframeSrc = (await frame.getAttribute("src")) ?? "";
+  } catch {
+    iframeSrc = "";
+  }
+  check(iframeSrc.includes("webforms.pipedrive.com"), "the form iframe has arrived from Pipedrive", iframeSrc.slice(0, 90) || "(no iframe)");
+  check(iframeSrc.includes(EXPECTED_FORM_ID), "the iframe is Tim's form, not another", EXPECTED_FORM_ID);
+
+  const fallbackVisible = await page.locator(`a[href="${EXPECTED_FORM_URL}"]`).count();
+  check(iframeSrc ? fallbackVisible === 0 : fallbackVisible === 1, "the fallback link shows only while the iframe is missing", `fallback links: ${fallbackVisible}`);
+
+  // Nothing on this page hands off to the website signup any more.
+  const contactHandoffs = await page.evaluate(() =>
+    [...document.querySelectorAll("a")].filter(a => (a.getAttribute("href") ?? "").includes("/contact?")).length);
+  check(contactHandoffs === 0, "no link hands off to the retired website form", String(contactHandoffs));
+  const ownInputs = await page.evaluate(() => document.querySelectorAll("main input, main select, main textarea").length);
+  check(ownInputs === 0, "the page has no form controls of its own outside the iframe", String(ownInputs));
+
+  writeFileSync(`${OUT}/speak-to-juliet-form.png`, await page.locator("#send-details").screenshot());
   await page.close();
 }
 
@@ -126,11 +176,11 @@ console.log("\n=== 4. Metadata ===");
   const canonical = await page.evaluate(() => document.querySelector('link[rel="canonical"]')?.getAttribute("href") ?? "");
   check(canonical.endsWith("/speak-to-juliet"), "the canonical URL is the page itself", canonical);
   const robots = await page.evaluate(() => document.querySelector('meta[name="robots"]')?.getAttribute("content") ?? "");
-  check(robots.includes("noindex"), "the page is noindex while the copy is provisional", robots || "(none)");
+  check(robots.includes("noindex"), "the page is noindex until Tom Arrington's GO to publish it", robots || "(none)");
   await page.close();
 
   const sitemap = await (await fetch(`${SITE}/sitemap.xml`)).text();
-  check(!sitemap.includes("/speak-to-juliet"), "it is absent from the sitemap, as a provisional page should be");
+  check(!sitemap.includes("/speak-to-juliet"), "it is absent from the sitemap until that GO");
 }
 
 await browser.close();

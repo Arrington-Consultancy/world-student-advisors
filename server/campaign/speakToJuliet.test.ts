@@ -1,45 +1,40 @@
 import { describe, expect, it } from "vitest";
-import { readFileSync } from "fs";
+import { existsSync, readFileSync } from "fs";
 import {
   AVAILABILITY_NOTE,
   BRIEF_CONFLICTS,
   DESTINATIONS,
   DESTINATIONS_LINE,
   CAMPAIGN_SLUG,
-  FORM,
-  FORM_STUDY_OPTIONS,
   GLENICE,
   GLENICE_QUOTE,
-  HELP_ME_DECIDE,
   HERO,
   JULIET,
+  JULIET_ORGANISATION,
   JULIET_PODCAST,
   GLENICE_HEAD_OFFICE_LINE,
   KEY_MESSAGE,
+  PIPEDRIVE_FORM,
   STEPS,
   STUDY_FAMILIES,
   SUPPORT_HEADING,
   SUPPORT_STEPS,
-  UNSUPPORTED_ENQUIRY_ROUTES,
   WHATSAPP_FIRST_MESSAGE,
   whatsappHref,
 } from "../../client/src/lib/speakToJuliet";
-import {
-  DESIRED_LEVEL_VALUES,
-  DESTINATION_VALUES,
-  isDesiredLevelValue,
-} from "../../shared/studentEnquiryOptions";
 import { CANONICAL_PATHS, NOINDEX_PATHS, SEO_MAP, getCanonicalPath, shouldNoindex } from "../../shared/seo";
 import { VALID_CLIENT_ROUTES, isValidClientRoute } from "../../shared/routes";
 import { ALL_PRERENDER_ROUTES } from "../../shared/prerenderRoutes";
 
 /**
  * Speak to Juliet, the Nigeria landing page built 19 September 2026 to Tom
- * Arrington's implementation brief.
+ * Arrington's implementation brief and revised 24 September 2026 to Tim
+ * Hunt's edits.
  *
  * What these tests hold, in order of how much damage the failure would do:
- * the page creates no lead of its own, it offers only enquiry values the CRM
- * can record, WhatsApp opens the right number with the right message, the
+ * the page's form is Tim Hunt's Pipedrive form exactly as he supplied it and
+ * the page calls nothing else, WhatsApp opens the right number with the
+ * right message, the podcast is his new recording and never the old one, the
  * alias redirects to one canonical URL, and no claim appears that WSA cannot
  * evidence.
  */
@@ -68,7 +63,7 @@ const LIB_CODE = stripComments(readFileSync("client/src/lib/speakToJuliet.ts", "
 function renderedCopy(): string {
   return [
     HERO.eyebrow, HERO.headline, HERO.supporting, HERO.primaryCta, HERO.secondaryCta,
-    JULIET.name, JULIET.role, JULIET.location ?? "", JULIET.photoAlt,
+    JULIET.name, JULIET.role, JULIET.location ?? "", JULIET.photoAlt, JULIET_ORGANISATION,
     GLENICE.name, GLENICE.role, GLENICE.photoAlt, GLENICE_QUOTE, GLENICE_HEAD_OFFICE_LINE,
     SUPPORT_HEADING, ...KEY_MESSAGE,
     DESTINATIONS_LINE, AVAILABILITY_NOTE,
@@ -76,101 +71,85 @@ function renderedCopy(): string {
     ...DESTINATIONS.map(d => `${d.name} ${d.body}`),
     ...STEPS.map(s => `${s.title} ${s.body}`),
     ...SUPPORT_STEPS,
-    ...FORM_STUDY_OPTIONS.map(o => o.label),
-    JULIET_PODCAST.title, JULIET_PODCAST.blurb, JULIET_PODCAST.awaitingLine,
+    JULIET_PODCAST.title, JULIET_PODCAST.blurb, JULIET_PODCAST.posterAlt,
+    PIPEDRIVE_FORM.heading, PIPEDRIVE_FORM.supporting, PIPEDRIVE_FORM.fallbackLine, PIPEDRIVE_FORM.fallbackCta,
   ].join(" ");
 }
 
-describe("the page creates no lead of its own", () => {
-  it("hands the student's answers to the controlled signup and calls no CRM directly", () => {
-    // The one controlled path into Pipedrive, the same hop the Nigeria
-    // postgraduate page makes.
-    expect(PAGE_SOURCE).toContain('window.location.assign(`/contact?${params.toString()}#student-signup`)');
+/** The embed code exactly as Tim Hunt sent it on 23 September 2026. */
+const TIM_EMBED_URL = "https://webforms.pipedrive.com/f/6q9NP6Qklnnpo5qbQ9NZiyPUfxG86g8tN4BJztkTp80lcM8G8dExsiKe6jTWJCzYwr";
+const TIM_LOADER_SRC = "https://webforms.pipedrive.com/f/loader";
+
+describe("the form is Tim Hunt's Pipedrive form, unaltered", () => {
+  it("embeds the exact form he supplied, through the exact loader he supplied", () => {
+    expect(PIPEDRIVE_FORM.embedUrl).toBe(TIM_EMBED_URL);
+    expect(PIPEDRIVE_FORM.loaderSrc).toBe(TIM_LOADER_SRC);
+    // The placeholder carries Pipedrive's class and data attribute, which is
+    // what its loader looks for. Nothing about the form is reproduced here.
+    expect(PAGE_SOURCE).toContain('className="pipedriveWebForms');
+    expect(PAGE_SOURCE).toContain("data-pd-webforms={PIPEDRIVE_FORM.embedUrl}");
+    expect(PAGE_SOURCE).toContain("script.src = PIPEDRIVE_FORM.loaderSrc");
   });
 
-  it("never posts to an API, a CRM or anything else from this page", () => {
-    for (const forbidden of ["fetch(", "XMLHttpRequest", "pipedrive", "useMutation", "trpc."]) {
+  it("the page no longer carries a form of its own, so there is one form and one CRM workflow", () => {
+    for (const gone of ["<form", "<input", "<select", "params.set(", "/contact?", "#student-signup", "FallbackForm", "toInternationalNigerianNumber"]) {
+      expect(PAGE_CODE, `page code must no longer contain ${gone}`).not.toContain(gone);
+    }
+  });
+
+  it("never posts to an API or a CRM from this codebase: the submission is Pipedrive's alone", () => {
+    for (const forbidden of ["fetch(", "XMLHttpRequest", "useMutation", "trpc.", "api.pipedrive.com", "PIPEDRIVE_API"]) {
       expect(PAGE_CODE.toLowerCase(), `page code must not contain ${forbidden}`).not.toContain(forbidden.toLowerCase());
     }
+    expect(LIB_CODE).not.toContain("api.pipedrive.com");
   });
 
-  it("carries the five prefill keys, plus the campaign marker and nothing else", () => {
-    const keys = [...PAGE_SOURCE.matchAll(/params\.set\("([a-zA-Z]+)"/g)].map(m => m[1]);
-    // The five are the student's own answers. "campaign" is not one of them:
-    // it is how the enquiry is identified as Juliet's, so it reaches her and
-    // is traceable in the CRM. It is validated against a closed list on the
-    // server and allocates nothing.
-    expect(new Set(keys)).toEqual(
-      new Set(["firstName", "email", "phone", "desiredLevel", "preferredDestination", "campaign"]),
+  it("loads the loader only after the placeholder has mounted, and removes it on leaving, so a second visit works", () => {
+    // A <script> in JSX does not execute; the effect is the only correct
+    // place, and it has to clean up or the SPA accumulates loaders.
+    expect(PAGE_SOURCE).not.toMatch(/<script/);
+    expect(PAGE_SOURCE).toContain('document.createElement("script")');
+    expect(PAGE_SOURCE).toContain("document.body.appendChild(script)");
+    expect(PAGE_SOURCE).toContain("script.remove()");
+    expect(PAGE_SOURCE.indexOf("useEffect(() => {\n    const el = host.current")).toBeGreaterThan(-1);
+  });
+
+  it("offers the form's own URL as a fallback until the iframe has arrived", () => {
+    expect(PAGE_SOURCE).toContain("href={PIPEDRIVE_FORM.embedUrl}");
+    expect(PAGE_SOURCE).toContain("{!embedded && (");
+    expect(PIPEDRIVE_FORM.fallbackLine.toLowerCase()).toContain("open it");
+  });
+
+  it("the only third-party hosts the page names are Pipedrive's form host and YouTube's no-cookie embed", () => {
+    const hosts = new Set(
+      [...`${PAGE_CODE} ${LIB_CODE}`.matchAll(/https:\/\/([a-z0-9.-]+)\//g)].map(m => m[1]),
     );
+    hosts.delete("wa.me");
+    expect([...hosts].sort()).toEqual(["webforms.pipedrive.com", "www.youtube-nocookie.com"]);
   });
 
-  it("the form's promise that Juliet will come back is one the flow now keeps", () => {
-    expect(FORM.supporting).toContain("Juliet will come back to you");
-    expect(FORM.submit).toBe("Send to Juliet");
-    // Which is only true because the enquiry is marked as hers and she is the
-    // recipient for that campaign. Both are asserted in campaignEnquiry.test.ts.
-    expect(PAGE_SOURCE).toContain('params.set("campaign", CAMPAIGN_SLUG)');
+  it("keeps the retired website route's identifier only as documentation of what still resolves on the server", () => {
+    // The signup procedure still honours campaign=speak-to-juliet for any
+    // link already circulating (server/campaign/*.test.ts). The page itself
+    // no longer sends anyone there.
     expect(CAMPAIGN_SLUG).toBe("speak-to-juliet");
+    expect(PAGE_CODE).not.toContain("CAMPAIGN_SLUG");
   });
 
-  it("asks for neither funding nor family name at first contact", () => {
-    for (const absent of ["educationFunding", "lastName", "familyName", "scholarship"]) {
-      expect(PAGE_SOURCE).not.toContain(absent);
-    }
-  });
-});
-
-describe("the form offers only enquiry values the CRM can record", () => {
-  it("every study option is a controlled value", () => {
-    for (const option of FORM_STUDY_OPTIONS) {
-      expect(isDesiredLevelValue(option.value), `${option.value} is not a controlled value`).toBe(true);
-      expect(DESIRED_LEVEL_VALUES).toContain(option.value);
-    }
-  });
-
-  it("no two options record the same value, so the distinction survives into the CRM", () => {
-    const values = FORM_STUDY_OPTIONS.map(o => o.value);
-    expect(new Set(values).size).toBe(values.length);
-  });
-
-  it("the undecided destination is the controlled 'multiple', offered as Help me decide", () => {
-    expect(DESTINATION_VALUES).toContain(HELP_ME_DECIDE);
-    expect(PAGE_SOURCE).toContain('<option value={HELP_ME_DECIDE}>Help me decide</option>');
-    expect(PAGE_SOURCE).not.toContain('>Other<');
-  });
-
-  it("names the three routes with no controlled value, and offers none of them as a study option", () => {
-    expect(UNSUPPORTED_ENQUIRY_ROUTES).toHaveLength(3);
-    const labels = FORM_STUDY_OPTIONS.map(o => o.label.toLowerCase());
-    for (const route of ["football", "summer", "online"]) {
-      expect(labels.some(l => l.includes(route)), `${route} must not be a study option`).toBe(false);
-    }
-  });
-
-  it("keeps those three visible in the page copy, so they are not silently dropped", () => {
-    const copy = STUDY_FAMILIES.map(f => `${f.title} ${f.body}`).join(" ").toLowerCase();
-    expect(copy).toContain("football");
-    expect(copy).toContain("summer");
-    expect(copy).toContain("online");
-  });
-
-  it("the catch-all is labelled as a catch-all and claims nothing in particular", () => {
-    const other = FORM_STUDY_OPTIONS.find(o => o.value === "other");
-    expect(other?.label).toBe("Something else");
+  it("promises Juliet will come back, which is the Pipedrive workflow Tim Hunt confirmed", () => {
+    expect(PIPEDRIVE_FORM.supporting).toContain("Juliet will come back to you");
+    expect(PIPEDRIVE_FORM.heading).toBe("Would rather not message?");
   });
 });
 
 describe("WhatsApp, the primary action", () => {
   it("builds Juliet's link with her number and the first message already written", () => {
-    const href = whatsappHref(JULIET.whatsappDigits, WHATSAPP_FIRST_MESSAGE);
+    const href = whatsappHref(JULIET.whatsappDigits ?? "", WHATSAPP_FIRST_MESSAGE);
     expect(href.startsWith("https://wa.me/2348035837934?text=")).toBe(true);
     expect(decodeURIComponent(href.split("?text=")[1])).toBe(WHATSAPP_FIRST_MESSAGE);
   });
 
   it("the digits match the number shown on the page, with no punctuation", () => {
-    // Only Juliet has contact details on this page now, by Tim Hunt's
-    // instruction of 19 September 2026.
     expect(JULIET.whatsappDigits).toBe(JULIET.whatsapp?.replace(/[^0-9]/g, ""));
     expect(JULIET.whatsappDigits).toMatch(/^[0-9]+$/);
   });
@@ -183,7 +162,6 @@ describe("WhatsApp, the primary action", () => {
   it("the sticky bar is a phone-only fallback that waits for the hero button to leave", () => {
     expect(PAGE_SOURCE).toContain("IntersectionObserver");
     expect(PAGE_SOURCE).toContain("sm:hidden");
-    // It must clear the phone's own home indicator.
     expect(PAGE_SOURCE).toContain("env(safe-area-inset-bottom, 0px)");
   });
 });
@@ -216,7 +194,9 @@ describe("the route, the alias and the metadata", () => {
     expect(seo?.description).toContain("Lagos");
   });
 
-  it("stays out of the index while the copy is provisional", () => {
+  it("stays out of the index until Tom Arrington's separate GO to publish it", () => {
+    // Indexing, the sitemap and the prerender list change together on that
+    // GO, as /nigeria-postgraduate did. Tim Hunt's revision is not that GO.
     expect(NOINDEX_PATHS.has("/speak-to-juliet")).toBe(true);
     expect(shouldNoindex("/speak-to-juliet")).toBe(true);
     expect(ALL_PRERENDER_ROUTES).not.toContain("/speak-to-juliet");
@@ -231,21 +211,13 @@ describe("what the page says", () => {
   });
 
   it("promises no response time anywhere", () => {
-    const allCopy = [
-      HERO.supporting, HERO.headline, HERO.secondaryCta, DESTINATIONS_LINE, AVAILABILITY_NOTE,
-      ...STEPS.map(s => `${s.title} ${s.body}`),
-      ...STUDY_FAMILIES.map(f => `${f.title} ${f.body}`),
-      ...DESTINATIONS.map(d => `${d.name} ${d.body}`),
-      ...SUPPORT_STEPS,
-    ].join(" ").toLowerCase();
+    const allCopy = renderedCopy().toLowerCase();
     for (const promise of ["24 hour", "24-hour", "48 hour", "within a day", "same day", "immediately"]) {
       expect(allCopy, `must not promise "${promise}"`).not.toContain(promise);
     }
   });
 
-  it("states plainly that the service is free, which Tim Hunt has now confirmed", () => {
-    // He settled the charging rule in writing on 19 September 2026: "The
-    // service is free." The earlier scoped hedge is therefore gone.
+  it("states plainly that the service is free, which Tim Hunt confirmed in writing", () => {
     expect(HERO.supporting).toBe(
       "Free, personal support for Nigerian students and families from Juliet and the WorldStudentAdvisors team.",
     );
@@ -281,27 +253,65 @@ describe("what the page says", () => {
   });
 });
 
-describe("the two people", () => {
+describe("the two people, as Tim Hunt arranged them on 24 September 2026", () => {
   it("puts Juliet first and gives her the page", () => {
     expect(JULIET.name).toBe("Juliet Nnajiofor-Uyi");
     expect(JULIET.role).toBe("Higher Education Advisor");
     expect(JULIET.location).toBe("Lagos, Nigeria");
-    // Her section is a full section; Glenice's is a single card.
     expect(PAGE_SOURCE.indexOf("{JULIET.name}")).toBeLessThan(PAGE_SOURCE.indexOf("{GLENICE.name}"));
+  });
+
+  it("captions her hero photograph with his four lines: name, role, WorldStudentAdvisors, Lagos", () => {
+    expect(JULIET_ORGANISATION).toBe("WorldStudentAdvisors");
+    const figure = PAGE_SOURCE.slice(PAGE_SOURCE.indexOf("<figure"), PAGE_SOURCE.indexOf("</figure>"));
+    expect(figure).toContain("src={JULIET.photo}");
+    expect(figure).toContain("<figcaption");
+    for (const line of ["{JULIET.name}", "{JULIET.role}", "{JULIET_ORGANISATION}", "{JULIET.location}"]) {
+      expect(figure, `caption must carry ${line}`).toContain(line);
+    }
+    // In his order.
+    const order = ["{JULIET.name}", "{JULIET.role}", "{JULIET_ORGANISATION}", "{JULIET.location}"].map(l => figure.indexOf(l));
+    expect([...order].sort((a, b) => a - b)).toEqual(order);
+  });
+
+  it("makes the Nigerian flag larger than the eyebrow text it sits beside", () => {
+    // 19 September: h-4 w-6. 24 September, at his request: larger.
+    expect(PAGE_SOURCE).toContain('<NigerianFlag className="h-7 w-[2.625rem] shrink-0" />');
+    expect(PAGE_SOURCE).not.toContain('className="h-4 w-6');
+  });
+
+  it("places Glenice above How this works, so the reader has met her before step 3 names her", () => {
+    const glenice = PAGE_SOURCE.indexOf("{GLENICE.name}");
+    const howItWorks = PAGE_SOURCE.indexOf(">How this works<");
+    expect(glenice).toBeGreaterThan(-1);
+    expect(howItWorks).toBeGreaterThan(-1);
+    expect(glenice).toBeLessThan(howItWorks);
+    // And after the destinations, where she was before, so she is not the afterthought at the foot.
+    expect(glenice).toBeGreaterThan(PAGE_SOURCE.indexOf(">Where you could study<"));
+  });
+
+  it("shows Glenice's photograph larger than before, with matching intrinsic dimensions", () => {
+    const card = PAGE_SOURCE.slice(PAGE_SOURCE.indexOf("src={GLENICE.photo}"), PAGE_SOURCE.indexOf("{GLENICE.name}"));
+    expect(card).toContain("w-28");
+    expect(card).toContain("width={112}");
+    expect(card).toContain("height={149}");
+    expect(card).not.toContain("w-20");
   });
 
   it("gives Glenice Tim Hunt's role wording, links her to head office without placing her there, and publishes no contact detail for her", () => {
     expect(GLENICE.role).toBe("Juliet's dedicated Student Counsellor");
     expect(GLENICE_HEAD_OFFICE_LINE).toBe("Linked to WSA UK Head Office");
-    // Linked to, never based at: her own approved biography places her in Kenya.
     expect(GLENICE.location).toBeUndefined();
     expect(renderedCopy()).not.toMatch(/based (at|in) .{0,20}head office/i);
-    // The contact details are absent from the record, not merely unrendered.
     expect(GLENICE.whatsapp).toBeUndefined();
     expect(GLENICE.whatsappDigits).toBeUndefined();
     expect(GLENICE.email).toBeUndefined();
     expect(renderedCopy()).not.toContain("glenice@worldstudentadvisors.com");
     expect(renderedCopy()).not.toContain("447459720726");
+    // ContactLines renders nothing for a person without details, and the
+    // Glenice card never calls it anyway.
+    const card = PAGE_SOURCE.slice(PAGE_SOURCE.indexOf("src={GLENICE.photo}"), PAGE_SOURCE.indexOf(">How this works<"));
+    expect(card).not.toContain("ContactLines");
   });
 
   it("quotes Glenice in her own approved words, so the page needs no fresh sign off", () => {
@@ -314,7 +324,6 @@ describe("the two people", () => {
     expect(steps).toContain("Glenice Owino");
     expect(steps).toContain("dedicated Student Counsellor");
     expect(steps).toMatch(/Juliet (is the person you deal with|talks it through)/);
-    // And the page tells the student plainly that Glenice does not call yet.
     expect(PAGE_SOURCE).toMatch(/Glenice does not contact you at this stage/i);
   });
 
@@ -324,40 +333,44 @@ describe("the two people", () => {
   });
 });
 
-describe("the video", () => {
-  it("holds the podcast slot open for Tim Hunt's replacement and never uses the old recording", () => {
-    // He re-recorded it to match this page, 19 September 2026, and asked for
-    // provision rather than the out-of-date one.
-    expect(JULIET_PODCAST.youtubeId).toBe("");
+describe("the podcast", () => {
+  it("plays Tim Hunt's new recording of 24 September 2026 and never the old one", () => {
+    expect(JULIET_PODCAST.youtubeId).toBe("fR4j72Jbk5Y");
     expect(JULIET_PODCAST.youtubeId).not.toBe("SZjjr2T3qTU");
     expect(LIB_CODE).not.toContain("SZjjr2T3qTU");
-    expect(JULIET_PODCAST.awaitingLine.length).toBeGreaterThan(20);
+    expect(PAGE_CODE).not.toContain("SZjjr2T3qTU");
+  });
+
+  it("uses his thumbnail as the poster, served from this site, with real alt text and dimensions", () => {
+    expect(JULIET_PODCAST.poster).toBe("/team/juliet-podcast-poster.jpg");
+    expect(existsSync(`client/public${JULIET_PODCAST.poster}`)).toBe(true);
+    expect(JULIET_PODCAST.posterWidth).toBe(800);
+    expect(JULIET_PODCAST.posterHeight).toBe(450);
+    expect(JULIET_PODCAST.posterAlt).toContain("Juliet");
+    expect(PAGE_SOURCE).toContain("src={JULIET_PODCAST.poster}");
   });
 
   it("never autoplays until a visitor asks for it", () => {
-    // The iframe only exists in the playing branch, behind a real button.
     expect(PAGE_SOURCE).toContain("if (!playing)");
     expect(PAGE_SOURCE).toContain("onClick={() => setPlaying(true)}");
-    // The one autoplay parameter is inside the src that is built only after
-    // the visitor has pressed play.
     const iframeBlock = PAGE_SOURCE.slice(PAGE_SOURCE.indexOf("<iframe"));
     expect(iframeBlock).toContain("autoplay=1");
     expect(PAGE_SOURCE.indexOf("autoplay=1")).toBeGreaterThan(PAGE_SOURCE.indexOf("setPlaying(true)"));
+    expect(iframeBlock).toContain("youtube-nocookie.com");
+  });
+
+  it("no longer holds a placeholder for a recording that has now arrived", () => {
+    expect(PAGE_CODE).not.toContain("awaitingLine");
+    expect(LIB_CODE).not.toContain("PODCAST_PENDING");
   });
 });
 
 describe("mobile and accessibility", () => {
-  it("gives every form control a label and every image real alt text", () => {
-    const labels = [...PAGE_SOURCE.matchAll(/htmlFor=\{`\$\{id\}-([a-z]+)`\}/g)].map(m => m[1]);
-    expect(new Set(labels)).toEqual(new Set(["first", "phone", "email", "level", "destination"]));
+  it("gives every image real alt text and the play button a name", () => {
     expect(JULIET.photoAlt).toContain("Juliet Nnajiofor-Uyi");
     expect(GLENICE.photoAlt).toContain("Glenice Owino");
-  });
-
-  it("keeps form text at 16px so a phone does not zoom on focus", () => {
-    // text-base is 1rem, and the page sets it on every input and select.
-    expect(PAGE_SOURCE).toContain("text-base text-wsa-navy placeholder:text-gray-400");
-    expect(PAGE_SOURCE).not.toContain("text-sm text-wsa-navy placeholder");
+    expect(PAGE_SOURCE).toContain("aria-label={`Play: ${JULIET_PODCAST.title}`}");
+    expect(PAGE_SOURCE).not.toContain('alt=""');
   });
 
   it("gives the tappable actions a real target size", () => {
@@ -365,10 +378,16 @@ describe("mobile and accessibility", () => {
     expect(PAGE_SOURCE).toContain("min-h-[2.75rem]");
   });
 
-  it("sets width and height on the hero image, so the page does not jump while it loads", () => {
+  it("sets width and height on every photograph, so the page does not jump while it loads", () => {
     const heroImg = PAGE_SOURCE.slice(PAGE_SOURCE.indexOf("src={JULIET.photo}"));
     expect(heroImg).toContain("width={600}");
     expect(heroImg).toContain("height={800}");
+    expect(PAGE_SOURCE).toContain("width={JULIET_PODCAST.posterWidth}");
+    expect(PAGE_SOURCE).toContain("height={JULIET_PODCAST.posterHeight}");
+  });
+
+  it("keeps the form placeholder and its host inside the viewport", () => {
+    expect(PAGE_SOURCE).toContain('className="pipedriveWebForms min-w-0 max-w-full"');
   });
 });
 
@@ -414,7 +433,7 @@ describe("Tim Hunt's master draft of 19 September 2026", () => {
     }
   });
 
-  it("records every point where his draft and the implementation brief differ", () => {
+  it("records every point where his draft and the implementation brief differed, and how each was settled", () => {
     expect(BRIEF_CONFLICTS.length).toBeGreaterThanOrEqual(9);
     const all = BRIEF_CONFLICTS.map(c => `${c.master} ${c.built}`).join(" ");
     for (const subject of ["Personal Assistant", "Head Office", "Tom", "free", "Source Owner", "family name", "Other", "Summer School", "Pipedrive"]) {
@@ -424,19 +443,16 @@ describe("Tim Hunt's master draft of 19 September 2026", () => {
       expect(c.master.length).toBeGreaterThan(20);
       expect(c.built.length).toBeGreaterThan(40);
     }
+    // The form conflict is now settled in his favour and says so.
+    const form = BRIEF_CONFLICTS.find(c => c.master.includes("built in Pipedrive"));
+    expect(form?.built).toContain("Adopted on 24 September 2026");
   });
 
-  it("does not call Glenice a Personal Assistant, and uses his linked-to wording for head office", () => {
+  it("does not call Glenice a Personal Assistant on the page, and uses his linked-to wording for head office", () => {
     expect(GLENICE.role).toBe("Juliet's dedicated Student Counsellor");
     expect(renderedCopy()).not.toContain("Personal Assistant");
-    // Head office now appears, because Tim Hunt asked for it on 19 September
-    // and explained the basis. It appears only as "linked to".
     expect(renderedCopy()).toContain("Linked to WSA UK Head Office");
+    // The record of the disagreement still names the wording, so the reason survives.
     expect(LIB_CODE).toContain("Personal Assistant");
-  });
-
-  it("leaves the podcast he is replacing out of the page entirely", () => {
-    expect(JULIET_PODCAST.youtubeId).toBe("");
-    expect(PAGE_CODE).not.toContain("SZjjr2T3qTU");
   });
 });

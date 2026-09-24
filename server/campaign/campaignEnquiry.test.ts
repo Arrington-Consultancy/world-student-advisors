@@ -224,10 +224,18 @@ describe("the enquiry is identifiable in the CRM", () => {
 });
 
 describe("no second CRM path", () => {
-  it("the Juliet page still hands off to the controlled signup and calls nothing itself", () => {
-    expect(JULIET_PAGE).toContain('params.set("campaign", CAMPAIGN_SLUG)');
-    expect(JULIET_PAGE).toContain("window.location.assign(`/contact?${params.toString()}#student-signup`)");
+  it("the Juliet page no longer hands off to the website signup: its form is Tim Hunt's Pipedrive form", () => {
+    // 24 September 2026. The page embeds his form and sends nobody to
+    // /contact, so the website campaign route is reached only by links
+    // already in circulation. The route itself is untouched, and the tests
+    // below and in speakToJulietEndToEnd.test.ts still prove it works for
+    // those links.
+    expect(JULIET_PAGE).not.toContain('params.set("campaign"');
+    expect(JULIET_PAGE).not.toContain("/contact?");
+    expect(JULIET_PAGE).toContain("data-pd-webforms={PIPEDRIVE_FORM.embedUrl}");
+    // And still no API call of its own to the CRM.
     expect(JULIET_PAGE.toLowerCase()).not.toContain("api.pipedrive");
+    expect(CAMPAIGN_SLUG).toBe("speak-to-juliet");
   });
 
   it("the campaign rides with the submission the signup form already makes", () => {
