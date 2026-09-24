@@ -58,9 +58,25 @@ for (const alias of ["/LPJuliet", "/lpjuliet"]) {
 for (const [label, width, height] of [["mobile", 390, 844], ["desktop", 1280, 900]]) {
   console.log(`\n=== 2. The page at ${width}px (${label}) ===`);
   const page = await browser.newPage({ viewport: { width, height }, deviceScaleFactor: 2 });
+  // Console errors are attributed to the origin that raised them. Since 24
+  // September 2026 the page carries Tim Hunt's Pipedrive form in an iframe,
+  // and that iframe asks the browser for third-party storage access, which
+  // an automated browser refuses ("requestStorageAccess: Permission
+  // denied"). That is Pipedrive's code running in Pipedrive's frame; it is
+  // reported, because a reader should see it, but it is not a fault in this
+  // site and must not fail the run. Only an error raised by the page's own
+  // origin, or by an unattributed script, counts.
   const consoleErrors = [];
+  const thirdPartyErrors = [];
+  const isThirdParty = url => {
+    try { return url && new URL(url).origin !== new URL(SITE).origin; } catch { return false; }
+  };
   page.on("pageerror", e => consoleErrors.push(String(e)));
-  page.on("console", m => { if (m.type() === "error") consoleErrors.push(m.text()); });
+  page.on("console", m => {
+    if (m.type() !== "error") return;
+    const from = m.location()?.url || m.page?.()?.url?.() || "";
+    (isThirdParty(from) ? thirdPartyErrors : consoleErrors).push(`${m.text()}${from ? `  [${new URL(from).host}]` : ""}`);
+  });
 
   await page.goto(`${SITE}/speak-to-juliet`, { waitUntil: "networkidle" });
   await page.waitForTimeout(800);
@@ -71,7 +87,8 @@ for (const [label, width, height] of [["mobile", 390, 844], ["desktop", 1280, 90
 
   const overflow = await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth);
   check(!overflow, "no horizontal overflow");
-  check(consoleErrors.length === 0, "no console errors", consoleErrors.join(" | ").slice(0, 200));
+  check(consoleErrors.length === 0, "no console errors from this site", consoleErrors.join(" | ").slice(0, 200));
+  if (thirdPartyErrors.length) console.log(`  info third-party frames logged ${thirdPartyErrors.length} error(s), not counted: ${thirdPartyErrors.join(" | ").slice(0, 200)}`);
 
   // Every image that reaches the page has actually loaded. Glenice's
   // portrait is the one that was blank in a capture before the fix.
