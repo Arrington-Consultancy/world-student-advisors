@@ -17,7 +17,7 @@ for (const [label, path] of [["PERSON FIELDS", "/personFields"], ["DEAL FIELDS",
   if (!data) continue;
   console.log(`\n=== ${label} (${data.length}) ===`);
   for (const f of data) {
-    const opts = Array.isArray(f.options) ? ` options=[${f.options.map(o => o.label).join(" | ")}]` : "";
+    const opts = Array.isArray(f.options) ? ` options=[${f.options.map(o => `${o.id}=${o.label}`).join(" | ")}]` : "";
     console.log(`  ${f.key}  "${f.name}"  ${f.field_type}${f.edit_flag === false ? " (system)" : ""}${opts}`);
   }
 }
