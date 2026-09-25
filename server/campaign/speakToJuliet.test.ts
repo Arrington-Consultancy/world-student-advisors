@@ -335,18 +335,27 @@ describe("the two people, as Tim Hunt arranged them on 24 September 2026", () =>
 });
 
 describe("the podcast", () => {
-  it("holds the slot open and uses neither recording Tim Hunt has withdrawn", () => {
-    // WSA 036 withdrawn 19 September 2026 as out of date; its replacement
-    // withdrawn 24 September by WhatsApp over a telephone number error, with
-    // the next link to be different.
-    expect(JULIET_PODCAST.youtubeId).toBe("");
+  it("plays the third recording, the one Tom Arrington supplied on 25 September 2026", () => {
+    // https://youtu.be/p4OX6muHnZM. WSA 036 was withdrawn 19 September 2026
+    // as out of date; its replacement withdrawn 24 September by WhatsApp over
+    // a telephone number error, with the next link to be different. It was.
+    expect(JULIET_PODCAST.youtubeId).toBe("p4OX6muHnZM");
+    expect(JULIET_PODCAST.youtubeId).toMatch(/^[A-Za-z0-9_-]{11}$/);
     expect(WITHDRAWN_PODCAST_IDS).toEqual(["SZjjr2T3qTU", "fR4j72Jbk5Y"]);
     for (const id of WITHDRAWN_PODCAST_IDS) {
       expect(JULIET_PODCAST.youtubeId).not.toBe(id);
       expect(PAGE_CODE, `page must not carry withdrawn id ${id}`).not.toContain(id);
     }
+    expect(LIB_CODE).toContain('youtubeId: "p4OX6muHnZM"');
+    // The provision for an empty id stays, so a future withdrawal is one edit.
     expect(JULIET_PODCAST.awaitingLine.length).toBeGreaterThan(20);
     expect(PAGE_SOURCE).toContain("if (!JULIET_PODCAST.youtubeId)");
+  });
+
+  it("is watched by the weekly YouTube link check", () => {
+    const checker = readFileSync("scripts/check-library-links.mjs", "utf8");
+    expect(checker).toContain("JULIET_PODCAST");
+    expect(checker).toContain("client/src/lib/speakToJuliet.ts");
   });
 
   it("never autoplays until a visitor asks for it", () => {
@@ -358,7 +367,7 @@ describe("the podcast", () => {
     expect(iframeBlock).toContain("youtube-nocookie.com");
   });
 
-  it("ships no poster for a recording that does not exist yet", () => {
+  it("ships no separate poster file: Juliet's photograph is the poster", () => {
     expect(PAGE_CODE).not.toContain("podcast-poster");
     expect(LIB_CODE).not.toContain("podcast-poster");
   });
