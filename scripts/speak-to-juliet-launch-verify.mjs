@@ -47,6 +47,21 @@ for (const [path, expected] of [
   check(res.status === expected, `${path} returns ${expected}`, `got ${res.status}`);
 }
 
+// The three partner assets Tom Arrington supplied on 25 September 2026 must
+// serve from production as the exact files imported from SharePoint. Sizes
+// are the imported files' byte counts, so a placeholder or a re-encode fails.
+for (const [path, bytes] of [
+  ["/partners/study-group-logo.jpg", 20395],
+  ["/partners/uclan-cyprus-logo.jpg", 13050],
+  ["/partners/university-of-debrecen-campus-and-logo.jpg", 102931],
+]) {
+  const res = await fetch(`${SITE}${path}`);
+  const body = res.ok ? Buffer.from(await res.arrayBuffer()) : Buffer.alloc(0);
+  check(res.status === 200, `${path} serves`, `got ${res.status}`);
+  check(body.length === bytes, `${path} is the imported file`, `${body.length} bytes, expected ${bytes}`);
+  check(body[0] === 0xff && body[1] === 0xd8, `${path} is a JPEG`);
+}
+
 for (const alias of ["/LPJuliet", "/lpjuliet"]) {
   const res = await fetch(`${SITE}${alias}`, { redirect: "manual" });
   const location = res.headers.get("location") ?? "";
