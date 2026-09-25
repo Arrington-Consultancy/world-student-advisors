@@ -15,7 +15,8 @@
  *      caption under Juliet's photograph, Glenice moved above How this
  *      works with a larger photograph, and his Pipedrive form embedded in
  *      place of the website form. The podcast he supplied that day he
- *      withdrew the same morning; see JULIET_PODCAST.
+ *      withdrew the same morning; its replacement arrived from Tom on 25
+ *      September. See JULIET_PODCAST.
  *   4. The controlled repository, where it is newer or more specific.
  * All three documents live in 16_WEBSITE_Ai/05 Landing Pages/Juliet. Where
  * Tim's master and the implementation brief disagreed, the implementation
@@ -25,7 +26,8 @@
  * THE COPY IS NO LONGER PROVISIONAL. Tim revised the page on 24 September
  * 2026 and supplied the form he had said was coming. What remains here is
  * his wording or Tom's, and any further change is a content edit to this
- * file, never a rebuild of the page. The one open slot is the podcast.
+ * file, never a rebuild of the page. The podcast slot was filled on 25
+ * September 2026 with the third recording.
  *
  * WHAT THIS PAGE DOES NOT DO. It creates no lead through this codebase. The
  * enquiry form on the page is Tim Hunt's own Pipedrive web form, embedded by
@@ -326,29 +328,35 @@ export const STEPS: ReadonlyArray<Step> = Object.freeze([
 /* ------------------------------------------------------------------ */
 
 /**
- * PROVISION FOR THE REPLACEMENT PODCAST. There is deliberately no video id
- * here.
+ * JULIET'S PODCAST, third recording. Tom Arrington supplied the link
+ * https://youtu.be/p4OX6muHnZM on 25 September 2026 as the replacement Tim
+ * Hunt had promised.
  *
- * Two recordings have now been withdrawn by Tim Hunt and neither may be
- * used. WSA 036 (SZjjr2T3qTU) he withdrew on 19 September 2026 as out of
- * date. Its replacement, https://youtu.be/fR4j72Jbk5Y, which he supplied on
- * 24 September, he withdrew the same morning by WhatsApp to Tom Arrington:
+ * Two earlier recordings were withdrawn by Tim and neither may be used. WSA
+ * 036 (SZjjr2T3qTU) he withdrew on 19 September 2026 as out of date. Its
+ * replacement, https://youtu.be/fR4j72Jbk5Y, which he supplied on 24
+ * September, he withdrew the same morning by WhatsApp to Tom Arrington:
  * "DO NOT USE JULIET'S PODCAST, a new one required as tel number errors, the
- * new link will be different." The page therefore shows a short, honest line
- * in the space the podcast will occupy and makes no request to YouTube.
+ * new link will be different." Both ids stay in WITHDRAWN_PODCAST_IDS and
+ * the guard test checks the live id against that list.
  *
- * TO PUBLISH THE NEXT ONE: set `youtubeId` to the new recording's id, which
- * must not be either id in WITHDRAWN_PODCAST_IDS, and add the poster Tim
- * supplies for it. The section renders the player automatically once an id
- * is present.
+ * The page renders Juliet's photograph as the poster and creates the
+ * YouTube frame only when a visitor presses play, so nothing autoplays and
+ * no third-party request is made before then. The weekly library link check
+ * (scripts/check-library-links.mjs) also watches this id, so a deleted or
+ * private recording is reported rather than shown as "Video unavailable".
+ *
+ * TO REPLACE IT AGAIN: move the current id into WITHDRAWN_PODCAST_IDS and
+ * set `youtubeId` to the new one. Setting it to "" holds the slot open with
+ * `awaitingLine` and makes no request to YouTube.
  */
 export const JULIET_PODCAST = Object.freeze({
-  /** Empty until Tim's corrected recording is ready. Never a withdrawn id. */
-  youtubeId: "",
+  /** Supplied by Tom Arrington on 25 September 2026. Never a withdrawn id. */
+  youtubeId: "p4OX6muHnZM",
   title: "Meet Juliet",
   blurb: "Juliet introduces herself and how she works with students and families in Nigeria.",
   duration: "",
-  /** Shown in the podcast's place while there is no recording to play. */
+  /** Shown in the podcast's place only if `youtubeId` is ever emptied again. */
   awaitingLine:
     "Juliet is recording a short introduction for this page. It will appear here once it is ready.",
 });

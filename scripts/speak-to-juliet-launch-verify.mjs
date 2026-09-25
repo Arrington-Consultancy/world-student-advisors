@@ -10,6 +10,8 @@
  * What it proves: the page loads, the short link redirects, WhatsApp opens
  * Juliet with the message already written, Tim's Pipedrive form is embedded
  * from his loader and his form URL, no withdrawn recording is on the page,
+ * the podcast is the third recording and YouTube reports it playable, its
+ * player appears only when a visitor presses play,
  * Glenice's photograph renders above How this works,
  * neither width overflows or logs an error, and the four pages that must not
  * have moved are still where they were.
@@ -25,6 +27,8 @@ const EXPECTED_FORM_ID = "6q9NP6Qklnnpo5qbQ9NZiyPUfxG86g8tN4BJztkTp80lcM8G8dExsi
 const EXPECTED_FORM_URL = `https://webforms.pipedrive.com/f/${EXPECTED_FORM_ID}`;
 const EXPECTED_LOADER = "https://webforms.pipedrive.com/f/loader";
 const WITHDRAWN_PODCAST_IDS = ["SZjjr2T3qTU", "fR4j72Jbk5Y"];
+// The third recording, supplied by Tom Arrington on 25 September 2026.
+const EXPECTED_PODCAST_ID = "p4OX6muHnZM";
 
 let failures = 0;
 const check = (ok, label, detail = "") => {
@@ -67,6 +71,18 @@ for (const alias of ["/LPJuliet", "/lpjuliet"]) {
   const location = res.headers.get("location") ?? "";
   check(res.status === 301, `${alias} is a permanent redirect`, `got ${res.status}`);
   check(location.endsWith("/speak-to-juliet"), `${alias} points at the canonical page`, location);
+}
+
+// YouTube must report the third recording as publicly playable. oEmbed
+// answers 200 with the title for a playable video and 401/403/404 for one
+// that is private, deleted or not embeddable.
+{
+  const target = `https://www.youtube.com/watch?v=${EXPECTED_PODCAST_ID}`;
+  const res = await fetch(`https://www.youtube.com/oembed?url=${encodeURIComponent(target)}&format=json`);
+  const body = res.ok ? await res.json().catch(() => ({})) : {};
+  check(res.status === 200, `YouTube reports ${EXPECTED_PODCAST_ID} playable`, `HTTP ${res.status}`);
+  check(typeof body.title === "string" && body.title.length > 0, "the recording has a title on YouTube", body.title ?? "(none)");
+  console.log(`  info  plays as: "${body.title ?? ""}" by ${body.author_name ?? "?"}`);
 }
 
 /* 2. The page, at both widths ------------------------------------------ */
@@ -139,10 +155,23 @@ for (const [label, width, height] of [["mobile", 390, 844], ["desktop", 1280, 90
 
   const html = await page.content();
   for (const id of WITHDRAWN_PODCAST_IDS) check(!html.includes(id), `withdrawn recording ${id} is nowhere on the page`);
-  check(html.includes("Juliet is recording a short introduction"), "the podcast slot is held open, not a broken player");
+  check(!html.includes("Juliet is recording a short introduction"), "the podcast slot is no longer held open");
   // The player is created only on request, so no YouTube frame before a click.
   const ytFrames = await page.locator('iframe[src*="youtube"]').count();
   check(ytFrames === 0, "no YouTube frame before the visitor presses play", String(ytFrames));
+  const playButton = page.locator('button[aria-label="Play: Meet Juliet"]');
+  check((await playButton.count()) === 1, "one play button, named for the recording", String(await playButton.count()));
+  const posterWidth = await playButton.locator("img").first().evaluate(img => img.complete && img.naturalWidth > 0 ? Math.round(img.getBoundingClientRect().width) : 0).catch(() => 0);
+  check(posterWidth > 200, "Juliet's photograph renders as the poster", `${posterWidth}px`);
+  if (width === 1280) {
+    await playButton.click();
+    const player = page.locator('iframe[src*="youtube-nocookie.com/embed/"]');
+    await player.first().waitFor({ state: "attached", timeout: 10000 }).catch(() => {});
+    const src = (await player.first().getAttribute("src").catch(() => null)) ?? "";
+    check(src.includes(`/embed/${EXPECTED_PODCAST_ID}?`), "pressing play opens the third recording in the no-cookie player", src || "(no player)");
+    await page.waitForTimeout(4000);
+    writeFileSync(`${OUT}/speak-to-juliet-podcast-playing.png`, await page.screenshot({ fullPage: false }));
+  }
 
   // WhatsApp, the primary action.
   const waHrefs = await page.evaluate(() =>

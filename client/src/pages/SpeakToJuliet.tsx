@@ -97,15 +97,14 @@ function WhatsAppButton({
 /**
  * Juliet's introduction.
  *
- * Tim Hunt has withdrawn both recordings made so far, the second on 24
- * September 2026 because of a telephone number error, and the next will have
- * a different link. Until its id is set the section holds the space with a
- * short, honest line: provision for the podcast rather than a broken player,
- * and no request to YouTube at all meanwhile.
+ * The recording is the third one: Tim Hunt withdrew the first two, the
+ * second on 24 September 2026 because of a telephone number error, and Tom
+ * Arrington supplied the replacement link on 25 September. Its id lives in
+ * JULIET_PODCAST. Should that id ever be emptied again the section holds the
+ * space with a short, honest line and makes no request to YouTube.
  *
- * Once JULIET_PODCAST.youtubeId is set, the poster and player below appear
- * with no other change. The iframe is still only created when a visitor asks
- * for it, so nothing autoplays.
+ * The poster is Juliet's own photograph, served from this site. The iframe
+ * is only created when a visitor asks for it, so nothing autoplays.
  */
 function JulietPodcast() {
   const [playing, setPlaying] = useState(false);

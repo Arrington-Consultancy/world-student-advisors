@@ -21,6 +21,11 @@
  * be alive and still be the wrong video. Only a person can judge that, so
  * the script shows both rather than guessing.
  *
+ * It also checks Juliet's podcast on /speak-to-juliet (JULIET_PODCAST in
+ * client/src/lib/speakToJuliet.ts), the recording Tim has already replaced
+ * twice, so a third withdrawal is reported rather than shown as "Video
+ * unavailable" on the landing page.
+ *
  * Read-only. Touches nothing but YouTube's public oEmbed endpoint.
  */
 import { readFileSync } from "fs";
@@ -35,6 +40,22 @@ const entries = [...src.matchAll(
 if (entries.length === 0) {
   console.error(`No resources parsed from ${SOURCE}. The file's shape has changed; fix this script rather than trusting a clean run.`);
   process.exit(1);
+}
+
+// Juliet's podcast on the landing page. An empty id means the slot is
+// deliberately held open, which is not a dead link and is reported as such.
+const JULIET_SOURCE = "client/src/lib/speakToJuliet.ts";
+const julietSrc = readFileSync(JULIET_SOURCE, "utf8");
+const julietBlock = julietSrc.slice(julietSrc.indexOf("export const JULIET_PODCAST"));
+const julietId = julietBlock.match(/youtubeId: "([A-Za-z0-9_-]{0,11})"/)?.[1];
+if (julietId === undefined) {
+  console.error(`Could not read JULIET_PODCAST.youtubeId from ${JULIET_SOURCE}. Fix this script rather than trusting a clean run.`);
+  process.exit(1);
+}
+if (julietId) {
+  entries.push({ code: "Juliet podcast", title: "Meet Juliet (/speak-to-juliet)", url: `https://youtu.be/${julietId}` });
+} else {
+  console.log("Juliet podcast: slot held open on /speak-to-juliet, no recording to check.\n");
 }
 
 /** Every shape the library uses today: watch?v=, youtu.be/ and shorts/. */
@@ -75,7 +96,7 @@ for (const entry of entries) {
 
 const dead = results.filter(r => !r.ok);
 
-console.log(`=== Student Support Library link check: ${entries.length} resources ===\n`);
+console.log(`=== Student Support Library link check: ${entries.length} recordings (library plus Juliet's podcast) ===\n`);
 for (const r of results) {
   if (r.ok) {
     console.log(`  OK    ${r.code}  ${r.title}`);
