@@ -251,14 +251,18 @@ const categories: PartnerCategory[] = [
         logo: "/manus-storage/cyprus_west_university_db0efd8e.png",
       },
       {
-        name: "The British University in Cyprus (BUC)",
+        // Tom Arrington, 25 September 2026, after checking the institution's
+        // official website: the card is UCLan Cyprus, which describes itself
+        // as the British University of Cyprus. BUC is not a separate
+        // institution and is not presented as one.
+        name: "UCLan Cyprus",
         location: "Larnaca, Cyprus",
         description: "Offers UK-quality education at significantly lower costs, with all degrees validated by the University of Central Lancashire (UCLan). Students graduate with a UK university degree.",
         strengths: "UK degrees awarded by UCLan",
         usp: "British degrees at a fraction of UK tuition fees",
         // UCLan Cyprus logo, supplied by Tom Arrington on 25 September 2026
-        // for this card, whose degrees UCLan validates. Imported from
-        // 16_WEBSITE_Ai/05 Landing Pages/Juliet/Website Assets.
+        // and checked by him against the institution's official website.
+        // Imported from 16_WEBSITE_Ai/05 Landing Pages/Juliet/Website Assets.
         logo: "/partners/uclan-cyprus-logo.jpg",
       },
       {
