@@ -166,7 +166,10 @@ const categories: PartnerCategory[] = [
         description: "Partners with universities in the UK, USA and Australia, with centres based directly on campus. Students can choose Foundation, International Year One and Pre-Masters programmes. Over 90% of INTO students successfully progress to their chosen degree.",
         strengths: "Business, Engineering, Computer Science",
         usp: "Full on-campus integration with strong academic and English support",
-        logo: "/manus-storage/into_global_dd630efe.png",
+        // INTO's white-on-transparent mark, recoloured WSA navy so it reads on
+        // the white card. The white original showed as a blank space; Tom
+        // Arrington, 25 September 2026. Shape and proportions unchanged.
+        logo: "/manus-storage/into_global_navy_on_transparent.png",
       },
       {
         name: "ONCAMPUS",
