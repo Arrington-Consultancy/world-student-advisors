@@ -187,6 +187,9 @@ const AREA_MAP: Record<string, number> = {
 
 const MODE_MAP: Record<string, number> = {
   "full-time": 59, // Study Abroad Full Time
+  // Removed from the form by Tom Arrington, 25 September 2026. Kept here so a
+  // submission already in flight is still recorded rather than rejected, as
+  // loan and mixed were when they left the funding options.
   "part-time": 65, // Other (no dedicated part-time option)
   online: 64,
   blended: 63, // Hybrid (online & abroad) — closest match
@@ -226,11 +229,23 @@ const FUNDING_MAP: Record<string, number> = {
   mixed: 92, // Looking for a partial scholarship (closest — implies partial self + other funding)
 };
 
+/**
+ * Option ids of the Pipedrive person field "Recommended Student Counsellor"
+ * (91cce905e99d4d7ad6a8e2b4db41b89f8a5a72cf), read from production on
+ * 25 September 2026 by the read-only schema inventory (run 36112377289):
+ * 95 Eldah Therone, 96 Glenice Owino, 97 Manet Khamayo, 317 Claudia Ingado,
+ * 99 Help me choose. Sarafina Kihumbu's option 98 no longer exists in
+ * Pipedrive, so a "sarafina" value still arriving from a form already open
+ * when this deployed records as Help me choose rather than sending an id
+ * the CRM would reject. Tom Arrington, 25 September 2026: remove Sarafina,
+ * replace with Claudia Ingado.
+ */
 const COUNSELLOR_MAP: Record<string, number> = {
   eldah: 95, "Eldah Therone": 95, Eldah: 95,
   glenice: 96, "Glenice Owino": 96, Glenice: 96,
   manet: 97, "Manet Khamayo": 97, Manet: 97,
-  sarafina: 98, "Sarafina Kihumbu": 98, Sarafina: 98,
+  claudia: 317, "Claudia Ingado": 317, Claudia: 317,
+  sarafina: 99, "Sarafina Kihumbu": 99, Sarafina: 99,
   "help-me-choose": 99, "Help me choose": 99, "": 99,
 };
 
@@ -241,7 +256,9 @@ const COUNSELLOR_LABELS: Record<string, string> = {
   eldah: "Eldah Therone",
   glenice: "Glenice Owino",
   manet: "Manet Khamayo",
-  sarafina: "Sarafina Kihumbu",
+  claudia: "Claudia Ingado",
+  // No entry for sarafina: a late "sarafina" value reads as Unallocated,
+  // which is what it now records as (see COUNSELLOR_MAP).
 };
 
 /** "Unallocated", not "None" — no counsellor was selected, which is a

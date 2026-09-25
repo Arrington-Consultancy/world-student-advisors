@@ -543,7 +543,6 @@ function StudentForm() {
             >
               <option value="">Select...</option>
               <option value="full-time">Full-time (on campus)</option>
-              <option value="part-time">Part-time</option>
               <option value="online">Online / Distance</option>
               <option value="blended">Blended (online + campus)</option>
             </select>
@@ -736,7 +735,7 @@ function StudentForm() {
               <option value="eldah">Eldah Therone</option>
               <option value="glenice">Glenice Owino</option>
               <option value="manet">Manet Khamayo</option>
-              <option value="sarafina">Sarafina Kihumbu</option>
+              <option value="claudia">Claudia Ingado</option>
               <option value="help-me-choose">Help me choose</option>
             </select>
           </div>

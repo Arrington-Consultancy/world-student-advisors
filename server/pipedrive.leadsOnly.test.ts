@@ -193,11 +193,29 @@ describe("createStudentLead — Leads only, no owner/allocation logic", () => {
   it("includes the recommended counsellor's name in the Lead title, and returns it as a label", async () => {
     const calls = installMockFetch();
 
+    // Claudia Ingado replaced Sarafina Kihumbu on the form on 25 September
+    // 2026 (Tom Arrington). Her Pipedrive option is 317, read from the live
+    // field by the schema inventory on the same day.
+    const result = await createStudentLead({ ...baseData, recommendedCounsellor: "claudia" });
+
+    expect(result.recommendedCounsellorLabel).toBe("Claudia Ingado");
+    const leadCreates = callsTo(calls, "/leads", "POST");
+    expect(leadCreates[0].body.title).toContain("[Rec: Claudia Ingado]");
+    const personCreates = callsTo(calls, "/persons", "POST");
+    expect(personCreates[0].body["91cce905e99d4d7ad6a8e2b4db41b89f8a5a72cf"]).toBe(317);
+  });
+
+  it("records a late 'sarafina' value as Help me choose and labels it Unallocated, because her option no longer exists in Pipedrive", async () => {
+    const calls = installMockFetch();
+
     const result = await createStudentLead({ ...baseData, recommendedCounsellor: "sarafina" });
 
-    expect(result.recommendedCounsellorLabel).toBe("Sarafina Kihumbu");
+    expect(result.recommendedCounsellorLabel).toBe("Unallocated");
     const leadCreates = callsTo(calls, "/leads", "POST");
-    expect(leadCreates[0].body.title).toContain("[Rec: Sarafina Kihumbu]");
+    expect(leadCreates[0].body.title).toContain("[Rec: Unallocated]");
+    const personCreates = callsTo(calls, "/persons", "POST");
+    // 99 = Help me choose. Never 98, which Pipedrive would reject.
+    expect(personCreates[0].body["91cce905e99d4d7ad6a8e2b4db41b89f8a5a72cf"]).toBe(99);
   });
 
   it("labels an empty recommendedCounsellor as 'Unallocated' (never 'None'), in both the title and the return value", async () => {
