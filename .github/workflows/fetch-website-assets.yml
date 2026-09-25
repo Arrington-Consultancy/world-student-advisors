@@ -1,0 +1,61 @@
+name: Import website assets from SharePoint (read only)
+
+# Manual only. Downloads the partner assets Tom Arrington uploaded to the
+# controlled SharePoint folder 16_WEBSITE_Ai/05 Landing Pages/Juliet/Website
+# Assets on 25 September 2026 and commits them to the branch given, so the
+# Partners page can serve them. Same mechanism and same credential as
+# fetch-team-assets.yml: the import runs inside the Railway service through
+# `railway run`, reusing the SHAREPOINT_GRAPH_* application already trusted
+# for read-only SharePoint access. Never prints a token. Writes nothing to
+# SharePoint.
+on:
+  workflow_dispatch:
+    inputs:
+      service_name:
+        description: "Railway app service name"
+        required: true
+        default: "world-student-advisors"
+      environment_name:
+        description: "Railway environment name"
+        required: true
+        default: "production"
+      target_branch:
+        description: "Branch to commit the imported assets to"
+        required: true
+        default: "main"
+
+jobs:
+  import:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.target_branch }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Install Railway CLI
+        run: npm install -g @railway/cli
+      - name: Import the assets
+        env:
+          RAILWAY_TOKEN: ${{ secrets.githubactionsprod }}
+        run: |
+          railway run \
+            --service "${{ github.event.inputs.service_name }}" \
+            --environment "${{ github.event.inputs.environment_name }}" \
+            -- node scripts/fetch-website-assets.mjs
+      - name: Commit the imported assets
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add client/public/partners
+          if git diff --cached --quiet; then
+            echo "No asset changes to commit."
+            exit 0
+          fi
+          git commit -m "Import partner website assets from SharePoint (Study Group, UCLan Cyprus, University of Debrecen)"
+          git push origin HEAD:${{ github.event.inputs.target_branch }}
+      - name: Show what was imported
+        run: ls -l client/public/partners
