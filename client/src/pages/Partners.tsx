@@ -45,7 +45,8 @@ const categories: PartnerCategory[] = [
         description: "A purpose-built, co-educational boarding school for students aged 13–19, renowned for outstanding academic results and progression to leading universities.",
         strengths: "Science, Mathematics",
         usp: "Outstanding academic results; top UK university progression",
-        logo: "/manus-storage/abbey_dld_group_cd40fa74.jpg",
+        // No logo until a sound Abbey DLD Group file is supplied: the one this
+        // card carried was a truncated JPEG, grey below its first rows.
       },
       {
         name: "Abbey College Manchester",
@@ -53,7 +54,7 @@ const categories: PartnerCategory[] = [
         description: "Provides a supportive, co-educational boarding school experience with small class sizes and personalised teaching. Offers a unique Academic Studies with Football Training programme.",
         strengths: "Medicine, Business, Creative Arts, Football Training",
         usp: "Small classes; Academic Studies with Football Training",
-        logo: "/manus-storage/abbey_dld_group_cd40fa74.jpg",
+        // No logo: same truncated Abbey DLD Group file as the Cambridge card.
       },
       {
         name: "DLD College London",
@@ -104,7 +105,7 @@ const categories: PartnerCategory[] = [
         description: "Provides high-quality English language training and academic preparation courses. WSA has a direct partnership with NCG and has successfully sent English language students to their programmes.",
         strengths: "Language training, cultural immersion, academic skills",
         usp: "Strong WSA partnership; city-centre campuses",
-        logo: "/manus-storage/ncg_3a880115.png",
+        logo: "/manus-storage/new_college_group_trimmed.png",
       },
     ],
   },
@@ -147,7 +148,7 @@ const categories: PartnerCategory[] = [
         description: "English Language Summer Schools combining English tuition with sports and cultural activities. Students enjoy excursions, social events and the chance to practise English in real-world settings.",
         strengths: "Language learning + cultural immersion",
         usp: "Combines English tuition with sport & social programme",
-        logo: "/manus-storage/ncg_3a880115.png",
+        logo: "/manus-storage/new_college_group_trimmed.png",
       },
     ],
   },
@@ -193,7 +194,7 @@ const categories: PartnerCategory[] = [
         description: "One of the largest pathway providers, working with over 50 universities globally across the UK, Europe, North America, France, Ireland and South East Asia. Through International Study Centres, it offers Foundation, International Year One and Pre-Masters programmes.",
         strengths: "Business, Law, Engineering, Creative Arts",
         usp: "Prestigious global university partnerships and subject-specialist pathways",
-        logo: "/manus-storage/study_group_8ee9a299.jpg",
+        logo: "/manus-storage/study_group_trimmed.png",
       },
     ],
   },
@@ -208,7 +209,7 @@ const categories: PartnerCategory[] = [
     partners: [
       { name: "Aberystwyth University", location: "Aberystwyth, Wales", description: "A historic coastal university with strong rankings in research and teaching.", strengths: "Agriculture, International Politics, Business", usp: "Excellent student satisfaction", logo: "/manus-storage/aberystwyth_university_d2521ae4.png" },
       { name: "Anglia Ruskin University", location: "Cambridge, Chelmsford, Peterborough & London Campus", description: "Modern, career-focused university with multiple campuses, including a dedicated London Campus.", strengths: "Health, Business, Technology", usp: "Excellent employability support", logo: "/manus-storage/anglia_ruskin_university_3f41a15b.svg" },
-      { name: "Bath Spa University", location: "Bath", description: "Set in a World Heritage city, renowned for Creative Arts, Humanities and Education.", strengths: "Creative Arts, Humanities, Education", usp: "Supportive community feel in a beautiful setting", logo: "/manus-storage/bath_spa_university_official_f842eb94.png" },
+      { name: "Bath Spa University", location: "Bath", description: "Set in a World Heritage city, renowned for Creative Arts, Humanities and Education.", strengths: "Creative Arts, Humanities, Education", usp: "Supportive community feel in a beautiful setting", logo: "/manus-storage/bath_spa_university_trimmed.png" },
       { name: "Birmingham City University", location: "Birmingham", description: "Dynamic and industry-focused university in the UK's second city.", strengths: "Media, Business, Engineering", usp: "Strong employer links", logo: "/manus-storage/birmingham_city_university_final_a71309ee.png" },
       { name: "BPP University", location: "London & regional centres", description: "Specialist private university with a focus on practical training closely linked to industry.", strengths: "Law, Business, Professional Studies", usp: "Industry-focused training", logo: "/manus-storage/bpp_university_2a600f2b.svg" },
       { name: "London South Bank University", location: "London", description: "Located in central London with strong vocational courses.", strengths: "Engineering, Health, Business", usp: "Excellent graduate employability", logo: "/manus-storage/london_south_bank_university_58c20e3d.svg" },
@@ -379,19 +380,22 @@ export default function Partners() {
               {cat.partners.map((partner, i) => (
                <ScrollReveal key={partner.name} delay={i * 40} className="h-full">
                   <div className="border border-border/40 p-6 h-full bg-white flex flex-col">
-                    <div className="flex items-start justify-between gap-3 mb-3 min-h-[2.5rem]">
-                      <h3 className="text-base font-semibold text-wsa-navy leading-snug flex-1">{partner.name}</h3>
-                      {partner.logo && (
-                        <div className="shrink-0 w-12 h-12 flex items-center justify-center">
-                          <img
-                            src={partner.logo}
-                            alt={`${partner.name} logo`}
-                            className="max-w-full max-h-full object-contain"
-                            loading="lazy"
-                          />
-                        </div>
-                      )}
-                    </div>
+                    {/* The logo has its own strip, 48px tall and up to 176px wide,
+                        left-aligned above the name. It used to share the title
+                        row in a 48x48 box, which shrank every wordmark (INTO,
+                        Study Group, Oxford International) to a speck that read
+                        as no logo at all. Tom Arrington, 25 September 2026. */}
+                    {partner.logo && (
+                      <div className="mb-4 flex h-12 items-center">
+                        <img
+                          src={partner.logo}
+                          alt={`${partner.name} logo`}
+                          className="h-full w-auto max-w-[11rem] object-contain object-left"
+                          loading="lazy"
+                        />
+                      </div>
+                    )}
+                    <h3 className="text-base font-semibold text-wsa-navy leading-snug mb-3 min-h-[2.5rem]">{partner.name}</h3>
                     <div className="flex items-center gap-1.5 mb-4">
                       <MapPin size={13} className="text-muted-foreground/60" />
                       <span className="text-sm text-muted-foreground">{partner.location}</span>
