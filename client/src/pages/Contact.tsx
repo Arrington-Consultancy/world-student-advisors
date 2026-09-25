@@ -735,7 +735,7 @@ function StudentForm() {
               <option value="eldah">Eldah Therone</option>
               <option value="glenice">Glenice Owino</option>
               <option value="manet">Manet Khamayo</option>
-              <option value="sarafina">Sarafina Kihumbu</option>
+              <option value="claudia">Claudia Ingado</option>
               <option value="help-me-choose">Help me choose</option>
             </select>
           </div>

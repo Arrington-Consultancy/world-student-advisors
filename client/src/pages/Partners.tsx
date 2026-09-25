@@ -228,8 +228,11 @@ const categories: PartnerCategory[] = [
     subtitle: "International university partners in Europe and beyond",
     icon: Globe,
     intro: "WSA has carefully selected direct international university partners in Europe that combine academic quality, recognised degrees and competitive tuition fees. These universities all sit within the Schengen visa region, allowing students easy mobility across Europe.",
-    image: "/manus-storage/partner_pathway_2_8831de3c.webp",
-    imageAlt: "European university campus",
+    // No section photograph until a University of Debrecen image is supplied.
+    // The file this section carried, partner_pathway_2_8831de3c.webp, is a
+    // Hartpury graduation photograph: a UK university on the Non-UK section.
+    // Tom Arrington, 25 September 2026: replace it with the University of
+    // Debrecen. A wrong picture is worse than none, so none until then.
     partners: [
       {
         name: "Cyprus West University (CWU)",
@@ -245,7 +248,9 @@ const categories: PartnerCategory[] = [
         description: "Offers UK-quality education at significantly lower costs, with all degrees validated by the University of Central Lancashire (UCLan). Students graduate with a UK university degree.",
         strengths: "UK degrees awarded by UCLan",
         usp: "British degrees at a fraction of UK tuition fees",
-        logo: "/manus-storage/british_university_cyprus_3c641222.svg",
+        // No logo until the university's own is supplied. The file this card
+        // carried, british_university_cyprus_3c641222.svg, is the London
+        // South Bank University wordmark. Tom Arrington, 25 September 2026.
       },
       {
         name: "University of Debrecen",
