@@ -543,7 +543,6 @@ function StudentForm() {
             >
               <option value="">Select...</option>
               <option value="full-time">Full-time (on campus)</option>
-              <option value="part-time">Part-time</option>
               <option value="online">Online / Distance</option>
               <option value="blended">Blended (online + campus)</option>
             </select>

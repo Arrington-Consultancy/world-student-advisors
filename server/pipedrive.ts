@@ -187,6 +187,9 @@ const AREA_MAP: Record<string, number> = {
 
 const MODE_MAP: Record<string, number> = {
   "full-time": 59, // Study Abroad Full Time
+  // Removed from the form by Tom Arrington, 25 September 2026. Kept here so a
+  // submission already in flight is still recorded rather than rejected, as
+  // loan and mixed were when they left the funding options.
   "part-time": 65, // Other (no dedicated part-time option)
   online: 64,
   blended: 63, // Hybrid (online & abroad) — closest match
