@@ -26,6 +26,8 @@ interface PartnerCategory {
   intro: string;
   image?: string;
   imageAlt?: string;
+  /** Show the section image at its own proportions rather than in the 4:3 frame. */
+  imageUncropped?: boolean;
   partners: Partner[];
 }
 
@@ -194,7 +196,7 @@ const categories: PartnerCategory[] = [
         description: "One of the largest pathway providers, working with over 50 universities globally across the UK, Europe, North America, France, Ireland and South East Asia. Through International Study Centres, it offers Foundation, International Year One and Pre-Masters programmes.",
         strengths: "Business, Law, Engineering, Creative Arts",
         usp: "Prestigious global university partnerships and subject-specialist pathways",
-        logo: "/manus-storage/study_group_trimmed.png",
+        logo: "/partners/study-group-logo.jpg",
       },
     ],
   },
@@ -232,11 +234,13 @@ const categories: PartnerCategory[] = [
     subtitle: "International university partners in Europe and beyond",
     icon: Globe,
     intro: "WSA has carefully selected direct international university partners in Europe that combine academic quality, recognised degrees and competitive tuition fees. These universities all sit within the Schengen visa region, allowing students easy mobility across Europe.",
-    // No section photograph until a University of Debrecen image is supplied.
-    // The file this section carried, partner_pathway_2_8831de3c.webp, is a
-    // Hartpury graduation photograph: a UK university on the Non-UK section.
-    // Tom Arrington, 25 September 2026: replace it with the University of
-    // Debrecen. A wrong picture is worse than none, so none until then.
+    // Tom Arrington's combined campus and branding image, uploaded to
+    // 16_WEBSITE_Ai/05 Landing Pages/Juliet/Website Assets on 25 September
+    // 2026 and imported by scripts/fetch-website-assets.mjs. Shown at its own
+    // proportions, so the logo panel in its corner is never cropped away.
+    image: "/partners/university-of-debrecen-campus-and-logo.jpg",
+    imageAlt: "The main building of the University of Debrecen, Hungary, with the university's logo",
+    imageUncropped: true,
     partners: [
       {
         name: "Cyprus West University (CWU)",
@@ -252,9 +256,10 @@ const categories: PartnerCategory[] = [
         description: "Offers UK-quality education at significantly lower costs, with all degrees validated by the University of Central Lancashire (UCLan). Students graduate with a UK university degree.",
         strengths: "UK degrees awarded by UCLan",
         usp: "British degrees at a fraction of UK tuition fees",
-        // No logo until the university's own is supplied. The file this card
-        // carried, british_university_cyprus_3c641222.svg, is the London
-        // South Bank University wordmark. Tom Arrington, 25 September 2026.
+        // UCLan Cyprus logo, supplied by Tom Arrington on 25 September 2026
+        // for this card, whose degrees UCLan validates. Imported from
+        // 16_WEBSITE_Ai/05 Landing Pages/Juliet/Website Assets.
+        logo: "/partners/uclan-cyprus-logo.jpg",
       },
       {
         name: "University of Debrecen",
@@ -363,11 +368,11 @@ export default function Partners() {
                 </p>
                 </div>
                 {cat.image && (
-                  <div className="hidden lg:block aspect-[4/3] overflow-hidden">
+                  <div className={`hidden lg:block overflow-hidden ${cat.imageUncropped ? "" : "aspect-[4/3]"}`}>
                     <img
                       src={cat.image}
                       alt={cat.imageAlt || `${cat.title} partner institutions`}
-                      className="w-full h-full object-cover"
+                      className={cat.imageUncropped ? "w-full h-auto" : "w-full h-full object-cover"}
                       loading="lazy"
                     />
                   </div>
