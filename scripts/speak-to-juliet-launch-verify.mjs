@@ -11,7 +11,9 @@
  * Juliet with the message already written, Tim's Pipedrive form is embedded
  * from his loader and his form URL, no withdrawn recording is on the page,
  * the podcast is the third recording and YouTube reports it playable, its
- * player appears only when a visitor presses play,
+ * player appears only when a visitor presses play, the hero offers Tim's two
+ * clear routes with an outlined Send my details to Juliet button and the form
+ * heading is Ask Juliet to contact you,
  * Glenice's photograph renders above How this works,
  * neither width overflows or logs an error, and the four pages that must not
  * have moved are still where they were.
@@ -154,6 +156,23 @@ for (const [label, width, height] of [["mobile", 390, 844], ["desktop", 1280, 90
   check(flag >= 40, "the Nigerian flag is the larger size", `${flag}px`);
 
   const html = await page.content();
+  // Tim Hunt's two clear routes, 26 September 2026: WhatsApp, and a proper
+  // outlined button to the form under his heading and line.
+  check(!html.includes("Would rather not"), "the old afterthought wording is gone");
+  const secondary = page.locator('main a[href="#send-details"]');
+  check((await secondary.count()) === 1, "one button leads to the form", String(await secondary.count()));
+  const secondaryInfo = await secondary.first().evaluate(a => {
+    const cs = getComputedStyle(a);
+    return { text: a.textContent?.trim() ?? "", h: Math.round(a.getBoundingClientRect().height), border: parseFloat(cs.borderTopWidth), bg: cs.backgroundColor };
+  }).catch(() => ({ text: "", h: 0, border: 0, bg: "" }));
+  check(secondaryInfo.text === "Send my details to Juliet", "it reads Send my details to Juliet", secondaryInfo.text);
+  check(secondaryInfo.h >= 48, "it is a full-size button", `${secondaryInfo.h}px`);
+  check(secondaryInfo.border >= 2 && !secondaryInfo.bg.includes("18, 140, 126"), "it is outlined, not solid WhatsApp green", `border ${secondaryInfo.border}px, bg ${secondaryInfo.bg}`);
+  check(html.includes("Prefer Juliet to contact you?"), "the hero asks Prefer Juliet to contact you?");
+  check(html.includes("Leave your details and Juliet will get in touch with you."), "with Tim's line beneath it");
+  const formHeading = (await page.locator("#send-details #juliet-form-heading").textContent().catch(() => "")) ?? "";
+  check(formHeading.trim() === "Ask Juliet to contact you", "the form heading is Ask Juliet to contact you", formHeading.trim());
+  check(html.includes("Leave your details below and Juliet will get in touch with you."), "with Tim's line beneath it too");
   for (const id of WITHDRAWN_PODCAST_IDS) check(!html.includes(id), `withdrawn recording ${id} is nowhere on the page`);
   check(!html.includes("Juliet is recording a short introduction"), "the podcast slot is no longer held open");
   // The player is created only on request, so no YouTube frame before a click.

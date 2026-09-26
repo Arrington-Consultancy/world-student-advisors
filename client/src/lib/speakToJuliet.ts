@@ -164,7 +164,19 @@ export const HERO = Object.freeze({
   supporting:
     "Free, personal support for Nigerian students and families from Juliet and the WorldStudentAdvisors team.",
   primaryCta: "Message Juliet on WhatsApp",
-  secondaryCta: "Would rather not message? Send your details instead.",
+  /**
+   * The second of the two clear routes. Tim Hunt's wording, from his email
+   * forwarded by Tom Arrington on 26 September 2026: the earlier one-line
+   * link "Would rather not message? Send your details instead." was "too
+   * small and feels a bit like an afterthought". It is now a heading, a line
+   * and a proper button, outlined rather than solid green so WhatsApp stays
+   * the primary action while this one is still prominent.
+   */
+  secondary: Object.freeze({
+    heading: "Prefer Juliet to contact you?",
+    supporting: "Leave your details and Juliet will get in touch with you.",
+    cta: "Send my details to Juliet",
+  }),
 });
 
 /**
@@ -394,8 +406,14 @@ export const WITHDRAWN_PODCAST_IDS: ReadonlyArray<string> = Object.freeze([
 export const PIPEDRIVE_FORM = Object.freeze({
   embedUrl: "https://webforms.pipedrive.com/f/6q9NP6Qklnnpo5qbQ9NZiyPUfxG86g8tN4BJztkTp80lcM8G8dExsiKe6jTWJCzYwr",
   loaderSrc: "https://webforms.pipedrive.com/f/loader",
-  heading: "Would rather not message?",
-  supporting: "Leave your details and Juliet will come back to you.",
+  /**
+   * Tim Hunt's wording of 26 September 2026, forwarded by Tom Arrington. The
+   * submit button inside the form he also asked to read "Send my details to
+   * Juliet"; that button is inside his Pipedrive form, which this site does
+   * not change, so it is his to set in Pipedrive.
+   */
+  heading: "Ask Juliet to contact you",
+  supporting: "Leave your details below and Juliet will get in touch with you.",
   /** Shown only if the loader has not replaced the placeholder, and for visitors without scripts. */
   fallbackLine: "If the form does not appear here, open it in a new tab.",
   fallbackCta: "Open the form",

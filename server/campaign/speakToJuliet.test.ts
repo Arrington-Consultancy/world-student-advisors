@@ -63,7 +63,8 @@ const LIB_CODE = stripComments(readFileSync("client/src/lib/speakToJuliet.ts", "
  */
 function renderedCopy(): string {
   return [
-    HERO.eyebrow, HERO.headline, HERO.supporting, HERO.primaryCta, HERO.secondaryCta,
+    HERO.eyebrow, HERO.headline, HERO.supporting, HERO.primaryCta,
+    HERO.secondary.heading, HERO.secondary.supporting, HERO.secondary.cta,
     JULIET.name, JULIET.role, JULIET.location ?? "", JULIET.photoAlt, JULIET_ORGANISATION,
     GLENICE.name, GLENICE.role, GLENICE.photoAlt, GLENICE_QUOTE, GLENICE_HEAD_OFFICE_LINE,
     SUPPORT_HEADING, ...KEY_MESSAGE,
@@ -137,9 +138,29 @@ describe("the form is Tim Hunt's Pipedrive form, unaltered", () => {
     expect(PAGE_CODE).not.toContain("CAMPAIGN_SLUG");
   });
 
-  it("promises Juliet will come back, which is the Pipedrive workflow Tim Hunt confirmed", () => {
-    expect(PIPEDRIVE_FORM.supporting).toContain("Juliet will come back to you");
-    expect(PIPEDRIVE_FORM.heading).toBe("Would rather not message?");
+  it("invites the visitor to ask Juliet to contact them, in Tim Hunt's words of 26 September 2026", () => {
+    expect(PIPEDRIVE_FORM.heading).toBe("Ask Juliet to contact you");
+    expect(PIPEDRIVE_FORM.supporting).toBe("Leave your details below and Juliet will get in touch with you.");
+    // His submit-button wording lives inside his Pipedrive form, which this
+    // site does not change, so the page renders no submit button of its own.
+    expect(PAGE_SOURCE).not.toContain('type="submit"');
+  });
+
+  it("offers two clear routes in the hero: WhatsApp, and a proper outlined button to the form", () => {
+    expect(HERO.secondary.heading).toBe("Prefer Juliet to contact you?");
+    expect(HERO.secondary.supporting).toBe("Leave your details and Juliet will get in touch with you.");
+    expect(HERO.secondary.cta).toBe("Send my details to Juliet");
+    const hero = PAGE_SOURCE.slice(PAGE_SOURCE.indexOf("{HERO.primaryCta}"), PAGE_SOURCE.indexOf("<figure"));
+    expect(hero).toContain('href="#send-details"');
+    expect(hero).toContain("{HERO.secondary.cta}");
+    // Outlined, not solid green, and the same target height as WhatsApp.
+    const button = hero.slice(hero.indexOf('href="#send-details"'), hero.indexOf("{HERO.secondary.cta}"));
+    expect(button).toContain("border-2 border-wsa-navy");
+    expect(button).toContain("min-h-[3rem]");
+    expect(button).not.toContain("WHATSAPP_GREEN");
+    // The old afterthought is gone everywhere the visitor reads.
+    expect(renderedCopy()).not.toContain("Would rather not");
+    expect(renderedCopy()).not.toContain("Send your details instead");
   });
 });
 

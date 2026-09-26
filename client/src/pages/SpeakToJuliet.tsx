@@ -324,11 +324,19 @@ export default function SpeakToJuliet() {
               </WhatsAppButton>
             </div>
 
-            <p className="mt-3.5 text-sm text-gray-600">
-              <a href="#send-details" className="underline underline-offset-2 hover:text-wsa-navy">
-                {HERO.secondaryCta}
+            {/* The second clear route, Tim Hunt's wording of 26 September
+                2026: a proper button, outlined so WhatsApp above stays the
+                primary action while this one is plainly visible. */}
+            <div className="mt-7 max-w-xl border-t border-wsa-navy/10 pt-6">
+              <p className="text-base font-semibold text-wsa-navy">{HERO.secondary.heading}</p>
+              <p className="mt-1 text-sm leading-relaxed text-gray-600">{HERO.secondary.supporting}</p>
+              <a
+                href="#send-details"
+                className="mt-3.5 inline-flex min-h-[3rem] w-full items-center justify-center rounded-xl border-2 border-wsa-navy bg-transparent px-6 py-3 text-base font-semibold text-wsa-navy transition hover:bg-wsa-navy hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-wsa-navy sm:w-auto"
+              >
+                {HERO.secondary.cta}
               </a>
-            </p>
+            </div>
           </div>
 
           {/* Juliet's photograph is the point of the hero, so it is not a
