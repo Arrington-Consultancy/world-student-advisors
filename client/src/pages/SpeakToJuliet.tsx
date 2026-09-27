@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState } from "react";
 import { Link } from "wouter";
-import { Check, Mail, MessageCircle, Play } from "lucide-react";
+import { Check, CreditCard, FileCheck, GraduationCap, LifeBuoy, Mail, MessageCircle, MessagesSquare, Plane, Play, Stamp } from "lucide-react";
 import {
   AVAILABILITY_NOTE,
+  BACKED_BY_LABEL,
   DESTINATIONS,
   DESTINATIONS_LINE,
   GLENICE,
@@ -12,11 +13,15 @@ import {
   JULIET_ORGANISATION,
   JULIET_PODCAST,
   GLENICE_HEAD_OFFICE_LINE,
+  FREE_BADGE,
+  HELP_HEADING,
   KEY_MESSAGE,
+  READY_HEADING,
   type PersonCard,
   PIPEDRIVE_FORM,
   STEPS,
   STUDY_FAMILIES,
+  TRUST_LINE,
   SUPPORT_HEADING,
   SUPPORT_STEPS,
   WHATSAPP_FIRST_MESSAGE,
@@ -44,6 +49,9 @@ import {
  */
 
 const WHATSAPP_GREEN = "#128C7E";
+
+/** One icon per line of SUPPORT_STEPS, in Tim Hunt's order. Decorative. */
+const HELP_ICONS = [GraduationCap, FileCheck, CreditCard, Stamp, MessagesSquare, Plane, LifeBuoy] as const;
 
 /* ------------------------------------------------------------------ */
 
@@ -307,7 +315,7 @@ export default function SpeakToJuliet() {
 
       {/* ── Hero ─────────────────────────────────────────────────── */}
       <section className="px-4 pb-10 pt-8 sm:px-6 lg:pb-14 lg:pt-12">
-        <div className="mx-auto grid max-w-6xl gap-8 lg:grid-cols-[1.05fr_minmax(300px,400px)] lg:items-center lg:gap-12">
+        <div className="mx-auto grid max-w-6xl gap-8 lg:grid-cols-[1.05fr_minmax(300px,360px)] lg:items-center lg:gap-12">
           <div className="min-w-0">
             <p className="flex items-center gap-3 text-sm font-semibold uppercase tracking-wider text-wsa-red">
               <NigerianFlag className="h-7 w-[2.625rem] shrink-0" />
@@ -318,7 +326,20 @@ export default function SpeakToJuliet() {
             </h1>
             <p className="mt-4 max-w-xl text-lg leading-relaxed text-gray-700">{HERO.supporting}</p>
 
-            <div className="mt-7">
+            {/* WSA as the source of authority, Tim Hunt's direction of 27
+                September 2026. Existing approved wording only; see TRUST_LINE. */}
+            <ul className="mt-5 space-y-1.5">
+              {TRUST_LINE.map(t => (
+                <li key={t} className="flex items-start gap-2 text-sm font-medium text-wsa-navy sm:text-base">
+                  <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-emerald-600 text-white">
+                    <Check className="h-3 w-3" aria-hidden />
+                  </span>
+                  <span>{t}</span>
+                </li>
+              ))}
+            </ul>
+
+            <div className="mt-6">
               <WhatsAppButton onRef={el => { heroCtaRef.current = el; }} className="w-full sm:w-auto">
                 {HERO.primaryCta}
               </WhatsAppButton>
@@ -343,21 +364,74 @@ export default function SpeakToJuliet() {
               decorative background: fixed dimensions, no layout shift. The
               caption beneath it is Tim Hunt's, 24 September 2026, in his
               four lines. */}
-          <figure className="mx-auto w-full max-w-[320px] min-w-0 lg:max-w-none">
-            <img
-              src={JULIET.photo}
-              alt={JULIET.photoAlt}
-              width={600}
-              height={800}
-              className="block aspect-[3/4] w-full rounded-2xl border border-wsa-navy/10 bg-wsa-stone object-cover object-top shadow-sm"
-            />
-            <figcaption className="mt-3 text-center leading-snug lg:text-left">
-              <span className="block text-base font-semibold text-wsa-navy">{JULIET.name}</span>
-              <span className="block text-sm text-gray-700">{JULIET.role}</span>
-              <span className="block text-sm text-gray-700">{JULIET_ORGANISATION}</span>
-              <span className="block text-sm text-gray-500">{JULIET.location}</span>
-            </figcaption>
-          </figure>
+          <div className="mx-auto w-full max-w-[360px] min-w-0">
+            <figure className="min-w-0">
+              <img
+                src={JULIET.photo}
+                alt={JULIET.photoAlt}
+                width={600}
+                height={800}
+                className="block aspect-[3/4] w-full rounded-2xl border border-wsa-navy/10 bg-wsa-stone object-cover object-top shadow-sm"
+              />
+              <figcaption className="mt-3 text-center leading-snug lg:text-left">
+                <span className="block text-base font-semibold text-wsa-navy">{JULIET.name}</span>
+                <span className="block text-sm text-gray-700">{JULIET.role}</span>
+                <span className="block text-sm text-gray-700">{JULIET_ORGANISATION}</span>
+                <span className="block text-sm text-gray-500">{JULIET.location}</span>
+              </figcaption>
+            </figure>
+
+            {/* Juliet is the face; WSA is the authority. Glenice, in Tim
+                Hunt's settled role, stands beside her from the first screen,
+                and the free-support badge carries his charging rule. Her real
+                photograph, no contact details: all contact is through Juliet. */}
+            <div className="mt-4 grid gap-3">
+              <div className="flex items-center gap-3 rounded-2xl border border-wsa-navy/10 bg-white p-3 shadow-sm">
+                <img
+                  src={GLENICE.photo}
+                  alt={GLENICE.photoAlt}
+                  width={64}
+                  height={85}
+                  decoding="async"
+                  className="block aspect-[3/4] w-16 shrink-0 rounded-lg border border-wsa-navy/10 bg-wsa-stone object-cover object-top"
+                />
+                <div className="min-w-0 leading-snug">
+                  <p className="text-[11px] font-semibold uppercase tracking-wider text-wsa-red">{BACKED_BY_LABEL}</p>
+                  <p className="text-sm font-semibold text-wsa-navy">{GLENICE.name}</p>
+                  <p className="text-xs text-gray-700">{GLENICE.role}</p>
+                  <p className="text-xs text-gray-500">{GLENICE_HEAD_OFFICE_LINE}</p>
+                </div>
+              </div>
+              <div className="flex flex-wrap items-baseline justify-center gap-x-2 gap-y-0.5 rounded-2xl border border-emerald-600/25 bg-emerald-50 px-4 py-2.5 text-center leading-snug">
+                <p className="text-sm font-bold uppercase tracking-wide text-emerald-800">{FREE_BADGE.heading}</p>
+                <p className="text-sm text-emerald-900/80">{FREE_BADGE.line}</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ── How we can help you ──────────────────────────────────── */}
+      {/* Tim Hunt's support list, from his master draft, as an icon row near
+          the top so the WSA offer is visible before the detail. His own
+          heading for the list, "Free service from WSA", is the eyebrow. */}
+      <section className="border-t border-wsa-navy/10 bg-white px-4 py-10 sm:px-6 lg:py-12">
+        <div className="mx-auto max-w-6xl">
+          <p className="text-sm font-semibold uppercase tracking-wider text-wsa-red">{SUPPORT_HEADING}</p>
+          <h2 className="mt-1 text-2xl font-bold tracking-tight text-wsa-navy sm:text-3xl">{HELP_HEADING}</h2>
+          <ul className="mt-7 grid grid-cols-2 gap-x-4 gap-y-7 sm:grid-cols-3 lg:grid-cols-7">
+            {SUPPORT_STEPS.map((s, i) => {
+              const Icon = HELP_ICONS[i % HELP_ICONS.length];
+              return (
+                <li key={s} className="flex flex-col items-center text-center">
+                  <span className="flex h-14 w-14 items-center justify-center rounded-full bg-wsa-navy/5 text-wsa-navy">
+                    <Icon className="h-6 w-6" aria-hidden />
+                  </span>
+                  <span className="mt-3 text-sm font-semibold leading-snug text-wsa-navy">{s}</span>
+                </li>
+              );
+            })}
+          </ul>
         </div>
       </section>
 
@@ -393,16 +467,6 @@ export default function SpeakToJuliet() {
             ))}
           </div>
           <p className="mt-5 max-w-3xl text-sm leading-relaxed text-gray-500">{AVAILABILITY_NOTE}</p>
-
-          <h3 className="mt-10 text-lg font-semibold text-wsa-navy">{SUPPORT_HEADING}</h3>
-          <ul className="mt-3 grid gap-x-6 gap-y-2 sm:grid-cols-2 lg:grid-cols-3">
-            {SUPPORT_STEPS.map(s => (
-              <li key={s} className="flex items-start gap-2 text-base leading-relaxed text-gray-700">
-                <Check className="mt-1 h-4 w-4 shrink-0 text-wsa-red" aria-hidden />
-                <span>{s}</span>
-              </li>
-            ))}
-          </ul>
         </div>
       </section>
 
@@ -477,13 +541,23 @@ export default function SpeakToJuliet() {
           reason: whatever else a visitor skims, this is the point. */}
       <section className="border-t border-wsa-navy/10 bg-wsa-navy px-4 py-12 sm:px-6 lg:py-14">
         <div className="mx-auto max-w-3xl">
-          <ul className="space-y-2.5">
+          <h2 className="text-3xl font-bold tracking-tight text-white sm:text-4xl">{READY_HEADING}</h2>
+          <ul className="mt-5 space-y-2.5">
             {KEY_MESSAGE.map(m => (
               <li key={m} className="text-lg leading-relaxed text-white sm:text-xl">{m}</li>
             ))}
           </ul>
-          <div className="mt-7">
-            <WhatsAppButton className="w-full sm:w-auto">Speak to Juliet</WhatsAppButton>
+          {/* Both routes again, as in the hero: WhatsApp first, then the
+              outlined button to the form, so a reader who has scrolled this
+              far has the same two clear choices. */}
+          <div className="mt-7 flex flex-col gap-3 sm:flex-row sm:items-center">
+            <WhatsAppButton className="w-full sm:w-auto">{HERO.primaryCta}</WhatsAppButton>
+            <a
+              href="#send-details"
+              className="inline-flex min-h-[3rem] w-full items-center justify-center rounded-xl border-2 border-white bg-transparent px-6 py-3 text-base font-semibold text-white transition hover:bg-white hover:text-wsa-navy focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white sm:w-auto"
+            >
+              {HERO.secondary.cta}
+            </a>
           </div>
         </div>
       </section>

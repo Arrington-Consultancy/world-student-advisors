@@ -9,6 +9,7 @@ import {
   GLENICE,
   GLENICE_QUOTE,
   HERO,
+  TRUST_LINE, FREE_BADGE, BACKED_BY_LABEL, HELP_HEADING, READY_HEADING,
   JULIET,
   JULIET_ORGANISATION,
   JULIET_PODCAST,
@@ -68,6 +69,7 @@ function renderedCopy(): string {
     JULIET.name, JULIET.role, JULIET.location ?? "", JULIET.photoAlt, JULIET_ORGANISATION,
     GLENICE.name, GLENICE.role, GLENICE.photoAlt, GLENICE_QUOTE, GLENICE_HEAD_OFFICE_LINE,
     SUPPORT_HEADING, ...KEY_MESSAGE,
+    ...TRUST_LINE, FREE_BADGE.heading, FREE_BADGE.line, BACKED_BY_LABEL, HELP_HEADING, READY_HEADING,
     DESTINATIONS_LINE, AVAILABILITY_NOTE,
     ...STUDY_FAMILIES.map(f => `${f.title} ${f.body}`),
     ...DESTINATIONS.map(d => `${d.name} ${d.body}`),
@@ -144,6 +146,37 @@ describe("the form is Tim Hunt's Pipedrive form, unaltered", () => {
     // His submit-button wording lives inside his Pipedrive form, which this
     // site does not change, so the page renders no submit button of its own.
     expect(PAGE_SOURCE).not.toContain('type="submit"');
+  });
+
+  it("makes WSA the source of authority in the hero, in approved words, with Glenice in her settled role", () => {
+    // Tim Hunt, 27 September 2026: "Make Juliet the face of the page but make
+    // WSA the source of authority." Claims are the site's approved wording.
+    expect(TRUST_LINE).toEqual([
+      "Backed by WSA UK Head Office",
+      "British Council UK knowledge-trained counsellors",
+      "With you from application to enrolment",
+    ]);
+    expect(FREE_BADGE.line).toBe("The service is free.");
+    const allCopy = renderedCopy().toLowerCase();
+    for (const banned of ["certified", "personal assistant", "trusted by", "no consultation fee", "partner institutions"]) {
+      expect(allCopy, `the concept artwork's "${banned}" must not reach the page`).not.toContain(banned);
+    }
+    // Glenice stands beside Juliet from the first screen, with her real
+    // photograph, her settled role and head office line, and no contact.
+    const hero = PAGE_SOURCE.slice(PAGE_SOURCE.indexOf("<figure"), PAGE_SOURCE.indexOf("How we can help you"));
+    expect(hero).toContain("{GLENICE.photo}");
+    expect(hero).toContain("{GLENICE.role}");
+    expect(hero).toContain("{GLENICE_HEAD_OFFICE_LINE}");
+    expect(hero).toContain("{BACKED_BY_LABEL}");
+    expect(hero).not.toContain("ContactLines person={GLENICE}");
+    expect(GLENICE.role).toBe("Juliet's dedicated Student Counsellor");
+    // The support list is Tim's, once, as the icon row; the closing band
+    // repeats both routes under his key message.
+    expect(PAGE_SOURCE.match(/SUPPORT_STEPS\.map/g)?.length).toBe(1);
+    expect(PAGE_SOURCE).toContain("{READY_HEADING}");
+    const band = PAGE_SOURCE.slice(PAGE_SOURCE.indexOf("{READY_HEADING}"), PAGE_SOURCE.indexOf('id="send-details"'));
+    expect(band).toContain("{HERO.primaryCta}");
+    expect(band).toContain("{HERO.secondary.cta}");
   });
 
   it("offers two clear routes in the hero: WhatsApp, and a proper outlined button to the form", () => {
@@ -303,7 +336,10 @@ describe("the two people, as Tim Hunt arranged them on 24 September 2026", () =>
   });
 
   it("places Glenice above How this works, so the reader has met her before step 3 names her", () => {
-    const glenice = PAGE_SOURCE.indexOf("{GLENICE.name}");
+    // Since 27 September 2026 she also stands beside Juliet in the hero
+    // (first occurrence); her own card is the last occurrence.
+    expect(PAGE_SOURCE.indexOf("{GLENICE.name}")).toBeLessThan(PAGE_SOURCE.indexOf("How we can help you"));
+    const glenice = PAGE_SOURCE.lastIndexOf("{GLENICE.name}");
     const howItWorks = PAGE_SOURCE.indexOf(">How this works<");
     expect(glenice).toBeGreaterThan(-1);
     expect(howItWorks).toBeGreaterThan(-1);
@@ -313,7 +349,7 @@ describe("the two people, as Tim Hunt arranged them on 24 September 2026", () =>
   });
 
   it("shows Glenice's photograph larger than before, with matching intrinsic dimensions", () => {
-    const card = PAGE_SOURCE.slice(PAGE_SOURCE.indexOf("src={GLENICE.photo}"), PAGE_SOURCE.indexOf("{GLENICE.name}"));
+    const card = PAGE_SOURCE.slice(PAGE_SOURCE.lastIndexOf("src={GLENICE.photo}"), PAGE_SOURCE.lastIndexOf("{GLENICE.name}"));
     expect(card).toContain("w-28");
     expect(card).toContain("width={112}");
     expect(card).toContain("height={149}");
@@ -332,8 +368,8 @@ describe("the two people, as Tim Hunt arranged them on 24 September 2026", () =>
     expect(renderedCopy()).not.toContain("447459720726");
     // ContactLines renders nothing for a person without details, and the
     // Glenice card never calls it anyway.
-    const card = PAGE_SOURCE.slice(PAGE_SOURCE.indexOf("src={GLENICE.photo}"), PAGE_SOURCE.indexOf(">How this works<"));
-    expect(card).not.toContain("ContactLines");
+    expect(PAGE_SOURCE).not.toContain("ContactLines person={GLENICE}");
+    expect(PAGE_SOURCE.match(/<ContactLines /g)?.length).toBe(1);
   });
 
   it("quotes Glenice in her own approved words, so the page needs no fresh sign off", () => {

@@ -197,6 +197,45 @@ export const KEY_MESSAGE: ReadonlyArray<string> = Object.freeze([
  */
 export const FREE_SERVICE_LINE = "The service is free.";
 
+/**
+ * WSA AS THE SOURCE OF AUTHORITY. Tim Hunt's direction of 27 September 2026,
+ * from a conversion review of the page: "Make Juliet the face of the page but
+ * make WSA the source of authority." The student should see at once that
+ * Juliet is backed by WSA and a professional Student Counsellor.
+ *
+ * Every line here is existing approved site copy or Tim's own settled
+ * wording, not new claims. "British Council UK knowledge-trained" is the
+ * site's approved description of the counsellors (About and Our Team);
+ * "certified" is not claimed. "The service is free" is Tim's charging rule of
+ * 19 September. Nothing here promises outcomes, rankings or partnerships.
+ */
+export const TRUST_LINE: ReadonlyArray<string> = Object.freeze([
+  "Backed by WSA UK Head Office",
+  "British Council UK knowledge-trained counsellors",
+  "With you from application to enrolment",
+]);
+
+/** The free-support badge in the hero. Heading plus Tim's own rule. */
+export const FREE_BADGE = Object.freeze({
+  heading: "Free student support",
+  line: FREE_SERVICE_LINE,
+});
+
+/**
+ * The card that puts Glenice in the hero, beside Juliet. Her role and head
+ * office lines are Tim's settled wording (GLENICE); this is only the label
+ * above them. "Personal Assistant", used in the 27 September concept
+ * artwork, is not used: Tim settled her role on 19 September and the
+ * page keeps to it.
+ */
+export const BACKED_BY_LABEL = "Backed by";
+
+/** The heading over the support items, now an icon row near the top. */
+export const HELP_HEADING = "How we can help you";
+
+/** The closing band, above the form. Tim's key message sits under it. */
+export const READY_HEADING = "Ready to start?";
+
 /* ------------------------------------------------------------------ */
 /* What Juliet can help with                                           */
 /* ------------------------------------------------------------------ */
