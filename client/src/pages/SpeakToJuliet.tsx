@@ -352,7 +352,7 @@ export default function SpeakToJuliet() {
                 Hunt's Version 4, 27 September 2026. The number opens
                 WhatsApp and the email opens the visitor's mail app, as he
                 asked. Both values are JULIET's; Glenice has none here. */}
-            <div className="mt-4 grid max-w-xl gap-3 sm:grid-cols-2">
+            <div className="mt-4 grid max-w-xl gap-3 sm:grid-cols-[auto_1fr]">
               <a
                 href={whatsappHref(JULIET.whatsappDigits ?? "", WHATSAPP_FIRST_MESSAGE)}
                 target="_blank"
