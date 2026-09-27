@@ -160,6 +160,25 @@ for (const [label, width, height] of [["mobile", 390, 844], ["desktop", 1280, 90
   for (const banned of ["Personal Assistant", "Certified Counsellor", "Trusted by students", "No consultation fee"]) {
     check(!authorityHtml.includes(banned), `the concept artwork's "${banned}" is not on the page`);
   }
+  // Version 4, 27 September 2026: Juliet's number and email in the hero, the
+  // number opening WhatsApp and the email opening mail; the flag row with
+  // eight flags served from this site; Glenice's number nowhere.
+  const heroContacts = await page.evaluate(() => {
+    const h1 = document.querySelector("h1");
+    const hero = h1?.closest("section");
+    if (!hero) return null;
+    const links = [...hero.querySelectorAll("a")].map(a => a.getAttribute("href") ?? "");
+    return { wa: links.filter(h => h.includes("wa.me/2348035837934")).length, mail: links.filter(h => h.startsWith("mailto:juliet@worldstudentadvisors.com")).length, tel: links.filter(h => h.startsWith("tel:")).length, text: hero.textContent ?? "" };
+  });
+  check(heroContacts !== null && heroContacts.wa >= 2, "the hero has the WhatsApp button and the number card, both opening WhatsApp", String(heroContacts?.wa));
+  check(heroContacts !== null && heroContacts.mail === 1, "the hero has Juliet's email card opening mail", String(heroContacts?.mail));
+  check(heroContacts !== null && heroContacts.tel === 0, "no tel: link, the number opens WhatsApp as Tim asked", String(heroContacts?.tel));
+  check(heroContacts !== null && heroContacts.text.includes("+234 803 583 7934") && heroContacts.text.includes("Call or WhatsApp"), "the number and its label are visible in the hero");
+  check(!authorityHtml.includes("447459720726") && !authorityHtml.includes("7459 720726"), "Glenice's number is nowhere on the page");
+  const flags = await page.evaluate(() => [...document.querySelectorAll('img[src^="/flags/"]')].map(i => ({ src: i.getAttribute("src"), w: i.naturalWidth, shown: Math.round(i.getBoundingClientRect().width) })));
+  check(flags.length === 8, "eight destination flags", String(flags.length));
+  check(flags.every(f => f.w > 0 && f.shown > 0), "every flag renders", flags.filter(f => !(f.w > 0 && f.shown > 0)).map(f => f.src).join(","));
+  for (const name of ["UK", "USA", "Canada", "Australia", "Germany", "Cyprus", "Hungary", "Europe"]) check(authorityHtml.includes(`>${name}<`), `the flag row names ${name}`);
   const flag = await page.evaluate(() => {
     const el = document.querySelector('[aria-label="Flag of Nigeria"]');
     return el ? Math.round(el.getBoundingClientRect().width) : 0;

@@ -236,6 +236,51 @@ export const HELP_HEADING = "How we can help you";
 /** The closing band, above the form. Tim's key message sits under it. */
 export const READY_HEADING = "Ready to start?";
 
+/**
+ * JULIET'S CONTACT DETAILS IN THE HERO. Tim Hunt, Version 4 of 27 September
+ * 2026 and his email of the same day: "Someone looking at Juliet's LP may
+ * not want to call or email now. They may make a note of the tel No and call
+ * later." He asked that pressing the number opens WhatsApp and pressing the
+ * email opens the visitor's mail app. Glenice's number stays off the page.
+ * The values themselves come from JULIET; only the labels live here.
+ */
+export const HERO_CONTACT = Object.freeze({
+  phoneLabel: "Call or WhatsApp",
+  emailLabel: "Email Juliet",
+});
+
+/**
+ * STUDY DESTINATIONS FLAG ROW. Tim Hunt's Version 3 and Version 4 of 27
+ * September 2026: "the draft I sent yesterday was too UK focussed". Every
+ * country here is already named in his settled DESTINATIONS copy except
+ * Australia, which he confirmed by email on 27 September is offered through
+ * SI Global's six Australian universities (his "List of Partners ALL
+ * countries routes for enrolment" document). The flag row carries names
+ * only; the descriptive line for each destination stays in DESTINATIONS, in
+ * his words, and Australia's line is added there when he supplies it.
+ *
+ * Flags are the MIT-licensed flag-icons set (client/public/flags/LICENSE),
+ * served from this site, so nothing depends on a visitor's emoji font.
+ */
+export interface DestinationFlag {
+  name: string;
+  /** Lower-case ISO 3166-1 alpha-2 code, or "eu", matching /flags/<code>.svg */
+  code: string;
+}
+
+export const DESTINATION_FLAGS: ReadonlyArray<DestinationFlag> = Object.freeze([
+  { name: "UK", code: "gb" },
+  { name: "USA", code: "us" },
+  { name: "Canada", code: "ca" },
+  { name: "Australia", code: "au" },
+  { name: "Germany", code: "de" },
+  { name: "Cyprus", code: "cy" },
+  { name: "Hungary", code: "hu" },
+  { name: "Europe", code: "eu" },
+]);
+
+export const DESTINATIONS_HEADING = "Study destinations";
+
 /* ------------------------------------------------------------------ */
 /* What Juliet can help with                                           */
 /* ------------------------------------------------------------------ */

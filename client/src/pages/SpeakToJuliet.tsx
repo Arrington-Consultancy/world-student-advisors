@@ -1,10 +1,12 @@
 import { useEffect, useRef, useState } from "react";
 import { Link } from "wouter";
-import { Check, CreditCard, FileCheck, GraduationCap, LifeBuoy, Mail, MessageCircle, MessagesSquare, Plane, Play, Stamp } from "lucide-react";
+import { Check, CreditCard, FileCheck, GraduationCap, LifeBuoy, Mail, MessageCircle, MessagesSquare, Phone, Plane, Play, Stamp } from "lucide-react";
 import {
   AVAILABILITY_NOTE,
   BACKED_BY_LABEL,
   DESTINATIONS,
+  DESTINATION_FLAGS,
+  DESTINATIONS_HEADING,
   DESTINATIONS_LINE,
   GLENICE,
   GLENICE_QUOTE,
@@ -15,6 +17,7 @@ import {
   GLENICE_HEAD_OFFICE_LINE,
   FREE_BADGE,
   HELP_HEADING,
+  HERO_CONTACT,
   KEY_MESSAGE,
   READY_HEADING,
   type PersonCard,
@@ -345,6 +348,35 @@ export default function SpeakToJuliet() {
               </WhatsAppButton>
             </div>
 
+            {/* Juliet's number and email, visible without scrolling: Tim
+                Hunt's Version 4, 27 September 2026. The number opens
+                WhatsApp and the email opens the visitor's mail app, as he
+                asked. Both values are JULIET's; Glenice has none here. */}
+            <div className="mt-4 grid max-w-xl gap-3 sm:grid-cols-2">
+              <a
+                href={whatsappHref(JULIET.whatsappDigits ?? "", WHATSAPP_FIRST_MESSAGE)}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex min-h-[3.5rem] items-center gap-3 rounded-xl border-2 border-wsa-navy/15 bg-white px-4 py-2.5 transition hover:border-wsa-navy focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-wsa-navy"
+              >
+                <Phone className="h-5 w-5 shrink-0 text-wsa-navy" aria-hidden />
+                <span className="min-w-0 leading-tight">
+                  <span className="block text-base font-semibold text-wsa-navy">{JULIET.whatsapp}</span>
+                  <span className="block text-xs text-gray-600">{HERO_CONTACT.phoneLabel}</span>
+                </span>
+              </a>
+              <a
+                href={`mailto:${JULIET.email}`}
+                className="flex min-h-[3.5rem] items-center gap-3 rounded-xl border-2 border-wsa-navy/15 bg-white px-4 py-2.5 transition hover:border-wsa-navy focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-wsa-navy"
+              >
+                <Mail className="h-5 w-5 shrink-0 text-wsa-navy" aria-hidden />
+                <span className="min-w-0 leading-tight">
+                  <span className="block break-all text-sm font-semibold text-wsa-navy">{JULIET.email}</span>
+                  <span className="block text-xs text-gray-600">{HERO_CONTACT.emailLabel}</span>
+                </span>
+              </a>
+            </div>
+
             {/* The second clear route, Tim Hunt's wording of 26 September
                 2026: a proper button, outlined so WhatsApp above stays the
                 primary action while this one is plainly visible. */}
@@ -431,6 +463,31 @@ export default function SpeakToJuliet() {
                 </li>
               );
             })}
+          </ul>
+        </div>
+      </section>
+
+      {/* ── Study destinations ───────────────────────────────────── */}
+      {/* Tim Hunt's flag row, 27 September 2026, names only. The wording
+          for each destination stays in Where you could study, in his words. */}
+      <section className="border-t border-wsa-navy/10 px-4 py-10 sm:px-6 lg:py-12">
+        <div className="mx-auto max-w-6xl">
+          <h2 className="text-2xl font-bold tracking-tight text-wsa-navy sm:text-3xl">{DESTINATIONS_HEADING}</h2>
+          <p className="mt-2 max-w-3xl text-base leading-relaxed text-gray-700">{DESTINATIONS_LINE}</p>
+          <ul className="mt-7 grid grid-cols-4 gap-x-3 gap-y-6 sm:grid-cols-8">
+            {DESTINATION_FLAGS.map(f => (
+              <li key={f.code} className="flex flex-col items-center text-center">
+                <img
+                  src={`/flags/${f.code}.svg`}
+                  alt={`Flag of ${f.name === "UK" ? "the United Kingdom" : f.name === "USA" ? "the United States" : f.name === "Europe" ? "the European Union" : f.name}`}
+                  width={64}
+                  height={48}
+                  decoding="async"
+                  className="h-12 w-16 rounded-md border border-wsa-navy/10 object-cover shadow-sm"
+                />
+                <span className="mt-2 text-sm font-semibold text-wsa-navy">{f.name}</span>
+              </li>
+            ))}
           </ul>
         </div>
       </section>

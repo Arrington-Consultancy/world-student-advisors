@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { readFileSync } from "fs";
+import { existsSync, readFileSync } from "fs";
 import {
   AVAILABILITY_NOTE,
   BRIEF_CONFLICTS,
@@ -10,6 +10,7 @@ import {
   GLENICE_QUOTE,
   HERO,
   TRUST_LINE, FREE_BADGE, BACKED_BY_LABEL, HELP_HEADING, READY_HEADING,
+  HERO_CONTACT, DESTINATION_FLAGS, DESTINATIONS_HEADING,
   JULIET,
   JULIET_ORGANISATION,
   JULIET_PODCAST,
@@ -70,6 +71,7 @@ function renderedCopy(): string {
     GLENICE.name, GLENICE.role, GLENICE.photoAlt, GLENICE_QUOTE, GLENICE_HEAD_OFFICE_LINE,
     SUPPORT_HEADING, ...KEY_MESSAGE,
     ...TRUST_LINE, FREE_BADGE.heading, FREE_BADGE.line, BACKED_BY_LABEL, HELP_HEADING, READY_HEADING,
+    HERO_CONTACT.phoneLabel, HERO_CONTACT.emailLabel, DESTINATIONS_HEADING, ...DESTINATION_FLAGS.map(f => f.name),
     DESTINATIONS_LINE, AVAILABILITY_NOTE,
     ...STUDY_FAMILIES.map(f => `${f.title} ${f.body}`),
     ...DESTINATIONS.map(d => `${d.name} ${d.body}`),
@@ -177,6 +179,38 @@ describe("the form is Tim Hunt's Pipedrive form, unaltered", () => {
     const band = PAGE_SOURCE.slice(PAGE_SOURCE.indexOf("{READY_HEADING}"), PAGE_SOURCE.indexOf('id="send-details"'));
     expect(band).toContain("{HERO.primaryCta}");
     expect(band).toContain("{HERO.secondary.cta}");
+  });
+
+  it("puts Juliet's number and email in the hero, number to WhatsApp and email to mail, and never Glenice's", () => {
+    // Tim Hunt, Version 4 and email of 27 September 2026.
+    const hero = PAGE_SOURCE.slice(PAGE_SOURCE.indexOf("{HERO.primaryCta}"), PAGE_SOURCE.indexOf("{HERO.secondary.heading}"));
+    expect(hero).toContain("whatsappHref(JULIET.whatsappDigits");
+    expect(hero).toContain("{JULIET.whatsapp}");
+    expect(hero).toContain("href={`mailto:${JULIET.email}`}");
+    expect(hero).toContain("{HERO_CONTACT.phoneLabel}");
+    expect(hero).toContain("{HERO_CONTACT.emailLabel}");
+    expect(hero).not.toContain("tel:");
+    expect(hero).not.toContain("GLENICE");
+    expect(HERO_CONTACT.phoneLabel).toBe("Call or WhatsApp");
+    // The second route he asked for on 26 September still follows.
+    expect(PAGE_SOURCE.indexOf("{HERO_CONTACT.emailLabel}")).toBeLessThan(PAGE_SOURCE.indexOf("{HERO.secondary.heading}"));
+  });
+
+  it("shows the study destinations as a flag row, names only, with every flag served from this site", () => {
+    expect(DESTINATION_FLAGS.map(f => f.name)).toEqual(["UK", "USA", "Canada", "Australia", "Germany", "Cyprus", "Hungary", "Europe"]);
+    for (const f of DESTINATION_FLAGS) {
+      expect(existsSync(`client/public/flags/${f.code}.svg`), `flag file for ${f.name}`).toBe(true);
+    }
+    expect(existsSync("client/public/flags/LICENSE")).toBe(true);
+    expect(DESTINATIONS_HEADING).toBe("Study destinations");
+    // Names only: the descriptive lines stay in DESTINATIONS, in Tim's words.
+    expect(Object.keys(DESTINATION_FLAGS[0])).toEqual(["name", "code"]);
+    const row = PAGE_SOURCE.slice(PAGE_SOURCE.indexOf("{DESTINATIONS_HEADING}"), PAGE_SOURCE.indexOf(">Where you could study<"));
+    expect(row).toContain("{DESTINATIONS_LINE}");
+    expect(row).toContain("src={`/flags/${f.code}.svg`}");
+    // Australia: confirmed by Tim on 27 September (SI Global). Its own line
+    // in Where you could study waits for his wording.
+    expect(DESTINATION_FLAGS.some(f => f.name === "Australia")).toBe(true);
   });
 
   it("offers two clear routes in the hero: WhatsApp, and a proper outlined button to the form", () => {
