@@ -152,11 +152,13 @@ for (const [label, width, height] of [["mobile", 390, 844], ["desktop", 1280, 90
   // WSA as the source of authority, 27 September 2026: Glenice beside Juliet
   // in the hero, the trust line and the free badge, all in approved words.
   check(gleniceWidths.length === 2, "Glenice appears twice: beside Juliet in the hero and in her own card", String(gleniceWidths.length));
+  // Read here rather than reusing `html`, which is declared further down.
+  const authorityHtml = await page.content();
   for (const line of ["Backed by WSA UK Head Office", "British Council UK knowledge-trained counsellors", "With you from application to enrolment", "Free student support", "How we can help you", "Ready to start?"]) {
-    check(html.includes(line), `the page carries "${line}"`);
+    check(authorityHtml.includes(line), `the page carries "${line}"`);
   }
   for (const banned of ["Personal Assistant", "Certified Counsellor", "Trusted by students", "No consultation fee"]) {
-    check(!html.includes(banned), `the concept artwork's "${banned}" is not on the page`);
+    check(!authorityHtml.includes(banned), `the concept artwork's "${banned}" is not on the page`);
   }
   const flag = await page.evaluate(() => {
     const el = document.querySelector('[aria-label="Flag of Nigeria"]');
