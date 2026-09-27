@@ -146,9 +146,18 @@ for (const [label, width, height] of [["mobile", 390, 844], ["desktop", 1280, 90
     return glenice.compareDocumentPosition(how) & Node.DOCUMENT_POSITION_FOLLOWING ? "glenice-first" : "how-first";
   });
   check(order === "glenice-first", "Glenice sits above How this works", order);
-  const gleniceWidth = await page.evaluate(() =>
-    Math.round(([...document.querySelectorAll("img")].find(i => i.currentSrc.includes("glenice"))?.getBoundingClientRect().width) ?? 0));
-  check(gleniceWidth >= 100, "Glenice's photograph is the larger size", `${gleniceWidth}px`);
+  const gleniceWidths = await page.evaluate(() =>
+    [...document.querySelectorAll("img")].filter(i => i.currentSrc.includes("glenice")).map(i => Math.round(i.getBoundingClientRect().width)));
+  check(Math.max(0, ...gleniceWidths) >= 100, "Glenice's photograph is the larger size in her own card", gleniceWidths.join("/") + "px");
+  // WSA as the source of authority, 27 September 2026: Glenice beside Juliet
+  // in the hero, the trust line and the free badge, all in approved words.
+  check(gleniceWidths.length === 2, "Glenice appears twice: beside Juliet in the hero and in her own card", String(gleniceWidths.length));
+  for (const line of ["Backed by WSA UK Head Office", "British Council UK knowledge-trained counsellors", "With you from application to enrolment", "Free student support", "How we can help you", "Ready to start?"]) {
+    check(html.includes(line), `the page carries "${line}"`);
+  }
+  for (const banned of ["Personal Assistant", "Certified Counsellor", "Trusted by students", "No consultation fee"]) {
+    check(!html.includes(banned), `the concept artwork's "${banned}" is not on the page`);
+  }
   const flag = await page.evaluate(() => {
     const el = document.querySelector('[aria-label="Flag of Nigeria"]');
     return el ? Math.round(el.getBoundingClientRect().width) : 0;
@@ -160,7 +169,7 @@ for (const [label, width, height] of [["mobile", 390, 844], ["desktop", 1280, 90
   // outlined button to the form under his heading and line.
   check(!html.includes("Would rather not"), "the old afterthought wording is gone");
   const secondary = page.locator('main a[href="#send-details"]');
-  check((await secondary.count()) === 1, "one button leads to the form", String(await secondary.count()));
+  check((await secondary.count()) === 2, "two buttons lead to the form: the hero and the closing band", String(await secondary.count()));
   const secondaryInfo = await secondary.first().evaluate(a => {
     const cs = getComputedStyle(a);
     return { text: a.textContent?.trim() ?? "", h: Math.round(a.getBoundingClientRect().height), border: parseFloat(cs.borderTopWidth), bg: cs.backgroundColor };
