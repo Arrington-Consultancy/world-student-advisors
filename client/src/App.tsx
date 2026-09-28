@@ -48,6 +48,7 @@ import WebUKVisa from "./pages/WebUKVisa";
 import DDVavita from "./pages/DDVavita";
 import UKMastersStudy from "./pages/UKMastersStudy";
 import UKMastersNigeria from "./pages/UKMastersNigeria";
+import SpeakToJulietThankYou from "./pages/SpeakToJulietThankYou";
 import NigeriaPostgraduate from "./pages/NigeriaPostgraduate";
 import SpeakToJuliet from "./pages/SpeakToJuliet";
 
@@ -109,6 +110,9 @@ function Router() {
           Google Ads brief is reconciled with the MPhil/MRes/PhD scope. */}
       <Route path={"/nigeria-postgraduate"} component={NigeriaPostgraduate} />
       <Route path={"/speak-to-juliet"} component={SpeakToJuliet} />
+      {/* Where Tim Hunt's Pipedrive form sends the student after a successful
+          submission. Noindex, unlinked, no form: see speakToJulietThankYou.ts. */}
+      <Route path={"/speak-to-juliet/thank-you"} component={SpeakToJulietThankYou} />
       <Route path={"/404"} component={NotFound} />
       <Route component={NotFound} />
     </Switch>

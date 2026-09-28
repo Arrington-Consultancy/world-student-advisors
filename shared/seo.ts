@@ -172,6 +172,10 @@ export const SEO_MAP: Record<string, SeoEntry> = {
     description:
       "Taught Master's, MPhil, MRes and PhD abroad for Nigerian graduates, UK first then Germany and Canada, with your own Personal Student Counsellor from first question to visa preparation.",
   },
+  "/speak-to-juliet/thank-you": {
+    title: "Thank you, your details are with Juliet | World Student Advisors",
+    description: "Your enquiry has reached Juliet Nnajiofor-Uyi, WSA Higher Education Advisor in Lagos. She will be in touch shortly.",
+  },
   "/speak-to-juliet": {
     title: "Speak to Juliet in Lagos | World Student Advisors",
     description:
@@ -216,7 +220,10 @@ export const NOINDEX_PATH_PREFIXES = ["/portal", "/staff-portal"];
 // from the sitemap and the prerender list. Publishing it is one change:
 // remove it from this set and add it to both lists, as /nigeria-postgraduate
 // did on its GO.
-export const NOINDEX_PATHS = new Set(["/404", "/speak-to-juliet"]);
+// /speak-to-juliet/thank-you is the post-submission page for Tim Hunt's
+// Pipedrive form. It is reached only by that redirect, is linked from
+// nowhere, and stays noindex whatever happens to its parent.
+export const NOINDEX_PATHS = new Set(["/404", "/speak-to-juliet", "/speak-to-juliet/thank-you"]);
 
 export function getCanonicalPath(path: string): string {
   return CANONICAL_PATHS[path] ?? path;
