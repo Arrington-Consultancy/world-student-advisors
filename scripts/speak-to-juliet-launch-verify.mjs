@@ -31,6 +31,7 @@ const EXPECTED_LOADER = "https://webforms.pipedrive.com/f/loader";
 const WITHDRAWN_PODCAST_IDS = ["SZjjr2T3qTU", "fR4j72Jbk5Y"];
 // The third recording, supplied by Tom Arrington on 25 September 2026.
 const EXPECTED_PODCAST_ID = "p4OX6muHnZM";
+const THANK_YOU_PATH = "/speak-to-juliet/thank-you";
 
 let failures = 0;
 const check = (ok, label, detail = "") => {
@@ -269,6 +270,88 @@ console.log("\n=== 4. Metadata ===");
 
   const sitemap = await (await fetch(`${SITE}/sitemap.xml`)).text();
   check(!sitemap.includes("/speak-to-juliet"), "it is absent from the sitemap until that GO");
+}
+
+/* 5. The thank-you page ------------------------------------------------- */
+// Since 28 September 2026 Tim Hunt's Pipedrive form redirects, on success,
+// to /speak-to-juliet/thank-you. That page is the only place the Juliet
+// route reports the site's one Google Ads conversion, and it reports it
+// once per arrival: not on a reload, not twice in a session, never on the
+// landing page. Consent has not been given in this browser, so gtag.js is
+// not loaded and the call queues on window.dataLayer, where it can be read.
+console.log("\n=== 5. The thank-you page ===");
+{
+  const res = await fetch(`${SITE}${THANK_YOU_PATH}`, { redirect: "manual" });
+  check(res.status === 200, `${THANK_YOU_PATH} returns 200`, `got ${res.status}`);
+  const shell = await res.text();
+  check(shell.includes('<meta name="robots" content="noindex'), "the server sends it noindex", "");
+  check(!shell.includes("webforms.pipedrive.com"), "Pipedrive is nowhere in its HTML");
+
+  const conversions = () => page.evaluate(() =>
+    (window.dataLayer ?? []).filter(e => Array.isArray(e) && e[0] === "event" && e[1] === "conversion"
+      && e[2] && e[2].send_to === "AW-946725823/hviLCPiHkOMcEL_Ht8MD").length);
+  const waitForConversions = (n) => page.waitForFunction((want) =>
+    ((window.dataLayer ?? []).filter(e => Array.isArray(e) && e[0] === "event" && e[1] === "conversion").length) === want,
+    n, { timeout: 5000 }).then(() => true, () => false);
+
+  let page;
+  for (const [width, height] of [[390, 844], [1280, 900]]) {
+    const context = await browser.newContext({ viewport: { width, height } });
+    page = await context.newPage();
+    const consoleErrors = [];
+    page.on("pageerror", e => consoleErrors.push(e.message));
+    console.log(`  -- ${width}px --`);
+    // The landing page reports nothing: a visit is not a submission.
+    await page.goto(`${SITE}/speak-to-juliet`, { waitUntil: "networkidle" });
+    check((await conversions()) === 0, "visiting the landing page reports no conversion", String(await conversions()));
+    const landingLinks = await page.evaluate(() => [...document.querySelectorAll("a")].filter(a => (a.getAttribute("href") ?? "").includes("thank-you")).length);
+    check(landingLinks === 0, "nothing on the landing page links to the thank-you page", String(landingLinks));
+
+    // Arrival, as the form's redirect would land a student.
+    await page.goto(`${SITE}${THANK_YOU_PATH}`, { waitUntil: "networkidle" });
+    await waitForConversions(1);
+    check((await conversions()) === 1, "arriving reports the conversion once", String(await conversions()));
+    const h1 = await page.locator("h1").first().innerText();
+    check(h1.trim() === "Thank you. Your details are with Juliet.", "the page thanks the student and confirms Juliet has the details", h1.trim());
+    const html = await page.content();
+    check(html.includes("email confirming"), "it points to the acknowledgement email Pipedrive sends");
+    check(html.includes("The service is free."), "it carries the free-service line");
+    const wa = await page.locator(`a[href*="wa.me/${EXPECTED_WHATSAPP}"]`).first();
+    check((await wa.count()) >= 1, "it offers WhatsApp to Juliet's number", EXPECTED_WHATSAPP);
+    const waHref = (await wa.getAttribute("href")) ?? "";
+    check(decodeURIComponent(waHref).includes("I have just sent you my details"), "with a first message that says the details have been sent", decodeURIComponent(waHref).split("text=")[1]?.slice(0, 60) ?? "");
+    check((await page.locator('a[href="mailto:juliet@worldstudentadvisors.com"]').count()) >= 1, "and email to Juliet");
+    check((await page.locator('a[href="/speak-to-juliet"]').count()) >= 1, "it links back to Juliet's page");
+    check((await page.locator('a[href="/student-support-library"]').count()) >= 1, "and to the Student Support Library");
+    const controls = await page.evaluate(() => document.querySelectorAll("form, input, select, textarea, iframe").length);
+    check(controls === 0, "it has no form, fields or iframe: no second data capture", String(controls));
+    check(!html.includes("webforms.pipedrive.com"), "Pipedrive's loader is not on the page");
+    check(!/portal|password/i.test(await page.locator("main main").innerText()), "it promises no portal account in its own copy");
+    const overflow = await page.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth);
+    check(!overflow, "no horizontal overflow");
+    const broken = await page.evaluate(() => [...document.images].filter(i => i.complete && i.naturalWidth === 0).map(i => i.src));
+    check(broken.length === 0, "every image renders", broken.join(", "));
+    check(consoleErrors.length === 0, "no page errors", consoleErrors.join(" | ").slice(0, 200));
+    const robots = await page.evaluate(() => document.querySelector('meta[name="robots"]')?.getAttribute("content") ?? "");
+    check(robots.includes("noindex"), "it is noindex", robots || "(none)");
+    const canonical = await page.evaluate(() => document.querySelector('link[rel="canonical"]')?.getAttribute("href") ?? "");
+    check(canonical.endsWith(THANK_YOU_PATH), "its canonical URL is itself", canonical);
+    writeFileSync(`${OUT}/speak-to-juliet-thank-you-${width}.png`, await page.screenshot({ fullPage: true }));
+
+    // A refresh is not a second submission.
+    await page.reload({ waitUntil: "networkidle" });
+    await page.waitForTimeout(1500);
+    check((await conversions()) === 0, "reloading the page reports nothing", `${await conversions()} after reload`);
+    // Nor is coming back to it within the same session.
+    await page.goto(`${SITE}/speak-to-juliet`, { waitUntil: "networkidle" });
+    await page.goto(`${SITE}${THANK_YOU_PATH}`, { waitUntil: "networkidle" });
+    await page.waitForTimeout(1500);
+    check((await conversions()) === 0, "returning to it in the same session reports nothing", String(await conversions()));
+    await context.close();
+  }
+
+  const sitemap = await (await fetch(`${SITE}/sitemap.xml`)).text();
+  check(!sitemap.includes(THANK_YOU_PATH), "it is absent from the sitemap");
 }
 
 await browser.close();

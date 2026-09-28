@@ -70,6 +70,9 @@ export const VALID_CLIENT_ROUTES = [
   // copy is provisional and Tim Hunt's revised brief is outstanding.
   // /LPJuliet 301s here (CANONICAL_PATHS).
   "/speak-to-juliet",
+  // The page Tim Hunt's Pipedrive form redirects to after a successful
+  // submission (28 September 2026). Noindex, out of the sitemap, unlinked.
+  "/speak-to-juliet/thank-you",
   "/404",
 ] as const;
 
