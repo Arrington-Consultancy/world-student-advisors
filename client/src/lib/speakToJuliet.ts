@@ -257,7 +257,7 @@ export const HERO_CONTACT = Object.freeze({
  * SI Global's six Australian universities (his "List of Partners ALL
  * countries routes for enrolment" document). The flag row carries names
  * only; the descriptive line for each destination stays in DESTINATIONS, in
- * his words, and Australia's line is added there when he supplies it.
+ * his words. Australia's line arrived by email on 28 September and is there.
  *
  * Flags are the MIT-licensed flag-icons set (client/public/flags/LICENSE),
  * served from this site, so nothing depends on a visitor's emoji font.
@@ -364,6 +364,12 @@ export const DESTINATIONS: ReadonlyArray<Destination> = Object.freeze([
   {
     name: "Canada",
     body: "A major international study destination, with a wide choice of universities, colleges and programmes.",
+  },
+  // Tim Hunt's line, by email on 28 September 2026, verbatim. Australia is
+  // offered through SI Global (his email of 27 September).
+  {
+    name: "Australia",
+    body: "A popular international study destination offering a wide range of universities and undergraduate and postgraduate programmes.",
   },
   {
     name: "Germany",

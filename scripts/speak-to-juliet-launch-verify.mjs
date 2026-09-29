@@ -179,6 +179,8 @@ for (const [label, width, height] of [["mobile", 390, 844], ["desktop", 1280, 90
   check(flags.length === 8, "eight destination flags", String(flags.length));
   check(flags.every(f => f.w > 0 && f.shown > 0), "every flag renders", flags.filter(f => !(f.w > 0 && f.shown > 0)).map(f => f.src).join(","));
   for (const name of ["UK", "USA", "Canada", "Australia", "Germany", "Cyprus", "Hungary", "Europe"]) check(authorityHtml.includes(`>${name}<`), `the flag row names ${name}`);
+  // Tim Hunt's Australia line, 28 September 2026, under Where you could study.
+  check(authorityHtml.includes("A popular international study destination offering a wide range of universities and undergraduate and postgraduate programmes."), "Where you could study carries Tim's Australia line");
   const flag = await page.evaluate(() => {
     const el = document.querySelector('[aria-label="Flag of Nigeria"]');
     return el ? Math.round(el.getBoundingClientRect().width) : 0;

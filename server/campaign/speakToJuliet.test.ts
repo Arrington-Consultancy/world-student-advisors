@@ -208,9 +208,17 @@ describe("the form is Tim Hunt's Pipedrive form, unaltered", () => {
     const row = PAGE_SOURCE.slice(PAGE_SOURCE.indexOf("{DESTINATIONS_HEADING}"), PAGE_SOURCE.indexOf(">Where you could study<"));
     expect(row).toContain("{DESTINATIONS_LINE}");
     expect(row).toContain("src={`/flags/${f.code}.svg`}");
-    // Australia: confirmed by Tim on 27 September (SI Global). Its own line
-    // in Where you could study waits for his wording.
+    // Australia: confirmed by Tim on 27 September (SI Global); his own line
+    // for Where you could study arrived on 28 September and is used verbatim,
+    // in flag-row order, between Canada and Germany.
     expect(DESTINATION_FLAGS.some(f => f.name === "Australia")).toBe(true);
+    const australia = DESTINATIONS.find(d => d.name === "Australia");
+    expect(australia?.body).toBe(
+      "A popular international study destination offering a wide range of universities and undergraduate and postgraduate programmes.",
+    );
+    const order = DESTINATIONS.map(d => d.name);
+    expect(order.indexOf("Australia")).toBe(order.indexOf("Canada") + 1);
+    expect(order.indexOf("Germany")).toBe(order.indexOf("Australia") + 1);
   });
 
   it("offers two clear routes in the hero: WhatsApp, and a proper outlined button to the form", () => {
