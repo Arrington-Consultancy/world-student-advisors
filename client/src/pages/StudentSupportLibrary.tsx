@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { ArrowRight, Download, Eye, PlayCircle, Search, X } from "lucide-react";
 import { Link, useLocation, useSearch } from "wouter";
 import ScrollReveal from "@/components/ScrollReveal";
@@ -28,18 +28,18 @@ export default function StudentSupportLibrary() {
   const [selected, setSelected] = useState<{ title: string; videoId: string; url: string } | null>(null);
   const search = useSearch();
   const [, navigate] = useLocation();
-  const initialQuery = new URLSearchParams(search).get("q") ?? "";
-  const [query, setQuery] = useState(initialQuery);
 
-  // Keep the address bar in step with the box, replacing rather than pushing
-  // so the back button leaves the library rather than stepping through
-  // every keystroke.
-  useEffect(() => {
-    const current = new URLSearchParams(search).get("q") ?? "";
-    const next = query.trim();
-    if (current === next) return;
-    navigate(next ? `${LIBRARY_PATH}?q=${encodeURIComponent(next)}` : LIBRARY_PATH, { replace: true });
-  }, [query, search, navigate]);
+  // The address bar is the one source of truth for the search: the box
+  // shows `?q=` and typing rewrites `?q=` (replace, not push, so the back
+  // button leaves the library rather than stepping through keystrokes).
+  // It must not be copied into local state once at mount: on the
+  // prerendered page wouter reports an empty search during hydration and
+  // the real one a moment later, and a copy taken at mount would miss it
+  // (found on the live site, 29 September 2026: a shared ?q= link opened
+  // on all 38 resources with the query stripped).
+  const query = new URLSearchParams(search).get("q") ?? "";
+  const setQuery = (value: string) =>
+    navigate(value.trim() ? `${LIBRARY_PATH}?q=${encodeURIComponent(value)}` : LIBRARY_PATH, { replace: true });
 
   const trimmedQuery = query.trim();
   const isSearching = trimmedQuery.length > 0;

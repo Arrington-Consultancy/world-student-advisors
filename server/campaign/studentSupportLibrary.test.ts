@@ -129,6 +129,26 @@ describe("Tim's corrections of 26 September 2026", () => {
   });
 });
 
+describe("a shared search link", () => {
+  it("renders its results server-side from the address bar, not from state copied at mount", async () => {
+    // The prerendered page hydrates with an empty search first; the query
+    // must therefore be read from the URL on every render. Found live on
+    // 29 September 2026 (verifier run 36618602661).
+    const React = await import("react");
+    const { renderToString } = await import("react-dom/server");
+    const { Router } = await import("wouter");
+    const { default: Page } = await import("../../client/src/pages/StudentSupportLibrary");
+    const html = renderToString(
+      React.createElement(Router, { ssrPath: LIBRARY_PATH, ssrSearch: "q=CAS%20Shield" }, React.createElement(Page)),
+    );
+    expect(html).toContain("WSA 024<");
+    expect(html).not.toContain("WSA 001<");
+    expect(html).toMatch(/value="CAS Shield"/);
+    expect(LIBRARY_PAGE).not.toMatch(/useState\((?:initialQuery|new URLSearchParams)/);
+    expect(LIBRARY_PAGE).toMatch(/const query = new URLSearchParams\(search\)\.get\("q"\)/);
+  });
+});
+
 describe("recordings and summaries", () => {
   it("every recording URL parses to a YouTube id", () => {
     for (const r of LIBRARY_RESOURCES) {

@@ -73,8 +73,10 @@ console.log("\n=== 1. The library page, as served ===");
   const counts = Object.fromEntries(resources.map(r => [r.code, (html.match(new RegExp(`${r.code}<`, "g")) ?? []).length]));
   const dupes = Object.entries(counts).filter(([, n]) => n !== 1);
   check(dupes.length === 0, "every code appears once in the browse view", dupes.map(([c, n]) => `${c}x${n}`).join(" "));
-  const s1 = html.indexOf(sectionTitles[0].title);
-  const s2 = html.indexOf(sectionTitles[1].title, s1 + 1);
+  // Anchor on the section elements themselves, not the first mention of a
+  // title (the jump navigation near the top names all four).
+  const s1 = html.indexOf('id="section-1"');
+  const s2 = html.indexOf('id="section-2"');
   const ten = html.indexOf("WSA 039<");
   check(s1 >= 0 && s2 > s1 && ten > s1 && ten < s2, "WSA 039 sits under section 1", `s1=${s1} 039=${ten} s2=${s2}`);
   for (const r of resources) check(html.includes(`href="${LIBRARY}/${r.slug}"`), `card links to ${LIBRARY}/${r.slug}`);
@@ -169,8 +171,11 @@ for (const [width, height] of [[390, 844], [1280, 900]]) {
 
   // A shared search link opens with the results already showing.
   await page.goto(`${SITE}${LIBRARY}?q=CAS%20Shield`, { waitUntil: "networkidle" });
+  await page.waitForTimeout(600);
   const shared = await page.locator("h3 span.text-wsa-red").allInnerTexts();
-  check(shared.includes("WSA 024"), "a shared search link opens on its results", shared.join(","));
+  check(shared.join(",") === "WSA 024", "a shared search link opens on exactly its result", shared.join(","));
+  check((await page.inputValue("#library-search")) === "CAS Shield", "the shared query is in the search box", await page.inputValue("#library-search"));
+  check(page.url().includes("q=CAS%20Shield"), "the shared query stays in the address bar", page.url());
 
   await page.goto(`${SITE}${LIBRARY}/${sample.slug}`, { waitUntil: "networkidle" });
   const h1 = (await page.locator("h1").first().innerText()).trim();
