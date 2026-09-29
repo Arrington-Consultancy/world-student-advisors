@@ -291,12 +291,18 @@ describe("the route, the alias and the metadata", () => {
     expect(seo?.description).toContain("Lagos");
   });
 
-  it("stays out of the index until Tom Arrington's separate GO to publish it", () => {
-    // Indexing, the sitemap and the prerender list change together on that
-    // GO, as /nigeria-postgraduate did. Tim Hunt's revision is not that GO.
-    expect(NOINDEX_PATHS.has("/speak-to-juliet")).toBe(true);
-    expect(shouldNoindex("/speak-to-juliet")).toBe(true);
-    expect(ALL_PRERENDER_ROUTES).not.toContain("/speak-to-juliet");
+  it("is published: indexable, in the sitemap and prerendered, on Tom Arrington's GO of 29 September 2026", () => {
+    // Indexing, the sitemap and the prerender list changed together on that
+    // GO, as /nigeria-postgraduate did on 12 September.
+    expect(NOINDEX_PATHS.has("/speak-to-juliet")).toBe(false);
+    expect(shouldNoindex("/speak-to-juliet")).toBe(false);
+    expect(ALL_PRERENDER_ROUTES).toContain("/speak-to-juliet");
+    const sitemap = readFileSync("client/public/sitemap.xml", "utf8");
+    expect(sitemap).toContain("<loc>https://www.worldstudentadvisors.com/speak-to-juliet</loc>");
+    // The thank-you page stays private whatever happens to its parent.
+    expect(shouldNoindex("/speak-to-juliet/thank-you")).toBe(true);
+    expect(ALL_PRERENDER_ROUTES).not.toContain("/speak-to-juliet/thank-you");
+    expect(sitemap).not.toContain("/speak-to-juliet/thank-you");
   });
 });
 
