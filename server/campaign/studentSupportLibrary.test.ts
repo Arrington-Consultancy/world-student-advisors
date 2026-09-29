@@ -13,6 +13,7 @@ import {
   resourcePath,
   resourcesInSection,
   searchLibrary,
+  WSA_017_PENDING,
 } from "../../shared/studentSupportLibrary";
 import { VALID_CLIENT_ROUTES, isValidClientRoute } from "../../shared/routes";
 import { ALL_PRERENDER_ROUTES } from "../../shared/prerenderRoutes";
@@ -24,7 +25,8 @@ import { getYouTubeVideoId } from "../../client/src/lib/youtube";
  * of 26 September 2026, on Tom Arrington's GO of 29 September. What this
  * guards: every intended resource once and only once; the two removed codes
  * absent; WSA 039 in section 1; Tim's corrected recordings for WSA 004 and
- * WSA 017 and his new WSA 017 summary; a stable permanent page per resource
+ * WSA 017 (the second held on its live recording until his new one is
+ * public); a stable permanent page per resource
  * that is a real route, prerendered, in the sitemap and indexable; summary
  * files present; search still finding the right resource; and the pages'
  * source doing what the record says.
@@ -112,14 +114,18 @@ describe("Tim's corrections of 26 September 2026", () => {
     expect(getYouTubeVideoId(getResourceByCode("WSA 004")!.youtubeUrl)).toBe("WqNU_CRy_p8");
   });
 
-  it("WSA 017 plays his updated recording and carries his 6 September summary", () => {
+  it("WSA 017 keeps its live, playable recording and summary while Tim's new recording is unavailable", () => {
+    // YouTube reported mLDmQplce-o "Video unavailable" on 29 September 2026
+    // (GitHub Actions run 36617395899); the recording already on the site
+    // still plays. The switch waits for Tim; WSA_017_PENDING records it.
     const cwu = getResourceByCode("WSA 017")!;
-    expect(getYouTubeVideoId(cwu.youtubeUrl)).toBe("mLDmQplce-o");
-    expect(LIBRARY_RESOURCES.some(r => r.youtubeUrl.includes("xlJOfunvQYM"))).toBe(false);
+    expect(getYouTubeVideoId(cwu.youtubeUrl)).toBe("xlJOfunvQYM");
+    expect(getYouTubeVideoId(WSA_017_PENDING.youtubeUrl)).toBe("mLDmQplce-o");
+    expect(LIBRARY_RESOURCES.some(r => r.youtubeUrl.includes("mLDmQplce-o"))).toBe(false);
     const pdf = readFileSync(`client/public/downloads/${cwu.pdfFile}`);
-    expect(pdf.length).toBe(72491);
-    expect(createHash("sha256").update(pdf).digest("hex")).toBe("ef2da5e0aef68e400deb4c59652011abb187cbe1a7ab3b0bc14eb6b08ececbeb");
-    expect(cwu.keywords).toContain("CWU");
+    expect(pdf.length).toBe(68511);
+    expect(createHash("sha256").update(pdf).digest("hex")).toBe("ae30b3ab8f5cf4f6b252ca962818a3b6ff4681a8dc8c3cdfde924f4dd13a6080");
+    expect(cwu.keywords).toContain("Cyprus West University");
   });
 });
 

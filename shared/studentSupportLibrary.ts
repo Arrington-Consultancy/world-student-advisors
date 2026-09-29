@@ -15,9 +15,14 @@
  * TIM'S DECISIONS, 26 SEPTEMBER 2026, APPLIED HERE:
  *  - WSA 004 (Undergraduate Course Advice) plays the recording in his list,
  *    WqNU_CRy_p8, not the library-guide recording the website had.
- *  - WSA 017 (Cyprus West University) plays his updated recording,
- *    mLDmQplce-o, with the "version two, 6 September 2026" summary he
- *    attached; its keywords are drawn from that new summary.
+ *  - WSA 017 (Cyprus West University): "This has been updated. New summary
+ *    attached." His list gives the recording mLDmQplce-o. On 29 September
+ *    2026 YouTube reported that recording "Video unavailable" (private,
+ *    removed or a wrong id on his side), confirmed from a GitHub runner
+ *    while the other 38 recordings played, so it is NOT live. WSA 017 keeps
+ *    the recording and summary that were already live and playable
+ *    (xlJOfunvQYM, the 25 August summary) until his recording is public;
+ *    see WSA_017_PENDING. Switching is a one-line change plus the PDF.
  *  - WSA 033 (UK University Scholarships): "REMOVE". Not here.
  *  - WSA 040 (Student Support Library guide): "out of date now ... REMOVE".
  *    Never added.
@@ -282,10 +287,10 @@ export const LIBRARY_RESOURCES: readonly LibraryResource[] = Object.freeze([
     slug: "cyprus-west-university",
     title: "Cyprus West University",
     description: "Discover Cyprus West University, the courses available and the practical considerations when deciding whether it is right for you.",
-    youtubeUrl: "https://youtu.be/mLDmQplce-o",
+    youtubeUrl: "https://youtu.be/xlJOfunvQYM",
     pdfFile: "wsa-017-summary.pdf",
     section: "choosing-where-and-what-to-study",
-    keywords: ["Cyprus West University", "CWU", "Northern Cyprus", "Mediterranean", "scholarship", "tuition fees", "living costs", "MBA", "Computer Engineering", "Business Administration", "Civil Aviation Management", "student residence permit", "Manet Khamayo"],
+    keywords: ["Cyprus West University", "CWU", "Northern Cyprus", "TRNC", "scholarship", "MBA", "transit visa"],
   },
   {
     code: "WSA 018",
@@ -480,6 +485,22 @@ export const REMOVED_RESOURCES: readonly { code: string; title: string; reason: 
   { code: "WSA 033", title: "UK University Scholarships", reason: "Tim Hunt, 26 September 2026: \"REMOVE\"." },
   { code: "WSA 040", title: "Student Support Library", reason: "Tim Hunt, 26 September 2026: \"this is out of date now, as based on the previous structure) REMOVE\". Never added to the website." },
 ]);
+
+/**
+ * Tim Hunt's updated WSA 017 recording and summary of 26 September 2026,
+ * held back because YouTube reports the recording unavailable (see the
+ * header). When he confirms it is public: set WSA 017's youtubeUrl to this
+ * URL, replace client/public/downloads/wsa-017-summary.pdf with his
+ * "WSA 017 CWU Summary 6 September 2026.pdf" (72,491 bytes, sha256
+ * ef2da5e0aef68e400deb4c59652011abb187cbe1a7ab3b0bc14eb6b08ececbeb), and
+ * update the guard test. Nothing reads this at run time.
+ */
+export const WSA_017_PENDING = {
+  code: "WSA 017",
+  youtubeUrl: "https://youtu.be/mLDmQplce-o",
+  summaryFile: "WSA 017 CWU Summary 6 September 2026.pdf",
+  reason: "YouTube: \"Video unavailable\" on 29 September 2026; Tim to make the recording public.",
+} as const;
 
 export const LIBRARY_DISCLAIMER =
   "Disclaimer: This information is provided in good faith and was believed to be accurate at the time of publication. Fees, dates, entry requirements, visa regulations and other information may change. Students should check current requirements before making any financial or study commitments.";
