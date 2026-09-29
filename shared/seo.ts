@@ -1,3 +1,4 @@
+import { LIBRARY_CODE_ALIASES, LIBRARY_PATH, getResourceBySlug } from "./studentSupportLibrary";
 export interface SeoEntry {
   title: string;
   description: string;
@@ -184,6 +185,10 @@ export const SEO_MAP: Record<string, SeoEntry> = {
 };
 
 export const CANONICAL_PATHS: Record<string, string> = {
+  // /student-support-library/wsa-024 and every other code form 301 to the
+  // slug form, so a counsellor who knows the code can type it and crawlers
+  // see one URL per resource (shared/studentSupportLibrary.ts).
+  ...LIBRARY_CODE_ALIASES,
   "/study-options/a-levels": "/a-levels",
   "/study-options/international-foundation-programme": "/international-foundation-programme",
   "/study-options/international-year-one": "/international-year-one",
@@ -233,8 +238,24 @@ export function getCanonicalUrl(path: string): string {
   return `${SITE_ORIGIN}${getCanonicalPath(path)}`;
 }
 
+/**
+ * Each Student Support Library resource page carries its own title and
+ * description, from the resource record, so a link pasted into WhatsApp or
+ * email previews as that podcast and search engines index it as one.
+ */
+function getLibraryResourceSeo(path: string): SeoEntry | undefined {
+  if (!path.startsWith(`${LIBRARY_PATH}/`)) return undefined;
+  const resource = getResourceBySlug(path.slice(LIBRARY_PATH.length + 1));
+  if (!resource) return undefined;
+  return {
+    title: `${resource.title} | Student Support Library | World Student Advisors`,
+    description: `${resource.code}: ${resource.description} Watch or listen, and download the WSA summary.`,
+  };
+}
+
 export function getSeoForPath(path: string): SeoEntry {
-  return SEO_MAP[getCanonicalPath(path)] ?? DEFAULT_SEO;
+  const canonical = getCanonicalPath(path);
+  return SEO_MAP[canonical] ?? getLibraryResourceSeo(canonical) ?? DEFAULT_SEO;
 }
 
 export function shouldNoindex(path: string): boolean {

@@ -30,11 +30,14 @@
  */
 import { readFileSync } from "fs";
 
-const SOURCE = "client/src/lib/studentSupportLibrary.ts";
+const SOURCE = "shared/studentSupportLibrary.ts";
 const src = readFileSync(SOURCE, "utf8");
 
+// One record per live resource in LIBRARY_RESOURCES: code, slug, title,
+// description, then the recording. Removed codes (REMOVED_RESOURCES) have
+// no record and so are not checked.
 const entries = [...src.matchAll(
-  /"(WSA \d{3})": \{[\s\S]*?title: "([^"]+)"[\s\S]*?youtubeUrl: "([^"]+)"/g,
+  /code: "(WSA \d{3})",\s*slug: "[^"]+",\s*title: "([^"]+)",\s*description: "[^"]*",\s*youtubeUrl: "([^"]+)"/g,
 )].map(m => ({ code: m[1], title: m[2], url: m[3] }));
 
 if (entries.length === 0) {
