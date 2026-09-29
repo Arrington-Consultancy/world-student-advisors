@@ -1,32 +1,30 @@
 name: Check Student Support Library links
 
-# Manual and weekly. READ-ONLY: touches nothing but YouTube's public oEmbed
-# endpoint, and writes nothing anywhere.
-#
-# A deleted YouTube video leaves a link that is still a valid string, so the
-# build and the test suite both pass while a student sees "Video unavailable".
-# Nothing else in this repository can catch that, because the check needs
-# outbound internet access.
-#
-# Fails the run when any link is dead, and prints a failure notice naming the
-# resource, its title and what YouTube said, which is what Tim asks for when
-# something stops working.
+# THROWAWAY DIAGNOSTIC VERSION (branch claude/diag-youtube-017 only; never for
+# merge). Read-only: asks YouTube why a recording is not playable through
+# oEmbed. No secrets, changes nothing.
 on:
   workflow_dispatch:
-  schedule:
-    # Monday 08:00 UTC. Weekly is enough: links break when somebody replaces
-    # a recording, which is a known event rather than a random one.
-    - cron: "0 8 * * 1"
 
 jobs:
   check:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 20
-
-      - name: Check every library video is still playable
-        run: node scripts/check-library-links.mjs
+      - name: Query YouTube
+        run: |
+          for id in mLDmQplce-o WqNU_CRy_p8 xlJOfunvQYM; do
+            echo "=== $id ==="
+            echo -n "oembed HTTP: "; curl -sS -o /tmp/oembed.json -w '%{http_code}\n' "https://www.youtube.com/oembed?url=https%3A%2F%2Fwww.youtube.com%2Fwatch%3Fv%3D$id&format=json" || true
+            head -c 400 /tmp/oembed.json; echo
+            curl -sS -L -A "Mozilla/5.0" -o /tmp/watch.html -w 'watch HTTP: %{http_code}\n' "https://www.youtube.com/watch?v=$id" || true
+            echo -n "watch <title>: "; grep -o '<title>[^<]*</title>' /tmp/watch.html | head -1; echo
+            echo "watch playabilityStatus:"; grep -o '"playabilityStatus":{[^}]*}' /tmp/watch.html | head -1 | cut -c1-700; echo
+            grep -o '"reason":"[^"]*"' /tmp/watch.html | head -3
+            grep -o '"isUnlisted":[a-z]*' /tmp/watch.html | head -1
+            grep -o '"isPrivate":[a-z]*' /tmp/watch.html | head -1
+            grep -o '"playableInEmbed":[a-z]*' /tmp/watch.html | head -1
+            curl -sS -L -A "Mozilla/5.0" -o /tmp/embed.html -w 'embed HTTP: %{http_code}\n' "https://www.youtube-nocookie.com/embed/$id" || true
+            echo "embed playabilityStatus:"; grep -o '"playabilityStatus":{[^}]*}' /tmp/embed.html | head -1 | cut -c1-700; echo
+            grep -o '"previewPlayabilityStatus":{[^}]*}' /tmp/embed.html | head -1 | cut -c1-400
+            echo
+          done
