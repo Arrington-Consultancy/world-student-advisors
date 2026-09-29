@@ -49,6 +49,7 @@ import DDVavita from "./pages/DDVavita";
 import UKMastersStudy from "./pages/UKMastersStudy";
 import UKMastersNigeria from "./pages/UKMastersNigeria";
 import SpeakToJulietThankYou from "./pages/SpeakToJulietThankYou";
+import StudentSupportLibraryResource from "./pages/StudentSupportLibraryResource";
 import NigeriaPostgraduate from "./pages/NigeriaPostgraduate";
 import SpeakToJuliet from "./pages/SpeakToJuliet";
 
@@ -79,6 +80,9 @@ function Router() {
       <Route path={"/our-team"} component={OurTeam} />
       <Route path={"/counsellors"} component={OurTeam} />
       <Route path={"/student-support-library"} component={StudentSupportLibrary} />
+      {/* One permanent page per library resource. The registry lists every
+          slug (shared/routes.ts) and routes-sync.test.ts expands this pattern. */}
+      <Route path={"/student-support-library/:slug"} component={StudentSupportLibraryResource} />
       <Route path={"/staff-portal"} component={StaffPortal} />
       <Route path={"/learning-hub/cv-university-application"} component={CVUniversityApplication} />
       <Route path={"/training-workshops"} component={TrainingWorkshops} />

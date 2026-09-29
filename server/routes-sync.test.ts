@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import fs from "fs";
 import path from "path";
 import { VALID_CLIENT_ROUTES } from "../shared/routes";
+import { LIBRARY_RESOURCE_PATHS } from "../shared/studentSupportLibrary";
 
 // shared/routes.ts is a hand-maintained snapshot of client/src/App.tsx's
 // route table (server code can't import App.tsx directly — it pulls in
@@ -14,7 +15,12 @@ describe("shared/routes.ts stays in sync with client/src/App.tsx", () => {
   it("contains exactly the same set of paths as every <Route path={...}> in App.tsx", () => {
     const appTsxPath = path.resolve(import.meta.dirname, "../client/src/App.tsx");
     const source = fs.readFileSync(appTsxPath, "utf-8");
-    const matches = [...source.matchAll(/<Route path=\{"([^"]+)"\}/g)].map(m => m[1]);
+    const patterns = [...source.matchAll(/<Route path=\{"([^"]+)"\}/g)].map(m => m[1]);
+    // The one parameterised route, the Student Support Library resource
+    // page, stands for every slug in the library data; every other route
+    // is a literal path.
+    const matches = patterns.flatMap(p => (p === "/student-support-library/:slug" ? [...LIBRARY_RESOURCE_PATHS] : [p]));
+    for (const p of matches) expect(p, "only the library resource route may carry a parameter").not.toContain(":");
 
     expect(matches.length).toBeGreaterThan(0);
     expect(new Set(matches)).toEqual(new Set(VALID_CLIENT_ROUTES));

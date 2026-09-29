@@ -1,42 +1,53 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { ArrowRight, Download, Eye, PlayCircle, Search, X } from "lucide-react";
+import { Link, useLocation, useSearch } from "wouter";
 import ScrollReveal from "@/components/ScrollReveal";
-import { Link } from "wouter";
+import VideoModal from "@/components/VideoModal";
 import {
-  CANONICAL_RESOURCES,
+  LIBRARY_DISCLAIMER,
+  LIBRARY_PATH,
+  LIBRARY_RESOURCES,
   LIBRARY_SECTIONS,
+  pdfPath,
+  resourcePath,
+  resourcesInSection,
   searchLibrary,
-  type CanonicalResource,
+  type LibraryResource,
+  type LibrarySection,
 } from "@/lib/studentSupportLibrary";
 import { getYouTubeVideoId } from "@/lib/youtube";
-import VideoModal from "@/components/VideoModal";
-
-const DISCLAIMER =
-  "Disclaimer: This information is provided in good faith and was believed to be accurate at the time of publication. Fees, dates, entry requirements, visa regulations and other information may change. Students should check current requirements before making any financial or study commitments.";
 
 /**
- * Student Support Library — Stage 2.
- *
- * Every resource is rendered from a single canonical WSA 001–039 record
- * (see client/src/lib/studentSupportLibrary.ts) — a resource used in
- * several sections is the same object referenced by code each time, never
- * a separate copy. Search runs over that same canonical set, so a match
- * always resolves to one result even when the resource appears in
- * multiple sections.
+ * Student Support Library: Tim Hunt's four-section structure of
+ * 26 September 2026 (shared/studentSupportLibrary.ts). Every resource
+ * appears once, in its one home section, and has its own permanent page at
+ * /student-support-library/<slug>. Search runs over the same records and
+ * puts the query in the address bar, so a search itself can be shared.
  */
 export default function StudentSupportLibrary() {
   const [selected, setSelected] = useState<{ title: string; videoId: string; url: string } | null>(null);
-  const [query, setQuery] = useState("");
+  const search = useSearch();
+  const [, navigate] = useLocation();
+  const initialQuery = new URLSearchParams(search).get("q") ?? "";
+  const [query, setQuery] = useState(initialQuery);
+
+  // Keep the address bar in step with the box, replacing rather than pushing
+  // so the back button leaves the library rather than stepping through
+  // every keystroke.
+  useEffect(() => {
+    const current = new URLSearchParams(search).get("q") ?? "";
+    const next = query.trim();
+    if (current === next) return;
+    navigate(next ? `${LIBRARY_PATH}?q=${encodeURIComponent(next)}` : LIBRARY_PATH, { replace: true });
+  }, [query, search, navigate]);
 
   const trimmedQuery = query.trim();
   const isSearching = trimmedQuery.length > 0;
   const searchResults = useMemo(() => searchLibrary(trimmedQuery), [trimmedQuery]);
 
-  const handlePlay = (resource: CanonicalResource) => {
+  const handlePlay = (resource: LibraryResource) => {
     const videoId = getYouTubeVideoId(resource.youtubeUrl);
     if (!videoId) {
-      // Shouldn't happen (every URL in the data file is validated against
-      // this same parser), but never fail silently on a click.
       window.open(resource.youtubeUrl, "_blank", "noopener,noreferrer");
       return;
     }
@@ -45,8 +56,8 @@ export default function StudentSupportLibrary() {
 
   return (
     <div className="min-h-screen">
-      {/* Hero */}
-      <section className="pt-32 lg:pt-40 pb-16 lg:pb-24">
+      {/* Hero and search */}
+      <section className="pt-32 lg:pt-40 pb-12 lg:pb-16">
         <div className="container">
           <ScrollReveal>
             <div className="max-w-3xl">
@@ -55,30 +66,25 @@ export default function StudentSupportLibrary() {
                 Your Student Support Library
               </h1>
               <p className="text-xl text-muted-foreground leading-relaxed max-w-2xl">
-                Free podcasts and practical guides from WSA's student counsellors, supporting you at every stage of your journey, from choosing where and what to study through to your visa, travel and arrival. No sign up. Just straightforward advice when you need it.
+                {LIBRARY_RESOURCES.length} free podcasts and practical guides from WSA's student counsellors, in four sections that follow your journey: how WSA helps, choosing where and what to study, applications, interviews and visas, and preparing to travel. No sign up. Just straightforward advice when you need it.
               </p>
             </div>
           </ScrollReveal>
 
-          {/* Search */}
           <ScrollReveal delay={80}>
-            <div className="mt-12 pt-6 border-t border-border max-w-xl">
-              <label htmlFor="library-search" className="sr-only">
-                Search the Student Support Library
+            <div className="mt-10 max-w-2xl">
+              <label htmlFor="library-search" className="block text-sm font-semibold text-wsa-navy mb-2">
+                Search the library
               </label>
               <div className="relative">
-                <Search
-                  size={18}
-                  className="absolute left-4 top-1/2 -translate-y-1/2 text-wsa-navy/40"
-                  aria-hidden="true"
-                />
+                <Search size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-wsa-navy/40" aria-hidden="true" />
                 <input
                   id="library-search"
                   type="search"
                   value={query}
                   onChange={e => setQuery(e.target.value)}
-                  placeholder="Search visas, CAS, scholarships, PhD, Canada..."
-                  className="w-full pl-11 pr-11 py-3.5 border border-border text-wsa-navy placeholder:text-wsa-navy/40 focus:outline-none focus:border-wsa-red transition-colors"
+                  placeholder="Try bank statement, CAS Shield, IHS, scholarship, Canada, Cyprus..."
+                  className="w-full pl-11 pr-11 py-4 border-2 border-wsa-navy/15 text-wsa-navy text-base placeholder:text-wsa-navy/40 focus:outline-none focus:border-wsa-red transition-colors"
                 />
                 {isSearching && (
                   <button
@@ -91,21 +97,23 @@ export default function StudentSupportLibrary() {
                   </button>
                 )}
               </div>
+              <p className="mt-2 text-xs text-muted-foreground">
+                Searches titles, descriptions and the terms inside each summary. Every podcast has its own permanent link you can share.
+              </p>
             </div>
           </ScrollReveal>
 
-          {/* Jump-to category nav — hidden while searching, since results
-              replace the sectioned browse view below. */}
           {!isSearching && (
             <ScrollReveal delay={120}>
-              <nav aria-label="Jump to category" className="flex flex-wrap gap-2 mt-8">
-                {LIBRARY_SECTIONS.map((section, i) => (
+              <nav aria-label="Jump to section" className="flex flex-wrap gap-2 mt-8">
+                {LIBRARY_SECTIONS.map(section => (
                   <a
-                    key={section.title}
-                    href={`#category-${i + 1}`}
-                    className="px-3 py-1.5 text-xs font-medium text-wsa-navy/70 border border-border hover:border-wsa-red hover:text-wsa-red transition-colors"
+                    key={section.id}
+                    href={`#section-${section.number}`}
+                    className="px-3 py-2 text-sm font-medium text-wsa-navy/80 border border-border hover:border-wsa-red hover:text-wsa-red transition-colors"
                   >
-                    {i + 1}. {section.title}
+                    {section.number}. {section.title}
+                    <span className="ml-1.5 text-wsa-navy/40">({resourcesInSection(section.id).length})</span>
                   </a>
                 ))}
               </nav>
@@ -114,29 +122,25 @@ export default function StudentSupportLibrary() {
         </div>
       </section>
 
-      {/* Categories, or search results */}
+      {/* Sections, or search results */}
       <section className="pb-16 lg:pb-20">
         <div className="container max-w-4xl">
           {isSearching ? (
             <SearchResults query={trimmedQuery} results={searchResults} onPlay={handlePlay} />
           ) : (
             LIBRARY_SECTIONS.map((section, sectionIndex) => (
-              <ScrollReveal key={section.title} delay={Math.min(sectionIndex * 40, 200)}>
+              <ScrollReveal key={section.id} delay={Math.min(sectionIndex * 40, 200)}>
                 <div
-                  id={`category-${sectionIndex + 1}`}
+                  id={`section-${section.number}`}
                   className={`py-10 lg:py-12 scroll-mt-28 ${sectionIndex > 0 ? "border-t border-border" : ""}`}
                 >
                   <h2 className="text-2xl md:text-3xl font-semibold text-wsa-navy leading-[1.15] mb-6">
-                    <span className="text-wsa-red/70 mr-2">{sectionIndex + 1}.</span>
+                    <span className="text-wsa-red/70 mr-2">{section.number}.</span>
                     {section.title}
                   </h2>
                   <div className="grid lg:grid-cols-2 gap-x-8">
-                    {section.codes.map(code => (
-                      <ResourceCard
-                        key={code}
-                        resource={CANONICAL_RESOURCES[code]}
-                        onPlay={handlePlay}
-                      />
+                    {resourcesInSection(section.id).map(resource => (
+                      <ResourceCard key={resource.code} resource={resource} onPlay={handlePlay} />
                     ))}
                   </div>
                 </div>
@@ -146,7 +150,7 @@ export default function StudentSupportLibrary() {
         </div>
       </section>
 
-      {/* Interview Readiness Coach — applicant-benefit callout */}
+      {/* Interview Readiness Coach: applicant-benefit callout */}
       <section className="pb-16 lg:pb-20">
         <div className="container max-w-4xl">
           <div className="border border-border/40 p-8 lg:p-10">
@@ -168,12 +172,10 @@ export default function StudentSupportLibrary() {
         </div>
       </section>
 
-      {/* Disclaimer — shown once for the whole library, not repeated per resource */}
+      {/* Disclaimer, shown once for the whole library */}
       <section className="pb-16 lg:pb-20">
         <div className="container max-w-4xl">
-          <p className="text-xs text-muted-foreground/80 leading-relaxed border-t border-border pt-6">
-            {DISCLAIMER}
-          </p>
+          <p className="text-xs text-muted-foreground/80 leading-relaxed border-t border-border pt-6">{LIBRARY_DISCLAIMER}</p>
         </div>
       </section>
 
@@ -208,7 +210,7 @@ export default function StudentSupportLibrary() {
 interface SearchResultsProps {
   query: string;
   results: ReturnType<typeof searchLibrary>;
-  onPlay: (resource: CanonicalResource) => void;
+  onPlay: (resource: LibraryResource) => void;
 }
 
 function SearchResults({ query, results, onPlay }: SearchResultsProps) {
@@ -217,7 +219,7 @@ function SearchResults({ query, results, onPlay }: SearchResultsProps) {
       <div className="py-16 text-center">
         <p className="text-lg text-wsa-navy mb-2">No results for "{query}"</p>
         <p className="text-muted-foreground">
-          Try a different word, or browse the sections above. Your Student Counsellor can also help you find what you need.
+          Try a different word, or clear the search to browse the four sections. Your Student Counsellor can also help you find what you need.
         </p>
       </div>
     );
@@ -229,8 +231,8 @@ function SearchResults({ query, results, onPlay }: SearchResultsProps) {
         {results.length} {results.length === 1 ? "result" : "results"} for "{query}"
       </p>
       <div className="grid lg:grid-cols-2 gap-x-8">
-        {results.map(({ resource, sections }) => (
-          <ResourceCard key={resource.code} resource={resource} onPlay={onPlay} sections={sections} />
+        {results.map(({ resource, section }) => (
+          <ResourceCard key={resource.code} resource={resource} onPlay={onPlay} section={section} />
         ))}
       </div>
     </div>
@@ -238,25 +240,30 @@ function SearchResults({ query, results, onPlay }: SearchResultsProps) {
 }
 
 interface ResourceCardProps {
-  resource: CanonicalResource;
-  onPlay: (resource: CanonicalResource) => void;
-  /** When shown in search results, the sections this resource belongs to. */
-  sections?: string[];
+  resource: LibraryResource;
+  onPlay: (resource: LibraryResource) => void;
+  /** In search results, the one section this resource lives in. */
+  section?: LibrarySection;
 }
 
-function ResourceCard({ resource, onPlay, sections }: ResourceCardProps) {
-  const pdfUrl = `/downloads/${resource.pdfFile}`;
+function ResourceCard({ resource, onPlay, section }: ResourceCardProps) {
+  const pdfUrl = pdfPath(resource);
+  const page = resourcePath(resource.slug);
 
   return (
     <div className="py-6 border-b border-border/40 lg:border-none lg:pb-8">
       <h3 className="text-lg sm:text-xl font-semibold text-wsa-navy leading-snug mb-1.5">
         <span className="text-wsa-red">{resource.code}</span>
         <span className="text-wsa-navy/30 mx-2 font-normal">|</span>
-        {resource.title}
+        <Link href={page} className="hover:text-wsa-red transition-colors">
+          {resource.title}
+        </Link>
       </h3>
       <p className="text-[15px] text-muted-foreground leading-relaxed mb-3">{resource.description}</p>
-      {sections && sections.length > 0 && (
-        <p className="text-xs text-wsa-navy/50 mb-3">Appears in: {sections.join(", ")}</p>
+      {section && (
+        <p className="text-xs text-wsa-navy/50 mb-3">
+          Section {section.number}: {section.title}
+        </p>
       )}
       <div className="flex flex-wrap items-center gap-x-3 -mx-2">
         <button
@@ -284,6 +291,13 @@ function ResourceCard({ resource, onPlay, sections }: ResourceCardProps) {
           <Download size={16} className="shrink-0" aria-hidden="true" />
           Download Summary
         </a>
+        <Link
+          href={page}
+          className="inline-flex items-center gap-1.5 text-sm font-medium text-wsa-navy/70 hover:text-wsa-red transition-colors px-2 py-2.5"
+        >
+          Open page
+          <ArrowRight size={14} className="shrink-0" aria-hidden="true" />
+        </Link>
       </div>
     </div>
   );

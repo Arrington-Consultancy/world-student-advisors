@@ -7,7 +7,9 @@
  * the build if the two ever drift apart, so update both when adding or
  * removing a page.
  */
-export const VALID_CLIENT_ROUTES = [
+import { LIBRARY_RESOURCE_PATHS } from "./studentSupportLibrary";
+
+export const VALID_CLIENT_ROUTES: readonly string[] = [
   "/",
   "/about",
   "/study-options",
@@ -74,7 +76,14 @@ export const VALID_CLIENT_ROUTES = [
   // submission (28 September 2026). Noindex, out of the sitemap, unlinked.
   "/speak-to-juliet/thank-you",
   "/404",
-] as const;
+  // One permanent page per Student Support Library resource,
+  // /student-support-library/<slug>, generated from the library data so the
+  // registry can never disagree with it. In App.tsx these are the single
+  // pattern /student-support-library/:slug; server/routes-sync.test.ts
+  // expands that pattern with the same list. Tim Hunt's structure of
+  // 26 September 2026, built on Tom Arrington's GO of 29 September.
+  ...LIBRARY_RESOURCE_PATHS,
+];
 
 const VALID_CLIENT_ROUTE_SET = new Set<string>(VALID_CLIENT_ROUTES);
 
