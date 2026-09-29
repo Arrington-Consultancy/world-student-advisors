@@ -286,11 +286,20 @@ console.log("\n=== 4. Metadata ===");
   const canonical = await page.evaluate(() => document.querySelector('link[rel="canonical"]')?.getAttribute("href") ?? "");
   check(canonical.endsWith("/speak-to-juliet"), "the canonical URL is the page itself", canonical);
   const robots = await page.evaluate(() => document.querySelector('meta[name="robots"]')?.getAttribute("content") ?? "");
-  check(robots.includes("noindex"), "the page is noindex until Tom Arrington's GO to publish it", robots || "(none)");
+  // Published on Tom Arrington's GO of 29 September 2026: indexable, in the
+  // sitemap, prerendered. The thank-you page stays out of all three.
+  check(robots.includes("index") && !robots.includes("noindex"), "the page is indexable (published 29 September 2026)", robots || "(none)");
   await page.close();
 
   const sitemap = await (await fetch(`${SITE}/sitemap.xml`)).text();
-  check(!sitemap.includes("/speak-to-juliet"), "it is absent from the sitemap until that GO");
+  check(sitemap.includes("<loc>https://www.worldstudentadvisors.com/speak-to-juliet</loc>"), "it is in the sitemap");
+  check(!sitemap.includes(THANK_YOU_PATH), "the thank-you page is not in the sitemap");
+  // Prerendered: the raw HTML, without running any script, already carries
+  // the heading and the index directive a crawler needs.
+  const raw = await (await fetch(`${SITE}/speak-to-juliet`)).text();
+  check(raw.includes("Speak to Juliet"), "the served HTML carries the heading before any script runs");
+  check(raw.includes('<meta name="robots" content="index, follow" />'), "the served HTML says index, follow");
+  check(!raw.includes("noindex"), "no noindex anywhere in the served HTML");
 }
 
 /* 5. The thank-you page ------------------------------------------------- */

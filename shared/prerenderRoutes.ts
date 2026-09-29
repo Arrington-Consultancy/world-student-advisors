@@ -54,6 +54,7 @@ export const PRERENDER_ROUTES: readonly string[] = [
   "/uk-masters-study",
   "/uk-masters-nigeria",
   "/nigeria-postgraduate",
+  "/speak-to-juliet",
 ];
 
 /**

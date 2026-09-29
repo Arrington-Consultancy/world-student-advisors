@@ -215,15 +215,15 @@ export const NOINDEX_PATH_PREFIXES = ["/portal", "/staff-portal"];
 // 12 September 2026 until Tom Arrington's GO the same day, when noindex, the
 // draft banner, the sitemap entry and the prerender entry all changed
 // together (Change Entry 097). Paid traffic is a separate decision.
-// /speak-to-juliet carries provisional copy pending Tim Hunt's revised brief
-// and has not been reviewed by Tom Arrington, so it is noindex and absent
-// from the sitemap and the prerender list. Publishing it is one change:
-// remove it from this set and add it to both lists, as /nigeria-postgraduate
-// did on its GO.
+// /speak-to-juliet was noindex and out of the sitemap and prerender list
+// from its creation on 19 September 2026, through Tim Hunt's revisions, until
+// Tom Arrington's GO to publish on 29 September 2026, when noindex, the
+// sitemap entry and the prerender entry changed together, as
+// /nigeria-postgraduate did. Paid traffic is a separate decision.
 // /speak-to-juliet/thank-you is the post-submission page for Tim Hunt's
 // Pipedrive form. It is reached only by that redirect, is linked from
 // nowhere, and stays noindex whatever happens to its parent.
-export const NOINDEX_PATHS = new Set(["/404", "/speak-to-juliet", "/speak-to-juliet/thank-you"]);
+export const NOINDEX_PATHS = new Set(["/404", "/speak-to-juliet/thank-you"]);
 
 export function getCanonicalPath(path: string): string {
   return CANONICAL_PATHS[path] ?? path;
