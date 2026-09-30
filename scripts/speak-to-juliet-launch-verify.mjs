@@ -307,8 +307,9 @@ console.log("\n=== 4. Metadata ===");
 // to /speak-to-juliet/thank-you. That page is the only place the Juliet
 // route reports the site's one Google Ads conversion, and it reports it
 // once per arrival: not on a reload, not twice in a session, never on the
-// landing page. Consent has not been given in this browser, so gtag.js is
-// not loaded and the call queues on window.dataLayer, where it can be read.
+// landing page. gtag.js loads under Consent Mode v2 with consent denied in
+// this browser; every gtag call is still appended to window.dataLayer, where
+// it can be read, so the counts below are unaffected by the tag's presence.
 console.log("\n=== 5. The thank-you page ===");
 {
   const res = await fetch(`${SITE}${THANK_YOU_PATH}`, { redirect: "manual" });

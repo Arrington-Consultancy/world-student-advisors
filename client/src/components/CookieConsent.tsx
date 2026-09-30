@@ -2,11 +2,14 @@
  * Cookie Consent Banner - WSA design system
  * Navy (#1B2A4A-family) / WSA red accent / cream background tokens.
  * Fixed bottom bar, slides up on first visit, persists choice in localStorage.
- * GDPR/PECR: no non-essential scripts should fire until consent is granted.
+ * GDPR/PECR: no analytics or advertising cookie is set until consent is
+ * granted. The Google Ads tag itself loads on every page under Consent Mode
+ * v2 with consent denied (cookieless), and is switched to granted only by
+ * "Accept all"; see client/src/lib/googleAdsTag.ts for why.
  */
 import { useEffect, useState } from "react";
 import { Link } from "wouter";
-import { loadGoogleAdsTag } from "@/lib/googleAdsTag";
+import { loadGoogleAdsTag, updateGoogleConsent } from "@/lib/googleAdsTag";
 
 const CONSENT_KEY = "wsa-cookie-consent";
 
@@ -25,10 +28,12 @@ export default function CookieConsent() {
   const [visible, setVisible] = useState(false);
 
   useEffect(() => {
-    // A returning visitor who already accepted needs the tag loaded on this
-    // page view too — their earlier consent doesn't re-fire the banner.
+    // The tag loads on every page view with consent denied (Consent Mode
+    // v2); a returning visitor's earlier "Accept all" is replayed as an
+    // update so their measurement continues without re-showing the banner.
+    loadGoogleAdsTag();
     if (getCookieConsent() === "accepted") {
-      loadGoogleAdsTag();
+      updateGoogleConsent("granted");
     }
     // Show only if no prior choice has been recorded
     if (getCookieConsent() === null) {
@@ -44,9 +49,8 @@ export default function CookieConsent() {
       /* storage unavailable — banner will reappear next visit */
     }
     setVisible(false);
-    if (value === "accepted") {
-      loadGoogleAdsTag();
-    }
+    loadGoogleAdsTag();
+    updateGoogleConsent(value === "accepted" ? "granted" : "denied");
     // Notify listeners (e.g. analytics loader) that consent state changed
     window.dispatchEvent(new CustomEvent("wsa-consent-change", { detail: value }));
   };

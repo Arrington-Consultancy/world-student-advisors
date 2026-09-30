@@ -202,11 +202,29 @@ console.log("\n=== Brief v2.0 readiness ===");
   ok(afterHop.utm_campaign === attribution.utm_campaign, "utm_campaign did not survive the hop");
   log(`attribution after hop to /contact: gclid=${afterHop.gclid ?? "(lost)"} campaign=${afterHop.utm_campaign ?? "(lost)"}`);
 
-  // 5. The Google Ads conversion tag loads once analytics consent is given,
-  //    and stays absent until then. Both halves matter.
-  const beforeConsent = await p.evaluate(() =>
-    Boolean(document.querySelector('script[src*="googletagmanager.com/gtag/js"]')));
-  ok(!beforeConsent, "Google Ads tag loaded before consent was given");
+  // 5. Google Consent Mode v2 (since 30 September 2026): the Google Ads tag
+  //    loads on every page view with all four consent types denied and no
+  //    Google cookie set; "Accept all" pushes a consent update to granted.
+  const beforeConsent = await p.evaluate(() => {
+    const dl = window.dataLayer ?? [];
+    const dflt = dl.find(e => Array.isArray(e) && e[0] === "consent" && e[1] === "default");
+    const cfgIndex = dl.findIndex(e => Array.isArray(e) && e[0] === "config" && e[1] === "AW-946725823");
+    const dfltIndex = dl.findIndex(e => Array.isArray(e) && e[0] === "consent" && e[1] === "default");
+    return {
+      tag: Boolean(document.querySelector('script[src*="googletagmanager.com/gtag/js"]')),
+      id: document.querySelector('script[src*="googletagmanager.com/gtag/js"]')?.getAttribute("src") ?? "",
+      defaultDenied: Boolean(dflt) && ["ad_storage", "ad_user_data", "ad_personalization", "analytics_storage"].every(k => dflt[2]?.[k] === "denied"),
+      defaultBeforeConfig: dfltIndex >= 0 && cfgIndex > dfltIndex,
+      updateBefore: dl.some(e => Array.isArray(e) && e[0] === "consent" && e[1] === "update"),
+      googleCookie: /(^|; )_gcl_|(^|; )_ga/.test(document.cookie),
+    };
+  });
+  ok(beforeConsent.tag, "Google Ads tag did not load before consent (Consent Mode v2 expects it present, denied)");
+  ok(beforeConsent.id.includes("AW-946725823"), `unexpected Google Ads id: ${beforeConsent.id}`);
+  ok(beforeConsent.defaultDenied, "consent default is not denied for all four types");
+  ok(beforeConsent.defaultBeforeConfig, "consent default was not pushed before the config call");
+  ok(!beforeConsent.updateBefore, "a consent update was pushed before the visitor chose");
+  ok(!beforeConsent.googleCookie, "a Google advertising or analytics cookie was set before consent");
 
   const accept = p.getByRole("button", { name: /^accept all$/i });
   let consentGiven = false;
@@ -217,19 +235,21 @@ console.log("\n=== Brief v2.0 readiness ===");
     await p.waitForTimeout(4000);
   } catch {
     // Left false, and asserted below, so a banner that never appears is
-    // reported as such rather than looking like a missing tag.
+    // reported as such rather than looking like a missing update.
   }
-  ok(consentGiven, "cookie consent banner never offered Accept all, so the tag could not be tested");
+  ok(consentGiven, "cookie consent banner never offered Accept all, so the consent update could not be tested");
   log(`analytics consent given: ${consentGiven}`);
-  const afterConsent = await p.evaluate(() => ({
-    tag: Boolean(document.querySelector('script[src*="googletagmanager.com/gtag/js"]')),
-    id: document.querySelector('script[src*="googletagmanager.com/gtag/js"]')?.getAttribute("src") ?? "",
-    dataLayer: Array.isArray(window.dataLayer),
-  }));
-  ok(afterConsent.tag, "Google Ads tag did not load after analytics consent");
-  ok(afterConsent.id.includes("AW-946725823"), `unexpected Google Ads id: ${afterConsent.id}`);
-  ok(afterConsent.dataLayer, "dataLayer not initialised after consent");
-  log(`Google Ads tag before consent: ${beforeConsent} | after consent: ${afterConsent.tag} (${afterConsent.id || "no src"})`);
+  const afterConsent = await p.evaluate(() => {
+    const dl = window.dataLayer ?? [];
+    const upd = dl.filter(e => Array.isArray(e) && e[0] === "consent" && e[1] === "update").pop();
+    return {
+      updateGranted: Boolean(upd) && ["ad_storage", "ad_user_data", "ad_personalization", "analytics_storage"].every(k => upd[2]?.[k] === "granted"),
+      scripts: document.querySelectorAll('script[src*="googletagmanager.com/gtag/js"]').length,
+    };
+  });
+  ok(afterConsent.updateGranted, "Accept all did not push a consent update granting all four types");
+  ok(afterConsent.scripts === 1, `expected one gtag.js script after consent, found ${afterConsent.scripts}`);
+  log(`Consent Mode: tag present before consent: ${beforeConsent.tag}, default denied: ${beforeConsent.defaultDenied}, no Google cookie: ${!beforeConsent.googleCookie} | after Accept all: update granted ${afterConsent.updateGranted}`);
 
   await p.close();
   await ctx.close();
