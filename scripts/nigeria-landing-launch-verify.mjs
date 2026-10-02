@@ -231,6 +231,21 @@ console.log("\n=== Brief v2.0 readiness ===");
   ok(!beforeConsent.updateBefore, "a consent update was pushed before the visitor chose");
   ok(!beforeConsent.googleCookie, "a Google advertising or analytics cookie was set before consent");
 
+  // 5b. Meta Pixel (since 2 October 2026): present on every page view with
+  //     Meta's consent revoked, so no _fbp/_fbc cookie before "Accept all".
+  const metaBefore = await p.evaluate(() => ({
+    script: Boolean(document.getElementById("wsa-meta-pixel")),
+    src: document.getElementById("wsa-meta-pixel")?.getAttribute("src") ?? "",
+    fbq: typeof window.fbq === "function",
+    metaCookie: /(^|; )_fbp=|(^|; )_fbc=/.test(document.cookie),
+    noscriptBeacon: Boolean(document.querySelector('img[src*="facebook.com/tr"]')),
+  }));
+  ok(metaBefore.script, "Meta Pixel script tag did not load before consent (expected present, revoked)");
+  ok(metaBefore.src.includes("connect.facebook.net/en_US/fbevents.js"), `unexpected Meta Pixel source: ${metaBefore.src}`);
+  ok(metaBefore.fbq, "window.fbq is not installed");
+  ok(!metaBefore.metaCookie, "a Meta _fbp/_fbc cookie was set before consent");
+  ok(!metaBefore.noscriptBeacon, "the ungateable Meta noscript beacon is on the page");
+
   const accept = p.getByRole("button", { name: /^accept all$/i });
   let consentGiven = false;
   try {
@@ -255,6 +270,15 @@ console.log("\n=== Brief v2.0 readiness ===");
   ok(afterConsent.updateGranted, "Accept all did not push a consent update granting all four types");
   ok(afterConsent.scripts === 1, `expected one gtag.js script after consent, found ${afterConsent.scripts}`);
   log(`Consent Mode: tag present before consent: ${beforeConsent.tag}, default denied: ${beforeConsent.defaultDenied}, no Google cookie: ${!beforeConsent.googleCookie} | after Accept all: update granted ${afterConsent.updateGranted}`);
+  const metaAfter = await p.evaluate(() => ({
+    metaCookie: /(^|; )_fbp=/.test(document.cookie),
+    scripts: document.querySelectorAll('script[src*="connect.facebook.net"]').length,
+  }));
+  ok(metaAfter.scripts === 1, `expected one fbevents.js script after consent, found ${metaAfter.scripts}`);
+  // Once granted, a loaded pixel sets its _fbp cookie; this is the one
+  // observable sign on the live site that the grant reached Meta's code.
+  ok(metaAfter.metaCookie, "Accept all did not result in Meta's _fbp cookie (grant may not have reached the pixel)");
+  log(`Meta Pixel: present before consent: ${metaBefore.script}, no Meta cookie before: ${!metaBefore.metaCookie} | after Accept all: _fbp set ${metaAfter.metaCookie}`);
 
   await p.close();
   await ctx.close();
