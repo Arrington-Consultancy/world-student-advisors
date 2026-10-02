@@ -73,7 +73,7 @@ function EnquiryForm({ id }: { id: string }) {
     const international = toInternationalNigerianNumber(phone);
     if (international) params.set("phone", international);
     // The value the student picked is the value that is recorded. Taught
-    // Master's, MPhil, MRes and PhD stay four things, and Germany stays
+    // Master's stays Taught Master's, Other stays Other, and Germany stays
     // Germany, all the way into the CRM.
     if (level) params.set("desiredLevel", level);
     if (destination) params.set("preferredDestination", destination);
@@ -227,12 +227,14 @@ export default function NigeriaPostgraduate() {
               <span className="text-sm font-semibold uppercase tracking-wider text-wsa-navy">For Nigerian graduates</span>
             </p>
             {/* Headline and standfirst set word for word by Tim Hunt in the
-                landing page review of 14 September 2026. */}
+                landing page review of 14 September 2026, narrowed to taught
+                Master's on his instruction of 2 October 2026 ("Concentrate on
+                taught masters"), approved by Tom Arrington the same day. */}
             <h1 className="mt-4 text-3xl font-bold leading-[1.12] tracking-tight text-wsa-navy sm:text-4xl lg:text-5xl">
-              Study for Your Master&rsquo;s or PhD Abroad
+              Study for Your Master&rsquo;s Abroad
             </h1>
             <p className="mt-4 max-w-xl text-lg leading-relaxed text-gray-700">
-              Taught Master&rsquo;s, MRes, MPhil and PhD opportunities for Nigerian graduates, with your own WSA Student
+              Taught Master&rsquo;s opportunities for Nigerian graduates, with your own WSA Student
               Counsellor from course selection through to visa preparation.
             </p>
 

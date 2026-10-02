@@ -108,11 +108,17 @@ describe("nothing on the page claims what WSA cannot evidence", () => {
    * 14 September 2026. They are the paid campaign's promise, so they are
    * asserted exactly rather than left to drift under later copy edits.
    */
-  it("carries the headline and standfirst as they were given", () => {
-    expect(page).toContain("Study for Your Master&rsquo;s or PhD Abroad");
+  it("carries the headline and standfirst as they were given, narrowed to taught Master's", () => {
+    // Tim Hunt, 2 October 2026: "don't promote research postgraduate MRes,
+    // MPhil and PhD. Concentrate on taught masters." Approved by Tom
+    // Arrington the same day. PhD leaves the headline, the research
+    // programmes leave the standfirst, the rest of his wording stands.
+    expect(page).toContain("Study for Your Master&rsquo;s Abroad");
+    expect(page).not.toContain("or PhD Abroad");
     expect(page).toContain(
-      "Taught Master&rsquo;s, MRes, MPhil and PhD opportunities for Nigerian graduates, with your own WSA Student",
+      "Taught Master&rsquo;s opportunities for Nigerian graduates, with your own WSA Student",
     );
+    expect(page).not.toMatch(/MRes, MPhil and PhD opportunities/);
     expect(page).toContain("Counsellor from course selection through to visa preparation.");
     // The headline it replaced is gone, not merely demoted.
     expect(page).not.toContain("Postgraduate study abroad, planned with one person who knows your case");
@@ -201,7 +207,9 @@ describe("a published campaign page is indexable, discoverable and carries no dr
   it("has its own title and description for search results", () => {
     const seo = SEO_MAP["/nigeria-postgraduate"];
     expect(seo?.title).toMatch(/Nigerian/);
-    expect(seo?.description).toMatch(/MPhil, MRes and PhD/);
+    expect(seo?.title).toMatch(/Taught Master's/);
+    expect(seo?.description).toMatch(/^Taught Master's abroad for Nigerian graduates/);
+    expect(seo?.description).not.toMatch(/MPhil|MRes|PhD/);
   });
   it("shows no draft banner or approval wording", () => {
     expect(page).not.toMatch(/Working draft/i);
@@ -241,25 +249,33 @@ describe("the short form hands over to the one controlled lead path", () => {
   });
 });
 
-describe("the four programme types and five destinations stay separate into the CRM", () => {
+describe("the campaign programme scope and five destinations stay separate into the CRM", () => {
   /**
-   * The controlled Google Ads Brief v2.1 (14 September 2026) approves Taught
-   * Master's, MPhil, MRes and PhD and requires all four in the form. Tim
-   * Hunt's website instruction of 15 September took MRes off and put Other
-   * last; Tom Arrington's campaign brief of 16 September restored MRes
-   * ("correctly represents all four programme types"). Other stays last, as
-   * Tim asked. Asserted in full and in order, so Other cannot drift up the
-   * list above a named programme and MRes cannot quietly go missing again.
+   * Google Ads Brief v2.1 (14 September 2026) approved Taught Master's,
+   * MPhil, MRes and PhD. On 2 October 2026 Tim Hunt instructed "don't
+   * promote research postgraduate MRes, MPhil and PhD. Concentrate on
+   * taught masters", and Tom Arrington approved the same day, moving the
+   * brief to v2.2. The campaign form therefore offers Taught Master's and
+   * Other only. Other stays last, as Tim asked in September. Asserted in
+   * full and in order, so a research programme cannot quietly come back.
    */
-  it("the campaign scope is the approved four, Other last", () => {
-    expect(CAMPAIGN_PROGRAMMES.map(p => p.label)).toEqual(["Taught Master's", "MPhil", "MRes", "PhD", "Other"]);
+  it("the campaign scope is taught Master's, with Other last", () => {
+    expect(CAMPAIGN_PROGRAMMES.map(p => p.label)).toEqual(["Taught Master's", "Other"]);
     expect(CAMPAIGN_PROGRAMMES.at(-1)!.label).toBe("Other");
+  });
+
+  it("no research programme is offered on the campaign page", () => {
+    const values = CAMPAIGN_PROGRAMMES.map(p => p.value);
+    for (const research of ["mphil", "mres", "doctorate"]) expect(values).not.toContain(research);
+    expect(page).not.toContain('value="mphil"');
+    expect(page).not.toContain('value="mres"');
+    expect(page).not.toContain('value="doctorate"');
   });
 
   it("each programme records as its own value, with nothing collapsed", () => {
     const values = CAMPAIGN_PROGRAMMES.map(p => p.value);
     expect(new Set(values).size).toBe(CAMPAIGN_PROGRAMMES.length);
-    expect(values).toEqual(["postgraduate", "mphil", "mres", "doctorate", "other"]);
+    expect(values).toEqual(["postgraduate", "other"]);
     for (const v of values) expect(isDesiredLevelValue(v)).toBe(true);
   });
 
@@ -277,14 +293,20 @@ describe("the four programme types and five destinations stay separate into the 
   });
 
   /**
-   * MRes is its own option end to end: the main signup form offers it and
-   * Pipedrive records it as 314, so the campaign page's MRes value lands as
-   * MRes and never as taught Master's.
+   * The research programmes left the campaign page on 2 October 2026, but
+   * they stay valid values with their own Pipedrive options: the main
+   * signup form still offers them, and an existing record or a late
+   * submission must still map to MPhil 44, MRes 314 or PhD 45 rather than
+   * collapsing into taught Master's.
    */
-  it("MRes reaches the signup form and the CRM as its own option", () => {
-    expect(isDesiredLevelValue("mres")).toBe(true);
-    expect(contact).toContain('value="mres"');
+  it("MPhil, MRes and PhD still reach the signup form and the CRM as their own options", () => {
+    for (const v of ["mphil", "mres", "doctorate"] as const) {
+      expect(isDesiredLevelValue(v)).toBe(true);
+      expect(contact).toContain(`value="${v}"`);
+    }
+    expect(pipedrive).toMatch(/\bmphil: 44,/);
     expect(pipedrive).toMatch(/\bmres: 314,/);
+    expect(pipedrive).toMatch(/\bdoctorate: 45,/);
   });
 
   /**
@@ -337,8 +359,11 @@ describe("the four programme types and five destinations stay separate into the 
   it("no two campaign values share a Pipedrive option id", () => {
     const ids = Object.values(PIPEDRIVE_CAMPAIGN_OPTION_IDS);
     expect(new Set(ids).size).toBe(ids.length);
-    // Ten values: five programme options (the approved four plus Other) and five destinations.
-    expect(ids).toHaveLength(CAMPAIGN_PROGRAMMES.length + CAMPAIGN_DESTINATIONS.length);
+    // Ten values: five programme options (Taught Master's, the three research
+    // programmes kept for mapping, and Other) and five destinations. The map
+    // deliberately stays wider than CAMPAIGN_PROGRAMMES since 2 October 2026.
+    expect(ids).toHaveLength(10);
+    for (const p of CAMPAIGN_PROGRAMMES) expect(PIPEDRIVE_CAMPAIGN_OPTION_IDS[p.value]).toBeGreaterThan(0);
   });
 
   it("Germany is not recorded as Other European Counties", () => {
@@ -462,9 +487,14 @@ describe("the taught Master's page points research applicants onward without dup
     expect(oldPage).not.toMatch(/not a research route/i);
   });
 
-  it("routes them to the campaign page", () => {
+  it("names the research routes honestly and links to the campaign page", () => {
+    // Since 2 October 2026 the campaign page is taught Master's only, so
+    // this page may no longer say WSA "supports ... all four" or send
+    // research applicants to it as a research page.
     expect(oldPage).toContain('href="/nigeria-postgraduate"');
     expect(oldPage).toMatch(/MRes, MPhil or PhD/);
+    expect(oldPage).not.toMatch(/applying for all four/);
+    expect(oldPage).not.toMatch(/Taught Master's, MPhil, MRes and PhD/);
   });
 
   it("stays a taught Master's page rather than becoming a second campaign page", () => {
