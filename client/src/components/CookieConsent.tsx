@@ -5,11 +5,14 @@
  * GDPR/PECR: no analytics or advertising cookie is set until consent is
  * granted. The Google Ads tag itself loads on every page under Consent Mode
  * v2 with consent denied (cookieless), and is switched to granted only by
- * "Accept all"; see client/src/lib/googleAdsTag.ts for why.
+ * "Accept all"; see client/src/lib/googleAdsTag.ts for why. The Meta Pixel
+ * loads the same way with Meta's consent revoked, and is granted only by
+ * "Accept all"; see client/src/lib/metaPixel.ts.
  */
 import { useEffect, useState } from "react";
 import { Link } from "wouter";
 import { loadGoogleAdsTag, updateGoogleConsent } from "@/lib/googleAdsTag";
+import { loadMetaPixel, updateMetaConsent } from "@/lib/metaPixel";
 
 const CONSENT_KEY = "wsa-cookie-consent";
 
@@ -32,8 +35,10 @@ export default function CookieConsent() {
     // v2); a returning visitor's earlier "Accept all" is replayed as an
     // update so their measurement continues without re-showing the banner.
     loadGoogleAdsTag();
+    loadMetaPixel();
     if (getCookieConsent() === "accepted") {
       updateGoogleConsent("granted");
+      updateMetaConsent("granted");
     }
     // Show only if no prior choice has been recorded
     if (getCookieConsent() === null) {
@@ -50,7 +55,9 @@ export default function CookieConsent() {
     }
     setVisible(false);
     loadGoogleAdsTag();
+    loadMetaPixel();
     updateGoogleConsent(value === "accepted" ? "granted" : "denied");
+    updateMetaConsent(value === "accepted" ? "granted" : "denied");
     // Notify listeners (e.g. analytics loader) that consent state changed
     window.dispatchEvent(new CustomEvent("wsa-consent-change", { detail: value }));
   };

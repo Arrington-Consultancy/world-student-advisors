@@ -5,6 +5,7 @@ import { Route, Switch, useLocation } from "wouter";
 import ErrorBoundary from "./components/ErrorBoundary";
 import ScrollToTop from "./components/ScrollToTop";
 import CookieConsent from "./components/CookieConsent";
+import MetaPixelRouteTracker from "./components/MetaPixelRouteTracker";
 import SeoHead from "./components/SeoHead";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import Home from "./pages/Home";
@@ -142,6 +143,7 @@ function App() {
         <TooltipProvider>
           <Toaster />
           <ScrollToTop />
+          <MetaPixelRouteTracker />
           <SeoHead />
           {!isAppShell && <Header />}
           <main>
