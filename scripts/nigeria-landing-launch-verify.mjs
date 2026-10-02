@@ -272,7 +272,10 @@ console.log("\n=== Brief v2.0 readiness ===");
   log(`Consent Mode: tag present before consent: ${beforeConsent.tag}, default denied: ${beforeConsent.defaultDenied}, no Google cookie: ${!beforeConsent.googleCookie} | after Accept all: update granted ${afterConsent.updateGranted}`);
   const metaAfter = await p.evaluate(() => ({
     metaCookie: /(^|; )_fbp=/.test(document.cookie),
-    scripts: document.querySelectorAll('script[src*="connect.facebook.net"]').length,
+    // fbevents.js itself injects a second connect.facebook.net script (the
+    // pixel's signals/config), seen on the first live run (37072347549), so
+    // count only the base script this site injects.
+    scripts: document.querySelectorAll('script[src*="connect.facebook.net/en_US/fbevents.js"]').length,
   }));
   ok(metaAfter.scripts === 1, `expected one fbevents.js script after consent, found ${metaAfter.scripts}`);
   // Once granted, a loaded pixel sets its _fbp cookie; this is the one
