@@ -169,9 +169,9 @@ export const SEO_MAP: Record<string, SeoEntry> = {
       "Practical UK taught Master's guidance for Nigerian graduates, covering entry requirements, WAEC evidence, funding, CAS, visa preparation and WSA counsellor support.",
   },
   "/nigeria-postgraduate": {
-    title: "Postgraduate Study Abroad for Nigerian Graduates | World Student Advisors",
+    title: "Taught Master's Abroad for Nigerian Graduates | World Student Advisors",
     description:
-      "Taught Master's, MPhil, MRes and PhD abroad for Nigerian graduates, UK first then Germany and Canada, with your own Personal Student Counsellor from first question to visa preparation.",
+      "Taught Master's abroad for Nigerian graduates, UK first then Germany and Canada, with your own Personal Student Counsellor from first question to visa preparation.",
   },
   "/speak-to-juliet/thank-you": {
     title: "Thank you, your details are with Juliet | World Student Advisors",

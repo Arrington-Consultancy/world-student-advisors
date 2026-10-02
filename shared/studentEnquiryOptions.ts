@@ -53,14 +53,19 @@ export function isDestinationValue(v: string): v is DestinationValue {
  * is recorded as. Every one is distinct: this list having distinct values
  * is the whole point, and a test asserts it.
  *
- * CHANGED 15 September 2026 on Tim Hunt's instruction: MRes removed, Other
- * added as the last option. RESTORED 16 September 2026 on Tom Arrington's
- * campaign brief: the controlled Google Ads Brief v2.1 (14 September 2026)
- * approves Taught Master's, MPhil, MRes and PhD and requires all four to be
- * named in the form, and Tom's instruction of 16 September is that the page
- * "correctly represents all four programme types" and that MRes must not be
- * excluded. Other stays last, as Tim asked. MRes maps to Pipedrive option
- * 314, so the measurement contract in brief section 22 holds.
+ * History: 15 September 2026, Tim Hunt had MRes removed and Other added
+ * last. 16 September 2026, Tom Arrington restored MRes to match Google Ads
+ * Brief v2.1 (Taught Master's, MPhil, MRes and PhD). 2 October 2026, Tim
+ * Hunt's instruction by WhatsApp: "don't promote research postgraduate
+ * MRes, MPhil and PhD. Concentrate on taught masters", because research
+ * applicants were bringing dependant questions and visa refusals and few
+ * usable leads. Tom Arrington approved the same day ("everything Tim wants,
+ * we need more leads"), so MPhil, MRes and PhD leave the campaign scope and
+ * the brief moves to v2.2. Other stays last, as Tim asked in September.
+ *
+ * MPhil, MRes and PhD remain valid DesiredLevelValues and keep their
+ * Pipedrive option ids (44, 314, 45): the main signup form still offers
+ * them, and an existing record or a late submission must still map.
  *
  * "postgraduate" carries Taught Master's for historical reasons — it is
  * the value the live form has always used and it already maps to
@@ -73,9 +78,6 @@ export const CAMPAIGN_PROGRAMMES: ReadonlyArray<{
   value: DesiredLevelValue;
 }> = Object.freeze([
   { label: "Taught Master's", note: "MA, MSc and MBA programmes", value: "postgraduate" },
-  { label: "MPhil", note: "Research degree, often a route to PhD", value: "mphil" },
-  { label: "MRes", note: "Master's by research", value: "mres" },
-  { label: "PhD", note: "Doctoral research", value: "doctorate" },
   // Tim Hunt, 15 September 2026: "Other IN as the last option." Last in the
   // list because that is where he asked for it, and because a catch-all
   // above a named programme trains people to stop reading.

@@ -5,14 +5,16 @@
  * runner (the build container cannot reach production by egress policy).
  * It fetches the raw HTML, the sitemap and the robots meta; renders the
  * page at phone and desktop widths; checks Eldah Therone's WhatsApp and
- * email links; asserts the programme selector offers exactly Tim's four
- * authorised options with Other last; and drives the landing form through
- * to the signup form for each of them across three destinations, asserting
- * the values and the +234 phone conversion arrive intact.
+ * email links; asserts the programme selector offers exactly the authorised
+ * options with Other last; and drives the landing form through to the
+ * signup form for each of them, asserting the values and the +234 phone
+ * conversion arrive intact.
  *
- * The authorised programme options are Postgraduate, MPhil, Doctorate and
- * Other, per Tim Hunt's instruction of 15 September 2026 (item 7), which
- * removed MRes. MRes is therefore not expected anywhere in this file.
+ * The authorised programme options are Taught Master's ("postgraduate") and
+ * Other, per Tim Hunt's instruction of 2 October 2026 ("don't promote
+ * research postgraduate MRes, MPhil and PhD. Concentrate on taught
+ * masters"), approved by Tom Arrington the same day. MPhil, MRes and PhD
+ * must therefore NOT appear in the selector or the campaign copy.
  *
  * It never submits the signup form, so it creates no lead, no CRM record
  * and no email. Exits non-zero on any failed check.
@@ -21,8 +23,9 @@ import { chromium } from "playwright";
 const BASE = "https://www.worldstudentadvisors.com";
 const OUT = process.env.OUT_DIR ?? ".";
 const b = await chromium.launch(process.env.PW_EXECUTABLE ? { executablePath: process.env.PW_EXECUTABLE } : {});
-/** Tim's authorised programme options, in order, with Other last (item 7). */
-const LEVELS = ["postgraduate", "mphil", "mres", "doctorate", "other"];
+/** The authorised programme options, in order, with Other last (2 October 2026). */
+const LEVELS = ["postgraduate", "other"];
+const RESEARCH_LEVELS = ["mphil", "mres", "doctorate"];
 const fails = []; const ok = (c, m) => { if (!c) fails.push(m); };
 const log = m => console.log("  " + m);
 
@@ -39,7 +42,8 @@ ok(!/Working draft/i.test(html), "raw HTML still carries 'Working draft'");
 // server/campaign/nigeriaLanding.test.ts asserts the page must NOT contain it,
 // so requiring it here contradicted the suite. The apostrophe is matched
 // loosely because it is a curly one in the source.
-ok(/Study for Your Master.s or PhD Abroad/.test(html), "raw HTML lacks the prerendered heading");
+ok(/Study for Your Master.s Abroad/.test(html), "raw HTML lacks the prerendered heading");
+ok(!/or PhD Abroad/.test(html), "raw HTML still carries the PhD headline (scope narrowed 2 October 2026)");
 const sm = await (await fetch(`${BASE}/sitemap.xml`)).text();
 ok(sm.includes(`${BASE}/nigeria-postgraduate</loc>`), "route absent from live sitemap"); log(`sitemap has route: ${sm.includes("nigeria-postgraduate")}`);
 const xrobots = r.headers.get("x-robots-tag"); ok(!xrobots || !/noindex/i.test(xrobots), `X-Robots-Tag: ${xrobots}`); log(`X-Robots-Tag header: ${xrobots ?? "(none)"}`);
@@ -54,8 +58,10 @@ for (const [name, vp] of [["mobile", { width: 390, height: 844 }], ["desktop", {
   const live = await p.evaluate(() => document.querySelector('meta[name="robots"]')?.getAttribute("content") ?? "(none)");
   ok(!/noindex/i.test(live), `${name}: live robots meta ${live}`);
   ok(!/Working draft|Not published for paid traffic|pending approval/i.test(text), `${name}: draft wording visible`);
-  for (const s of ["For Nigerian graduates", "Taught Master", "MPhil", "PhD", "United Kingdom", "Germany", "Canada", "Eldah Therone", "Get my study options", "Student Support Library"])
+  for (const s of ["For Nigerian graduates", "Taught Master", "United Kingdom", "Germany", "Canada", "Eldah Therone", "Get my study options", "Student Support Library"])
     ok(text.toLowerCase().includes(s.toLowerCase()), `${name}: missing "${s}"`);
+  for (const s of ["MPhil", "MRes", "PhD"])
+    ok(!text.includes(s), `${name}: research programme "${s}" is still on the page (removed 2 October 2026)`);
   ok(!/British Council (Certified|Accredited|Recognised)/i.test(text), `${name}: forbidden British Council wording`);
   const title = await p.title(); ok(/Nigerian/.test(title), `${name}: title is "${title}"`); log(`${name}: title "${title}"`);
   // every visible image loaded
@@ -78,8 +84,8 @@ for (const [name, vp] of [["mobile", { width: 390, height: 844 }], ["desktop", {
   for (const o of over.out) log(`${name}:   ${o}`);
   ok(over.sw <= over.vw + 1, `${name}: horizontal overflow (scrollWidth ${over.sw} > ${over.vw})`);
   ok(errors.length === 0, `${name}: JS errors ${JSON.stringify(errors)}`);
-  // Programme selector: exactly Tim's four authorised options, in order, with
-  // Other last and MRes gone (item 7, 15 September 2026). Asserted on the
+  // Programme selector: exactly the authorised options, in order, with Other
+  // last and the research programmes gone (2 October 2026). Asserted on the
   // select element rather than page copy, because the copy is a separate
   // decision and the selector is what a student can actually choose.
   const levelOptions = await p.evaluate(() => {
@@ -92,7 +98,7 @@ for (const [name, vp] of [["mobile", { width: 390, height: 844 }], ["desktop", {
       `${name}: programme options are ${JSON.stringify(levelOptions)}, expected ${JSON.stringify(LEVELS)}`);
     ok(levelOptions[levelOptions.length - 1] === "other",
       `${name}: "Other" is not the last programme option (${JSON.stringify(levelOptions)})`);
-    ok(levelOptions.includes("mres"), `${name}: MRes is missing from the programme selector (approved scope, Brief v2.1; restored 16 September 2026)`);
+    for (const r of RESEARCH_LEVELS) ok(!levelOptions.includes(r), `${name}: research option "${r}" is still in the programme selector (removed 2 October 2026)`);
     log(`${name}: programme options ${levelOptions.join(" -> ")}`);
   }
   // Eldah contact: WhatsApp link + mailto present and correct
@@ -107,8 +113,8 @@ for (const [name, vp] of [["mobile", { width: 390, height: 844 }], ["desktop", {
 // WhatsApp target resolves (HEAD on wa.me may 302/405; anything < 500 and not 404 is fine)
 try { const w = await fetch("https://wa.me/447470689849", { method: "GET", redirect: "manual" }); log(`wa.me/447470689849 -> ${w.status}`); ok(w.status !== 404 && w.status < 500, `wa.me returned ${w.status}`); } catch (e) { log(`wa.me fetch blocked from this network: ${e.message} (link href verified above)`); }
 
-// 3. CTA/form: four programme types x destinations reach the signup form on production, phone converts.
-const cases = [["postgraduate", "uk"], ["mphil", "germany"], ["mres", "uk"], ["doctorate", "canada"], ["other", "uk"]];
+// 3. CTA/form: both programme options x destinations reach the signup form on production, phone converts.
+const cases = [["postgraduate", "uk"], ["postgraduate", "germany"], ["other", "canada"], ["other", "uk"]];
 for (const [level, dest] of cases) {
   const p = await b.newPage({ viewport: { width: 390, height: 844 } });
   await p.goto(`${BASE}/nigeria-postgraduate`, { waitUntil: "domcontentloaded" });
@@ -134,7 +140,7 @@ for (const [level, dest] of cases) {
 }
 
 // ---------------------------------------------------------------------------
-// Brief v2.0 readiness: Final URL, the four programmes, attribution and the
+// Brief readiness: Final URL, the programme scope, attribution and the
 // Google Ads conversion tag. Added 14 September 2026 for the Ads readiness
 // decision. Everything here reads; nothing is submitted.
 // ---------------------------------------------------------------------------
@@ -162,8 +168,9 @@ console.log("\n=== Brief v2.0 readiness ===");
   ok(cta > 0, 'call to action "Get my study options" not found on the page');
   log(`CTA "Get my study options" present: ${cta > 0}`);
 
-  // 2. The approved programme types named on the page, and nothing outside
-  // them. MRes was removed by Tim's item 7 and is no longer required here.
+  // 2. The approved programme type named on the page, and nothing outside
+  // it. MPhil, MRes and PhD left the scope on 2 October 2026 and are
+  // treated as out of scope here.
   // Scoped to the outer <main>, which the app shell wraps the router in. The
   // site-wide header and footer are its siblings, and they link to every study
   // option WSA offers, including the ones this campaign excludes; those are
@@ -173,10 +180,8 @@ console.log("\n=== Brief v2.0 readiness ===");
   // the shell's, so the selector matches twice; the outer one is the whole
   // routed page and is what should be scanned.
   const body = (await p.locator("main").first().innerText()).toLowerCase();
-  for (const programme of ["taught master", "mphil", "mres", "phd"]) {
-    ok(body.includes(programme), `programme type missing from the page: ${programme}`);
-  }
-  for (const excluded of ["foundation", "undergraduate", "pre-master", "hnd", "top-up"]) {
+  ok(body.includes("taught master"), "programme type missing from the page: taught master");
+  for (const excluded of ["foundation", "undergraduate", "pre-master", "hnd", "top-up", "mphil", "mres", "phd", "doctorate"]) {
     ok(!body.includes(excluded), `campaign page content names an out-of-scope programme: ${excluded}`);
   }
   log("approved programme types present in <main>; no out-of-scope programme named there");

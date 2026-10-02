@@ -161,13 +161,13 @@ export default function UKMastersNigeria() {
                     Taught Master's courses normally combine modules, assignments, exams or projects, and a final dissertation or major project. The right choice depends on your previous degree, the subject you want to study and what you want the qualification to help you do next.
                   </p>
                   <p>
-                    Considering an <strong className="text-wsa-navy">MRes, MPhil or PhD</strong> instead? A research degree is supervised and largely self-directed, and it is a different decision from a taught Master's rather than a harder version of one. WSA supports Nigerian graduates applying for all four, so start on our postgraduate page instead of this one.
+                    Considering an <strong className="text-wsa-navy">MRes, MPhil or PhD</strong> instead? A research degree is supervised and largely self-directed, and it is a different decision from a taught Master's rather than a harder version of one. Our Nigeria programme concentrates on taught Master's study, so if you are weighing up a research degree, speak to a WSA counsellor about your options before you apply.
                   </p>
                   <Link
                     href="/nigeria-postgraduate"
                     className="inline-flex items-center gap-2 text-[17px] font-medium text-wsa-red hover:underline"
                   >
-                    Postgraduate study for Nigerian graduates: Taught Master's, MPhil, MRes and PhD
+                    Taught Master's abroad for Nigerian graduates: UK, Germany, Canada and more
                     <ArrowRight size={17} />
                   </Link>
                 </div>
