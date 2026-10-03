@@ -1,32 +1,72 @@
 name: Check Student Support Library links
 
-# Manual and weekly. READ-ONLY: touches nothing but YouTube's public oEmbed
-# endpoint, and writes nothing anywhere.
-#
-# A deleted YouTube video leaves a link that is still a valid string, so the
-# build and the test suite both pass while a student sees "Video unavailable".
-# Nothing else in this repository can catch that, because the check needs
-# outbound internet access.
-#
-# Fails the run when any link is dead, and prints a failure notice naming the
-# resource, its title and what YouTube said, which is what Tim asks for when
-# something stops working.
+# TEMPORARY DIAGNOSTIC on a throwaway branch (3 October 2026). Reuses this
+# workflow's filename so it can be dispatched. READ-ONLY: visits the live
+# Speak to Juliet page and its thank-you page as a visitor would and logs
+# every event the Meta Pixel sends. Submits nothing; creates no lead.
 on:
   workflow_dispatch:
-  schedule:
-    # Monday 08:00 UTC. Weekly is enough: links break when somebody replaces
-    # a recording, which is a known event rather than a random one.
-    - cron: "0 8 * * 1"
 
 jobs:
-  check:
+  diag:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-
       - uses: actions/setup-node@v4
         with:
           node-version: 20
-
-      - name: Check every library video is still playable
-        run: node scripts/check-library-links.mjs
+      - name: Install Playwright
+        run: |
+          mkdir -p /tmp/pw && cd /tmp/pw
+          npm init -y >/dev/null
+          npm install playwright@1.47.2 >/dev/null
+          npx playwright install --with-deps chromium
+      - name: Walk landing -> Accept all -> thank-you, logging Meta events
+        run: |
+          cd /tmp/pw
+          cat > diag.mjs <<'JS'
+          import { chromium } from "playwright";
+          const BASE = "https://www.worldstudentadvisors.com";
+          const b = await chromium.launch();
+          const ctx = await b.newContext({ viewport: { width: 390, height: 844 } });
+          const p = await ctx.newPage();
+          const events = [];
+          p.on("request", r => {
+            const u = r.url();
+            if (/^https:\/\/www\.facebook\.com\/tr\/?(\?|$)/.test(u)) {
+              const q = new URL(u).searchParams;
+              events.push({ ev: q.get("ev"), id: q.get("id"), dl: (q.get("dl") || "").replace(BASE, ""), t: new Date().toISOString().slice(11, 19) });
+            }
+          });
+          const state = async label => {
+            const s = await p.evaluate(() => ({ url: location.pathname, fbq: typeof window.fbq, loaded: !!window.fbq?.loaded, queue: window.fbq?.queue?.length ?? null, fbp: /(^|; )_fbp=/.test(document.cookie), consent: localStorage.getItem("wsa-cookie-consent") }));
+            console.log(label, JSON.stringify(s), "events so far:", JSON.stringify(events));
+          };
+          await p.goto(`${BASE}/speak-to-juliet`, { waitUntil: "networkidle" });
+          await p.waitForTimeout(2000);
+          await state("A landing, before consent:");
+          await p.getByRole("button", { name: /^accept all$/i }).click({ timeout: 15000 });
+          await p.waitForTimeout(3000);
+          await state("B landing, after Accept all:");
+          const n1 = events.length;
+          // Top-level navigation to the thank-you page, as a redirect would do.
+          await p.goto(`${BASE}/speak-to-juliet/thank-you`, { waitUntil: "networkidle" });
+          await p.waitForTimeout(4000);
+          await state("C thank-you, top-level navigation:");
+          console.log("events sent on thank-you (top-level):", JSON.stringify(events.slice(n1)));
+          const n2 = events.length;
+          // Same, but arriving from an external origin (as Pipedrive's redirect would), via a cross-origin hop.
+          await p.goto("https://example.com/", { waitUntil: "domcontentloaded" });
+          await p.goto(`${BASE}/speak-to-juliet/thank-you`, { waitUntil: "networkidle", referer: "https://webforms.pipedrive.com/" });
+          await p.waitForTimeout(4000);
+          await state("D thank-you, arriving from another origin:");
+          console.log("events sent on thank-you (cross-origin arrival):", JSON.stringify(events.slice(n2)));
+          const n3 = events.length;
+          // Thank-you loaded INSIDE an iframe on the landing page, in case Pipedrive's redirect targets the frame.
+          await p.goto(`${BASE}/speak-to-juliet`, { waitUntil: "networkidle" });
+          await p.evaluate(url => { const f = document.createElement("iframe"); f.src = url; f.style.width = "400px"; f.style.height = "600px"; document.body.appendChild(f); }, `${BASE}/speak-to-juliet/thank-you`);
+          await p.waitForTimeout(6000);
+          console.log("events sent with thank-you inside an iframe (includes landing's own PageView):", JSON.stringify(events.slice(n3)));
+          console.log("TOTAL Meta events:", events.length, JSON.stringify(events));
+          await b.close();
+          JS
+          node diag.mjs
