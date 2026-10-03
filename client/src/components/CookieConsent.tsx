@@ -35,7 +35,11 @@ export default function CookieConsent() {
     // v2); a returning visitor's earlier "Accept all" is replayed as an
     // update so their measurement continues without re-showing the banner.
     loadGoogleAdsTag();
-    loadMetaPixel();
+    // A stored "Accept all" loads the Meta Pixel already granted. Meta's
+    // script holds a queued grant behind a queued revoke and never reaches
+    // it, so replaying the grant after a revoke left the pixel silent for
+    // every returning accepted visitor (found 3 October 2026).
+    loadMetaPixel(getCookieConsent() === "accepted" ? "granted" : "revoked");
     if (getCookieConsent() === "accepted") {
       updateGoogleConsent("granted");
       updateMetaConsent("granted");

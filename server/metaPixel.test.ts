@@ -68,6 +68,24 @@ describe("loadMetaPixel", () => {
     expect(script.async).toBe(true);
   });
 
+  it("loaded as 'granted' (a stored Accept all) queues no revoke, so init and PageView are not held", async () => {
+    // Meta's script, draining the pre-load queue, holds everything after a
+    // revoke, a later grant included. A returning accepted visitor must
+    // therefore never see a revoke, or the pixel stays silent on every page
+    // (found 3 October 2026 on /speak-to-juliet/thank-you).
+    const win: any = {};
+    vi.stubGlobal("window", win);
+    vi.stubGlobal("document", makeFakeDocument());
+    const { loadMetaPixel, updateMetaConsent } = await import("../client/src/lib/metaPixel");
+    loadMetaPixel("granted");
+    updateMetaConsent("granted");
+    const q = calls(win);
+    expect(q.some(c => c[0] === "consent" && c[1] === "revoke")).toBe(false);
+    expect(q[0]).toEqual(["init", "2892182304395411"]);
+    expect(q[1]).toEqual(["track", "PageView"]);
+    expect(q[2]).toEqual(["consent", "grant"]);
+  });
+
   it("is idempotent", async () => {
     const win: any = {};
     const doc = makeFakeDocument();
@@ -115,7 +133,9 @@ describe("wiring", () => {
 
   it("the banner loads the pixel on mount, replays a stored acceptance as a grant, and maps both buttons", () => {
     const mount = banner.slice(banner.indexOf("useEffect(() => {"), banner.indexOf("const choose"));
-    expect(mount).toMatch(/^\s*loadMetaPixel\(\);/m);
+    // A stored acceptance loads the pixel granted (no revoke queued): a
+    // grant replayed behind a revoke is never reached by Meta's script.
+    expect(mount).toMatch(/^\s*loadMetaPixel\(getCookieConsent\(\) === "accepted" \? "granted" : "revoked"\);/m);
     expect(mount).toMatch(/getCookieConsent\(\) === "accepted"\)\s*\{[\s\S]*?updateMetaConsent\("granted"\)/);
     const choose = banner.slice(banner.indexOf("const choose"));
     expect(choose).toMatch(/updateMetaConsent\(value === "accepted" \? "granted" : "denied"\)/);
