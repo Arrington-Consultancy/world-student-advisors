@@ -26,19 +26,22 @@ jobs:
           cat > diag.mjs <<'JS'
           import { chromium } from "playwright";
           const BASE = "https://www.worldstudentadvisors.com";
-          const b = await chromium.launch();
+          const b = await chromium.launch({ args: ["--disable-blink-features=AutomationControlled"] });
           const ctx = await b.newContext({ viewport: { width: 390, height: 844 } });
           const p = await ctx.newPage();
           const events = [];
+          p.on("pageerror", e => console.log("PAGE ERROR:", String(e)));
+          p.on("console", m => { if (m.type() === "error" || /fb|pixel|facebook/i.test(m.text())) console.log("CONSOLE", m.type(), m.text().slice(0, 200)); });
+          p.on("requestfailed", r => { if (/facebook/.test(r.url())) console.log("REQUEST FAILED:", r.url().slice(0, 100), r.failure()?.errorText); });
           p.on("request", r => {
             const u = r.url();
-            if (/^https:\/\/www\.facebook\.com\/tr\/?(\?|$)/.test(u)) {
+            if (/facebook\.(com|net)/.test(u) && !/fbevents\.js|signals\/config/.test(u)) {
               const q = new URL(u).searchParams;
-              events.push({ ev: q.get("ev"), id: q.get("id"), dl: (q.get("dl") || "").replace(BASE, ""), t: new Date().toISOString().slice(11, 19) });
+              events.push({ m: r.method(), path: new URL(u).pathname, ev: q.get("ev"), id: q.get("id"), dl: (q.get("dl") || "").replace(BASE, "").slice(0, 60), t: new Date().toISOString().slice(11, 19) });
             }
           });
           const state = async label => {
-            const s = await p.evaluate(() => ({ url: location.pathname, fbq: typeof window.fbq, loaded: !!window.fbq?.loaded, queue: window.fbq?.queue?.length ?? null, fbp: /(^|; )_fbp=/.test(document.cookie), consent: localStorage.getItem("wsa-cookie-consent") }));
+            const s = await p.evaluate(() => ({ url: location.pathname, webdriver: navigator.webdriver, callMethod: typeof window.fbq?.callMethod, queue: (window.fbq?.queue ?? []).map(c => Array.from(c).slice(0, 2).join(":")), fbScripts: performance.getEntriesByType("resource").filter(e => /facebook/.test(e.name)).map(e => e.name.replace(/^https:\/\//, "").slice(0, 70)), scriptTag: !!document.getElementById("wsa-meta-pixel"), fbp: /(^|; )_fbp=/.test(document.cookie), consent: localStorage.getItem("wsa-cookie-consent"), errors: window.__errs ?? [] }));
             console.log(label, JSON.stringify(s), "events so far:", JSON.stringify(events));
           };
           await p.goto(`${BASE}/speak-to-juliet`, { waitUntil: "networkidle" });
