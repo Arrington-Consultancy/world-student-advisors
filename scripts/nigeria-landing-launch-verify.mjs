@@ -282,6 +282,21 @@ console.log("\n=== Brief v2.0 readiness ===");
   // observable sign on the live site that the grant reached Meta's code.
   ok(metaAfter.metaCookie, "Accept all did not result in Meta's _fbp cookie (grant may not have reached the pixel)");
   log(`Meta Pixel: present before consent: ${metaBefore.script}, no Meta cookie before: ${!metaBefore.metaCookie} | after Accept all: _fbp set ${metaAfter.metaCookie}`);
+  // A returning accepted visitor: on a fresh page load the pixel must
+  // initialise and fire without waiting for a click. Until 3 October 2026 it
+  // did not: Meta's script held the replayed grant behind the queued revoke,
+  // so an accepted visitor fired nothing on any later page (found on the
+  // Juliet thank-you page). Initialisation is visible as the pre-load queue
+  // drained and the pixel's signals/config script loaded.
+  await p.reload({ waitUntil: "networkidle" });
+  await p.waitForTimeout(3000);
+  const metaReturning = await p.evaluate(() => ({
+    queue: (window.fbq?.queue ?? []).length,
+    initialised: performance.getEntriesByType("resource").some(e => /connect\.facebook\.net\/signals\/config\//.test(e.name)),
+  }));
+  ok(metaReturning.queue === 0, `returning accepted visitor: ${metaReturning.queue} Meta call(s) still queued after reload (pixel held behind a revoke)`);
+  ok(metaReturning.initialised, "returning accepted visitor: the pixel did not initialise on reload (no signals/config load)");
+  log(`Meta Pixel on reload as an accepted visitor: queue ${metaReturning.queue}, initialised ${metaReturning.initialised}`);
 
   await p.close();
   await ctx.close();

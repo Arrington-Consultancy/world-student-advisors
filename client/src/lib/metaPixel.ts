@@ -10,8 +10,10 @@
  * HOW. Meta's own consent control is used: `fbq("consent", "revoke")` is
  * queued BEFORE `init`, so the pixel loads but sets no cookie and sends no
  * event; everything it is asked to do is held until `fbq("consent",
- * "grant")`, which CookieConsent issues for "Accept all" (and replays for a
- * returning accepted visitor). "Essential only" leaves it revoked. Unlike
+ * "grant")`, which CookieConsent issues for "Accept all". A returning
+ * visitor whose stored choice is "Accept all" is loaded already granted
+ * (no revoke queued; see loadMetaPixel for why a replayed grant would
+ * otherwise never be reached). "Essential only" leaves it revoked. Unlike
  * Google Consent Mode there is no cookieless modelling: a revoked pixel
  * reports nothing for that visitor. That is the price of the banner's
  * promise, and it is stated rather than hidden.
@@ -69,10 +71,20 @@ function ensureFbq(): Fbq {
 }
 
 /**
- * Loads the pixel with consent revoked. Safe to call on every page view;
- * the second and later calls do nothing.
+ * Loads the pixel. Safe to call on every page view; the second and later
+ * calls do nothing.
+ *
+ * `initial` is the visitor's consent as already known when the page loads:
+ * "revoked" (the default) for a visitor who has not chosen or chose
+ * "Essential only", "granted" for a visitor whose stored choice is "Accept
+ * all". It matters because of how Meta's script drains the pre-load queue:
+ * once it reads a revoke it holds everything after it, INCLUDING a grant
+ * queued behind it, so a returning accepted visitor whose grant was
+ * replayed after a revoke would never fire the pixel on any page. Found on
+ * 3 October 2026 on /speak-to-juliet/thank-you. For a granted visitor no
+ * revoke is queued, and init and PageView fire as soon as the script loads.
  */
-export function loadMetaPixel(): void {
+export function loadMetaPixel(initial: "granted" | "revoked" = "revoked"): void {
   if (typeof window === "undefined" || typeof document === "undefined") {
     return;
   }
@@ -82,9 +94,12 @@ export function loadMetaPixel(): void {
   loaded = true;
 
   const fbq = ensureFbq();
-  // Revoke BEFORE init: the pixel then holds every call, sets no cookie and
-  // sends nothing until a grant arrives.
-  fbq("consent", "revoke");
+  if (initial !== "granted") {
+    // Revoke BEFORE init: the pixel then holds every call, sets no cookie
+    // and sends nothing until a grant arrives through updateMetaConsent,
+    // which by then is a direct call the script processes at once.
+    fbq("consent", "revoke");
+  }
   fbq("init", META_PIXEL_ID);
   fbq("track", "PageView");
 
