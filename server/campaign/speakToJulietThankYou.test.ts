@@ -103,36 +103,47 @@ describe("the conversion", () => {
     const dataLayer: unknown[][] = [];
     const win: Record<string, unknown> = { sessionStorage, dataLayer };
     if (opts.gtag) win.gtag = opts.gtag;
+    // Meta's queueing stub, as metaPixel.ts installs it; a Lead fired here
+    // lands in its queue, where the test can read it.
+    const fbq: any = (...args: unknown[]) => { fbq.queue.push(args); };
+    fbq.queue = [] as unknown[][];
+    win.fbq = fbq;
     vi.stubGlobal("window", win);
     vi.stubGlobal("performance", { getEntriesByType: () => [{ type: opts.type ?? "navigate" }] });
-    return { dataLayer, store };
+    return { dataLayer, store, fbq };
   }
+  const leads = (fbq: any) => (fbq.queue as unknown[][]).filter(c => c[0] === "track" && c[1] === "Lead").length;
 
-  it("reports once for a fresh arrival", async () => {
+  it("reports once for a fresh arrival, to Google and to Meta", async () => {
     const gtag = vi.fn();
-    browser({ gtag });
+    const { fbq } = browser({ gtag });
     expect(reportJulietFormConversionOnce()).toBe("reported");
     await Promise.resolve();
     expect(gtag).toHaveBeenCalledWith("event", "conversion", { send_to: "AW-946725823/hviLCPiHkOMcEL_Ht8MD" });
+    // Tim Hunt, 4 October 2026: Meta must see the completed enquiry, not
+    // only the page view. Exactly one standard Lead event per arrival.
+    expect(leads(fbq)).toBe(1);
   });
 
   it("does not report again in the same session", async () => {
     const gtag = vi.fn();
     const { store } = browser({ gtag });
     expect(reportJulietFormConversionOnce()).toBe("reported");
-    browser({ gtag, store });
+    const second = browser({ gtag, store });
     expect(reportJulietFormConversionOnce()).toBe("already-reported");
     await Promise.resolve();
     expect(gtag).toHaveBeenCalledTimes(1);
+    expect(leads(second.fbq)).toBe(0);
   });
 
   it("does not report for a reload or a back/forward return", () => {
     const gtag = vi.fn();
-    browser({ gtag, type: "reload" });
+    const reload = browser({ gtag, type: "reload" });
     expect(reportJulietFormConversionOnce()).toBe("not-an-arrival");
-    browser({ gtag, type: "back_forward" });
+    const back = browser({ gtag, type: "back_forward" });
     expect(reportJulietFormConversionOnce()).toBe("not-an-arrival");
     expect(gtag).not.toHaveBeenCalled();
+    expect(leads(reload.fbq) + leads(back.fbq)).toBe(0);
   });
 
   it("queues the conversion when the tag has not loaded, and still reports when storage is blocked", async () => {

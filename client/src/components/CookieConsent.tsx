@@ -13,19 +13,11 @@ import { useEffect, useState } from "react";
 import { Link } from "wouter";
 import { loadGoogleAdsTag, updateGoogleConsent } from "@/lib/googleAdsTag";
 import { loadMetaPixel, updateMetaConsent } from "@/lib/metaPixel";
+import { CONSENT_KEY, getCookieConsent } from "@/lib/cookieConsentStorage";
+import type { ConsentValue } from "@/lib/cookieConsentStorage";
 
-const CONSENT_KEY = "wsa-cookie-consent";
-
-export type ConsentValue = "accepted" | "declined";
-
-export function getCookieConsent(): ConsentValue | null {
-  try {
-    const v = localStorage.getItem(CONSENT_KEY);
-    return v === "accepted" || v === "declined" ? v : null;
-  } catch {
-    return null;
-  }
-}
+export { getCookieConsent };
+export type { ConsentValue };
 
 export default function CookieConsent() {
   const [visible, setVisible] = useState(false);

@@ -27,6 +27,8 @@
  * Idempotent: loadMetaPixel() may be called more than once.
  */
 
+import { getCookieConsent } from "./cookieConsentStorage";
+
 type Fbq = {
   (...args: unknown[]): void;
   callMethod?: (...args: unknown[]) => void;
@@ -50,6 +52,16 @@ const SCRIPT_SRC = "https://connect.facebook.net/en_US/fbevents.js";
 export type MetaConsentState = "granted" | "denied";
 
 let loaded = false;
+
+/**
+ * The consent to load with when the caller has not said: granted for a
+ * stored "Accept all", revoked otherwise. Read from the banner's storage so
+ * that an event fired before the banner mounts (the thank-you page's Lead
+ * runs in an earlier effect) loads the pixel the same way the banner would.
+ */
+function storedInitial(): "granted" | "revoked" {
+  return getCookieConsent() === "accepted" ? "granted" : "revoked";
+}
 
 /** Installs Meta's queueing stub, exactly as its base code does. */
 function ensureFbq(): Fbq {
@@ -84,7 +96,7 @@ function ensureFbq(): Fbq {
  * 3 October 2026 on /speak-to-juliet/thank-you. For a granted visitor no
  * revoke is queued, and init and PageView fire as soon as the script loads.
  */
-export function loadMetaPixel(initial: "granted" | "revoked" = "revoked"): void {
+export function loadMetaPixel(initial: "granted" | "revoked" = storedInitial()): void {
   if (typeof window === "undefined" || typeof document === "undefined") {
     return;
   }
@@ -124,6 +136,24 @@ export function updateMetaConsent(state: MetaConsentState): void {
 /** A PageView for a client-side route change. Held by Meta while revoked. */
 export function trackMetaPageView(): void {
   if (typeof window === "undefined") return;
+  loadMetaPixel();
   const fbq = ensureFbq();
   fbq("track", "PageView");
+}
+
+/**
+ * Meta's standard "Lead" event: a completed enquiry. Asked for by Tim Hunt
+ * on 4 October 2026 so the Meta campaign can optimise for enquiries rather
+ * than page views. Fired by the Speak to Juliet thank-you page, once per
+ * arrival, through the same guard as the Google Ads conversion
+ * (speakToJulietThankYou.ts). Held by Meta while consent is revoked.
+ */
+export function trackMetaLead(): void {
+  if (typeof window === "undefined") return;
+  // Load first: on the thank-you page this runs in the page's own effect,
+  // before CookieConsent's, and Meta drops a track that precedes init.
+  // loadMetaPixel is idempotent, so the banner's later call is a no-op.
+  loadMetaPixel();
+  const fbq = ensureFbq();
+  fbq("track", "Lead");
 }
