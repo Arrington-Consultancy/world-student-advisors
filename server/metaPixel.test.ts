@@ -121,7 +121,30 @@ describe("updateMetaConsent and trackMetaPageView", () => {
     updateMetaConsent("granted");
     updateMetaConsent("denied");
     trackMetaPageView();
-    expect(calls(win)).toEqual([["consent", "grant"], ["consent", "revoke"], ["track", "PageView"]]);
+    const q = calls(win);
+    expect(q.slice(0, 2)).toEqual([["consent", "grant"], ["consent", "revoke"]]);
+    // The tracker loads the pixel before it tracks, so init comes before
+    // the PageView it pushes.
+    expect(q.findIndex(c => c[0] === "init")).toBeLessThan(q.length - 1);
+    expect(q[q.length - 1]).toEqual(["track", "PageView"]);
+  });
+
+  it("trackMetaLead loads the pixel first, so init precedes the Lead even when fired before the banner mounts", async () => {
+    // On the thank-you page the Lead runs in the page's own effect, before
+    // CookieConsent's. A track before init would be dropped by Meta, so the
+    // tracker loads the pixel itself (idempotently) before pushing.
+    const win: any = {};
+    vi.stubGlobal("window", win);
+    vi.stubGlobal("document", makeFakeDocument());
+    const { trackMetaLead, loadMetaPixel } = await import("../client/src/lib/metaPixel");
+    trackMetaLead();
+    const q = calls(win);
+    expect(q.findIndex(c => c[0] === "init")).toBeGreaterThanOrEqual(0);
+    expect(q.findIndex(c => c[0] === "init")).toBeLessThan(q.findIndex(c => c[0] === "track" && c[1] === "Lead"));
+    expect(q.filter(c => c[0] === "track" && c[1] === "Lead")).toHaveLength(1);
+    // The banner's later load is a no-op: no second init, no second revoke.
+    loadMetaPixel("revoked");
+    expect(q.filter(c => c[0] === "init")).toHaveLength(1);
   });
 });
 

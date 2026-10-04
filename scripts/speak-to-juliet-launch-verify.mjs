@@ -325,9 +325,28 @@ console.log("\n=== 5. The thank-you page ===");
     ((window.dataLayer ?? []).filter(e => Array.isArray(e) && e[0] === "event" && e[1] === "conversion").length) === want,
     n, { timeout: 5000 }).then(() => true, () => false);
 
+  // Meta's Lead event (since 4 October 2026, Tim Hunt's request): the site's
+  // own fbq stub is pre-installed here as a recording wrapper, so every call
+  // the page makes to the pixel is written to window.__fbqCalls whether or
+  // not Meta's script has loaded or consent has been given. metaPixel.ts
+  // reuses an existing window.fbq, and fbevents.js takes the wrapper over
+  // through callMethod, so this observes the page's calls without changing
+  // what Meta receives.
+  const leads = () => page.evaluate(() =>
+    (window.__fbqCalls ?? []).filter(c => c[0] === "track" && c[1] === "Lead").length);
+
   let page;
   for (const [width, height] of [[390, 844], [1280, 900]]) {
     const context = await browser.newContext({ viewport: { width, height } });
+    await context.addInitScript(() => {
+      const calls = [];
+      const n = function () {
+        calls.push(Array.from(arguments));
+        if (n.callMethod) n.callMethod.apply(n, arguments); else n.queue.push(arguments);
+      };
+      n.queue = []; n.push = n; n.loaded = true; n.version = "2.0";
+      window.fbq = n; window._fbq = n; window.__fbqCalls = calls;
+    });
     page = await context.newPage();
     const consoleErrors = [];
     page.on("pageerror", e => consoleErrors.push(e.message));
@@ -335,6 +354,7 @@ console.log("\n=== 5. The thank-you page ===");
     // The landing page reports nothing: a visit is not a submission.
     await page.goto(`${SITE}/speak-to-juliet`, { waitUntil: "networkidle" });
     check((await conversions()) === 0, "visiting the landing page reports no conversion", String(await conversions()));
+    check((await leads()) === 0, "visiting the landing page sends Meta no Lead", String(await leads()));
     const landingLinks = await page.evaluate(() => [...document.querySelectorAll("a")].filter(a => (a.getAttribute("href") ?? "").includes("thank-you")).length);
     check(landingLinks === 0, "nothing on the landing page links to the thank-you page", String(landingLinks));
 
@@ -342,6 +362,7 @@ console.log("\n=== 5. The thank-you page ===");
     await page.goto(`${SITE}${THANK_YOU_PATH}`, { waitUntil: "networkidle" });
     await waitForConversions(1);
     check((await conversions()) === 1, "arriving reports the conversion once", String(await conversions()));
+    check((await leads()) === 1, "arriving sends Meta exactly one Lead event", String(await leads()));
     const h1 = await page.locator("h1").first().innerText();
     check(h1.trim() === "Thank you. Your details are with Juliet.", "the page thanks the student and confirms Juliet has the details", h1.trim());
     const html = await page.content();
@@ -373,11 +394,13 @@ console.log("\n=== 5. The thank-you page ===");
     await page.reload({ waitUntil: "networkidle" });
     await page.waitForTimeout(1500);
     check((await conversions()) === 0, "reloading the page reports nothing", `${await conversions()} after reload`);
+    check((await leads()) === 0, "reloading sends Meta no Lead", `${await leads()} after reload`);
     // Nor is coming back to it within the same session.
     await page.goto(`${SITE}/speak-to-juliet`, { waitUntil: "networkidle" });
     await page.goto(`${SITE}${THANK_YOU_PATH}`, { waitUntil: "networkidle" });
     await page.waitForTimeout(1500);
     check((await conversions()) === 0, "returning to it in the same session reports nothing", String(await conversions()));
+    check((await leads()) === 0, "returning to it sends Meta no Lead", String(await leads()));
     await context.close();
   }
 
