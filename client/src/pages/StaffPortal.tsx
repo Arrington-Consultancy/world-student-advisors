@@ -1,7 +1,7 @@
 import { useState, useEffect, type FormEvent } from "react";
 import {
   Lock, LogOut, Eye, EyeOff, ArrowLeft, ChevronRight, UserRound, Search,
-  GraduationCap, Users, Share2, Radio, FileCheck2, ShieldCheck, Sparkles,
+  GraduationCap, Users, Share2, Radio, FileCheck2, ShieldCheck, Sparkles, Library,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -12,6 +12,7 @@ import { TeamPanel } from "@/components/staff/TeamPanel";
 import { ContentCheckPanel } from "@/components/staff/ContentCheckPanel";
 import { InterviewPreparationPanel } from "@/components/staff/InterviewPreparationPanel";
 import { SocialMediaPanel } from "@/components/staff/SocialMediaPanel";
+import { LibraryLinksPanel } from "@/components/staff/LibraryLinksPanel";
 import { Receptionist } from "@/components/workforce/Receptionist";
 import { AccessBanner } from "@/components/workforce/AccessBanner";
 import { AccessAdmin } from "@/components/workforce/AccessAdmin";
@@ -537,6 +538,13 @@ const DAILY_WORK: { id: StaffSection; label: string; blurb: string; icon: typeof
     tint: "bg-sky-50 text-sky-700",
   },
   {
+    id: "library",
+    label: "Student Support Library links",
+    blurb: "Every permanent WSA resource link in website order, with Copy link. Send these, not YouTube.",
+    icon: Library,
+    tint: "bg-indigo-50 text-indigo-700",
+  },
+  {
     id: "interviews",
     label: "Interview preparation",
     blurb: "Upload a student's CV, Personal Statement and RIQ for the two mock interview documents.",
@@ -825,6 +833,7 @@ function WorkforceHome({ token, onLogout }: { token: string; onLogout: () => voi
             {section === "uniportals" && <UniversityPortalsPanel token={token} />}
             {section === "students" && <StudentLookup token={token} />}
             {section === "interviews" && <InterviewPreparationPanel token={token} />}
+            {section === "library" && <LibraryLinksPanel />}
             {section === "social" && <SocialMediaPanel token={token} />}
             {section === "channels" && <ChannelsPanel token={token} />}
             {section === "team" && <TeamPanel token={token} />}
