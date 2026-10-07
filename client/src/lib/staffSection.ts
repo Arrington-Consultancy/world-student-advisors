@@ -19,6 +19,7 @@ export type StaffSection =
   | "uniportals"
   | "students"
   | "interviews"
+  | "library"
   | "social"
   | "content"
   | "team"
@@ -28,7 +29,7 @@ export type StaffSection =
   | "routing";
 
 export const SECTION_IDS: readonly StaffSection[] = [
-  "reception", "uniportals", "students", "interviews", "social", "content", "team", "channels", "resources", "access", "routing",
+  "reception", "uniportals", "students", "interviews", "library", "social", "content", "team", "channels", "resources", "access", "routing",
 ];
 
 export function sectionFromSearch(search: string): StaffSection | null {
