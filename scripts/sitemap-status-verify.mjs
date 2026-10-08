@@ -69,5 +69,11 @@ for (const u of urls) {
 }
 check("every trailing-slash form resolves to its page in one hop", loops.length === 0, loops.join("; ") || `${urls.length - 1} checked`);
 
+// 5. Google Search Console's ownership file (8 October 2026), served at the
+// root byte for byte, as Google's "HTML file" verification requests it.
+const gsc = await fetch(`${ORIGIN}/google375a70cbd269f483.html`, { redirect: "manual" });
+const gscBody = await gsc.text();
+check("Google verification file is served at the root with its exact content", gsc.status === 200 && gscBody === "google-site-verification: google375a70cbd269f483.html", `${gsc.status} ${JSON.stringify(gscBody.slice(0, 60))}`);
+
 console.log(failures === 0 ? "\nEvery check passed." : `\n${failures} check(s) failed.`);
 process.exit(failures === 0 ? 0 : 1);
