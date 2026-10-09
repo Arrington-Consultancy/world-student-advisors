@@ -243,7 +243,12 @@ describe("the short form hands over to the one controlled lead path", () => {
 
   it("prefill only writes into form state and cannot submit or skip the bot check", () => {
     expect(contact).toContain("turnstileToken");
-    const block = contact.slice(contact.indexOf("Plain prefill from a campaign landing page"), contact.indexOf("Plain prefill from a campaign landing page") + 1800);
+    // The prefill effect, from its explanatory comment to the end of the
+    // effect. Sliced by the effect's own closing rather than a fixed length,
+    // which stopped fitting when the Sarkin Fulani page added two fields on
+    // 8 October 2026.
+    const start = contact.indexOf("Plain prefill from a campaign landing page");
+    const block = contact.slice(start, contact.indexOf("}, []);", start));
     expect(block).toContain("setFormData");
     expect(block).not.toContain("mutate");
   });

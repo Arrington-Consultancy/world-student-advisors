@@ -27,7 +27,7 @@
  * server/_core/env.ts and are keyed by the slug.
  */
 
-export const CAMPAIGN_SLUGS = Object.freeze(["speak-to-juliet"] as const);
+export const CAMPAIGN_SLUGS = Object.freeze(["speak-to-juliet", "sarkin-fulani-future-leaders"] as const);
 
 export type CampaignSlug = (typeof CAMPAIGN_SLUGS)[number];
 
@@ -42,11 +42,13 @@ export function isCampaignSlug(value: string): value is CampaignSlug {
  */
 export const CAMPAIGN_LABELS: Readonly<Record<CampaignSlug, string>> = Object.freeze({
   "speak-to-juliet": "Speak to Juliet, the Nigeria landing page",
+  "sarkin-fulani-future-leaders": "Sarkin Fulani Future Leaders Programme, Expression of Interest",
 });
 
 /** The page a campaign's enquiries come from, for the note. */
 export const CAMPAIGN_PATHS: Readonly<Record<CampaignSlug, string>> = Object.freeze({
   "speak-to-juliet": "/speak-to-juliet",
+  "sarkin-fulani-future-leaders": "/sarkin-fulani-future-leaders",
 });
 
 /**
@@ -63,6 +65,11 @@ export const CAMPAIGN_PATHS: Readonly<Record<CampaignSlug, string>> = Object.fre
  *
  * A campaign NOT listed here keeps the original behaviour: the general list
  * is notified as always and the campaign's own recipients additionally.
+ *
+ * SARKIN FULANI FUTURE LEADERS PROGRAMME is deliberately NOT listed. Tim
+ * Hunt's brief of 8 October 2026 asks for the Expression of Interest to
+ * reach WSA's Student Counsellors, which is the general list, so the general
+ * notification is kept and the programme's own recipients are additional.
  *
  * This changes nothing for an ordinary enquiry, which carries no campaign at
  * all and is unaffected by any of this.
