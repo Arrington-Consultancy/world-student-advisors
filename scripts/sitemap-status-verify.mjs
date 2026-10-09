@@ -87,6 +87,12 @@ for (const p of DRAFT_PAGES) {
   check(`${p} carries noindex while it is a draft`, body.includes('<meta name="robots" content="noindex, nofollow" />'));
   check(`${p} is not in the sitemap while it is a draft`, !urls.some(u => new URL(u).pathname === p));
 }
+// The draft page's own images, served from this site (9 October 2026: the
+// seal, the Foundation logo and Maryam Lawal's photograph).
+for (const img of ["/images/sarkin-fulani/seal-sarkin-fulani-of-lagos.jpg", "/images/sarkin-fulani/sarkin-fulanin-lagos-foundation.png", "/images/sarkin-fulani/maryam-lawal.jpg"]) {
+  const r = await head(`${ORIGIN}${img}`);
+  check(`${img} is served`, r.status === 200, `${r.status} ${r.headers.get("content-type") ?? ""}`);
+}
 
 console.log(failures === 0 ? "\nEvery check passed." : `\n${failures} check(s) failed.`);
 process.exit(failures === 0 ? 0 : 1);
