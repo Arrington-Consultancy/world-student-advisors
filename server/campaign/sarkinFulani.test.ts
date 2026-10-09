@@ -3,6 +3,7 @@ import { existsSync, readFileSync } from "fs";
 import {
   CAMPAIGN_SLUG,
   DRAFT,
+  MARYAM,
   OPPORTUNITIES,
   PAGE_PATH,
   PARTNERS,
@@ -11,6 +12,7 @@ import {
   REVIEW_NOTES,
   allRenderedCopy,
   expressInterestHandoffUrl,
+  maryamWhatsAppHref,
 } from "../../client/src/lib/sarkinFulani";
 import { CAMPAIGN_PATHS, campaignReplacesGeneralNotification, isCampaignSlug } from "../../shared/campaignEnquiry";
 import { NOINDEX_PATHS, SEO_MAP, shouldNoindex } from "../../shared/seo";
@@ -164,6 +166,45 @@ describe("the Expression of Interest goes down the one controlled path", () => {
     expect(PAGE).not.toContain("submitStudent");
     expect(PAGE).not.toContain("webforms.pipedrive.com");
     expect(PAGE).toContain("expressInterestHandoffUrl(");
+  });
+});
+
+describe("Maryam Lawal's contact card, Tim Hunt's request of 9 October 2026", () => {
+  it("carries the details he gave, exactly", () => {
+    expect(MARYAM.name).toBe("Maryam Lawal");
+    expect(MARYAM.programmeRole).toBe("Programme Relationship and Family Liaison");
+    expect(MARYAM.title).toBe("Director, Nigeria");
+    expect(MARYAM.email).toBe("Maryam@WorldStudentAdvisors.com");
+    expect(MARYAM.whatsapp).toBe("+44 7305 615 829");
+    expect(maryamWhatsAppHref()).toBe("https://wa.me/447305615829");
+    expect(MARYAM.description).toBe("Maryam is available to answer general questions about the programme and explain how families can begin their educational journey.");
+  });
+
+  it("sits below Who is behind the programme and above the Expression of Interest", () => {
+    const behind = PAGE.indexOf("{BEHIND.heading}");
+    const maryam = PAGE.indexOf('id="maryam"');
+    const eoi = PAGE.indexOf('id="express-interest"');
+    expect(behind).toBeGreaterThan(0);
+    expect(maryam).toBeGreaterThan(behind);
+    expect(eoi).toBeGreaterThan(maryam);
+  });
+
+  it("makes both contact details live, WhatsApp with a WhatsApp icon, email as mailto", () => {
+    const card = PAGE.slice(PAGE.indexOf('id="maryam"'), PAGE.indexOf('id="express-interest"'));
+    expect(card).toContain("href={maryamWhatsAppHref()}");
+    expect(card).toContain("<MessageCircle");
+    expect(card).not.toContain("<Phone");
+    expect(card).toContain("href={`mailto:${MARYAM.email}`}");
+    expect(card).toContain("<Mail");
+  });
+
+  it("ships her photograph from this site", () => {
+    expect(publicFile(MARYAM.photo)).toBe(true);
+  });
+
+  it("leaves the Expression of Interest routing exactly as it was", () => {
+    expect(PAGE).toContain("expressInterestHandoffUrl(");
+    expect(CAMPAIGN_PATHS[CAMPAIGN_SLUG]).toBe(PAGE_PATH);
   });
 });
 
