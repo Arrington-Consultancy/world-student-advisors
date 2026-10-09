@@ -283,6 +283,36 @@ export const BEHIND = Object.freeze({
     "The link between families and Brooke House College. Our Student Counsellors help families understand the opportunities, prepare applications and support students through admission, Student Visa preparation and enrolment.",
 });
 
+/**
+ * Maryam Lawal, the programme's WSA contact in Nigeria. Tim Hunt, 9 October
+ * 2026: her card sits immediately below "Who is behind the programme?" and
+ * above the Expression of Interest, with both contact details live and a
+ * WhatsApp icon rather than a telephone one. She answers general questions;
+ * the Expression of Interest form stays separate and its routing is
+ * unchanged until the Office of His Royal Highness confirms the procedure.
+ * Her photograph is the one already on the Our Team page.
+ */
+export const MARYAM = Object.freeze({
+  name: "Maryam Lawal",
+  programmeRole: "Programme Relationship and Family Liaison",
+  title: "Director, Nigeria",
+  organisation: "World Student Advisors",
+  email: "Maryam@WorldStudentAdvisors.com",
+  whatsapp: "+44 7305 615 829",
+  whatsappDigits: "447305615829",
+  photo: "/images/sarkin-fulani/maryam-lawal.jpg",
+  photoAlt: "Maryam Lawal, Director, Nigeria, World Student Advisors",
+  eyebrow: "Your WSA contact in Nigeria",
+  description: "Maryam is available to answer general questions about the programme and explain how families can begin their educational journey.",
+  emailLabel: "Email Maryam",
+  whatsappLabel: "WhatsApp Maryam",
+});
+
+/** The WhatsApp link Tim Hunt specified, with no pre-filled message. */
+export function maryamWhatsAppHref(): string {
+  return `https://wa.me/${MARYAM.whatsappDigits}`;
+}
+
 /* ------------------------------------------------------------------ */
 /* Expression of Interest                                              */
 /* ------------------------------------------------------------------ */
@@ -409,6 +439,8 @@ export const REVIEW_NOTES: ReadonlyArray<{ owner: string; item: string }> = Obje
   { owner: "Brooke House College", item: "Confirmation of the tuition fee award wording (10%, up to a further 15%, normally 25% maximum)." },
   { owner: "Brooke House College", item: "Summer School 2027 dates, ages, duration, fees and inclusions; Essay Competition details; Vector Programme wording; photographs of the College, the Football Academy and students." },
   { owner: "Tim Hunt", item: "Who else receives the programme's enquiry notification alongside the Student Counsellors (Maryam Lawal, for instance), and the timeline dates now that September 2026 has passed." },
+  { owner: "Tim Hunt", item: "Maryam's photograph: the card uses the Our Team photograph; if the one attached to his email of 9 October is different, it needs filing where the site can take it." },
+  { owner: "Office of His Royal Highness (Farooq Gajo)", item: "Whether Expressions of Interest go first to the Palace for an eligibility check before referral to WSA (Tim's email to Farooq of 9 October). The form's routing is unchanged until confirmed." },
 ]);
 
 /** Every string a visitor can read, for the copy tests. */
@@ -427,6 +459,8 @@ export function allRenderedCopy(): string[] {
     ...STEPS.flatMap(s => [s.title, s.body]),
     ...TIMELINE.flatMap(t => [t.when, t.what]),
     BEHIND.heading, BEHIND.brookeHouse, BEHIND.wsa,
+    MARYAM.name, MARYAM.programmeRole, MARYAM.title, MARYAM.organisation, MARYAM.email, MARYAM.whatsapp,
+    MARYAM.photoAlt, MARYAM.eyebrow, MARYAM.description, MARYAM.emailLabel, MARYAM.whatsappLabel,
     ...OPPORTUNITIES.map(o => o.label), ...ENQUIRER_ROLES.map(r => r.label),
     ...Object.values(EXPRESS_INTEREST),
     QURANIC.eyebrow, QURANIC.heading, ...QURANIC.paragraphs, QURANIC.routingLine, QURANIC.formHeading,
