@@ -27,6 +27,7 @@ import {
 import { resolvePortalDashboard } from "./portal-resolver";
 import { getSessionQuestions, assessAnswer, summariseSession, TYPE_LABELS } from "./interviewCoach";
 import { requireTurnstile } from "./_core/turnstile";
+import { quranicSchoolRegistrationSchema, submitQuranicSchoolRegistration } from "./programme/quranicCompetition";
 import { authenticateStaffPortal, verifyStaffPortalToken, isStaffPortalLoginRateLimited } from "./staffPortalAuth";
 import { isMicrosoftSsoConfigured, buildMicrosoftSignInRequest, completeMicrosoftSignInFromCallback } from "./staffIdentityAuth";
 import {
@@ -512,6 +513,34 @@ export const appRouter = router({
         // The portal setup token is never returned here — it only ever
         // exists inside the email sent directly to the applicant above.
         return { success: true as const, leadId: result.leadId };
+      }),
+  }),
+
+  /**
+   * The Sarkin Fulani Future Leaders Programme page. Its Expression of
+   * Interest is NOT here: that hands off to contact.submitStudent above with
+   * campaign=sarkin-fulani-future-leaders, the one controlled path into
+   * Pipedrive. This router carries only the school registration for His
+   * Royal Highness's Annual Quranic Memorisation Competition, which is the
+   * King's own and goes to its Committee in Nigeria rather than into WSA's
+   * CRM (server/programme/quranicCompetition.ts).
+   */
+  programme: router({
+    registerQuranicCompetitionSchool: publicProcedure
+      .input(
+        quranicSchoolRegistrationSchema.extend({
+          /** Honeypot: real schools never see or fill this field; bots often do. */
+          website: z.string().optional().default(""),
+          ...turnstileField,
+        }),
+      )
+      .mutation(async ({ input, ctx }) => {
+        // Honeypot tripped: pretend success without doing any work, as the
+        // sign-up form does, so a bot gets no signal it was caught.
+        if (input.website) return { success: true as const };
+        await requireTurnstile(input.turnstileToken, ctx.req.ip);
+        const { website: _website, turnstileToken: _turnstileToken, ...registration } = input;
+        return submitQuranicSchoolRegistration(registration);
       }),
   }),
 

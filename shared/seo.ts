@@ -177,6 +177,11 @@ export const SEO_MAP: Record<string, SeoEntry> = {
     title: "Thank you, your details are with Juliet | World Student Advisors",
     description: "Your enquiry has reached Juliet Nnajiofor-Uyi, WSA Higher Education Advisor in Lagos. She will be in touch shortly.",
   },
+  "/sarkin-fulani-future-leaders": {
+    title: "Sarkin Fulani Future Leaders Programme | World Student Advisors",
+    description:
+      "Under the patronage of His Royal Highness the Sarkin Fulani of Lagos, with Brooke House College and World Student Advisors: full-time education, football, Vector leadership, summer schools and tuition fee awards for young people from the Arewa community.",
+  },
   "/speak-to-juliet": {
     title: "Speak to Juliet in Lagos | World Student Advisors",
     description:
@@ -228,7 +233,13 @@ export const NOINDEX_PATH_PREFIXES = ["/portal", "/staff-portal"];
 // /speak-to-juliet/thank-you is the post-submission page for Tim Hunt's
 // Pipedrive form. It is reached only by that redirect, is linked from
 // nowhere, and stays noindex whatever happens to its parent.
-export const NOINDEX_PATHS = new Set(["/404", "/speak-to-juliet/thank-you"]);
+// /sarkin-fulani-future-leaders is a draft for review (Tim Hunt's brief of
+// 8 October 2026): noindex, out of the sitemap and prerender list, linked
+// from nowhere, until the Office of His Royal Highness has approved the royal
+// material and Brooke House College has confirmed its offers. Publication
+// changes noindex, the sitemap entry and the prerender entry together, as it
+// did for the two pages above.
+export const NOINDEX_PATHS = new Set(["/404", "/speak-to-juliet/thank-you", "/sarkin-fulani-future-leaders"]);
 
 export function getCanonicalPath(path: string): string {
   return CANONICAL_PATHS[path] ?? path;

@@ -53,6 +53,7 @@ import SpeakToJulietThankYou from "./pages/SpeakToJulietThankYou";
 import StudentSupportLibraryResource from "./pages/StudentSupportLibraryResource";
 import NigeriaPostgraduate from "./pages/NigeriaPostgraduate";
 import SpeakToJuliet from "./pages/SpeakToJuliet";
+import SarkinFulaniFutureLeaders from "./pages/SarkinFulaniFutureLeaders";
 
 
 function Router() {
@@ -118,6 +119,9 @@ function Router() {
       {/* Where Tim Hunt's Pipedrive form sends the student after a successful
           submission. Noindex, unlinked, no form: see speakToJulietThankYou.ts. */}
       <Route path={"/speak-to-juliet/thank-you"} component={SpeakToJulietThankYou} />
+      {/* Draft for review, 8 October 2026: noindex, out of the sitemap and
+          prerender list, linked from nowhere. See client/src/lib/sarkinFulani.ts. */}
+      <Route path={"/sarkin-fulani-future-leaders"} component={SarkinFulaniFutureLeaders} />
       <Route path={"/404"} component={NotFound} />
       <Route component={NotFound} />
     </Switch>

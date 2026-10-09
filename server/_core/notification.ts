@@ -65,6 +65,31 @@ export async function notifyCampaignOwner(slug: string, payload: NotificationPay
 }
 
 /**
+ * Emails the Competition Committee of His Royal Highness's Annual Quranic
+ * Memorisation Competition a school's registration (server/_core/env.ts
+ * quranicCompetitionCommitteeEmails). Not a WSA enquiry: the general staff
+ * list is not copied, and nothing is written to Pipedrive. Same delivery
+ * constraints as notifyStaff: returns false rather than throwing, and the
+ * caller decides what a false means for the school that submitted.
+ */
+export async function notifyQuranicCompetitionCommittee(payload: NotificationPayload): Promise<boolean> {
+  if (!isNonEmptyString(payload.title) || !isNonEmptyString(payload.content)) {
+    console.warn("[Notification] Missing title or content, skipping Committee notification.");
+    return false;
+  }
+
+  if (ENV.quranicCompetitionCommitteeEmails.length === 0) {
+    console.warn("[Notification] QURANIC_COMPETITION_COMMITTEE_EMAILS is empty, skipping:", payload.title);
+    return false;
+  }
+
+  const title = payload.title.trim().slice(0, TITLE_MAX_LENGTH);
+  const content = payload.content.trim().slice(0, CONTENT_MAX_LENGTH);
+
+  return sendGraphMail({ to: ENV.quranicCompetitionCommitteeEmails, subject: title, text: content });
+}
+
+/**
  * Emails a fixed, smaller recipient list (server/_core/env.ts
  * interviewCoachNotifyEmails — separate from the general staff list) the
  * results of a completed AI Interview Coach session. Same delivery

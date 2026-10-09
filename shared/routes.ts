@@ -75,6 +75,12 @@ export const VALID_CLIENT_ROUTES: readonly string[] = [
   // The page Tim Hunt's Pipedrive form redirects to after a successful
   // submission (28 September 2026). Noindex, out of the sitemap, unlinked.
   "/speak-to-juliet/thank-you",
+  // The Sarkin Fulani Future Leaders Programme landing page, Tim Hunt's brief
+  // of 8 October 2026 from Farooq Gajo's revised proposal. A real route so
+  // it can be reviewed by the Office of His Royal Highness and Brooke House
+  // College, but noindex, absent from the sitemap and the prerender list,
+  // and linked from nowhere until it is approved for publication.
+  "/sarkin-fulani-future-leaders",
   "/404",
   // One permanent page per Student Support Library resource,
   // /student-support-library/<slug>, generated from the library data so the

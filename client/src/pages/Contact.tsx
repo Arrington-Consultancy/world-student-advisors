@@ -197,10 +197,13 @@ function StudentForm() {
     const params = new URLSearchParams(window.location.search);
     const take = (key: string, max = 200) => (params.get(key) ?? "").slice(0, max).trim();
     const firstName = take("firstName", 60);
+    // lastName and areaOfStudy: the Sarkin Fulani Future Leaders page, 8 October 2026.
+    const lastName = take("lastName", 60);
     const email = take("email", 120);
     const phone = take("phone", 40);
     const desiredLevel = take("desiredLevel", 40);
     const preferredDestination = take("preferredDestination", 60);
+    const areaOfStudy = take("areaOfStudy", 160);
     // Which campaign landing page sent them here, if any. Held separately
     // from the form: it is not the student's answer to anything, it is not
     // shown, and it is not editable. Only a known slug survives the server.
@@ -215,12 +218,14 @@ function StudentForm() {
       const remembered = recallCampaign();
       if (remembered) setCampaign(remembered);
     }
-    if (!firstName && !email && !phone && !desiredLevel && !preferredDestination) return;
+    if (!firstName && !lastName && !email && !phone && !desiredLevel && !preferredDestination && !areaOfStudy) return;
     setFormData(prev => ({
       ...prev,
       firstName: firstName || prev.firstName,
+      lastName: lastName || prev.lastName,
       email: email || prev.email,
       phone: phone || prev.phone,
+      areaOfStudy: areaOfStudy || prev.areaOfStudy,
       // Only accept a value the form itself offers; anything else is ignored.
       desiredLevel: isDesiredLevelValue(desiredLevel) ? desiredLevel : prev.desiredLevel,
       preferredDestination: isDestinationValue(preferredDestination) ? preferredDestination : prev.preferredDestination,

@@ -75,5 +75,18 @@ const gsc = await fetch(`${ORIGIN}/google375a70cbd269f483.html`, { redirect: "ma
 const gscBody = await gsc.text();
 check("Google verification file is served at the root with its exact content", gsc.status === 200 && gscBody === "google-site-verification: google375a70cbd269f483.html", `${gsc.status} ${JSON.stringify(gscBody.slice(0, 60))}`);
 
+// 6. Draft pages for review (9 October 2026: the Sarkin Fulani Future Leaders
+// Programme). A draft is a real page, so it answers 200 for its reviewers,
+// but it carries noindex and is not in the sitemap. Both must hold together
+// until the page is published on purpose, when this list is edited.
+const DRAFT_PAGES = ["/sarkin-fulani-future-leaders"];
+for (const p of DRAFT_PAGES) {
+  const r = await fetch(`${ORIGIN}${p}`, { redirect: "manual", headers: { "user-agent": "WSA-verify/1.0" } });
+  const body = await r.text();
+  check(`${p} answers 200 for its reviewers`, r.status === 200, String(r.status));
+  check(`${p} carries noindex while it is a draft`, body.includes('<meta name="robots" content="noindex, nofollow" />'));
+  check(`${p} is not in the sitemap while it is a draft`, !urls.some(u => new URL(u).pathname === p));
+}
+
 console.log(failures === 0 ? "\nEvery check passed." : `\n${failures} check(s) failed.`);
 process.exit(failures === 0 ? 0 : 1);
