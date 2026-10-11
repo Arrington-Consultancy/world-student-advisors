@@ -94,5 +94,27 @@ for (const img of ["/images/sarkin-fulani/seal-sarkin-fulani-of-lagos.jpg", "/im
   check(`${img} is served`, r.status === 200, `${r.status} ${r.headers.get("content-type") ?? ""}`);
 }
 
+// 7. No residential address (Tim Hunt, 10 October 2026). Every sitemap page,
+// read in full, and the scripts the home page loads, must be free of the
+// street and postcode; the pages that carried them must show the town and
+// county wording instead.
+const RESIDENTIAL = [/newport\s+close/i, /BS21\s*5DZ/i];
+const leaks = [];
+for (const u of urls) {
+  const body = await (await fetch(u, { headers: { "user-agent": "WSA-verify/1.0" } })).text();
+  if (RESIDENTIAL.some(re => re.test(body))) leaks.push(new URL(u).pathname);
+}
+const home = await (await fetch(`${ORIGIN}/`, { headers: { "user-agent": "WSA-verify/1.0" } })).text();
+const scripts = [...home.matchAll(/<(?:script[^>]+src|link[^>]+rel="modulepreload"[^>]+href)="([^"]+\.js)"/g)].map(m => m[1]);
+for (const src of new Set(scripts)) {
+  const js = await (await fetch(new URL(src, ORIGIN))).text();
+  if (RESIDENTIAL.some(re => re.test(js))) leaks.push(src);
+}
+check("no page or script carries the residential street address or postcode", leaks.length === 0, leaks.join("; ") || `${urls.length} pages and ${new Set(scripts).size} scripts read`);
+for (const p of ["/", "/about", "/privacy-policy"]) {
+  const body = await (await fetch(`${ORIGIN}${p}`, { headers: { "user-agent": "WSA-verify/1.0" } })).text();
+  check(`${p} shows "Clevedon, North Somerset"`, body.includes("Clevedon, North Somerset"));
+}
+
 console.log(failures === 0 ? "\nEvery check passed." : `\n${failures} check(s) failed.`);
 process.exit(failures === 0 ? 0 : 1);
