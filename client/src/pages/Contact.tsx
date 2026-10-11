@@ -60,10 +60,12 @@ function decodeJwtPayload(token: string): Record<string, unknown> | null {
 const offices = [
   {
     country: "United Kingdom",
-    role: "Head Office",
+    role: "UK Headquarters",
     name: "Timothy J. Hunt",
     title: "Managing Director",
-    address: "2 Newport Close, Clevedon, BS21 5DZ, England, UK",
+    // Tim Hunt, 10 October 2026: no residential address on the website.
+    // Town and county only, in the wording he sent.
+    address: "Clevedon, North Somerset, England, United Kingdom",
     // Tim Hunt, 15 September 2026: the UK Head Office WhatsApp is
     // +44 7470 689 849, not his personal mobile.
     whatsapp: "+44 7470 689 849",

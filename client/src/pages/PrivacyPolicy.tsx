@@ -280,7 +280,7 @@ export default function PrivacyPolicy() {
                     <p className="mt-2">Email: <a href="mailto:gdpr@worldstudentadvisors.com" className="text-wsa-red hover:underline">gdpr@worldstudentadvisors.com</a></p>
                     <p className="mt-4 text-sm text-muted-foreground">
                       WorldStudentAdvisors Limited &middot; Registered in England and Wales &middot; Company Number: 09532724<br />
-                      2 Newport Close, Clevedon, North Somerset, BS21 5DZ, United Kingdom<br />
+                      UK Headquarters, Clevedon, North Somerset, England, United Kingdom<br />
                       Tel: +44 791 4797 830 &middot; <a href="mailto:ask@worldstudentadvisors.com" className="text-wsa-red hover:underline">ask@worldstudentadvisors.com</a>
                     </p>
                   </div>

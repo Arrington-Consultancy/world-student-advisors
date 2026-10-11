@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
-import { readFileSync } from "fs";
+import { readFileSync, readdirSync, statSync } from "fs";
+import { join } from "path";
 import { WSA_TEAM, REGIONAL_REPRESENTATIVES, whatsappLink } from "../../client/src/lib/team";
 
 /**
@@ -59,7 +60,9 @@ describe("Nigeria office: one number, and only one", () => {
 
 describe("UK Head Office", () => {
   it("carries the address, email and WhatsApp Tim specified", () => {
-    expect(contact).toContain("2 Newport Close, Clevedon, BS21 5DZ, England, UK");
+    // Town and county only since 10 October 2026: see "No residential
+    // address" below.
+    expect(contact).toContain('address: "Clevedon, North Somerset, England, United Kingdom"');
     expect(contact).toContain("UKHeadOffice@WorldStudentAdvisors.com");
     expect(contact).toContain('whatsapp: "+44 7470 689 849"');
   });
@@ -152,6 +155,57 @@ describe("Tim's presentation changes of 15 September 2026", () => {
   it("does not disturb the rest of the main menu", () => {
     for (const href of ["/about", "/study-options", "/partners", "/our-team", "/events", "/student-support-library", "/portal/interview-coach"]) {
       expect(header, href).toContain(`"${href}"`);
+    }
+  });
+});
+
+/**
+ * Tim Hunt, 10 October 2026, forwarded by Tom Arrington the same day: the
+ * UK Headquarters is a residential address and is not to appear on the
+ * website. In its place, the wording Tim sent:
+ *
+ *   WorldStudentAdvisors, UK Headquarters,
+ *   Clevedon, North Somerset, England, United Kingdom
+ *
+ * The street and postcode were on seven pages: the footer, Contact,
+ * About, and the small print of four policy pages. This walks every
+ * source file a browser can receive, and everything served from
+ * client/public, so a new page or a pasted signature cannot bring the
+ * address back unnoticed.
+ */
+describe("No residential address on the website", () => {
+  const RESIDENTIAL = [/newport\s+close/i, /BS21\s*5DZ/i];
+
+  function walk(dir: string, out: string[] = []): string[] {
+    for (const entry of readdirSync(dir)) {
+      const p = join(dir, entry);
+      if (statSync(p).isDirectory()) walk(p, out);
+      else out.push(p);
+    }
+    return out;
+  }
+
+  const files = [
+    ...walk("client/src").filter(f => /\.(ts|tsx|css|html)$/.test(f)),
+    ...walk("client/public").filter(f => /\.(html|xml|txt|json|svg)$/.test(f)),
+    "client/index.html",
+    "shared/seo.ts",
+  ];
+
+  it("checks a real number of files", () => {
+    expect(files.length).toBeGreaterThan(100);
+  });
+
+  it("the street and postcode appear in none of them, comments included", () => {
+    const found = files.filter(f => RESIDENTIAL.some(re => re.test(readFileSync(f, "utf8"))));
+    expect(found).toEqual([]);
+  });
+
+  it("the footer, Contact, About and the four policy pages carry Tim's wording", () => {
+    expect(readFileSync("client/src/components/Footer.tsx", "utf8")).toContain("Clevedon, North Somerset, England, United Kingdom");
+    expect(readFileSync("client/src/pages/About.tsx", "utf8")).toContain('city: "Clevedon, North Somerset", role: "UK Headquarters"');
+    for (const page of ["PrivacyPolicy", "DataProtectionConsent", "SubSaharanPolicy", "AntiBribery"]) {
+      expect(readFileSync(`client/src/pages/${page}.tsx`, "utf8"), page).toContain("UK Headquarters, Clevedon, North Somerset, England, United Kingdom");
     }
   });
 });

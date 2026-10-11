@@ -139,7 +139,7 @@ export default function About() {
 
           <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-8">
             {[
-              { country: "United Kingdom", city: "Clevedon, England", role: "Headquarters", detail: "2 Newport Close, BS21 5DZ" },
+              { country: "United Kingdom", city: "Clevedon, North Somerset", role: "UK Headquarters", detail: "England, United Kingdom" },
               { country: "Kenya", city: "Nairobi", role: "Sub-Saharan Regional Office", detail: "Waiyaki Way, Off Uthiru-Cooperation, Nafra Building" },
               { country: "Nigeria", city: "Ibadan, Oyo State", role: "West Africa Office", detail: "DSTV Complex, Akala Express Way" },
               { country: "Ghana", city: "Accra, East Legon", role: "West Africa Office", detail: "Afotey Osapesua Avenue" },
