@@ -8,7 +8,6 @@ import {
   PAGE_PATH,
   PARTNERS,
   PATRON,
-  QURANIC,
   REVIEW_NOTES,
   allRenderedCopy,
   expressInterestHandoffUrl,
@@ -28,8 +27,8 @@ import { statesAnUnnegatedGuarantee } from "../operating/qualityCheck";
  * What these hold, in order of the damage a failure would do: the page
  * stays a draft until it is published on purpose (noindex, out of the
  * sitemap and prerender list, linked from nowhere, banner showing, all
- * together); the two forms go to their two different destinations and
- * neither opens a second route into Pipedrive; the community is named as
+ * together); the one form hands off to the sign-up and opens no second
+ * route into Pipedrive; the community is named as
  * the Office of His Royal Highness asked; and no promise appears that
  * Brooke House College has not made.
  */
@@ -102,7 +101,7 @@ describe("no promise Brooke House College has not made", () => {
 
   it("uses UK English and no em dash", () => {
     expect(COPY).not.toContain("—");
-    expect(COPY).toContain("Memorisation");
+    expect(COPY).toContain("programme");
     expect(COPY).not.toContain("Memorization");
     expect(COPY).not.toMatch(/\bprogram\b/);
   });
@@ -208,23 +207,28 @@ describe("Maryam Lawal's contact card, Tim Hunt's request of 9 October 2026", ()
   });
 });
 
-describe("His Royal Highness's Quranic Memorisation Competition stands on its own", () => {
-  it("is its own identified section, reachable from the hero", () => {
-    expect(PAGE).toContain('id="quranic-competition"');
-    expect(PAGE).toContain('href="#quranic-competition"');
-    expect(QURANIC.eyebrow).toContain("Annual Quranic Memorisation Competition");
+/**
+ * Tim Hunt to Farooq Gajo, 11 October 2026: the WSA page stays on the
+ * Brooke House College opportunities and WSA's advice to families; the
+ * Quranic Memorisation Competition's promotion and school registrations
+ * belong to the Foundation's own communications, under the Committee.
+ * Removing the section but leaving its route would keep a public endpoint
+ * emailing on behalf of a form nobody can see, so both are checked gone.
+ */
+describe("the Quranic Memorisation Competition is not on the WSA page", () => {
+  it("has no section, hero button or school form", () => {
+    const raw = read("client/src/pages/SarkinFulaniFutureLeaders.tsx");
+    expect(PAGE).not.toContain("quranic-competition");
+    expect(PAGE).not.toContain("QuranicSchoolForm");
+    expect(raw).not.toContain("@shared/quranicCompetition");
+    expect(allRenderedCopy().join(" ")).not.toMatch(/quranic|memorisation|school registration/i);
   });
 
-  it("has its own form, sent to the Committee through its own procedure", () => {
-    expect(PAGE).toContain("trpc.programme.registerQuranicCompetitionSchool.useMutation");
-    expect(QURANIC.routingLine).toContain("Competition Committee in Nigeria");
-    expect(QURANIC.routingLine).toContain("not a World Student Advisors enquiry");
-  });
-
-  it("promises no date, venue or category the Committee has not announced", () => {
-    expect(QURANIC.detailsPending).toContain("announced by the Committee");
-    const quranicCopy = [QURANIC.heading, ...QURANIC.paragraphs, QURANIC.formSupporting].join(" ");
-    expect(quranicCopy).not.toMatch(/\b20\d\d\b/);
+  it("leaves no server route, notifier or setting behind it", () => {
+    expect(read("server/routers.ts")).not.toMatch(/registerQuranicCompetitionSchool|quranicCompetition/);
+    expect(read("server/_core/notification.ts")).not.toContain("notifyQuranicCompetitionCommittee");
+    expect(read("server/_core/env.ts")).not.toContain("QURANIC_COMPETITION_COMMITTEE_EMAILS");
+    for (const f of ["shared/quranicCompetition.ts", "server/programme/quranicCompetition.ts"]) expect(existsSync(f), f).toBe(false);
   });
 });
 
@@ -234,6 +238,13 @@ describe("the reviewers' open items are written down", () => {
     expect(owners).toContain("Farooq Gajo");
     expect(owners).toContain("Brooke House College");
     expect(owners).toContain("Tim Hunt");
-    expect(REVIEW_NOTES.some(n => n.item.includes("Committee"))).toBe(true);
+  });
+
+  it("records Farooq's answers of 10 October 2026 and leaves the referral routing to Tim", () => {
+    expect(REVIEW_NOTES.some(n => n.item.includes("Committee"))).toBe(false);
+    const routing = REVIEW_NOTES.find(n => n.item.includes("eligibility check"));
+    expect(routing?.owner).toBe("Tim Hunt");
+    expect(routing?.item).toContain("routing is unchanged");
+    expect(PATRON.foundationName).toBe("Sarkin Fulanin Lagos Foundation");
   });
 });

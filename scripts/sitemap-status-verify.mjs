@@ -108,8 +108,10 @@ for (const u of urls) {
 }
 const home = await (await fetch(`${ORIGIN}/`, { headers: { "user-agent": "WSA-verify/1.0" } })).text();
 const scripts = [...home.matchAll(/<(?:script[^>]+src|link[^>]+rel="modulepreload"[^>]+href)="([^"]+\.js)"/g)].map(m => m[1]);
+const scriptBodies = [];
 for (const src of new Set(scripts)) {
   const js = await (await fetch(new URL(src, ORIGIN))).text();
+  scriptBodies.push(js);
   if (RESIDENTIAL.some(re => re.test(js))) leaks.push(src);
 }
 check("no page or script carries the residential street address or postcode", leaks.length === 0, leaks.join("; ") || `${urls.length} pages and ${new Set(scripts).size} scripts read`);
@@ -117,6 +119,21 @@ for (const p of ["/", "/about", "/privacy-policy"]) {
   const body = await (await fetch(`${ORIGIN}${p}`, { headers: { "user-agent": "WSA-verify/1.0" } })).text();
   check(`${p} shows "Clevedon, North Somerset"`, body.includes("Clevedon, North Somerset"));
 }
+
+// 8. No Quranic Memorisation Competition on the Sarkin Fulani page (Tim
+// Hunt to Farooq Gajo, 11 October 2026): the section and its school form
+// are gone from the scripts that carry the page, and the server route that
+// emailed registrations no longer exists (tRPC answers 404 for an unknown
+// procedure, where the old route answered 400 to an empty registration).
+const carriesPage = scriptBodies.some(js => js.includes("Sarkin Fulanin Lagos Foundation"));
+check("the Sarkin Fulani page's script was among those read", carriesPage);
+check("no script carries the Quranic Competition section or its form", !scriptBodies.some(js => /Quranic Memorisation|registerQuranicCompetitionSchool/.test(js)));
+const route = await fetch(`${ORIGIN}/api/trpc/programme.registerQuranicCompetitionSchool`, {
+  method: "POST",
+  headers: { "content-type": "application/json", "user-agent": "WSA-verify/1.0" },
+  body: "{}",
+});
+check("the school registration route no longer exists", route.status === 404, String(route.status));
 
 // 9. The footer's developer credit (Tom Arrington, 11 October 2026):
 // "Website by Arrington Consultancy", once per page, in the HTML as served

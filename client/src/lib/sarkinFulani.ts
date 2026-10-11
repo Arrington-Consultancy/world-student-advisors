@@ -11,19 +11,22 @@ import { toInternationalNigerianNumber } from "./nigeriaLanding";
  *     which sets the six sections and the two forms.
  *  2. Farooq Gajo's revisions of 29 September 2026, Office of His Royal
  *     Highness: the programme is for the wider Arewa community, so
- *     "Fulani and Hausa Fulani" is not used; and His Royal Highness's
- *     Annual Quranic Memorisation Competition is its own section with a
- *     separate school registration routed to the Competition Committee.
+ *     "Fulani and Hausa Fulani" is not used.
  *  3. Tim Hunt's landing page proposal of 19 August 2026 (the text) and
  *     the discussion document sent to His Royal Highness in July 2026
  *     (the vision wording).
+ *  4. Farooq Gajo's reply of 10 October 2026 and Tim Hunt's answer of 11
+ *     October 2026: the vision wording reflects His Royal Highness's aims,
+ *     the Foundation is the Sarkin Fulanin Lagos Foundation, His Royal
+ *     Highness is happy with the enquiry and referral procedure, and the
+ *     Quranic Memorisation Competition is not on this page. Tim: its
+ *     promotion and school registrations belong to the Foundation's own
+ *     communications, under the Committee.
  *
- * WHAT IS PROVISIONAL, and said so on the page: the royal material awaits
- * the approval of the Office of His Royal Highness; the tuition fee award
+ * WHAT IS PROVISIONAL, and said so on the page: the tuition fee award
  * wording and every Brooke House College offer await the College's
- * confirmation; the Essay Competition is proposed, not announced; and the
- * Competition Committee's details are to come from Farooq. REVIEW_NOTES
- * below lists each open item for the reviewers.
+ * confirmation, and the Essay Competition is proposed, not announced.
+ * REVIEW_NOTES below lists each open item for the reviewers.
  *
  * UK English throughout. No em dashes. No guarantee language: Brooke House
  * College alone decides admission and awards, and the page says so.
@@ -80,7 +83,6 @@ export const HERO = Object.freeze({
     "A pathway to Brooke House College in England for talented young people from the Arewa community, with World Student Advisors beside each family from first conversation to arrival.",
   recruiting: "Now recruiting for January 2027 entry",
   primaryCta: "Express your interest",
-  schoolsCta: "Schools: Quranic Memorisation Competition",
   partnersLine: "In partnership with Brooke House College, England, and World Student Advisors",
 });
 
@@ -288,8 +290,10 @@ export const BEHIND = Object.freeze({
  * 2026: her card sits immediately below "Who is behind the programme?" and
  * above the Expression of Interest, with both contact details live and a
  * WhatsApp icon rather than a telephone one. She answers general questions;
- * the Expression of Interest form stays separate and its routing is
- * unchanged until the Office of His Royal Highness confirms the procedure.
+ * the Expression of Interest form stays separate. His Royal Highness
+ * approved the procedure on 10 October 2026, but how an Expression of
+ * Interest reaches his Office is still to be decided (REVIEW_NOTES), so the
+ * form's routing is unchanged.
  * Her photograph is the one already on the Our Team page.
  */
 export const MARYAM = Object.freeze({
@@ -393,34 +397,6 @@ export function expressInterestHandoffUrl(input: {
 }
 
 /* ------------------------------------------------------------------ */
-/* His Royal Highness's Annual Quranic Memorisation Competition        */
-/* ------------------------------------------------------------------ */
-
-/**
- * Farooq Gajo, 29 September 2026: the competition is His Royal Highness's
- * own, it stands as its own clearly identified section, and a school's
- * registration goes to the Competition Committee in Nigeria. The copy says
- * what is known and no more: the Committee's dates, categories and venue
- * are theirs to announce, and the page does not guess at them.
- */
-export const QURANIC = Object.freeze({
-  eyebrow: "His Royal Highness's Annual Quranic Memorisation Competition",
-  heading: "For schools: register for the Quranic Memorisation Competition",
-  paragraphs: [
-    "Each year His Royal Highness the Sarkin Fulani of Lagos holds a Quranic Memorisation Competition for young people. It is organised by the Competition Committee in Nigeria and is separate from the Brooke House College opportunities above.",
-    "Schools wishing to enter students can register their interest here. The Committee will contact the school with the competition's dates, categories and arrangements.",
-  ],
-  routingLine:
-    "This form goes to the Competition Committee in Nigeria. It is not a World Student Advisors enquiry and is not added to WSA's student records.",
-  formHeading: "School registration",
-  formSupporting: "Please give the details a member of the Committee will need to contact your school.",
-  cta: "Send registration to the Committee",
-  successHeading: "Registration sent",
-  successLine: "Your school's registration has been sent to the Competition Committee. A member of the Committee will be in touch with the contact you gave.",
-  detailsPending: "Competition dates, categories and venue will be announced by the Committee.",
-});
-
-/* ------------------------------------------------------------------ */
 
 export const FOOTER_LINE = Object.freeze({
   motto: "Education changes lives. Legacy shapes generations.",
@@ -433,14 +409,13 @@ export const FOOTER_LINE = Object.freeze({
  * cannot settle on its own; the record and the review email list them.
  */
 export const REVIEW_NOTES: ReadonlyArray<{ owner: string; item: string }> = Object.freeze([
-  { owner: "Office of His Royal Highness (Farooq Gajo)", item: "Approval of the royal material: the vision wording, the display of the Palace seal and the Foundation logo, and the name of the community." },
+  { owner: "Office of His Royal Highness (Farooq Gajo)", item: "The display of the Palace seal. Farooq approved the vision wording and confirmed the Foundation's name on 10 October 2026; the seal was in the screenshots he reviewed but he did not mention it." },
   { owner: "Office of His Royal Highness (Farooq Gajo)", item: "A dignified photograph of His Royal Highness for the hero, if one is to be used; the seal stands in its place for now." },
-  { owner: "Office of His Royal Highness (Farooq Gajo)", item: "The Competition Committee's email address and the fields it requires; the form holds a working set and sends to a holding address until then." },
   { owner: "Brooke House College", item: "Confirmation of the tuition fee award wording (10%, up to a further 15%, normally 25% maximum)." },
   { owner: "Brooke House College", item: "Summer School 2027 dates, ages, duration, fees and inclusions; Essay Competition details; Vector Programme wording; photographs of the College, the Football Academy and students." },
   { owner: "Tim Hunt", item: "Who else receives the programme's enquiry notification alongside the Student Counsellors (Maryam Lawal, for instance), and the timeline dates now that September 2026 has passed." },
   { owner: "Tim Hunt", item: "Maryam's photograph: the card uses the Our Team photograph; if the one attached to his email of 9 October is different, it needs filing where the site can take it." },
-  { owner: "Office of His Royal Highness (Farooq Gajo)", item: "Whether Expressions of Interest go first to the Palace for an eligibility check before referral to WSA (Tim's email to Farooq of 9 October). The form's routing is unchanged until confirmed." },
+  { owner: "Tim Hunt", item: "His Royal Highness approved the procedure on 10 October 2026: Expressions of Interest go first to his Office (Farooq Gajo, the designated contact) for the community eligibility check, then approved families are referred to WSA. How the website's enquiries reach Farooq, and the steps on the page that describe it, are Tim's to decide. The form's routing is unchanged until then." },
 ]);
 
 /** Every string a visitor can read, for the copy tests. */
@@ -463,8 +438,6 @@ export function allRenderedCopy(): string[] {
     MARYAM.photoAlt, MARYAM.eyebrow, MARYAM.description, MARYAM.emailLabel, MARYAM.whatsappLabel,
     ...OPPORTUNITIES.map(o => o.label), ...ENQUIRER_ROLES.map(r => r.label),
     ...Object.values(EXPRESS_INTEREST),
-    QURANIC.eyebrow, QURANIC.heading, ...QURANIC.paragraphs, QURANIC.routingLine, QURANIC.formHeading,
-    QURANIC.formSupporting, QURANIC.cta, QURANIC.successHeading, QURANIC.successLine, QURANIC.detailsPending,
     ...Object.values(FOOTER_LINE),
   ];
 }
