@@ -60,7 +60,7 @@ function decodeJwtPayload(token: string): Record<string, unknown> | null {
 const offices = [
   {
     country: "United Kingdom",
-    role: "UK Headquarters",
+    role: "UK Head Office",
     name: "Timothy J. Hunt",
     title: "Managing Director",
     // Tim Hunt, 10 October 2026: no residential address on the website.

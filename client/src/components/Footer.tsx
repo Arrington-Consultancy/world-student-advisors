@@ -97,7 +97,7 @@ export default function Footer() {
             <h4 className="text-white/90 text-xs font-semibold tracking-[0.15em] uppercase mb-5">Get in touch</h4>
             <div className="space-y-4 text-sm">
               <div>
-                <p className="text-white/90 font-medium">UK Headquarters</p>
+                <p className="text-white/90 font-medium">UK Head Office</p>
                 <p>Clevedon, North Somerset, England, United Kingdom</p>
               </div>
               <div>
