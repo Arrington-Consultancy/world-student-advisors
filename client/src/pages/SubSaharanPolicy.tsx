@@ -278,7 +278,7 @@ export default function SubSaharanPolicy() {
                 <p className="mt-1"><a href="https://www.worldstudentadvisors.com" className="text-wsa-red hover:underline">www.worldstudentadvisors.com</a></p>
                 <p className="mt-4 text-sm">
                   WorldStudentAdvisors Limited &middot; Registered in England and Wales &middot; Company Number: 09532724<br />
-                  UK Headquarters, Clevedon, North Somerset, England, United Kingdom
+                  UK Head Office, Clevedon, North Somerset, England, United Kingdom
                 </p>
               </div>
             </ScrollReveal>

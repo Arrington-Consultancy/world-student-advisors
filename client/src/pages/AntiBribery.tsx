@@ -182,7 +182,7 @@ export default function AntiBribery() {
                   <p className="mt-2">Email: <a href="mailto:tim.hunt@worldstudentadvisors.com" className="text-wsa-red hover:underline">tim.hunt@worldstudentadvisors.com</a></p>
                   <p className="mt-4 text-sm">
                     WorldStudentAdvisors Limited &middot; Registered in England and Wales &middot; Company Number: 09532724<br />
-                    UK Headquarters, Clevedon, North Somerset, England, United Kingdom
+                    UK Head Office, Clevedon, North Somerset, England, United Kingdom
                   </p>
                 </div>
               </div>

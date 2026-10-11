@@ -167,6 +167,10 @@ describe("Tim's presentation changes of 15 September 2026", () => {
  *   WorldStudentAdvisors, UK Headquarters,
  *   Clevedon, North Somerset, England, United Kingdom
  *
+ * Tim Hunt, 11 October 2026: "Head Office" rather than "Headquarters",
+ * because the British Council and universities use the word office. The
+ * site says UK Head Office.
+ *
  * The street and postcode were on seven pages: the footer, Contact,
  * About, and the small print of four policy pages. This walks every
  * source file a browser can receive, and everything served from
@@ -202,10 +206,12 @@ describe("No residential address on the website", () => {
   });
 
   it("the footer, Contact, About and the four policy pages carry Tim's wording", () => {
+    expect(readFileSync("client/src/components/Footer.tsx", "utf8")).toContain(">UK Head Office<");
+    expect(readFileSync("client/src/pages/Contact.tsx", "utf8")).toContain('role: "UK Head Office"');
     expect(readFileSync("client/src/components/Footer.tsx", "utf8")).toContain("Clevedon, North Somerset, England, United Kingdom");
-    expect(readFileSync("client/src/pages/About.tsx", "utf8")).toContain('city: "Clevedon, North Somerset", role: "UK Headquarters"');
+    expect(readFileSync("client/src/pages/About.tsx", "utf8")).toContain('city: "Clevedon, North Somerset", role: "UK Head Office"');
     for (const page of ["PrivacyPolicy", "DataProtectionConsent", "SubSaharanPolicy", "AntiBribery"]) {
-      expect(readFileSync(`client/src/pages/${page}.tsx`, "utf8"), page).toContain("UK Headquarters, Clevedon, North Somerset, England, United Kingdom");
+      expect(readFileSync(`client/src/pages/${page}.tsx`, "utf8"), page).toContain("UK Head Office, Clevedon, North Somerset, England, United Kingdom");
     }
   });
 });
