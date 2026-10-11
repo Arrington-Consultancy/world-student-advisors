@@ -48,30 +48,6 @@ const DEFAULT_CAMPAIGN_NOTIFY_EMAILS: Record<string, string[]> = {
   "sarkin-fulani-future-leaders": ["tim.hunt@worldstudentadvisors.com"],
 };
 
-/**
- * Where a school's registration for His Royal Highness's Annual Quranic
- * Memorisation Competition is sent. This is the Competition Committee in
- * Nigeria's address, not WSA's: the competition is the King's own and its
- * registrations are not student enquiries (shared/quranicCompetition.ts).
- *
- * HOLDING ADDRESS. The Committee's contact details were not known when the
- * form was built (Tim Hunt, 8 October 2026). Until Farooq Gajo supplies
- * them, registrations go to Tim so that none is lost and each can be
- * forwarded. Set QURANIC_COMPETITION_COMMITTEE_EMAILS in Railway to the
- * Committee's address when it is known; no deploy is needed.
- */
-const DEFAULT_QURANIC_COMPETITION_COMMITTEE_EMAILS = ["tim.hunt@worldstudentadvisors.com"];
-
-const quranicCompetitionCommitteeEmails = (
-  process.env.QURANIC_COMPETITION_COMMITTEE_EMAILS ?? DEFAULT_QURANIC_COMPETITION_COMMITTEE_EMAILS.join(",")
-)
-  .split(",")
-  .map(s => s.trim())
-  .filter(Boolean);
-
-/** True only when the Committee's own address has been configured, so the page can say so honestly. */
-const quranicCompetitionCommitteeConfigured = Boolean(process.env.QURANIC_COMPETITION_COMMITTEE_EMAILS?.trim());
-
 const campaignNotifyEmails: Record<string, string[]> = Object.fromEntries(
   Object.entries(DEFAULT_CAMPAIGN_NOTIFY_EMAILS).map(([slug, fallback]) => {
     const key = `CAMPAIGN_NOTIFY_EMAILS_${slug.toUpperCase().replace(/-/g, "_")}`;
@@ -108,8 +84,6 @@ export const ENV = {
   staffNotifyEmails,
   interviewCoachNotifyEmails,
   campaignNotifyEmails,
-  quranicCompetitionCommitteeEmails,
-  quranicCompetitionCommitteeConfigured,
   publicSiteUrl,
   microsoftTenantId: process.env.MICROSOFT_TENANT_ID ?? "",
   microsoftClientId: process.env.MICROSOFT_CLIENT_ID ?? "",
