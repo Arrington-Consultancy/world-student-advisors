@@ -100,8 +100,10 @@ for (const img of ["/images/sarkin-fulani/seal-sarkin-fulani-of-lagos.jpg", "/im
 // county wording instead.
 const RESIDENTIAL = [/newport\s+close/i, /BS21\s*5DZ/i];
 const leaks = [];
+const pageBodies = new Map();
 for (const u of urls) {
   const body = await (await fetch(u, { headers: { "user-agent": "WSA-verify/1.0" } })).text();
+  pageBodies.set(new URL(u).pathname, body);
   if (RESIDENTIAL.some(re => re.test(body))) leaks.push(new URL(u).pathname);
 }
 const home = await (await fetch(`${ORIGIN}/`, { headers: { "user-agent": "WSA-verify/1.0" } })).text();
@@ -114,6 +116,28 @@ check("no page or script carries the residential street address or postcode", le
 for (const p of ["/", "/about", "/privacy-policy"]) {
   const body = await (await fetch(`${ORIGIN}${p}`, { headers: { "user-agent": "WSA-verify/1.0" } })).text();
   check(`${p} shows "Clevedon, North Somerset"`, body.includes("Clevedon, North Somerset"));
+}
+
+// 9. The footer's developer credit (Tom Arrington, 11 October 2026):
+// "Website by Arrington Consultancy", once per page, in the HTML as served
+// (so a crawler sees it without running scripts), linking to the Arrington
+// home page with no nofollow, sponsored or ugc, and on pages that are
+// themselves index, follow.
+const CREDIT = /Website by(?:<!-- -->)?\s*<a href="https:\/\/www\.arringtonconsultancy\.com\/"([^>]*)>Arrington Consultancy<\/a>/g;
+const creditFaults = [];
+for (const [p, body] of pageBodies) {
+  const found = [...body.matchAll(CREDIT)];
+  const mentions = (body.match(/arringtonconsultancy\.com/g) ?? []).length;
+  if (found.length !== 1 || mentions !== 1) creditFaults.push(`${p}: ${found.length} credit, ${mentions} mentions`);
+  else if (/nofollow|sponsored|ugc/.test(found[0][1])) creditFaults.push(`${p}: rel ${found[0][1].trim()}`);
+}
+check("every sitemap page carries the credit once, as a followed link to the Arrington home page", creditFaults.length === 0, creditFaults.join("; ") || `${pageBodies.size} pages read`);
+check("the home page is index, follow, so its links are followed", (pageBodies.get("/") ?? "").includes('<meta name="robots" content="index, follow"'));
+try {
+  const arrington = await fetch("https://www.arringtonconsultancy.com/", { redirect: "follow", headers: { "user-agent": "WSA-verify/1.0" } });
+  check("the credit's destination answers", arrington.status === 200, `${arrington.status} ${arrington.url}`);
+} catch (err) {
+  check("the credit's destination answers", false, String(err.cause?.code ?? err.message));
 }
 
 console.log(failures === 0 ? "\nEvery check passed." : `\n${failures} check(s) failed.`);
