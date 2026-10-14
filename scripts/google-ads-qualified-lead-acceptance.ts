@@ -24,7 +24,7 @@
  * Exit 0 only when every step that could run passed.
  */
 import { getDb } from "../server/db";
-import { credentialIdentity, credentialState, ingestEvents, readCredential, accessToken, DataManagerError } from "../server/ads/googleDataManager";
+import { credentialIdentity, credentialState, describeShape, ingestEvents, parseRequestStatus, readCredential, retrieveRequestStatusRaw, accessToken, DataManagerError } from "../server/ads/googleDataManager";
 import { ATTRIBUTION_FIELD_KEYS, qualifiedLeadConfig, qualifiedLeadDestination, pipedriveTimeToIso } from "../server/ads/qualifiedLead";
 import { databaseUploadStore } from "../server/ads/uploadStore";
 import { isExplicitRealSyncSuccess, LOOKBACK_DAYS, runQualifiedLeadSync, syncConfigState } from "../server/ads/qualifiedLeadSync";
@@ -101,6 +101,27 @@ if (store) {
   } catch (error) {
     check(false, "google_ads_conversion_uploads readable", String((error as Error)?.message ?? error).slice(0, 200));
   }
+}
+
+console.log("\n=== 4b. Google-side status of recent uploads (read-only; shape only, no values) ===");
+if (token && credential) {
+  try {
+    const db = await getDb();
+    const { sql } = await import("drizzle-orm");
+    const [rows] = (await db!.execute(sql`SELECT id, dealId, requestId, googleStatus, createdAt FROM google_ads_conversion_uploads WHERE status = 'uploaded' AND requestId IS NOT NULL ORDER BY id DESC LIMIT 5`)) as unknown as [Array<{ id: number; dealId: number; requestId: string; googleStatus: string | null; createdAt: Date }>];
+    let shown = false;
+    for (const r of rows) {
+      const raw = await retrieveRequestStatusRaw(r.requestId, { credential });
+      if (!shown) { note(`raw response shape: ${JSON.stringify(describeShape(raw)).slice(0, 900)}`); shown = true; }
+      const s = parseRequestStatus(raw);
+      note(`deal ${r.dealId} (row ${r.id}, uploaded ${new Date(r.createdAt).toISOString().slice(0, 10)}): parsed ${s.status}, records ${s.recordCount ?? "none"}, errors ${s.errorCounts.length}, stored ${r.googleStatus ?? "null"}`);
+    }
+    check(true, "request status read for recent uploads", `${rows.length} row(s)`);
+  } catch (error) {
+    check(false, "request status read for recent uploads", String((error as Error)?.message ?? error).slice(0, 200));
+  }
+} else {
+  note("skipped: no access token.");
 }
 
 console.log(`\n=== 5. Pipedrive deals in the ${LOOKBACK_DAYS}-day window (counts only) ===`);
