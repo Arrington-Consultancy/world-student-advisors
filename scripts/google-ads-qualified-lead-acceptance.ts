@@ -136,6 +136,13 @@ if (store) {
         FROM google_ads_conversion_uploads WHERE status = 'uploaded' GROUP BY conversionActionId, g ORDER BY conversionActionId, g
       `)) as unknown as [Array<{ conversionActionId: string; g: string; n: number }>];
       for (const r of byGoogle) note(`action ${r.conversionActionId}: ${r.n} upload(s) with Google status ${r.g}`);
+      // Every upload Google did not accept, with Google's own reason. Uses
+      // only columns that existed before migration 0021.
+      const [notAccepted] = (await db.execute(sql`
+        SELECT id, dealId, conversionActionId, googleStatus, googleDetail, createdAt FROM google_ads_conversion_uploads
+        WHERE status = 'uploaded' AND googleStatus IS NOT NULL AND googleStatus <> 'SUCCESS' ORDER BY id DESC LIMIT 10
+      `)) as unknown as [Array<{ id: number; dealId: number | null; conversionActionId: string; googleStatus: string; googleDetail: string | null; createdAt: Date }>];
+      for (const r of notAccepted) note(`not accepted: row ${r.id}${r.dealId !== null ? ` (deal ${r.dealId})` : ""} -> ${r.conversionActionId}, uploaded ${new Date(r.createdAt).toISOString().slice(0, 10)}: ${r.googleStatus}${r.googleDetail ? `, ${r.googleDetail.slice(0, 200)}` : ""}`);
       const unresolved = byGoogle.filter(r => r.g === "UNRESOLVED").reduce((n, r) => n + Number(r.n), 0);
       check(unresolved === 0, "no upload left UNRESOLVED by Google", unresolved ? `${unresolved} row(s); see googleDetail` : "");
       const rows = await db.select().from(t).orderBy(desc(t.id)).limit(10);
