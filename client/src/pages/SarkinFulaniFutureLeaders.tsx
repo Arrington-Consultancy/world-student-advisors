@@ -364,6 +364,19 @@ export default function SarkinFulaniFutureLeaders() {
                       <p key={p.slice(0, 40)} className="text-base leading-relaxed text-gray-700">{p}</p>
                     ))}
                   </div>
+                  {card.confirmed && (
+                    <div className="mt-3 rounded-lg border border-wsa-navy/10 bg-wsa-warm-white px-4 py-3">
+                      <p className="text-sm font-semibold text-wsa-navy">{card.confirmedHeading}</p>
+                      <ul className="mt-2 space-y-1.5">
+                        {card.confirmed.map(c => (
+                          <li key={c} className="flex items-start gap-2.5 text-sm text-gray-700">
+                            <Tick />
+                            <span>{c}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
                   {card.pending && (
                     <ul className="mt-3 space-y-1.5">
                       {card.pending.map(p => (
