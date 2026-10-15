@@ -66,10 +66,13 @@ export const CAMPAIGN_PATHS: Readonly<Record<CampaignSlug, string>> = Object.fre
  * A campaign NOT listed here keeps the original behaviour: the general list
  * is notified as always and the campaign's own recipients additionally.
  *
- * SARKIN FULANI FUTURE LEADERS PROGRAMME is deliberately NOT listed. Tim
- * Hunt's brief of 8 October 2026 asks for the Expression of Interest to
- * reach WSA's Student Counsellors, which is the general list, so the general
- * notification is kept and the programme's own recipients are additional.
+ * SARKIN FULANI FUTURE LEADERS PROGRAMME is listed since 15 October 2026.
+ * Tim Hunt, that day: His Royal Highness's Office (Farooq Gajo) confirms a
+ * family's eligibility first, so the initial notification goes to Farooq,
+ * Maryam Lawal and Tim only, and "the counsellors should become involved
+ * once Farooq has confirmed eligibility and Maryam is ready to progress the
+ * student". The general list is therefore not notified. (Tim's brief of 8
+ * October had kept the general notification; this supersedes it.)
  *
  * This changes nothing for an ordinary enquiry, which carries no campaign at
  * all and is unaffected by any of this.
@@ -81,10 +84,35 @@ export const CAMPAIGN_PATHS: Readonly<Record<CampaignSlug, string>> = Object.fre
  * enquiry routing.
  */
 export const CAMPAIGN_REPLACES_GENERAL_NOTIFICATION: ReadonlySet<CampaignSlug> = Object.freeze(
-  new Set<CampaignSlug>(["speak-to-juliet"]),
+  new Set<CampaignSlug>(["speak-to-juliet", "sarkin-fulani-future-leaders"]),
 );
 
 /** Whether this campaign's recipients replace the general staff list. */
 export function campaignReplacesGeneralNotification(slug: CampaignSlug): boolean {
   return CAMPAIGN_REPLACES_GENERAL_NOTIFICATION.has(slug);
+}
+
+/**
+ * How much of the enquiry the campaign's own notification carries.
+ *
+ * "full": everything the general staff notification would have said.
+ *
+ * "eligibility": only what is needed to confirm a family's eligibility and
+ * get back to them: name, who they are and which opportunity (the
+ * Expression of Interest text), email, WhatsApp number, nationality and
+ * country, plus the Pipedrive Lead id so WSA can open the full record. No
+ * date of birth, passport number, qualifications or funding detail. Tim
+ * Hunt, 15 October 2026: "Farooq should receive only the basic information
+ * needed to establish eligibility. No passport numbers or sensitive
+ * documents." His Office reads this at a personal Gmail address, so the
+ * same short version goes to everyone on the programme's list, and the
+ * full record stays in Pipedrive.
+ */
+export const CAMPAIGN_NOTIFICATION_DETAIL: Readonly<Record<CampaignSlug, "full" | "eligibility">> = Object.freeze({
+  "speak-to-juliet": "full",
+  "sarkin-fulani-future-leaders": "eligibility",
+});
+
+export function campaignNotificationDetail(slug: CampaignSlug): "full" | "eligibility" {
+  return CAMPAIGN_NOTIFICATION_DETAIL[slug];
 }

@@ -39,13 +39,16 @@ const DEFAULT_CAMPAIGN_NOTIFY_EMAILS: Record<string, string[]> = {
     "glenice@worldstudentadvisors.com",
     "eldah@worldstudentadvisors.com",
   ],
-  // Sarkin Fulani Future Leaders Programme. ADDITIONAL to the general list,
-  // which already reaches every Student Counsellor as Tim Hunt's brief of
-  // 8 October 2026 requires. This list exists so one copy arrives with the
-  // programme named in the subject line. Tim is the holding recipient; who
-  // else should receive it (Maryam Lawal, for instance) is his decision and
-  // is set with CAMPAIGN_NOTIFY_EMAILS_SARKIN_FULANI_FUTURE_LEADERS.
-  "sarkin-fulani-future-leaders": ["tim.hunt@worldstudentadvisors.com"],
+  // Sarkin Fulani Future Leaders Programme. REPLACES the general list
+  // (shared/campaignEnquiry.ts). Tim Hunt, 15 October 2026: the initial
+  // notification goes to Farooq Gajo (the Office of His Royal Highness,
+  // for the eligibility check), Maryam Lawal and Tim only; the Student
+  // Counsellors come in once eligibility is confirmed. Farooq's address is
+  // a personal one and this repository is public, so it is not written
+  // here: production sets the full list, Farooq included, in
+  // CAMPAIGN_NOTIFY_EMAILS_SARKIN_FULANI_FUTURE_LEADERS. Without that
+  // variable the enquiry still reaches Tim and Maryam, who can forward it.
+  "sarkin-fulani-future-leaders": ["tim.hunt@worldstudentadvisors.com", "maryam@worldstudentadvisors.com"],
 };
 
 const campaignNotifyEmails: Record<string, string[]> = Object.fromEntries(

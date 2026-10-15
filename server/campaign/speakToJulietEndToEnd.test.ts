@@ -226,7 +226,7 @@ describe("every other enquiry is untouched", () => {
   it("only the closed list of campaigns exists at all", () => {
     // Grows only by a deliberate change here. The second entry is the Sarkin
     // Fulani Future Leaders Programme page, 8 October 2026, whose Expression
-    // of Interest keeps the general notification (server/campaign/sarkinFulani.test.ts).
+    // of Interest has its own routing (server/campaign/sarkinFulaniEndToEnd.test.ts).
     expect([...CAMPAIGN_SLUGS]).toEqual(["speak-to-juliet", "sarkin-fulani-future-leaders"]);
   });
 });

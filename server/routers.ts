@@ -12,7 +12,7 @@ import {
 import { systemRouter } from "./_core/systemRouter";
 import { publicProcedure, router } from "./_core/trpc";
 import { ENV } from "./_core/env";
-import { CAMPAIGN_LABELS, CAMPAIGN_PATHS, campaignReplacesGeneralNotification, isCampaignSlug } from "../shared/campaignEnquiry";
+import { CAMPAIGN_LABELS, CAMPAIGN_PATHS, campaignNotificationDetail, campaignReplacesGeneralNotification, isCampaignSlug } from "../shared/campaignEnquiry";
 import { createStudentLead } from "./pipedrive";
 import { recordFailedSubmission, recordInterviewCoachSession } from "./db";
 import {
@@ -490,16 +490,34 @@ export const appRouter = router({
         // This allocates nothing: no counsellor, no owner, no Pipedrive
         // field. A value that is not a known slug never reaches here, so
         // nothing a visitor can type can change who is emailed.
+        //
+        // A campaign whose detail is "eligibility" (shared/campaignEnquiry.ts)
+        // gets the short version below instead of enquiryContent: enough to
+        // confirm eligibility and get back to the family, and the Lead id
+        // for the full record. Nothing sensitive leaves Pipedrive.
         if (campaignSlug) {
+          const eligibilityOnly = campaignNotificationDetail(campaignSlug) === "eligibility";
+          const eligibilityContent = [
+            `Name: ${effectiveInput.firstName} ${effectiveInput.lastName}`,
+            `Expression of interest: ${effectiveInput.areaOfStudy}`,
+            `Email: ${effectiveInput.email}`,
+            effectiveInput.phone ? `WhatsApp / phone: ${effectiveInput.phone}` : "",
+            `Nationality: ${effectiveInput.nationality}`,
+            `Country: ${effectiveInput.country}`,
+            ``,
+            `Pipedrive Lead ID: ${result.leadId}`,
+          ].filter(Boolean).join("\n");
           notifyCampaignOwner(campaignSlug, {
-            title: `${CAMPAIGN_LABELS[campaignSlug]}: ${enquiryTitle}`,
+            title: eligibilityOnly
+              ? `${CAMPAIGN_LABELS[campaignSlug]}: ${effectiveInput.firstName} ${effectiveInput.lastName}`
+              : `${CAMPAIGN_LABELS[campaignSlug]}: ${enquiryTitle}`,
             content: [
               `This enquiry came from ${CAMPAIGN_LABELS[campaignSlug]} (${CAMPAIGN_PATHS[campaignSlug]}).`,
               campaignReplacesGeneral
                 ? `It has been sent to this campaign's recipients only. The general WSA staff list has not been notified of it.`
                 : `The general WSA staff list has been notified of this enquiry as well.`,
               ``,
-              enquiryContent,
+              eligibilityOnly ? eligibilityContent : enquiryContent,
             ].join("\n"),
           }).catch(err => console.error("[Notification] Failed to send campaign notification:", err));
         }
