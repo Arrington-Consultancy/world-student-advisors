@@ -12,7 +12,7 @@
  */
 import { createHash } from "crypto";
 
-export interface FakeFile { id: string; name: string; mimeType: string; parents: string[]; content: string }
+export interface FakeFile { id: string; name: string; mimeType: string; parents: string[]; content: string; bytes?: Buffer; trashed?: boolean }
 
 export class FakeDrive {
   files = new Map<string, FakeFile>();
@@ -20,11 +20,15 @@ export class FakeDrive {
   permissions = new Map<string, string[]>();
   requests: Array<{ method: string; url: string; auth: string | null }> = [];
   failUploadsNamed = new Set<string>();
+  /** Names whose move to the trash Drive refuses. */
+  failTrash = new Set<string>();
   /** name -> how many further attempts fail with a retryable rate limit. */
   transientFailures = new Map<string, number>();
   /** name -> how many further attempts store the object and then answer 500. */
   succeedThenFail = new Map<string, number>();
   private seq = 0;
+  /** Open resumable upload sessions: session id -> the file to create, or the id of the file to replace. */
+  private sessions = new Map<string, { create?: { name: string; parents: string[]; mimeType: string }; replaceId?: string }>();
 
   /** Decrements a counter and says whether this attempt should misbehave. */
   private takes(map: Map<string, number>, name: string): boolean {
@@ -34,8 +38,8 @@ export class FakeDrive {
     return true;
   }
 
-  private md5(s: string) { return createHash("md5").update(s, "utf8").digest("hex"); }
-  private meta(f: FakeFile) { return { id: f.id, name: f.name, mimeType: f.mimeType, parents: f.parents, md5Checksum: f.mimeType.includes("folder") ? undefined : this.md5(f.content), size: String(f.content.length), modifiedTime: new Date().toISOString() }; }
+  private md5(s: string | Buffer) { return typeof s === "string" ? createHash("md5").update(s, "utf8").digest("hex") : createHash("md5").update(s).digest("hex"); }
+  private meta(f: FakeFile) { return { id: f.id, name: f.name, mimeType: f.mimeType, parents: f.parents, md5Checksum: f.mimeType.includes("folder") ? undefined : this.md5(f.bytes ?? f.content), size: String((f.bytes ?? f.content).length), modifiedTime: new Date().toISOString() }; }
 
   /** Overwrite a file's content behind the mirror's back, as a failed sync might leave it. */
   corrupt(name: string, content: string) { for (const f of Array.from(this.files.values())) if (f.name === name) f.content = content; }
@@ -56,6 +60,7 @@ export class FakeDrive {
       if (/mimeType='application\/vnd.google-apps.folder'/.test(q)) list = list.filter(f => f.mimeType === "application/vnd.google-apps.folder");
       if (name) list = list.filter(f => f.name === name);
       if (parent) list = list.filter(f => f.parents.includes(parent));
+      if (/trashed=false/.test(q)) list = list.filter(f => !f.trashed);
       return json({ files: list.map(f => this.meta(f)) });
     }
     const perm = /^\/drive\/v3\/files\/([^/]+)\/permissions$/.exec(url.pathname);
@@ -72,6 +77,32 @@ export class FakeDrive {
       const f: FakeFile = { id: `folder-${++this.seq}`, name: body.name, mimeType: body.mimeType, parents: body.parents ?? [], content: "" };
       this.files.set(f.id, f);
       if (this.takes(this.succeedThenFail, body.name)) return json({ error: { code: 500, errors: [{ reason: "responsePreparationError" }] } }, 500);
+      return json(this.meta(f));
+    }
+    // Resumable uploads: a start request that answers with a session URL, then the bytes.
+    if (url.searchParams.get("uploadType") === "resumable" && (method === "POST" || method === "PATCH")) {
+      const replace = /^\/upload\/drive\/v3\/files\/([^/]+)$/.exec(url.pathname)?.[1];
+      if (replace && !this.files.has(replace)) return json({ error: "not found" }, 404);
+      const sid = `session-${++this.seq}`;
+      this.sessions.set(sid, replace ? { replaceId: replace } : { create: JSON.parse(String(init.body)) as { name: string; parents: string[]; mimeType: string } });
+      return new Response("", { status: 200, headers: { Location: `https://www.googleapis.com/upload/drive/v3/files?uploadType=resumable&upload_id=${sid}` } });
+    }
+    if (url.searchParams.get("upload_id") && method === "PUT") {
+      const session = this.sessions.get(url.searchParams.get("upload_id")!);
+      if (!session) return json({ error: "no such upload session" }, 404);
+      const bytes = Buffer.from(init.body as Uint8Array);
+      const name = session.create?.name ?? this.files.get(session.replaceId!)!.name;
+      if (this.failUploadsNamed.has(name)) return json({ error: { code: 403, errors: [{ reason: "insufficientFilePermissions" }] } }, 403);
+      if (this.takes(this.transientFailures, name)) return json({ error: { code: 403, errors: [{ reason: "userRateLimitExceeded" }] } }, 403);
+      let f: FakeFile;
+      if (session.create) {
+        f = { id: `file-${++this.seq}`, name, mimeType: session.create.mimeType, parents: session.create.parents, content: "", bytes };
+        this.files.set(f.id, f);
+      } else {
+        f = this.files.get(session.replaceId!)!;
+        f.bytes = bytes;
+      }
+      if (this.takes(this.succeedThenFail, name)) return json({ error: { code: 500, errors: [{ reason: "responsePreparationError" }] } }, 500);
       return json(this.meta(f));
     }
     if (url.pathname === "/upload/drive/v3/files" && method === "POST") {
@@ -100,10 +131,22 @@ export class FakeDrive {
       return json(this.meta(f));
     }
     const one = /^\/drive\/v3\/files\/([^/]+)$/.exec(url.pathname);
+    if (one && method === "PATCH") {
+      const f = this.files.get(one[1]);
+      if (!f) return json({ error: "not found" }, 404);
+      if (this.failTrash.has(f.name)) return json({ error: { code: 403, errors: [{ reason: "insufficientFilePermissions" }] } }, 403);
+      const body = JSON.parse(String(init.body)) as { trashed?: boolean };
+      if (body.trashed) {
+        // A trashed folder takes everything inside it along.
+        const mark = (id: string) => { const x = this.files.get(id); if (!x) return; x.trashed = true; for (const c of Array.from(this.files.values())) if (c.parents.includes(id)) mark(c.id); };
+        mark(f.id);
+      }
+      return json({ id: f.id, trashed: Boolean(f.trashed) });
+    }
     if (one && method === "GET") {
       const f = this.files.get(one[1]);
       if (!f) return json({ error: "not found" }, 404);
-      if (url.searchParams.get("alt") === "media") return new Response(f.content, { status: 200 });
+      if (url.searchParams.get("alt") === "media") return new Response(f.bytes ? new Uint8Array(f.bytes) : f.content, { status: 200 });
       return json(this.meta(f));
     }
     return json({ error: `unhandled ${method} ${url.pathname}` }, 404);

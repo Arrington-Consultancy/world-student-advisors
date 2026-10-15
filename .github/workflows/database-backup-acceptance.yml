@@ -1,0 +1,92 @@
+name: Database backup acceptance (production, backup and restore test)
+
+# Manual only. Proves the nightly database backup end to end against
+# production: runs one real backup into Google Drive ("WSA Database
+# Backup"), reads it back and checks its checksums, then restores it into a
+# throwaway MySQL on this runner and compares every table's row count with
+# the backup's manifest. Prints table names, counts, sizes and checksums
+# only, never a row: the restore's own error output is cut to its error
+# code and line number. The downloaded copy lives only in this runner's
+# temporary folder and is deleted when the job ends. Runs inside the
+# service's variables with a public database URL substituted, following the
+# other acceptance workflows. Auth: githubactionsprod, the
+# production-scoped Railway Project Token.
+on:
+  workflow_dispatch:
+
+jobs:
+  accept:
+    runs-on: ubuntu-latest
+    services:
+      mysql:
+        # The production server's major version.
+        image: mysql:9
+        env:
+          MYSQL_ROOT_PASSWORD: restore-test-only
+          MYSQL_DATABASE: restore_test
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -uroot -prestore-test-only"
+          --health-interval=5s --health-timeout=5s --health-retries=30
+    env:
+      BACKUP_ACCEPTANCE_OUT: ${{ runner.temp }}/database-backup
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Install Railway CLI
+        run: npm install -g @railway/cli
+      - name: Discover the MySQL public-URL variable NAME (key only, value never printed)
+        id: discover
+        env:
+          RAILWAY_TOKEN: ${{ secrets.githubactionsprod }}
+        run: |
+          KEYS=$(railway variables --service "MySQL" --environment "production" --json | jq -r 'keys[]')
+          PUBLIC_KEY=$(echo "$KEYS" | grep -i -E '^(MYSQL_PUBLIC_URL|DATABASE_PUBLIC_URL)$' | head -n1)
+          if [ -z "$PUBLIC_KEY" ]; then echo "No public-URL-shaped variable found on MySQL. Stopping."; exit 1; fi
+          echo "public_key=$PUBLIC_KEY" >> "$GITHUB_OUTPUT"
+      - name: Set a temporary database URL reference on the app service
+        env:
+          RAILWAY_TOKEN: ${{ secrets.githubactionsprod }}
+          PUBLIC_KEY: ${{ steps.discover.outputs.public_key }}
+        run: |
+          REF=$(printf '\044{{%s.%s}}' "MySQL" "$PUBLIC_KEY")
+          railway variables --service "world-student-advisors" --environment "production" \
+            --set "DATABASE_BACKUP_ACCEPTANCE_DATABASE_URL=${REF}" --skip-deploys
+      - name: Run one real backup and read it back from Google Drive
+        timeout-minutes: 15
+        env:
+          RAILWAY_TOKEN: ${{ secrets.githubactionsprod }}
+        run: |
+          railway run --service "world-student-advisors" --environment "production" -- \
+            sh -c "DATABASE_URL=\"\$DATABASE_BACKUP_ACCEPTANCE_DATABASE_URL\" BACKUP_ACCEPTANCE_OUT=\"$BACKUP_ACCEPTANCE_OUT\" pnpm exec tsx scripts/database-backup-acceptance.ts"
+      - name: Restore the downloaded backup into the throwaway MySQL
+        run: |
+          set +e
+          gunzip -c "$BACKUP_ACCEPTANCE_OUT/database.sql.gz" \
+            | docker exec -i "${{ job.services.mysql.id }}" mysql -uroot -prestore-test-only restore_test 2> "$RUNNER_TEMP/restore.err"
+          STATUS=${PIPESTATUS[1]}
+          grep -oE '^ERROR [0-9]+ \([0-9A-Z]+\) at line [0-9]+' "$RUNNER_TEMP/restore.err" || true
+          rm -f "$RUNNER_TEMP/restore.err"
+          echo "restore exit status: $STATUS"
+          exit $STATUS
+      - name: Compare every restored table with the manifest
+        env:
+          RESTORE_DATABASE_URL: mysql://root:restore-test-only@127.0.0.1:3306/restore_test
+        run: pnpm exec tsx scripts/database-backup-restore-check.ts
+      - name: Delete the downloaded copy
+        if: always()
+        run: rm -rf "$BACKUP_ACCEPTANCE_OUT"
+      - name: Remove the temporary database URL reference
+        if: always()
+        env:
+          RAILWAY_TOKEN: ${{ secrets.githubactionsprod }}
+        run: |
+          railway variables --service "world-student-advisors" --environment "production" \
+            --set "DATABASE_BACKUP_ACCEPTANCE_DATABASE_URL=" --skip-deploys
