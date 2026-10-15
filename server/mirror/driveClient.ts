@@ -183,6 +183,25 @@ export class DriveClient {
     });
   }
 
+  /**
+   * Create or replace a binary file of any size, by Drive's resumable
+   * upload (multipart is limited to 5 MB). Same look-before-write retry as
+   * putFile, so a create that landed without answering becomes a replace.
+   */
+  async putBinaryFile(folderId: string, name: string, content: Buffer, mimeType: string): Promise<DriveFile> {
+    const fields = "id,name,md5Checksum,modifiedTime,size";
+    return this.withRetries(async () => {
+      const existing = await this.findInFolder(folderId, name);
+      const start = existing
+        ? await this.attempt(`${UPLOAD}/files/${existing.id}?uploadType=resumable&fields=${fields}`, { method: "PATCH", headers: { "Content-Type": "application/json; charset=UTF-8", "X-Upload-Content-Type": mimeType, "X-Upload-Content-Length": String(content.length) }, body: "{}" })
+        : await this.attempt(`${UPLOAD}/files?uploadType=resumable&fields=${fields}`, { method: "POST", headers: { "Content-Type": "application/json; charset=UTF-8", "X-Upload-Content-Type": mimeType, "X-Upload-Content-Length": String(content.length) }, body: JSON.stringify({ name, parents: [folderId], mimeType }) });
+      const session = start.headers.get("location");
+      if (!session) throw new Error("Google Drive did not return a resumable upload session.");
+      const r = await this.attempt(session, { method: "PUT", headers: { "Content-Type": mimeType }, body: new Uint8Array(content) });
+      return (await r.json()) as DriveFile;
+    });
+  }
+
   async getMeta(fileId: string): Promise<DriveFile> {
     const r = await this.call(`${API}/files/${fileId}?fields=id,name,md5Checksum,modifiedTime,size,parents`);
     return (await r.json()) as DriveFile;
@@ -191,5 +210,10 @@ export class DriveClient {
   async download(fileId: string): Promise<string> {
     const r = await this.call(`${API}/files/${fileId}?alt=media`);
     return r.text();
+  }
+
+  async downloadBytes(fileId: string): Promise<Buffer> {
+    const r = await this.call(`${API}/files/${fileId}?alt=media`);
+    return Buffer.from(await r.arrayBuffer());
   }
 }
