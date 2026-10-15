@@ -1,10 +1,12 @@
 import { describe, expect, it } from "vitest";
 import { existsSync, readFileSync } from "fs";
 import {
+  AWARDS,
   CAMPAIGN_SLUG,
   DRAFT,
   MARYAM,
   OPPORTUNITIES,
+  OPPORTUNITY_CARDS,
   PAGE_PATH,
   PARTNERS,
   PATRON,
@@ -93,10 +95,29 @@ describe("no promise Brooke House College has not made", () => {
     expect(statesAnUnnegatedGuarantee(COPY)).toBe(false);
   });
 
-  it("says the College decides, and that the award wording awaits its confirmation", () => {
+  it("says the College decides, and carries its confirmation of the awards with the one point still open", () => {
     expect(COPY).toMatch(/made independently by Brooke House College/);
-    expect(COPY).toContain("Award wording subject to confirmation by Brooke House College.");
+    expect(COPY).toContain("Awards confirmed by Brooke House College on 12 October 2026. Precisely which fees they apply to is to be confirmed by the College.");
     expect(COPY).toContain("not a fully funded scholarship");
+  });
+
+  it("carries Brooke House College's confirmation of 12 October 2026: the places for January 2027 and the basis of the further 15%", () => {
+    const fullTime = OPPORTUNITY_CARDS.find(c => c.id === "full-time")!;
+    expect(fullTime.confirmedHeading).toBe("Places for January 2027, confirmed by Brooke House College");
+    expect(fullTime.confirmed).toEqual([
+      "Years 7, 8 and 9 (aged 12, 13 or 14 on or after 1 September): 17 places",
+      "Year 10 (aged 15 on or after 1 September): 6 to 8 places, for students whose first language is English",
+      "Year 11 (aged 16 on or after 1 September): full",
+      "Years 12 and 13 (aged 17 on or after 1 September): 7 to 8 places",
+    ]);
+    // Leadership is not a basis Brooke House gave for the further 15%.
+    const further = AWARDS.paragraphs.find(p => p.includes("further reduction"))!;
+    expect(further).toContain("football ability and/or academic level");
+    expect(further).toContain("football assessment and/or a current school report");
+    expect(further).not.toMatch(/leadership/);
+    expect(DRAFT.line).toContain("confirmed January 2027 entry and the tuition fee awards on 12 October 2026");
+    // The page renders the confirmed list.
+    expect(PAGE).toContain("card.confirmed");
   });
 
   it("uses UK English and no em dash", () => {
