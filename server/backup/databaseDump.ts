@@ -75,7 +75,7 @@ export function sqlLiteral(kind: ColumnKind, value: string | null): string {
     case "number":
     case "bit":
       // The server's own rendering of a number is a valid literal; refuse anything else.
-      if (!/^-?(\d+(\.\d*)?|\.\d+)(e[-+]?\d+)?$/i.test(value)) throw new Error(`Unexpected numeric text "${value.slice(0, 40)}".`);
+      if (!/^-?(\d+(\.\d*)?|\.\d+)(e[-+]?\d+)?$/i.test(value)) throw new Error("Unexpected text in a numeric column.");
       return value;
     case "binary":
       if (!/^[0-9A-F]*$/i.test(value)) throw new Error("Unexpected hex text for a binary column.");

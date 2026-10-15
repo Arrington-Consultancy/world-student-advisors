@@ -212,6 +212,20 @@ export class DriveClient {
     return r.text();
   }
 
+  /** The folders directly inside a folder. */
+  async listFoldersIn(parentId: string): Promise<DriveFile[]> {
+    return this.listAll(`'${parentId}' in parents and mimeType='application/vnd.google-apps.folder' and trashed=false`);
+  }
+
+  /**
+   * Move a file or folder to Drive's trash (a folder takes its contents
+   * with it). Recoverable from the trash for 30 days, after which Google
+   * empties it. Safe to repeat.
+   */
+  async trash(fileId: string): Promise<void> {
+    await this.call(`${API}/files/${fileId}?fields=id,trashed`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ trashed: true }) });
+  }
+
   async downloadBytes(fileId: string): Promise<Buffer> {
     const r = await this.call(`${API}/files/${fileId}?alt=media`);
     return Buffer.from(await r.arrayBuffer());

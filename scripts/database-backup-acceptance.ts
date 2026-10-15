@@ -6,9 +6,11 @@
  *   1. Configuration: the backup's state and the database it reads.
  *   2. One real backup, exactly as the nightly run makes it: a new
  *      timestamped snapshot in Google Drive, "WSA Database Backup".
+ *      Retention: no more than 30 complete snapshots remain.
  *   3. Read back from Drive: latest.json names this snapshot, Drive's md5
  *      and the downloaded bytes' sha256 match the manifest, and the file
- *      ends with its completion line.
+ *      ends with its completion line. The folder and the file have no
+ *      permission but their owner's (roles only are printed).
  *   4. Hands the downloaded file to the workflow (BACKUP_ACCEPTANCE_OUT),
  *      which restores it into a throwaway MySQL and compares every table's
  *      row count with the manifest (database-backup-restore-check.ts).
@@ -20,7 +22,7 @@ import { mkdirSync, writeFileSync } from "fs";
 import { createHash } from "crypto";
 import { gunzipSync } from "zlib";
 import { join } from "path";
-import { databaseBackupConfigState, runDatabaseBackup, DATABASE_BACKUP_FOLDER_NAME } from "../server/backup/databaseBackup";
+import { databaseBackupConfigState, runDatabaseBackup, DATABASE_BACKUP_FOLDER_NAME, RETAIN_COMPLETE_SNAPSHOTS } from "../server/backup/databaseBackup";
 import { DUMP_FILE_NAME } from "../server/backup/databaseDump";
 import { getDriveMirrorAccess } from "../server/mirror/driveMirrorOAuth";
 import { DriveClient } from "../server/mirror/driveClient";
@@ -44,6 +46,9 @@ note(`snapshot ${m.snapshotLabel}; database ${m.database.name}, MySQL ${m.databa
 note(`${m.tables.length} tables, ${m.totalRows} rows; ${m.file.bytes} bytes compressed, ${m.file.uncompressedBytes} uncompressed; migrations recorded ${m.migrationsApplied}`);
 note(`views ${m.otherObjects.views}, triggers ${m.otherObjects.triggers}, routines ${m.otherObjects.routines}, events ${m.otherObjects.events}`);
 for (const t of m.tables) note(`table ${t.name}: ${t.rows} rows`);
+const ret = r.retention!;
+check(ret.error === null, "retention ran", `kept ${ret.kept} complete snapshot(s); moved to trash ${ret.trashed.length} old and ${ret.trashedIncomplete.length} incomplete${ret.error ? `; ${ret.error.slice(0, 300)}` : ""}`);
+check(ret.kept <= RETAIN_COMPLETE_SNAPSHOTS, `no more than ${RETAIN_COMPLETE_SNAPSHOTS} complete snapshots kept`, String(ret.kept));
 
 console.log("\n=== 3. Read back from Google Drive ===");
 const drive = await getDriveMirrorAccess();
@@ -66,6 +71,14 @@ const sql = raw.toString("utf8");
 check(raw.length === m.file.uncompressedBytes, "decompressed size matches the manifest", `${raw.length} bytes`);
 check(sql.trimEnd().endsWith(`-- WSA database backup complete: ${m.tables.length} tables, ${m.totalRows} rows.`), "file ends with its completion line");
 check(!/\bDROP\s+(TABLE|DATABASE)\b/i.test(sql.split("\n").filter(l => !l.startsWith("INSERT INTO ") && !l.startsWith("(")).join("\n")), "no DROP statement: a restore cannot overwrite an existing table");
+
+// Who can open it. Roles and types only: this log is public.
+for (const [label, id] of [["backup folder", root?.id], ["this snapshot's database file", m.file.fileId]] as const) {
+  if (!id) continue;
+  const res = await fetch(`https://www.googleapis.com/drive/v3/files/${id}/permissions?fields=permissions(role,type)`, { headers: { Authorization: `Bearer ${drive.accessToken}` } });
+  const perms = res.ok ? ((await res.json()) as { permissions?: Array<{ role?: string; type?: string }> }).permissions ?? [] : null;
+  check(perms !== null && perms.length === 1 && perms[0].role === "owner" && perms[0].type === "user", `${label} is not shared: its owner is the only permission`, perms ? perms.map(p => `${p.type}:${p.role}`).join(", ") : `HTTP ${res.status}`);
+}
 
 const out = process.env.BACKUP_ACCEPTANCE_OUT;
 if (out) {

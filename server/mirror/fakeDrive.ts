@@ -12,7 +12,7 @@
  */
 import { createHash } from "crypto";
 
-export interface FakeFile { id: string; name: string; mimeType: string; parents: string[]; content: string; bytes?: Buffer }
+export interface FakeFile { id: string; name: string; mimeType: string; parents: string[]; content: string; bytes?: Buffer; trashed?: boolean }
 
 export class FakeDrive {
   files = new Map<string, FakeFile>();
@@ -20,6 +20,8 @@ export class FakeDrive {
   permissions = new Map<string, string[]>();
   requests: Array<{ method: string; url: string; auth: string | null }> = [];
   failUploadsNamed = new Set<string>();
+  /** Names whose move to the trash Drive refuses. */
+  failTrash = new Set<string>();
   /** name -> how many further attempts fail with a retryable rate limit. */
   transientFailures = new Map<string, number>();
   /** name -> how many further attempts store the object and then answer 500. */
@@ -58,6 +60,7 @@ export class FakeDrive {
       if (/mimeType='application\/vnd.google-apps.folder'/.test(q)) list = list.filter(f => f.mimeType === "application/vnd.google-apps.folder");
       if (name) list = list.filter(f => f.name === name);
       if (parent) list = list.filter(f => f.parents.includes(parent));
+      if (/trashed=false/.test(q)) list = list.filter(f => !f.trashed);
       return json({ files: list.map(f => this.meta(f)) });
     }
     const perm = /^\/drive\/v3\/files\/([^/]+)\/permissions$/.exec(url.pathname);
@@ -128,6 +131,18 @@ export class FakeDrive {
       return json(this.meta(f));
     }
     const one = /^\/drive\/v3\/files\/([^/]+)$/.exec(url.pathname);
+    if (one && method === "PATCH") {
+      const f = this.files.get(one[1]);
+      if (!f) return json({ error: "not found" }, 404);
+      if (this.failTrash.has(f.name)) return json({ error: { code: 403, errors: [{ reason: "insufficientFilePermissions" }] } }, 403);
+      const body = JSON.parse(String(init.body)) as { trashed?: boolean };
+      if (body.trashed) {
+        // A trashed folder takes everything inside it along.
+        const mark = (id: string) => { const x = this.files.get(id); if (!x) return; x.trashed = true; for (const c of Array.from(this.files.values())) if (c.parents.includes(id)) mark(c.id); };
+        mark(f.id);
+      }
+      return json({ id: f.id, trashed: Boolean(f.trashed) });
+    }
     if (one && method === "GET") {
       const f = this.files.get(one[1]);
       if (!f) return json({ error: "not found" }, 404);

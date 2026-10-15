@@ -14,7 +14,7 @@ export function startDatabaseBackupScheduler(env: NodeJS.ProcessEnv = process.en
   const tick = async () => {
     try {
       const r = await runDatabaseBackup("schedule");
-      if (r.status === "complete") console.log(`[Database backup] scheduled run complete: ${r.snapshotLabel}; ${r.manifest!.tables.length} tables, ${r.manifest!.totalRows} rows, ${r.manifest!.file.bytes} bytes`);
+      if (r.status === "complete") console.log(`[Database backup] scheduled run complete: ${r.snapshotLabel}; ${r.manifest!.tables.length} tables, ${r.manifest!.totalRows} rows, ${r.manifest!.file.bytes} bytes; kept ${r.retention?.kept ?? "?"}, moved to trash ${(r.retention?.trashed.length ?? 0) + (r.retention?.trashedIncomplete.length ?? 0)}`);
     } catch (error) {
       console.warn("[Database backup] scheduled run threw:", String((error as Error)?.message ?? error).slice(0, 200));
     }

@@ -47,7 +47,44 @@ export interface DatabaseBackupManifest {
   migrationsApplied: number | null;
   otherObjects: DumpResult["otherObjects"];
   restore: string;
+  retention: string;
   notIncluded: string[];
+}
+
+/** Tom Arrington, 15 October 2026: keep 30 daily backups. */
+export const RETAIN_COMPLETE_SNAPSHOTS = 30;
+/** A folder without a manifest younger than this may be a run still writing, so it is left alone. */
+export const INCOMPLETE_GRACE_HOURS = 6;
+export const RETENTION_POLICY = `The ${RETAIN_COMPLETE_SNAPSHOTS} most recent complete snapshots are kept, and always the one latest.json names. After each successful run, older snapshots, and failed runs' leftovers more than ${INCOMPLETE_GRACE_HOURS} hours old, go to Google Drive's trash (recoverable for 30 days, then emptied by Google). A failed run deletes nothing.`;
+const SNAPSHOT_LABEL = /^\d{4}-\d{2}-\d{2}T\d{6}Z$/;
+const labelTime = (label: string) => Date.parse(`${label.slice(0, 13)}:${label.slice(13, 15)}:${label.slice(15, 17)}Z`);
+
+export interface RetentionOutcome { kept: number; trashed: string[]; trashedIncomplete: string[]; error: string | null }
+
+/**
+ * Runs only after a run has stored its file, written its manifest and moved
+ * latest.json, so a failed night never deletes anything. A snapshot is
+ * complete when its manifest exists, and a manifest is written only after
+ * Drive confirmed the stored file's md5. Keeps the newest 30 complete
+ * snapshots and, whatever else happens, the one latest.json names. Touches
+ * nothing in the folder that is not named like a snapshot.
+ */
+export async function applyRetention(client: DriveClient, rootId: string, latestLabel: string, now: Date): Promise<RetentionOutcome> {
+  const snapshots = (await client.listFoldersIn(rootId)).filter(f => SNAPSHOT_LABEL.test(f.name));
+  const withManifest = new Set((await client.listAll("name='manifest.json' and trashed=false")).flatMap(f => f.parents ?? []));
+  const complete = snapshots.filter(f => withManifest.has(f.id)).sort((a, b) => b.name.localeCompare(a.name));
+  const keep = new Set([...complete.slice(0, RETAIN_COMPLETE_SNAPSHOTS).map(f => f.id), ...snapshots.filter(f => f.name === latestLabel).map(f => f.id)]);
+  const old = complete.filter(f => !keep.has(f.id));
+  const leftovers = snapshots.filter(f => !withManifest.has(f.id) && f.name !== latestLabel && now.getTime() - labelTime(f.name) > INCOMPLETE_GRACE_HOURS * 3600_000);
+  const out: RetentionOutcome = { kept: complete.length - old.length, trashed: [], trashedIncomplete: [], error: null };
+  const errors: string[] = [];
+  for (const [list, into] of [[old, out.trashed], [leftovers, out.trashedIncomplete]] as const) {
+    for (const f of list) {
+      try { await client.trash(f.id); into.push(f.name); } catch (error) { errors.push(`${f.name}: ${message(error).slice(0, 160)}`); }
+    }
+  }
+  if (errors.length) out.error = `Could not move ${errors.length} old snapshot(s) to the trash; they stay until the next run tries again: ${errors.join("; ")}`;
+  return out;
 }
 
 export type DatabaseBackupState = "ready" | "disabled" | "no_database" | `drive_${string}`;
@@ -66,6 +103,7 @@ export interface DatabaseBackupOutcome {
   snapshotLabel?: string;
   snapshotFolderId?: string;
   manifest?: DatabaseBackupManifest;
+  retention?: RetentionOutcome;
 }
 
 export interface DatabaseBackupDeps {
@@ -130,6 +168,7 @@ async function doBackup(trigger: string, deps: DatabaseBackupDeps): Promise<Data
     file: { name: DUMP_FILE_NAME, fileId, bytes: dump.bytes.length, uncompressedBytes: dump.uncompressedBytes, md5: dump.md5, sha256: dump.sha256 },
     tables: dump.tables, totalRows: dump.totalRows, migrationsApplied: dump.migrationsApplied, otherObjects: dump.otherObjects,
     restore: RESTORE_COMMAND,
+    retention: RETENTION_POLICY,
     notIncluded: [...NOT_INCLUDED],
   };
   try {
@@ -139,5 +178,13 @@ async function doBackup(trigger: string, deps: DatabaseBackupDeps): Promise<Data
   } catch (error) {
     return failed(`The export is stored but the manifest or pointer failed; latest.json still names the previous good snapshot: ${message(error)}`, { snapshotFolderId: snapshotId });
   }
-  return { status: "complete", reason: null, snapshotLabel: label, snapshotFolderId: snapshotId, manifest };
+  // 3. Only now, with a new good snapshot in place, let the oldest go.
+  let retention: RetentionOutcome;
+  try {
+    retention = await applyRetention(client, rootId, label, now());
+  } catch (error) {
+    retention = { kept: 0, trashed: [], trashedIncomplete: [], error: `Retention did not run; nothing was deleted: ${message(error).slice(0, 200)}` };
+  }
+  if (retention.error) console.warn(`[Database backup] ${retention.error.slice(0, 300)}`);
+  return { status: "complete", reason: null, snapshotLabel: label, snapshotFolderId: snapshotId, manifest, retention };
 }

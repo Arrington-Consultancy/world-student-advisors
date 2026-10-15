@@ -46,7 +46,7 @@ describe("writing", () => {
   });
 
   it("refuses anything in a number column that is not a number", () => {
-    expect(() => sqlLiteral("number", "1; DROP TABLE users")).toThrow(/Unexpected numeric text/);
+    expect(() => sqlLiteral("number", "1; DROP TABLE users")).toThrow(/Unexpected text in a numeric column/);
     expect(() => sqlLiteral("number", "")).toThrow();
   });
 
