@@ -134,10 +134,13 @@ export default function Portal() {
             <p className="mb-5 text-sm leading-6 text-gray-600">
               Use the portal alongside your named WSA adviser. For decisions, documents and applications, your counsellor remains your first point of contact.
             </p>
+            {/* This is the "ok" dashboard branch — reaching it already means
+                portalUser.pipedrivePersonId is set (see portal.dashboard),
+                i.e. an application is on file. No "Apply Now"/"Start Your
+                Application" CTA belongs here: showing one to a student who
+                has already applied is exactly the misleading state this
+                screen must not produce. */}
             <div className="flex flex-wrap gap-3">
-              <Link href="/contact">
-                <Button className="bg-wsa-red hover:bg-wsa-red/90 text-white">Apply Now</Button>
-              </Link>
               <Button
                 variant="outline"
                 size="sm"
