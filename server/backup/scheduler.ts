@@ -9,7 +9,9 @@ import { databaseBackupConfigState, runDatabaseBackup } from "./databaseBackup";
 export const DATABASE_BACKUP_TIME = Object.freeze({ hour: 3, minute: 15 });
 
 export function startDatabaseBackupScheduler(env: NodeJS.ProcessEnv = process.env): { stop: () => void } {
-  void databaseBackupConfigState(env).then(state => console.log(`[Database backup] state at start: ${state}; nightly at 03:15 London`));
+  void databaseBackupConfigState(env)
+    .then(state => console.log(`[Database backup] state at start: ${state}; nightly at 03:15 London`))
+    .catch(error => console.warn("[Database backup] could not read state at start:", String((error as Error)?.message ?? error).slice(0, 200)));
   let timer: NodeJS.Timeout | null = null;
   const tick = async () => {
     try {
