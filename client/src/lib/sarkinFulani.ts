@@ -30,6 +30,13 @@ import { toInternationalNigerianNumber } from "./nigeriaLanding";
  *     current school report; recruitment can begin. Tim's other points
  *     (Football Academy, Vector, Summer Schools, Essay Competition) wait
  *     for Giles Williams.
+ *  6. Tim Hunt, 15 October 2026, on the Expression of Interest: it goes
+ *     first to the Office of His Royal Highness (Farooq Gajo), Maryam Lawal
+ *     and Tim, with only what an eligibility check needs; the Student
+ *     Counsellors come in once Farooq has confirmed eligibility and Maryam
+ *     is ready to progress the student. Maryam is the principal WSA
+ *     contact in Nigeria. The page stays in draft until Farooq and Brooke
+ *     House College confirm everything for publication.
  *
  * WHAT IS PROVISIONAL, and said so on the page: the Football Academy,
  * Vector Programme and Summer School descriptions await the College's
@@ -270,8 +277,12 @@ export const STEPS: ReadonlyArray<{ title: string; body: string }> = Object.free
     body: "A student, parent or guardian completes the short form on this page.",
   },
   {
-    title: "Talk to a Student Counsellor",
-    body: "A World Student Advisors Student Counsellor contacts the family personally to discuss the student's education, interests and ambitions, and which opportunity may suit. For full-time education, the family's ability to meet the costs of studying in the United Kingdom is discussed too.",
+    title: "The Office of His Royal Highness confirms eligibility",
+    body: "Your Expression of Interest goes first to the Office of His Royal Highness, which confirms that the family is part of the community the programme serves.",
+  },
+  {
+    title: "Talk to Maryam Lawal or a Student Counsellor",
+    body: "Once eligibility is confirmed, Maryam Lawal, our Director in Nigeria, or a World Student Advisors Student Counsellor contacts the family personally to discuss the student's education, interests and ambitions, and which opportunity may suit. For full-time education, the family's ability to meet the costs of studying in the United Kingdom is discussed too.",
   },
   {
     title: "Apply",
@@ -312,10 +323,9 @@ export const BEHIND = Object.freeze({
  * 2026: her card sits immediately below "Who is behind the programme?" and
  * above the Expression of Interest, with both contact details live and a
  * WhatsApp icon rather than a telephone one. She answers general questions;
- * the Expression of Interest form stays separate. His Royal Highness
- * approved the procedure on 10 October 2026, but how an Expression of
- * Interest reaches his Office is still to be decided (REVIEW_NOTES), so the
- * form's routing is unchanged.
+ * the Expression of Interest form stays separate and, since 15 October
+ * 2026, goes first to the Office of His Royal Highness for the eligibility
+ * check, with Maryam and Tim copied (shared/campaignEnquiry.ts).
  * Her photograph is the one already on the Our Team page.
  */
 export const MARYAM = Object.freeze({
@@ -369,11 +379,11 @@ export const ENQUIRER_ROLES: ReadonlyArray<{ value: string; label: string }> = O
 export const EXPRESS_INTEREST = Object.freeze({
   heading: "Express your interest",
   supporting:
-    "You do not need to know which opportunity is right before contacting us. A World Student Advisors Student Counsellor will talk to you and your family and help you explore the most appropriate option.",
+    "You do not need to know which opportunity is right before contacting us. Once the Office of His Royal Highness has confirmed eligibility, Maryam Lawal or a World Student Advisors Student Counsellor will talk to you and your family and help you explore the most appropriate option.",
   nextPageLine: "Six questions here, the rest on the next page.",
   cta: "Continue",
   noPromise: "Completing the form does not mean admission or a tuition fee award. It starts a conversation.",
-  privacy: "Your details go to World Student Advisors' student records system so that a Student Counsellor can contact you.",
+  privacy: "Your details go to World Student Advisors' student records system, and your name, contact details and chosen opportunity go to the Office of His Royal Highness to confirm eligibility, so that Maryam Lawal or a Student Counsellor can contact you.",
 });
 
 /**
@@ -383,8 +393,9 @@ export const EXPRESS_INTEREST = Object.freeze({
  * the /contact sign-up, which validates every field, runs the bot check
  * and writes the Lead, exactly as the Nigeria postgraduate page does. The
  * campaign slug makes the Lead note name this programme and sends the
- * programme's own notification as well as the Student Counsellors' usual
- * one (shared/campaignEnquiry.ts). A second, weaker route into the CRM for
+ * programme's own short notification, to the Office of His Royal Highness,
+ * Maryam and Tim, instead of the Student Counsellors' usual one
+ * (shared/campaignEnquiry.ts). A second, weaker route into the CRM for
  * the sake of six fields would be the wrong trade.
  */
 export function expressInterestHandoffUrl(input: {
@@ -438,7 +449,8 @@ export const REVIEW_NOTES: ReadonlyArray<{ owner: string; item: string }> = Obje
   { owner: "Tim Hunt", item: "The places list uses Brooke House's own words: the ages are 'on or after 1 September' and Year 10 is 'if English is their first language'. Tim to confirm these read as the College means them before publication." },
   { owner: "Tim Hunt", item: "Who else receives the programme's enquiry notification alongside the Student Counsellors (Maryam Lawal, for instance), and the timeline dates now that September 2026 has passed." },
   { owner: "Tim Hunt", item: "Maryam's photograph: the card uses the Our Team photograph; if the one attached to his email of 9 October is different, it needs filing where the site can take it." },
-  { owner: "Tim Hunt", item: "His Royal Highness approved the procedure on 10 October 2026: Expressions of Interest go first to his Office (Farooq Gajo, the designated contact) for the community eligibility check, then approved families are referred to WSA. How the website's enquiries reach Farooq, and the steps on the page that describe it, are Tim's to decide. The form's routing is unchanged until then." },
+  { owner: "Tim Hunt", item: "Decided 15 October 2026: an Expression of Interest notifies Farooq Gajo, Maryam Lawal and Tim only, as a short version (name, contact details, nationality, country, chosen opportunity and the Lead id; no date of birth or passport number). The Student Counsellors are not notified until Farooq has confirmed eligibility and Maryam is ready. The page's steps and privacy line say so. Farooq's address is set in production, not in the code." },
+  { owner: "Tim Hunt", item: "Pipedrive status for these Leads: Tim wants enquiries awaiting eligibility confirmation told apart from those approved for counselling, so none fall through. The website can apply a Lead label on creation once Tim has created it and named it; the switch to approved is then Maryam's, in Pipedrive." },
 ]);
 
 /** Every string a visitor can read, for the copy tests. */
