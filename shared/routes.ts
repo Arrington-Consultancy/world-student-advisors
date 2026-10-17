@@ -75,6 +75,12 @@ export const VALID_CLIENT_ROUTES: readonly string[] = [
   // The page Tim Hunt's Pipedrive form redirects to after a successful
   // submission (28 September 2026). Noindex, out of the sitemap, unlinked.
   "/speak-to-juliet/thank-you",
+  // Speak to Madalitso, the Malawi landing page on the country
+  // representative template, Tim Hunt's brief of 16 October 2026. Published:
+  // indexable, in the sitemap and prerendered. Its thank-you page is where
+  // his Pipedrive form redirects; noindex, out of the sitemap, unlinked.
+  "/speak-to-madalitso",
+  "/speak-to-madalitso/thank-you",
   // The Sarkin Fulani Future Leaders Programme landing page, Tim Hunt's brief
   // of 8 October 2026 from Farooq Gajo's revised proposal. A real route so
   // it can be reviewed by the Office of His Royal Highness and Brooke House

@@ -54,6 +54,8 @@ import StudentSupportLibraryResource from "./pages/StudentSupportLibraryResource
 import NigeriaPostgraduate from "./pages/NigeriaPostgraduate";
 import SpeakToJuliet from "./pages/SpeakToJuliet";
 import SarkinFulaniFutureLeaders from "./pages/SarkinFulaniFutureLeaders";
+import SpeakToMadalitso from "./pages/SpeakToMadalitso";
+import SpeakToMadalitsoThankYou from "./pages/SpeakToMadalitsoThankYou";
 
 
 function Router() {
@@ -119,6 +121,11 @@ function Router() {
       {/* Where Tim Hunt's Pipedrive form sends the student after a successful
           submission. Noindex, unlinked, no form: see speakToJulietThankYou.ts. */}
       <Route path={"/speak-to-juliet/thank-you"} component={SpeakToJulietThankYou} />
+      {/* Speak to Madalitso, the Malawi page on the country representative
+          template (Tim Hunt, 16 October 2026), and where his Pipedrive form
+          sends the student. See client/src/lib/speakToMadalitso.ts. */}
+      <Route path={"/speak-to-madalitso"} component={SpeakToMadalitso} />
+      <Route path={"/speak-to-madalitso/thank-you"} component={SpeakToMadalitsoThankYou} />
       {/* Draft for review, 8 October 2026: noindex, out of the sitemap and
           prerender list, linked from nowhere. See client/src/lib/sarkinFulani.ts. */}
       <Route path={"/sarkin-fulani-future-leaders"} component={SarkinFulaniFutureLeaders} />

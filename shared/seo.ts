@@ -182,6 +182,15 @@ export const SEO_MAP: Record<string, SeoEntry> = {
     description:
       "Under the patronage of His Royal Highness the Sarkin Fulani of Lagos, with Brooke House College and World Student Advisors: full-time education, football, Vector leadership, summer schools and tuition fee awards for young people from the Arewa community.",
   },
+  "/speak-to-madalitso": {
+    title: "Speak to Madalitso in Blantyre | World Student Advisors",
+    description:
+      "Madalitso Dube is WSA's Director for Malawi, in Blantyre. Message him about studying abroad, from UK boarding school to a PhD, with Eldah Therone as your WSA Student Counsellor when you apply.",
+  },
+  "/speak-to-madalitso/thank-you": {
+    title: "Thank you, your details are with Madalitso | World Student Advisors",
+    description: "Your enquiry has reached Madalitso Dube, WSA Director for Malawi in Blantyre. He will be in touch shortly.",
+  },
   "/speak-to-juliet": {
     title: "Speak to Juliet in Lagos | World Student Advisors",
     description:
@@ -239,7 +248,11 @@ export const NOINDEX_PATH_PREFIXES = ["/portal", "/staff-portal"];
 // material and Brooke House College has confirmed its offers. Publication
 // changes noindex, the sitemap entry and the prerender entry together, as it
 // did for the two pages above.
-export const NOINDEX_PATHS = new Set(["/404", "/speak-to-juliet/thank-you", "/sarkin-fulani-future-leaders"]);
+// /speak-to-madalitso/thank-you is the post-submission page for Tim Hunt's
+// Malawi Pipedrive form (16 October 2026), private in the same way as
+// Juliet's. /speak-to-madalitso itself is published from the start: Tim
+// supplied the finished content, form and photographs together.
+export const NOINDEX_PATHS = new Set(["/404", "/speak-to-juliet/thank-you", "/sarkin-fulani-future-leaders", "/speak-to-madalitso/thank-you"]);
 
 export function getCanonicalPath(path: string): string {
   return CANONICAL_PATHS[path] ?? path;
