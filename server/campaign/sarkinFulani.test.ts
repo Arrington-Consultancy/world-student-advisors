@@ -235,6 +235,20 @@ describe("Maryam Lawal's contact card, Tim Hunt's request of 9 October 2026", ()
     expect(card).toContain("<Mail");
   });
 
+  it("puts the WSA logo centred over her photograph and details, and her email on one line (Tim Hunt, 18 October 2026)", () => {
+    const card = PAGE.slice(PAGE.indexOf('id="maryam"'), PAGE.indexOf('id="express-interest"'));
+    const logo = card.indexOf("src={PARTNERS.wsa.logo}");
+    const photo = card.indexOf("src={MARYAM.photo}");
+    const name = card.indexOf("{MARYAM.name}");
+    expect(logo).toBeGreaterThan(0);
+    expect(photo).toBeGreaterThan(logo);
+    expect(name).toBeGreaterThan(photo);
+    expect(card).toMatch(/rounded-2xl border bg-wsa-warm-white[^"]*text-center/);
+    expect(card).not.toMatch(/sm:flex-row|sm:text-left/);
+    expect(card).toMatch(/className="whitespace-nowrap[^"]*">\{MARYAM\.email\}/);
+    expect(card).not.toContain("break-all");
+  });
+
   it("ships her photograph from this site", () => {
     expect(publicFile(MARYAM.photo)).toBe(true);
   });
