@@ -10,7 +10,8 @@
  * "Accept all"; see client/src/lib/metaPixel.ts.
  */
 import { useEffect, useState } from "react";
-import { Link } from "wouter";
+import { Link, useLocation } from "wouter";
+import { consentCopyForPath } from "@/lib/consentCopy";
 import { loadGoogleAdsTag, updateGoogleConsent } from "@/lib/googleAdsTag";
 import { loadMetaPixel, updateMetaConsent } from "@/lib/metaPixel";
 import { CONSENT_KEY, getCookieConsent } from "@/lib/cookieConsentStorage";
@@ -21,6 +22,8 @@ export type { ConsentValue };
 
 export default function CookieConsent() {
   const [visible, setVisible] = useState(false);
+  const [location] = useLocation();
+  const copy = consentCopyForPath(location);
 
   useEffect(() => {
     // The tag loads on every page view with consent denied (Consent Mode
@@ -63,22 +66,20 @@ export default function CookieConsent() {
   return (
     <div
       role="dialog"
-      aria-label="Cookie consent"
+      aria-label={copy.ariaLabel}
       className="fixed bottom-0 left-0 right-0 z-[100] bg-wsa-navy text-white shadow-[0_-4px_24px_rgba(0,0,0,0.25)]"
       style={{ animation: "wsa-consent-in 320ms cubic-bezier(0.23, 1, 0.32, 1) both" }}
     >
       <div className="container py-5 lg:py-6">
         <div className="flex flex-col lg:flex-row lg:items-center gap-4 lg:gap-8">
           <div className="flex-1">
-            <p className="text-sm font-semibold mb-1">Your privacy matters</p>
+            <p className="text-sm font-semibold mb-1">{copy.heading}</p>
             <p className="text-[13px] text-white/60 leading-relaxed max-w-2xl">
-              We use essential cookies to make this site work. With your consent, we'd also like to use
-              analytics cookies to understand how families use the site so we can improve it. You can
-              change your mind at any time. Read our{" "}
+              {copy.body}{" "}
               <Link href="/privacy-policy" className="underline text-white/80 hover:text-white transition-colors">
-                Privacy Policy
+                {copy.linkLabel}
               </Link>{" "}
-              for details.
+              {copy.after}
             </p>
           </div>
           <div className="flex items-center gap-3 flex-shrink-0">
@@ -86,13 +87,13 @@ export default function CookieConsent() {
               onClick={() => choose("declined")}
               className="px-5 py-2.5 text-[13px] font-semibold text-white/70 border border-white/25 hover:border-white/50 hover:text-white transition-colors active:scale-[0.97]"
             >
-              Essential only
+              {copy.essentialOnly}
             </button>
             <button
               onClick={() => choose("accepted")}
               className="px-6 py-2.5 text-[13px] font-semibold bg-wsa-red text-white hover:bg-wsa-red/90 transition-colors active:scale-[0.97]"
             >
-              Accept all
+              {copy.acceptAll}
             </button>
           </div>
         </div>

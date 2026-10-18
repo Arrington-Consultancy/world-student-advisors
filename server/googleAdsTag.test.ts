@@ -143,8 +143,13 @@ describe("CookieConsent wiring", () => {
 
   it("maps Accept all to granted and Essential only to denied", () => {
     expect(stripped).toMatch(/updateGoogleConsent\(value === "accepted" \? "granted" : "denied"\)/);
-    expect(stripped).toMatch(/choose\("declined"\)[\s\S]*Essential only/);
-    expect(stripped).toMatch(/choose\("accepted"\)[\s\S]*Accept all/);
+    // The button labels come from client/src/lib/consentCopy.ts, so the
+    // banner can speak Portuguese on Speak to Pedro's Portuguese pages.
+    expect(stripped).toMatch(/choose\("declined"\)[\s\S]*copy\.essentialOnly/);
+    expect(stripped).toMatch(/choose\("accepted"\)[\s\S]*copy\.acceptAll/);
+    const copy = readFileSync("client/src/lib/consentCopy.ts", "utf8");
+    expect(copy).toMatch(/essentialOnly: "Essential only"/);
+    expect(copy).toMatch(/acceptAll: "Accept all"/);
   });
 
   it("does not load the tag from index.html", () => {

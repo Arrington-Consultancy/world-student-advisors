@@ -56,6 +56,7 @@ import SpeakToJuliet from "./pages/SpeakToJuliet";
 import SarkinFulaniFutureLeaders from "./pages/SarkinFulaniFutureLeaders";
 import SpeakToMadalitso from "./pages/SpeakToMadalitso";
 import SpeakToMadalitsoThankYou from "./pages/SpeakToMadalitsoThankYou";
+import { SpeakToPedroEn, SpeakToPedroPt, SpeakToPedroThankYouEn, SpeakToPedroThankYouPt } from "./pages/SpeakToPedro";
 
 
 function Router() {
@@ -126,6 +127,14 @@ function Router() {
           sends the student. See client/src/lib/speakToMadalitso.ts. */}
       <Route path={"/speak-to-madalitso"} component={SpeakToMadalitso} />
       <Route path={"/speak-to-madalitso/thank-you"} component={SpeakToMadalitsoThankYou} />
+      {/* Speak to Pedro, the Angola page in Portuguese (default) and English,
+          and where each language's Pipedrive form will send the family. Draft
+          for review, 18 October 2026: noindex, out of the sitemap and
+          prerender list, linked from nowhere. See client/src/lib/speakToPedro.ts. */}
+      <Route path={"/speak-to-pedro"} component={SpeakToPedroPt} />
+      <Route path={"/speak-to-pedro/en"} component={SpeakToPedroEn} />
+      <Route path={"/speak-to-pedro/obrigado"} component={SpeakToPedroThankYouPt} />
+      <Route path={"/speak-to-pedro/en/thank-you"} component={SpeakToPedroThankYouEn} />
       {/* Draft for review, 8 October 2026: noindex, out of the sitemap and
           prerender list, linked from nowhere. See client/src/lib/sarkinFulani.ts. */}
       <Route path={"/sarkin-fulani-future-leaders"} component={SarkinFulaniFutureLeaders} />
@@ -145,9 +154,21 @@ function Router() {
  */
 const APP_SHELL_ROUTES = ["/staff-portal"];
 
+/**
+ * Landing pages that carry their own header and footer because they are not
+ * in English: the site's header and footer would put English navigation on
+ * a Portuguese page. They keep the unchanged WSA logo and link back to the
+ * site. See client/src/pages/SpeakToPedro.tsx.
+ */
+const LANDING_SHELL_ROUTES = ["/speak-to-pedro"];
+
+function hasOwnHeader(location: string): boolean {
+  return [...APP_SHELL_ROUTES, ...LANDING_SHELL_ROUTES].some(r => location === r || location.startsWith(`${r}/`));
+}
+
 function App() {
   const [location] = useLocation();
-  const isAppShell = APP_SHELL_ROUTES.some(r => location === r || location.startsWith(`${r}/`));
+  const isAppShell = hasOwnHeader(location);
   return (
     <ErrorBoundary>
       <ThemeProvider defaultTheme="light">

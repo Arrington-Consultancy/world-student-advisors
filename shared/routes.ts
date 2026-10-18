@@ -81,6 +81,10 @@ export const VALID_CLIENT_ROUTES: readonly string[] = [
   // his Pipedrive form redirects; noindex, out of the sitemap, unlinked.
   "/speak-to-madalitso",
   "/speak-to-madalitso/thank-you",
+  "/speak-to-pedro",
+  "/speak-to-pedro/en",
+  "/speak-to-pedro/obrigado",
+  "/speak-to-pedro/en/thank-you",
   // The Sarkin Fulani Future Leaders Programme landing page, Tim Hunt's brief
   // of 8 October 2026 from Farooq Gajo's revised proposal. A real route so
   // it can be reviewed by the Office of His Royal Highness and Brooke House

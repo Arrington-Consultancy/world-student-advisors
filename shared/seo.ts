@@ -191,6 +191,25 @@ export const SEO_MAP: Record<string, SeoEntry> = {
     title: "Thank you, your details are with Madalitso | World Student Advisors",
     description: "Your enquiry has reached Madalitso Dube, WSA Director for Malawi in Blantyre. He will be in touch shortly.",
   },
+  // Speak to Pedro, Angola: Portuguese is the default and owns the plain address.
+  "/speak-to-pedro": {
+    title: "Educação no Reino Unido para famílias em Luanda | World Student Advisors",
+    description:
+      "Orientação da World Student Advisors para famílias em Angola: escolas independentes e internatos, sixth form, foundation, licenciaturas e pós-graduação no Reino Unido.",
+  },
+  "/speak-to-pedro/en": {
+    title: "UK education for families in Luanda | World Student Advisors",
+    description:
+      "Guidance from World Student Advisors for families in Angola: independent and boarding schools, sixth form, foundation, undergraduate and postgraduate study in the UK.",
+  },
+  "/speak-to-pedro/obrigado": {
+    title: "Pedido recebido | World Student Advisors",
+    description: "Obrigado. A equipa da World Student Advisors recebeu o seu pedido.",
+  },
+  "/speak-to-pedro/en/thank-you": {
+    title: "Enquiry received | World Student Advisors",
+    description: "Thank you. The World Student Advisors team has your enquiry.",
+  },
   "/speak-to-juliet": {
     title: "Speak to Juliet in Lagos | World Student Advisors",
     description:
@@ -252,7 +271,46 @@ export const NOINDEX_PATH_PREFIXES = ["/portal", "/staff-portal"];
 // Malawi Pipedrive form (16 October 2026), private in the same way as
 // Juliet's. /speak-to-madalitso itself is published from the start: Tim
 // supplied the finished content, form and photographs together.
-export const NOINDEX_PATHS = new Set(["/404", "/speak-to-juliet/thank-you", "/sarkin-fulani-future-leaders", "/speak-to-madalitso/thank-you"]);
+// /speak-to-pedro and its English and thank-you pages are a draft for review
+// (Tom Arrington's brief of 18 October 2026): noindex, out of the sitemap and
+// prerender list, linked from nowhere, until he approves publication.
+export const NOINDEX_PATHS = new Set([
+  "/404",
+  "/speak-to-juliet/thank-you",
+  "/sarkin-fulani-future-leaders",
+  "/speak-to-madalitso/thank-you",
+  "/speak-to-pedro",
+  "/speak-to-pedro/en",
+  "/speak-to-pedro/obrigado",
+  "/speak-to-pedro/en/thank-you",
+]);
+
+/**
+ * Pages that are not in English, and their translations. Everything else on
+ * the site is English. Used for <html lang> and the hreflang alternates, on
+ * the server's first response and again in the browser on navigation.
+ */
+export type PageLanguage = "en" | "pt";
+
+const LANGUAGE_GROUPS: ReadonlyArray<Readonly<Record<"pt" | "en", string>>> = [
+  { pt: "/speak-to-pedro", en: "/speak-to-pedro/en" },
+  { pt: "/speak-to-pedro/obrigado", en: "/speak-to-pedro/en/thank-you" },
+];
+
+export function getLanguageForPath(path: string): PageLanguage {
+  return LANGUAGE_GROUPS.some(g => g.pt === path) ? "pt" : "en";
+}
+
+/** hreflang alternates for a translated page, Portuguese as x-default; none for any other page. */
+export function getLanguageAlternates(path: string): Array<{ hreflang: string; href: string }> {
+  const group = LANGUAGE_GROUPS.find(g => g.pt === path || g.en === path);
+  if (!group) return [];
+  return [
+    { hreflang: "pt", href: `${SITE_ORIGIN}${group.pt}` },
+    { hreflang: "en", href: `${SITE_ORIGIN}${group.en}` },
+    { hreflang: "x-default", href: `${SITE_ORIGIN}${group.pt}` },
+  ];
+}
 
 export function getCanonicalPath(path: string): string {
   return CANONICAL_PATHS[path] ?? path;
