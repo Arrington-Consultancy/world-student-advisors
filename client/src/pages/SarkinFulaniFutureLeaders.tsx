@@ -488,46 +488,54 @@ export default function SarkinFulaniFutureLeaders() {
           above the Expression of Interest, both contact details live, a
           WhatsApp icon not a telephone. General questions only; the form
           below stays the formal route and its routing is unchanged. */}
-      <section id="maryam" className="scroll-mt-28 border-t border-wsa-navy/10 bg-white px-4 py-10 sm:px-6 lg:py-12">
-        <div className="mx-auto max-w-3xl rounded-2xl border bg-wsa-warm-white p-5 shadow-sm sm:p-6" style={{ borderColor: GOLD }}>
-          <div className="flex flex-col gap-5 sm:flex-row sm:items-start">
-            <img
-              src={MARYAM.photo}
-              alt={MARYAM.photoAlt}
-              width={480}
-              height={480}
-              decoding="async"
-              className="mx-auto h-32 w-32 shrink-0 rounded-full border-2 bg-white object-cover object-top sm:mx-0 sm:h-36 sm:w-36"
-              style={{ borderColor: GOLD }}
-            />
-            <div className="min-w-0 flex-1 text-center sm:text-left">
-              <p className="text-xs font-semibold uppercase tracking-wider text-wsa-red">{MARYAM.eyebrow}</p>
-              <h2 className="mt-1 text-2xl font-bold tracking-tight text-wsa-navy">{MARYAM.name}</h2>
-              <p className="mt-0.5 text-base font-medium text-wsa-navy">{MARYAM.programmeRole}</p>
-              <p className="text-sm text-gray-700">{MARYAM.title}, {MARYAM.organisation}</p>
-              <p className="mt-3 text-base leading-relaxed text-gray-700">{MARYAM.description}</p>
-              <div className="mt-4 flex flex-col gap-2.5 sm:flex-row sm:flex-wrap">
-                <a
-                  href={maryamWhatsAppHref()}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  aria-label={`${MARYAM.whatsappLabel} on ${MARYAM.whatsapp}`}
-                  style={{ backgroundColor: WHATSAPP_GREEN }}
-                  className="inline-flex min-h-[3rem] items-center justify-center gap-2.5 rounded-xl px-5 py-3 text-base font-semibold text-white transition hover:opacity-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-wsa-navy"
-                >
-                  <MessageCircle className="h-5 w-5 shrink-0" aria-hidden />
-                  <span>WhatsApp {MARYAM.whatsapp}</span>
-                </a>
-                <a
-                  href={`mailto:${MARYAM.email}`}
-                  aria-label={MARYAM.emailLabel}
-                  className="inline-flex min-h-[3rem] items-center justify-center gap-2.5 rounded-xl border-2 border-wsa-navy/20 bg-white px-5 py-3 text-base font-semibold text-wsa-navy transition hover:border-wsa-navy focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-wsa-navy"
-                >
-                  <Mail className="h-5 w-5 shrink-0" aria-hidden />
-                  <span className="break-all">{MARYAM.email}</span>
-                </a>
-              </div>
-            </div>
+      <section id="maryam" className="scroll-mt-28 border-t border-wsa-navy/10 bg-white px-3 py-10 sm:px-6 lg:py-12">
+        {/* Tim Hunt, 18 October 2026, for Maryam: the WSA logo centred over
+            her photograph and details, and her email on one line. One
+            centred column at every width; the email's size follows the
+            screen so the address never breaks. */}
+        <div className="mx-auto max-w-xl rounded-2xl border bg-wsa-warm-white px-3 py-6 text-center shadow-sm sm:p-8" style={{ borderColor: GOLD }}>
+          <img
+            src={PARTNERS.wsa.logo}
+            alt={PARTNERS.wsa.logoAlt}
+            width={1366}
+            height={325}
+            decoding="async"
+            className="mx-auto h-10 w-auto sm:h-12"
+          />
+          <img
+            src={MARYAM.photo}
+            alt={MARYAM.photoAlt}
+            width={480}
+            height={480}
+            decoding="async"
+            className="mx-auto mt-5 h-32 w-32 rounded-full border-2 bg-white object-cover object-top sm:h-36 sm:w-36"
+            style={{ borderColor: GOLD }}
+          />
+          <p className="mt-5 text-xs font-semibold uppercase tracking-wider text-wsa-red">{MARYAM.eyebrow}</p>
+          <h2 className="mt-1 text-2xl font-bold tracking-tight text-wsa-navy">{MARYAM.name}</h2>
+          <p className="mt-0.5 text-base font-medium text-wsa-navy">{MARYAM.programmeRole}</p>
+          <p className="text-sm text-gray-700">{MARYAM.title}, {MARYAM.organisation}</p>
+          <p className="mx-auto mt-3 max-w-md text-base leading-relaxed text-gray-700">{MARYAM.description}</p>
+          <div className="mx-auto mt-5 flex max-w-sm flex-col gap-2.5">
+            <a
+              href={maryamWhatsAppHref()}
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-label={`${MARYAM.whatsappLabel} on ${MARYAM.whatsapp}`}
+              style={{ backgroundColor: WHATSAPP_GREEN }}
+              className="inline-flex min-h-[3rem] items-center justify-center gap-2.5 rounded-xl px-4 py-3 text-base font-semibold text-white transition hover:opacity-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-wsa-navy"
+            >
+              <MessageCircle className="h-5 w-5 shrink-0" aria-hidden />
+              <span>WhatsApp {MARYAM.whatsapp}</span>
+            </a>
+            <a
+              href={`mailto:${MARYAM.email}`}
+              aria-label={MARYAM.emailLabel}
+              className="inline-flex min-h-[3rem] items-center justify-center gap-1.5 rounded-xl border-2 border-wsa-navy/20 bg-white px-2 py-3 font-semibold sm:gap-2 sm:px-3 text-wsa-navy transition hover:border-wsa-navy focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-wsa-navy"
+            >
+              <Mail className="h-4 w-4 shrink-0 sm:h-5 sm:w-5" aria-hidden />
+              <span data-maryam-email className="whitespace-nowrap text-[length:min(0.9375rem,calc((100vw_-_110px)/18))] sm:text-base">{MARYAM.email}</span>
+            </a>
           </div>
         </div>
       </section>
