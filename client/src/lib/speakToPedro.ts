@@ -35,10 +35,11 @@
  * plainly that it is pending. Creating the form is CRM configuration and
  * needs Tom's approval.
  *
- * THE PHOTOGRAPH. Tom chose the smiling picture, top left in "website
- * photo.jpg" (12_SPOKES_&_CONSORTIUM/Pedro), a WhatsApp screenshot of four
- * pictures. The draft uses that crop, 450 pixels square, and labels it.
- * Publication needs the original file and Pedro's permission.
+ * THE PHOTOGRAPH. The smiling picture, top left in "website photo.jpg"
+ * (12_SPOKES_&_CONSORTIUM/Pedro), a WhatsApp screenshot of four pictures,
+ * cropped to 450 pixels square. Tom Arrington, 18 October 2026: "Smiling
+ * photo to be used." If Pedro supplies the original file, the same
+ * picture at a higher resolution replaces this one.
  */
 import { PIPEDRIVE_LOADER_SRC } from "./advisorLandingPage";
 
@@ -77,11 +78,11 @@ export const WSA_LOGO = Object.freeze({
 });
 
 export const PEDRO_PHOTO = Object.freeze({
-  src: "/team/pedro-bezerra-draft.jpg",
+  src: "/team/pedro-bezerra.jpg",
   width: 450,
   height: 450,
-  /** False until Tom approves the original photograph and Pedro's permission is recorded. */
-  approvedForPublication: false,
+  /** Tom Arrington, 18 October 2026: "Smiling photo to be used." */
+  approvedForPublication: true,
 });
 
 export const ELDAH_PHOTO = Object.freeze({
@@ -236,7 +237,7 @@ const PT: PedroCopy = {
   switchLabel: "Idioma",
   draft: {
     label: "Rascunho para revisão",
-    line: "Não publicado. A fotografia, o título, o formulário e o texto aguardam aprovação.",
+    line: "Não publicado. O título, o formulário e o texto aguardam aprovação.",
     photo: "Fotografia provisória",
   },
   hero: {
@@ -399,7 +400,7 @@ const EN: PedroCopy = {
   switchLabel: "Language",
   draft: {
     label: "Draft for review",
-    line: "Not published. The photograph, title, form and wording await approval.",
+    line: "Not published. The title, form and wording await approval.",
     photo: "Draft photograph",
   },
   hero: {

@@ -33,8 +33,8 @@ import { injectSeoMeta } from "../_core/vite";
  * Speak to Pedro, the Angola page for families in Luanda, Tom Arrington's
  * brief of 18 October 2026. What these hold: a draft that cannot be found or
  * mistaken for a published page, Portuguese first with a complete English
- * twin, the unchanged WSA logo, the photograph Tom chose and labelled as
- * provisional, the form slot honest about the Pipedrive form not existing
+ * twin, the unchanged WSA logo, the smiling photograph Tom approved, the
+ * form slot honest about the Pipedrive form not existing
  * yet, nothing the brief forbids (contact numbers, guarantees, the
  * free-service line, testimonials, sensitive fields), and no conversion.
  */
@@ -286,12 +286,15 @@ describe("assets", () => {
     expect(PAGE).toContain("WSA_LOGO.src");
   });
 
-  it("uses the smiling photograph Tom chose, cropped from website photo.jpg, and labels it provisional", () => {
-    expect(PEDRO_PHOTO.src).toBe("/team/pedro-bezerra-draft.jpg");
+  it("uses the smiling photograph, cropped from website photo.jpg, approved by Tom on 18 October 2026", () => {
+    expect(PEDRO_PHOTO.src).toBe("/team/pedro-bezerra.jpg");
     expect(sha256(`client/public${PEDRO_PHOTO.src}`)).toBe(
       "0c3c198e796f0608c1c2ad56b06c9b9a01ba4690521e3004d19fa6553a30d2f8"
     );
-    expect(PEDRO_PHOTO.approvedForPublication).toBe(false);
+    expect(PEDRO_PHOTO.approvedForPublication).toBe(true);
+    expect(
+      publicationBlockers().some(b => b.startsWith("Pedro's photograph"))
+    ).toBe(false);
     expect(PAGE).toMatch(/!PEDRO_PHOTO\.approvedForPublication &&/);
     expect(existsSync(`client/public${ELDAH_PHOTO.src}`)).toBe(true);
   });
@@ -321,7 +324,6 @@ describe("the enquiry form", () => {
 
   it("keeps the page a draft while anything is outstanding", () => {
     const blockers = publicationBlockers();
-    expect(blockers.some(b => b.startsWith("Pedro's photograph"))).toBe(true);
     expect(
       blockers.some(b => b.startsWith("The Portuguese Pipedrive form"))
     ).toBe(true);
@@ -333,11 +335,12 @@ describe("the enquiry form", () => {
 });
 
 describe("rendered pages", () => {
-  it("the Portuguese page: draft banner, the photograph labelled, the form slot pending, both languages offered", async () => {
+  it("the Portuguese page: draft banner, the approved photograph unlabelled, the form slot pending, both languages offered", async () => {
     const html = await render(PEDRO_PATHS.pt);
     expect(html).toContain('lang="pt"');
     expect(html).toContain("data-draft-banner");
-    expect(html).toContain("data-draft-photo");
+    expect(html).not.toContain("data-draft-photo");
+    expect(html).toContain('src="/team/pedro-bezerra.jpg"');
     expect(html).toContain("data-form-pending");
     expect(html).toContain(PEDRO_COPY.pt.hero.headline);
     expect(html).toContain("Solicitar orientação");
