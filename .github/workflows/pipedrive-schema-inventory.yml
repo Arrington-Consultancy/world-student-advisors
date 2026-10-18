@@ -52,4 +52,4 @@ jobs:
           RAILWAY_TOKEN: ${{ secrets.githubactionsprod }}
         run: |
           railway run --service "$APP_SERVICE_NAME" --environment "$APP_ENV_NAME" -- \
-            node scripts/pipedrive-schema-inventory.mjs
+            node scripts/pipedrive-pedro-attribution-probe.mjs
