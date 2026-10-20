@@ -7,6 +7,8 @@ export {
   SITE_ORIGIN,
   getCanonicalPath,
   getCanonicalUrl,
+  getLanguageAlternates,
+  getLanguageForPath,
   getSeoForPath,
   shouldNoindex,
 } from "@shared/seo";

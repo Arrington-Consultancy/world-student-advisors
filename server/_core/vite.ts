@@ -6,7 +6,7 @@ import path from "path";
 import { createServer as createViteServer } from "vite";
 import viteConfig from "../../vite.config";
 import { isValidClientRoute } from "../../shared/routes";
-import { getCanonicalUrl, getSeoForPath, shouldNoindex } from "../../shared/seo";
+import { getCanonicalUrl, getLanguageAlternates, getLanguageForPath, getSeoForPath, shouldNoindex } from "../../shared/seo";
 import { ALL_PRERENDER_ROUTES, routeToPrerenderFile } from "../../shared/prerenderRoutes";
 
 const PRERENDER_ROUTE_SET = new Set<string>(ALL_PRERENDER_ROUTES);
@@ -27,7 +27,14 @@ export function injectSeoMeta(html: string, path: string): string {
   const escapedDescription = escapeHtml(description);
   const escapedCanonical = escapeHtml(canonical);
 
+  const lang = getLanguageForPath(path);
+  const alternates = getLanguageAlternates(path)
+    .map(a => `<link rel="alternate" hreflang="${a.hreflang}" href="${escapeHtml(a.href)}" />`)
+    .join("");
+
   return html
+    .replace(/<html lang="en">/, `<html lang="${lang}">`)
+    .replace(/<\/head>/, `${alternates}</head>`)
     .replace(/<title>[\s\S]*?<\/title>/, `<title>${escapedTitle}</title>`)
     .replace(/<meta name="description" content="[^"]*" \/>/, `<meta name="description" content="${escapedDescription}" />`)
     .replace(/<meta name="robots" content="[^"]*" \/>/, `<meta name="robots" content="${robots}" />`)

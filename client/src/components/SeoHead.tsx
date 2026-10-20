@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 import { useLocation } from "wouter";
-import { getCanonicalUrl, getSeoForPath, shouldNoindex } from "@/lib/seo";
+import { getCanonicalUrl, getLanguageAlternates, getLanguageForPath, getSeoForPath, shouldNoindex } from "@/lib/seo";
 
 // Updates document.title and the meta description / OG / Twitter tags on every
 // route change. This is a client-side fix (the app has no SSR/prerendering),
@@ -39,6 +39,18 @@ export default function SeoHead() {
       document.head.appendChild(canonical);
     }
     canonical.setAttribute("href", getCanonicalUrl(location));
+
+    // A translated page (Speak to Pedro) declares its own language and its
+    // alternates; every other page is English with none.
+    document.documentElement.lang = getLanguageForPath(location);
+    document.head.querySelectorAll('link[rel="alternate"][hreflang]').forEach(el => el.remove());
+    for (const alt of getLanguageAlternates(location)) {
+      const link = document.createElement("link");
+      link.setAttribute("rel", "alternate");
+      link.setAttribute("hreflang", alt.hreflang);
+      link.setAttribute("href", alt.href);
+      document.head.appendChild(link);
+    }
   }, [location]);
 
   return null;
