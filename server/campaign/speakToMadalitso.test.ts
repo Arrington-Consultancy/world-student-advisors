@@ -63,12 +63,21 @@ describe("Madalitso's details, exactly as Tim Hunt gave them on 16 October 2026"
   });
 
   it("shows his WhatsApp number as Tim wrote it, and links the same digits", () => {
-    expect(M.advisor.whatsapp).toBe("+265 888 77 28 50");
-    expect(M.advisor.whatsappDigits).toBe("265888772850");
+    // Tim Hunt, 23 October 2026: the first number's phone has stopped working.
+    expect(M.advisor.whatsapp).toBe("+265 999 646 997");
+    expect(M.advisor.whatsappDigits).toBe("265999646997");
     expect((M.advisor.whatsapp ?? "").replace(/\D/g, "")).toBe(M.advisor.whatsappDigits);
     expect(Template.whatsappHref(M.advisor.whatsappDigits!, M.advisor.firstMessage)).toBe(
-      `https://wa.me/265888772850?text=${encodeURIComponent("Hello Madalitso, I saw the WSA page and I would like to ask about studying abroad.")}`,
+      `https://wa.me/265999646997?text=${encodeURIComponent("Hello Madalitso, I saw the WSA page and I would like to ask about studying abroad.")}`,
     );
+  });
+
+  it("no longer sends anyone to the number whose phone stopped working", () => {
+    for (const file of ["client/src/lib/speakToMadalitso.ts", "client/src/pages/AdvisorLandingPage.tsx", "client/src/pages/AdvisorThankYouPage.tsx", "client/src/lib/team.ts"]) {
+      const code = readFileSync(file, "utf8").replace(/\/\/.*$/gm, "");
+      expect(code).not.toContain("265888772850");
+      expect(code).not.toContain("888 77 28 50");
+    }
   });
 
   it("uses the photographs in Tim's mock-up, which are already on the site", () => {
