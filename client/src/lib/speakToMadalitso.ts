@@ -37,8 +37,10 @@ export const MADALITSO_PAGE: AdvisorLandingContent = Object.freeze({
     name: "Madalitso Dube",
     role: "Director for Malawi",
     location: "Blantyre, Malawi",
-    whatsapp: "+265 888 77 28 50",
-    whatsappDigits: "265888772850",
+    // Tim Hunt, 23 October 2026: Madalitso's first phone (+265 888 77 28 50)
+    // has stopped working, so families are sent to his other number.
+    whatsapp: "+265 999 646 997",
+    whatsappDigits: "265999646997",
     email: "madalitso@worldstudentadvisors.co.uk",
     photo: "/manus-storage/madalitso_dube_5417ba52.jpg",
     photoAlt: "Madalitso Dube, Director for Malawi at World Student Advisors in Blantyre",
