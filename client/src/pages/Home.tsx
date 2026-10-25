@@ -1,7 +1,7 @@
 import { Link } from "wouter";
 import { ArrowRight, ChevronLeft, ChevronRight, Play } from "lucide-react";
 import ScrollReveal from "@/components/ScrollReveal";
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 
 /**
  * WSA Homepage. Emotional Refinement
@@ -145,6 +145,40 @@ export default function Home() {
     setActiveSlide((prev) => (prev - 1 + slideCount) % slideCount);
   }, [slideCount]);
 
+  // Manual swipe on mobile — same nextSlide/prevSlide the buttons already
+  // use, so behaviour (including reduced-motion) stays identical either
+  // way. Only reacts once the gesture is complete and clearly horizontal,
+  // and never calls preventDefault, so normal vertical page scrolling is
+  // never interrupted by a swipe attempt.
+  const touchStartRef = useRef<{ x: number; y: number } | null>(null);
+
+  const handleHeroTouchStart = useCallback((e: React.TouchEvent) => {
+    const touch = e.touches[0];
+    touchStartRef.current = { x: touch.clientX, y: touch.clientY };
+  }, []);
+
+  const handleHeroTouchEnd = useCallback(
+    (e: React.TouchEvent) => {
+      const start = touchStartRef.current;
+      touchStartRef.current = null;
+      if (!start) return;
+
+      const touch = e.changedTouches[0];
+      const deltaX = touch.clientX - start.x;
+      const deltaY = touch.clientY - start.y;
+
+      const isHorizontalSwipe = Math.abs(deltaX) >= 40 && Math.abs(deltaX) > Math.abs(deltaY);
+      if (!isHorizontalSwipe) return;
+
+      if (deltaX < 0) {
+        nextSlide();
+      } else {
+        prevSlide();
+      }
+    },
+    [nextSlide, prevSlide]
+  );
+
   useEffect(() => {
     if (typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
       return;
@@ -215,8 +249,13 @@ export default function Home() {
                 </div>
               </div>
 
-              {/* Slide controls: previous/next + indicators */}
-              <div className="flex items-center gap-4 mt-10 md:mt-12">
+              {/* Slide controls: previous/next + indicators. Hidden visually
+                  on mobile (swipe replaces them there — see the image
+                  column's touch handlers below) but kept in the DOM as real,
+                  keyboard-focusable buttons via sr-only/not-sr-only rather
+                  than display:none, so a Bluetooth keyboard or switch-access
+                  user on a phone can still reach them. Unchanged on desktop. */}
+              <div className="sr-only md:not-sr-only flex items-center gap-4 mt-10 md:mt-12">
                 <button
                   type="button"
                   onClick={prevSlide}
@@ -250,7 +289,11 @@ export default function Home() {
             </div>
 
             {/* Image column */}
-            <div className="relative order-1 md:order-2 w-full aspect-[16/11] overflow-hidden bg-slate-50">
+            <div
+              className="relative order-1 md:order-2 w-full aspect-[16/11] overflow-hidden bg-slate-50"
+              onTouchStart={handleHeroTouchStart}
+              onTouchEnd={handleHeroTouchEnd}
+            >
               {heroSlides.map((slide, i) => (
                 <img
                   key={i}
