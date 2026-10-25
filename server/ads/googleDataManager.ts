@@ -243,9 +243,18 @@ export async function ingestEvents(request: IngestEventsRequest, opts: ClientOpt
   return { requestId: j.requestId ?? "", fieldWarnings: Array.isArray(j.fieldWarnings) ? j.fieldWarnings : [] };
 }
 
-export async function retrieveRequestStatus(requestId: string, opts: ClientOptions = {}): Promise<RequestStatusSummary> {
+/** The raw requestStatus:retrieve response, for diagnosis. Callers log its shape (describeShape), never its values. */
+export async function retrieveRequestStatusRaw(requestId: string, opts: ClientOptions = {}): Promise<unknown> {
   const response = await authorisedFetch(`/requestStatus:retrieve?requestId=${encodeURIComponent(requestId)}`, { method: "GET" }, opts);
-  const j = (await response.json()) as {
+  return response.json();
+}
+
+export async function retrieveRequestStatus(requestId: string, opts: ClientOptions = {}): Promise<RequestStatusSummary> {
+  return parseRequestStatus(await retrieveRequestStatusRaw(requestId, opts));
+}
+
+export function parseRequestStatus(json: unknown): RequestStatusSummary {
+  const j = (json ?? {}) as {
     requestStatusPerDestination?: Array<{
       requestStatus?: RequestStatus;
       eventsIngestionStatus?: { recordCount?: string | number };
@@ -262,6 +271,30 @@ export async function retrieveRequestStatus(requestId: string, opts: ClientOptio
     errorCounts: counts(first?.errorInfo?.errorCounts),
     warningCounts: counts(first?.warningInfo?.warningCounts),
   };
+}
+
+/**
+ * The shape of a JSON value with its values taken out: keys, array
+ * lengths, and the type of each leaf. Upper-case enum names (SUCCESS,
+ * GOOGLE_ADS, INVALID_GCLID) are kept, because they are the schema, not
+ * data. Everything else becomes "<string>", "<digits>", "<number>" or
+ * "<boolean>". For logging what Google returned without logging anything
+ * that was sent.
+ */
+export function describeShape(value: unknown, depth = 0): unknown {
+  if (depth > 8) return "<deep>";
+  if (value === null) return null;
+  if (Array.isArray(value)) return value.slice(0, 3).map(v => describeShape(v, depth + 1)).concat(value.length > 3 ? [`<+${value.length - 3} more>`] : []);
+  if (typeof value === "object") {
+    return Object.fromEntries(Object.entries(value as Record<string, unknown>).map(([k, v]) => [k, describeShape(v, depth + 1)]));
+  }
+  if (typeof value === "string") {
+    if (/^[A-Z][A-Z0-9_]{1,60}$/.test(value)) return value;
+    return /^\d+$/.test(value) ? "<digits>" : "<string>";
+  }
+  if (typeof value === "number") return "<number>";
+  if (typeof value === "boolean") return "<boolean>";
+  return `<${typeof value}>`;
 }
 
 // ── Normalisation and hashing, per Google's "Format user data" rules ─────

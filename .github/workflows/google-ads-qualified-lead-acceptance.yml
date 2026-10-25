@@ -1,9 +1,12 @@
 name: Google Ads Qualified Lead acceptance (production, Data Manager API)
 
-# Manual only. Proves the WSA-owned Qualified Lead conversion path against
-# production: configuration, a Data Manager access token, a validateOnly
-# upload to the real conversion action (Google records nothing), the upload
-# record table, and Pipedrive deal counts. Optionally runs one real sync.
+# Manual only. Proves the WSA-owned conversion uploads against production,
+# the Qualified Lead and (since 14 October 2026) the Enquiry: configuration,
+# a Data Manager access token, a validateOnly upload to each real conversion
+# action (Google records nothing), the upload record table, the Google-side
+# status of recent uploads, and Pipedrive deal and lead counts. Optionally
+# runs the Enquiry dry run (validateOnly, nothing recorded) and one real run
+# of each sync.
 # Prints counts, ids, statuses and reasons only: never a token, an email, a
 # phone number or a click identifier. Runs inside the service's variables
 # with a public database URL substituted, following the other acceptance
@@ -12,7 +15,11 @@ on:
   workflow_dispatch:
     inputs:
       run_sync:
-        description: "Also run one real sync (sends real qualified leads if any are unrecorded). yes or no."
+        description: "Also run one real run of each sync (sends real conversions if any are unrecorded and that sync's switch is on). yes or no."
+        required: false
+        default: "no"
+      enquiry_dry_run:
+        description: "Also run the Enquiry dry run: every Lead the sync would send goes to Google with validateOnly, nothing is recorded. yes or no."
         required: false
         default: "no"
 
@@ -52,10 +59,12 @@ jobs:
         env:
           RAILWAY_TOKEN: ${{ secrets.githubactionsprod }}
           RUN_SYNC: ${{ github.event.inputs.run_sync }}
+          ENQUIRY_DRY_RUN: ${{ github.event.inputs.enquiry_dry_run }}
         run: |
           E2E_RUN_SYNC=0; if [ "$RUN_SYNC" = "yes" ]; then E2E_RUN_SYNC=1; fi
+          E2E_ENQUIRY_DRY_RUN=0; if [ "$ENQUIRY_DRY_RUN" = "yes" ]; then E2E_ENQUIRY_DRY_RUN=1; fi
           railway run --service "world-student-advisors" --environment "production" -- \
-            sh -c "DATABASE_URL=\"\$GOOGLE_ADS_ACCEPTANCE_DATABASE_URL\" E2E_RUN_SYNC=$E2E_RUN_SYNC pnpm exec tsx scripts/google-ads-qualified-lead-acceptance.ts"
+            sh -c "DATABASE_URL=\"\$GOOGLE_ADS_ACCEPTANCE_DATABASE_URL\" E2E_RUN_SYNC=$E2E_RUN_SYNC E2E_ENQUIRY_DRY_RUN=$E2E_ENQUIRY_DRY_RUN pnpm exec tsx scripts/google-ads-qualified-lead-acceptance.ts"
       - name: Remove the temporary database URL reference
         if: always()
         env:

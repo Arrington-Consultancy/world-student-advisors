@@ -1,5 +1,6 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
 import { isExplicitRealSyncSuccess, runQualifiedLeadSync, syncConfigState, type SyncDeps } from "./qualifiedLeadSync";
+import { MAX_STATUS_CHECKS, emptyOutcome, outcomeLine } from "./conversionPass";
 import { memoryUploadStore } from "./uploadStore";
 import { ATTRIBUTION_FIELD_KEYS } from "./qualifiedLead";
 import { DataManagerError } from "./googleDataManager";
@@ -37,11 +38,12 @@ function deps(overrides: Partial<SyncDeps> = {}): SyncDeps & { ingest: ReturnTyp
 beforeEach(() => { vi.spyOn(console, "log").mockImplementation(() => {}); vi.spyOn(console, "warn").mockImplementation(() => {}); });
 
 describe("configuration gate", () => {
-  it("treats explicit real-sync acceptance as passed only when sync is enabled and the run completes", () => {
-    expect(isExplicitRealSyncSuccess("ready", { status: "complete", reason: null, considered: 0, uploaded: 0, skipped: 0, failed: 0, alreadyRecorded: 0, statusChecked: 0, skipReasons: {} })).toBe(true);
-    expect(isExplicitRealSyncSuccess("ready", { status: "partial", reason: "x", considered: 0, uploaded: 0, skipped: 0, failed: 0, alreadyRecorded: 0, statusChecked: 0, skipReasons: {} })).toBe(false);
-    expect(isExplicitRealSyncSuccess("sync_disabled", { status: "complete", reason: null, considered: 0, uploaded: 0, skipped: 0, failed: 0, alreadyRecorded: 0, statusChecked: 0, skipReasons: {} })).toBe(false);
-    expect(isExplicitRealSyncSuccess("sync_disabled", { status: "skipped", reason: "sync_disabled", considered: 0, uploaded: 0, skipped: 0, failed: 0, alreadyRecorded: 0, statusChecked: 0, skipReasons: {} })).toBe(false);
+  it("treats explicit real-sync acceptance as passed only when sync is enabled and the run completes for real", () => {
+    expect(isExplicitRealSyncSuccess("ready", emptyOutcome("complete"))).toBe(true);
+    expect(isExplicitRealSyncSuccess("ready", emptyOutcome("partial", "x"))).toBe(false);
+    expect(isExplicitRealSyncSuccess("ready", emptyOutcome("complete", null, true))).toBe(false);
+    expect(isExplicitRealSyncSuccess("sync_disabled", emptyOutcome("complete"))).toBe(false);
+    expect(isExplicitRealSyncSuccess("sync_disabled", emptyOutcome("skipped", "sync_disabled"))).toBe(false);
   });
 
   it("stands down, touching nothing, until the Google credential, the Pipedrive token and the database are all present", async () => {
@@ -90,6 +92,8 @@ describe("one run", () => {
       [25, "skipped", "email", "no_google_click_identifier"],
       [27, "uploaded", "gbraid,email,phone", null],
     ]);
+    // Since migration 0021 a row names its source; a Deal row keeps its dealId too.
+    expect(rows.map(x => [x.sourceType, x.sourceId])).toEqual([["deal", "24"], ["deal", "25"], ["deal", "27"]]);
     expect(rows.every(x => x.requestId === "req-x" || x.status === "skipped")).toBe(true);
     // Nothing personal in the store.
     expect(JSON.stringify(rows)).not.toMatch(/example\.com|gclid-24|\+234/);
@@ -138,5 +142,46 @@ describe("one run", () => {
     const statuses = store.rows.filter(x => x.status === "uploaded").map(x => x.googleStatus);
     expect(statuses.sort()).toEqual([null, "SUCCESS"].sort());
     expect(store.rows.find(x => x.googleStatus === "SUCCESS")!.googleDetail).toBe("records=1");
+  });
+
+  it("stops asking after five unsettled answers, marks the row UNRESOLVED with the last answer, and says so", async () => {
+    const store = memoryUploadStore();
+    const d = deps({ store });
+    await runQualifiedLeadSync("manual", d);
+    for (const row of store.rows) row.createdAt = new Date(NOW.getTime() - 60 * 60 * 1000);
+    d.status.mockImplementation(async () => ({ status: "REQUEST_STATUS_UNKNOWN" as const, recordCount: null, errorCounts: [], warningCounts: [] }));
+    for (let run = 1; run < MAX_STATUS_CHECKS; run += 1) {
+      const r = await runQualifiedLeadSync("schedule", d);
+      expect(r).toMatchObject({ statusAwaiting: 2, statusChecked: 0, statusUnresolved: 0 });
+    }
+    const last = await runQualifiedLeadSync("schedule", d);
+    expect(last).toMatchObject({ statusAwaiting: 2, statusChecked: 0, statusUnresolved: 2 });
+    const uploaded = store.rows.filter(x => x.status === "uploaded");
+    expect(uploaded.every(x => x.googleStatus === "UNRESOLVED" && x.statusChecks === MAX_STATUS_CHECKS)).toBe(true);
+    expect(uploaded[0].googleDetail).toBe("Google still answered REQUEST_STATUS_UNKNOWN after 5 checks");
+    // Settled rows are not asked again.
+    const calls = d.status.mock.calls.length;
+    const after = await runQualifiedLeadSync("schedule", d);
+    expect(after.statusAwaiting).toBe(0);
+    expect(d.status.mock.calls.length).toBe(calls);
+  });
+
+  it("says how many uploads were awaiting a status check, so \"0 checked\" cannot be misread as \"never confirmed\"", async () => {
+    const store = memoryUploadStore();
+    const d = deps({ store });
+    await runQualifiedLeadSync("manual", d);
+    for (const row of store.rows) row.createdAt = new Date(NOW.getTime() - 60 * 60 * 1000);
+    const r = await runQualifiedLeadSync("schedule", d);
+    expect(r).toMatchObject({ statusAwaiting: 2, statusChecked: 2 });
+    const quiet = await runQualifiedLeadSync("schedule", d);
+    expect(quiet).toMatchObject({ statusAwaiting: 0, statusChecked: 0 });
+    expect(outcomeLine("[Google Ads QL]", quiet)).toContain("status: 0 awaiting, 0 settled, 0 unresolved");
+  });
+});
+
+describe("the scheduler's log line", () => {
+  it("prints the skip reasons, which the outcome always carried and the log used to drop", () => {
+    const line = outcomeLine("[Google Ads QL]", { ...emptyOutcome(), considered: 32, skipped: 32, skipReasons: { no_google_click_identifier: 30, deal_add_time_unreadable: 2 } });
+    expect(line).toBe("[Google Ads QL] scheduled run: complete; considered 32, uploaded 0, skipped 32 (no_google_click_identifier 30, deal_add_time_unreadable 2), failed 0, status: 0 awaiting, 0 settled, 0 unresolved");
   });
 });
