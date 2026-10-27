@@ -91,10 +91,21 @@ export interface AdvisorLandingContent {
     phoneLabel: string;
     emailLabel: string;
   };
+  /**
+   * A line under the two people in the hero about their qualifications, when
+   * the brief gives one (Tim Hunt for Gladys and Manet, 24 October 2026).
+   */
+  credentials?: string;
   podcast: {
     youtubeId: string;
     title: string;
     blurb: string;
+    /**
+     * What shows before play. "advisor" (the default) is the representative's
+     * photograph. "brand" is a plain WSA panel, for a library recording the
+     * representative is not in, so the page never suggests they present it.
+     */
+    poster?: "advisor" | "brand";
     /** The resource page in the Student Support Library, if it has one. */
     libraryPath?: string;
     libraryLabel?: string;

@@ -81,6 +81,12 @@ export const VALID_CLIENT_ROUTES: readonly string[] = [
   // his Pipedrive form redirects; noindex, out of the sitemap, unlinked.
   "/speak-to-madalitso",
   "/speak-to-madalitso/thank-you",
+  // Speak to Gladys, the Ghana landing page on the same template, Tim Hunt's
+  // email of 24 October 2026. Published like Madalitso's. Its thank-you page
+  // is the address Tim gave for his Pipedrive form; noindex, out of the
+  // sitemap, unlinked.
+  "/speak-to-gladys",
+  "/speak-to-gladys-thank-you",
   // The Sarkin Fulani Future Leaders Programme landing page, Tim Hunt's brief
   // of 8 October 2026 from Farooq Gajo's revised proposal. A real route so
   // it can be reviewed by the Office of His Royal Highness and Brooke House

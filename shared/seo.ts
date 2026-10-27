@@ -187,6 +187,15 @@ export const SEO_MAP: Record<string, SeoEntry> = {
     description:
       "Madalitso Dube is WSA's Director for Malawi, in Blantyre. Message him about studying abroad, from UK boarding school to a PhD, with Eldah Therone as your WSA Student Counsellor when you apply.",
   },
+  "/speak-to-gladys": {
+    title: "Speak to Gladys in Accra | World Student Advisors",
+    description:
+      "Gladys Naadi is WSA's Director for Ghana, in Accra. Message her about studying abroad, from UK boarding school to a PhD, with Manet Khamayo as your WSA Student Counsellor when you apply.",
+  },
+  "/speak-to-gladys-thank-you": {
+    title: "Thank you, your details are with Gladys | World Student Advisors",
+    description: "Your enquiry has reached Gladys Naadi, WSA Director for Ghana in Accra. She will be in touch shortly.",
+  },
   "/speak-to-madalitso/thank-you": {
     title: "Thank you, your details are with Madalitso | World Student Advisors",
     description: "Your enquiry has reached Madalitso Dube, WSA Director for Malawi in Blantyre. He will be in touch shortly.",
@@ -252,7 +261,9 @@ export const NOINDEX_PATH_PREFIXES = ["/portal", "/staff-portal"];
 // Malawi Pipedrive form (16 October 2026), private in the same way as
 // Juliet's. /speak-to-madalitso itself is published from the start: Tim
 // supplied the finished content, form and photographs together.
-export const NOINDEX_PATHS = new Set(["/404", "/speak-to-juliet/thank-you", "/sarkin-fulani-future-leaders", "/speak-to-madalitso/thank-you"]);
+// /speak-to-gladys-thank-you is the same for Tim's Ghana form (24 October
+// 2026); /speak-to-gladys is published from the start, as Madalitso's was.
+export const NOINDEX_PATHS = new Set(["/404", "/speak-to-juliet/thank-you", "/sarkin-fulani-future-leaders", "/speak-to-madalitso/thank-you", "/speak-to-gladys-thank-you"]);
 
 export function getCanonicalPath(path: string): string {
   return CANONICAL_PATHS[path] ?? path;

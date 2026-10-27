@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Link } from "wouter";
-import { Check, CreditCard, FileCheck, GraduationCap, LifeBuoy, Mail, MessageCircle, MessagesSquare, Phone, Plane, Play, Stamp } from "lucide-react";
+import { Award, Check, CreditCard, FileCheck, GraduationCap, LifeBuoy, Mail, MessageCircle, MessagesSquare, Phone, Plane, Play, Stamp } from "lucide-react";
 import {
   BACKED_BY_LABEL,
   DESTINATIONS,
@@ -81,14 +81,18 @@ function Podcast({ content }: { content: AdvisorLandingContent }) {
         aria-label={`Play: ${podcast.title}`}
         className="group relative block w-full overflow-hidden rounded-2xl border border-wsa-navy/12 bg-wsa-stone focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-wsa-navy"
       >
-        <img
-          src={advisor.photo}
-          alt=""
-          width={advisor.photoWidth}
-          height={advisor.photoHeight}
-          decoding="async"
-          className="aspect-video w-full max-w-full object-cover object-[center_30%]"
-        />
+        {podcast.poster === "brand" ? (
+          <span className="block aspect-video w-full bg-wsa-navy" />
+        ) : (
+          <img
+            src={advisor.photo}
+            alt=""
+            width={advisor.photoWidth}
+            height={advisor.photoHeight}
+            decoding="async"
+            className="aspect-video w-full max-w-full object-cover object-[center_30%]"
+          />
+        )}
         <span className="absolute inset-0 flex items-center justify-center bg-wsa-navy/25 transition group-hover:bg-wsa-navy/35">
           <span className="flex h-14 w-14 items-center justify-center rounded-full bg-white/95 shadow">
             <Play className="ml-0.5 h-6 w-6 text-wsa-navy" aria-hidden />
@@ -298,6 +302,12 @@ export default function AdvisorLandingPage({ content }: { content: AdvisorLandin
                   <p className="text-xs text-gray-500">{counsellor.headOfficeLine}</p>
                 </div>
               </div>
+              {content.credentials && (
+                <p className="flex items-start gap-2.5 rounded-2xl border border-wsa-navy/10 bg-white px-4 py-2.5 text-sm leading-snug text-wsa-navy shadow-sm">
+                  <Award className="mt-0.5 h-4 w-4 shrink-0 text-wsa-red" aria-hidden />
+                  <span>{content.credentials}</span>
+                </p>
+              )}
               <div className="flex flex-wrap items-baseline justify-center gap-x-2 gap-y-0.5 rounded-2xl border border-emerald-600/25 bg-emerald-50 px-4 py-2.5 text-center leading-snug">
                 <p className="text-sm font-bold uppercase tracking-wide text-emerald-800">{FREE_BADGE.heading}</p>
                 <p className="text-sm text-emerald-900/80">{FREE_BADGE.line}</p>
