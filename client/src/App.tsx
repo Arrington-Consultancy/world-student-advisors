@@ -56,6 +56,8 @@ import SpeakToJuliet from "./pages/SpeakToJuliet";
 import SarkinFulaniFutureLeaders from "./pages/SarkinFulaniFutureLeaders";
 import SpeakToMadalitso from "./pages/SpeakToMadalitso";
 import SpeakToMadalitsoThankYou from "./pages/SpeakToMadalitsoThankYou";
+import SpeakToGladys from "./pages/SpeakToGladys";
+import SpeakToGladysThankYou from "./pages/SpeakToGladysThankYou";
 
 
 function Router() {
@@ -126,6 +128,11 @@ function Router() {
           sends the student. See client/src/lib/speakToMadalitso.ts. */}
       <Route path={"/speak-to-madalitso"} component={SpeakToMadalitso} />
       <Route path={"/speak-to-madalitso/thank-you"} component={SpeakToMadalitsoThankYou} />
+      {/* Speak to Gladys, the Ghana page on the same template (Tim Hunt, 24
+          October 2026). Her thank-you address is the one Tim gave for his
+          Pipedrive form. See client/src/lib/speakToGladys.ts. */}
+      <Route path={"/speak-to-gladys"} component={SpeakToGladys} />
+      <Route path={"/speak-to-gladys-thank-you"} component={SpeakToGladysThankYou} />
       {/* Draft for review, 8 October 2026: noindex, out of the sitemap and
           prerender list, linked from nowhere. See client/src/lib/sarkinFulani.ts. */}
       <Route path={"/sarkin-fulani-future-leaders"} component={SarkinFulaniFutureLeaders} />
