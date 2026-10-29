@@ -124,8 +124,10 @@ export default function Footer() {
                 <a href="mailto:UKHeadOffice@worldstudentadvisors.com" className="hover:text-white transition-colors block">
                   UKHeadOffice@worldstudentadvisors.com
                 </a>
-                <a href="https://wa.me/447914797830" className="hover:text-white transition-colors block mt-1">
-                  WhatsApp: +44 7914 797830
+                {/* The UK Head Office WhatsApp, not Tim Hunt's personal mobile
+                    (his instruction of 15 September 2026). */}
+                <a href="https://wa.me/447470689849" className="hover:text-white transition-colors block mt-1">
+                  WhatsApp: +44 7470 689 849
                 </a>
               </div>
             </div>

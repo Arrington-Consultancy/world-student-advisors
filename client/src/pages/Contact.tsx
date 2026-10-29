@@ -99,7 +99,9 @@ const offices = [
     name: "Gladys Naadi",
     title: "Director for Ghana",
     address: "Afotey Osapesua Avenue, Adjiringanor, East Legon, Accra, Ghana",
-    whatsapp: "+233 55 610 2870",
+    // Tim Hunt, 24 October 2026 ("Gladys Landing Page.docx"): her WhatsApp
+    // is +233 55 521 6156, as on /speak-to-gladys.
+    whatsapp: "+233 55 521 6156",
     email: "GhanaOffice@worldstudentadvisors.com",
   },
   {
