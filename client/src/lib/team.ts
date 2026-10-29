@@ -257,11 +257,13 @@ export const REGIONAL_REPRESENTATIVES: RegionalRepresentative[] = [
   },
   {
     name: "Gladys Naadi Banhu",
-    role: "Regional Director, Ghana",
+    // Tim Hunt's title for her, 24 October 2026, as on /contact and /speak-to-gladys.
+    role: "Director for Ghana",
     location: "Ghana",
     region: "Ghana",
     email: "",
-    whatsapp: "+233 55 610 2870",
+    // Tim Hunt, 24 October 2026: +233 55 521 6156, as on /speak-to-gladys.
+    whatsapp: "+233 55 521 6156",
     photo: "/manus-storage/gladys_naadi_banhu_7d1e632e.jpg",
     britishCouncil: true,
   },
