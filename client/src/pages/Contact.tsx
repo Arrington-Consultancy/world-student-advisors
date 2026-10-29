@@ -145,7 +145,6 @@ function StudentForm() {
     ...BLANK_FUNDING_DETAILS,
     referredToWSA: "",
     referredByWhom: "",
-    recommendedCounsellor: "",
     gdprConsent: false,
     website: "", // honeypot: real users never see or fill this field
   });
@@ -731,34 +730,24 @@ function StudentForm() {
               <option value="no">No</option>
             </select>
           </div>
-          <div>
-            <label className="block text-sm font-medium text-wsa-navy mb-1.5">Recommended Student Counsellor?</label>
-            <select
-              value={formData.recommendedCounsellor}
-              onChange={(e) => setFormData({ ...formData, recommendedCounsellor: e.target.value })}
-              className="w-full px-4 py-3 border border-border bg-white focus:outline-none focus:ring-2 focus:ring-wsa-red/20 focus:border-wsa-red transition-colors"
-            >
-              <option value="">Select...</option>
-              <option value="eldah">Eldah Therone</option>
-              <option value="glenice">Glenice Owino</option>
-              <option value="manet">Manet Khamayo</option>
-              <option value="claudia">Claudia Ingado</option>
-              <option value="help-me-choose">Help me choose</option>
-            </select>
-          </div>
+          {/* "Recommended Student Counsellor?" was removed on Tim Hunt's instruction
+              of 28 October 2026: enquiries from this form go to Claudia, who
+              qualifies them. The referral question stays so she can see who
+              introduced the student. The server still accepts the field and
+              records an empty one as "Unallocated". */}
+          {formData.referredToWSA === "yes" && (
+            <div>
+              <label className="block text-sm font-medium text-wsa-navy mb-1.5">Referred by whom?</label>
+              <input
+                type="text"
+                value={formData.referredByWhom}
+                onChange={(e) => setFormData({ ...formData, referredByWhom: e.target.value })}
+                className="w-full px-4 py-3 border border-border bg-white focus:outline-none focus:ring-2 focus:ring-wsa-red/20 focus:border-wsa-red transition-colors"
+                placeholder="Name of the person or organisation who referred you"
+              />
+            </div>
+          )}
         </div>
-        {formData.referredToWSA === "yes" && (
-          <div>
-            <label className="block text-sm font-medium text-wsa-navy mb-1.5">Referred by whom?</label>
-            <input
-              type="text"
-              value={formData.referredByWhom}
-              onChange={(e) => setFormData({ ...formData, referredByWhom: e.target.value })}
-              className="w-full px-4 py-3 border border-border bg-white focus:outline-none focus:ring-2 focus:ring-wsa-red/20 focus:border-wsa-red transition-colors"
-              placeholder="Name of the person or organisation who referred you"
-            />
-          </div>
-        )}
 
         {/* GDPR Consent */}
         <div className="pt-4">
