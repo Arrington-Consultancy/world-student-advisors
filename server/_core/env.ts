@@ -1,7 +1,9 @@
 const DEFAULT_STAFF_NOTIFY_EMAILS = [
   "tim.hunt@worldstudentadvisors.com",
   "eldah@worldstudentadvisors.com",
-  "sarafina@worldstudentadvisors.com",
+  // Sarafina Kihumbu has left (Tim Hunt, 29 October 2026); Claudia Ingado is
+  // on the production list (STAFF_NOTIFY_EMAILS), so the fallback matches it.
+  "claudia@worldstudentadvisors.com",
   "glenice@worldstudentadvisors.com",
   "manet@worldstudentadvisors.com",
   "tom@arringtonconsultancy.com",
