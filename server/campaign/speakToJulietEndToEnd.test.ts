@@ -205,7 +205,7 @@ describe("every other enquiry is untouched", () => {
     expect(norm(ENV.staffNotifyEmails)).toEqual(norm([
       "tim.hunt@worldstudentadvisors.com",
       "eldah@worldstudentadvisors.com",
-      "sarafina@worldstudentadvisors.com",
+      "claudia@worldstudentadvisors.com",
       "glenice@worldstudentadvisors.com",
       "manet@worldstudentadvisors.com",
       "tom@arringtonconsultancy.com",

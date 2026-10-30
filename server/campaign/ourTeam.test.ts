@@ -202,8 +202,8 @@ describe("nothing unevidenced is published (clauses 13 and 16)", () => {
 });
 
 describe("the regional representatives' records survive the restructure (clause 14)", () => {
-  it("keeps all eleven, with their photographs", () => {
-    expect(REGIONAL_REPRESENTATIVES).toHaveLength(11);
+  it("keeps all ten, with their photographs (Sarafina Kihumbu left in October 2026)", () => {
+    expect(REGIONAL_REPRESENTATIVES).toHaveLength(10);
     for (const person of REGIONAL_REPRESENTATIVES) {
       expect(person.name.length).toBeGreaterThan(0);
       expect(person.photo).toMatch(/^\/manus-storage\//);
@@ -214,7 +214,7 @@ describe("the regional representatives' records survive the restructure (clause 
   it("keeps every person who was on the old page", () => {
     const kept = new Set([...WSA_TEAM.map(p => p.name), ...REGIONAL_REPRESENTATIVES.map(p => p.name)]);
     for (const name of [
-      "Tim Hunt", "Tom Arrington", "Babatunde Abdulia Azeez", "Eldah Therone", "Sarafina Kihumbu",
+      "Tim Hunt", "Tom Arrington", "Babatunde Abdulia Azeez", "Eldah Therone",
       "Glenice Owino", "Manet Khamayo", "Gladys Naadi Banhu", "Dr. Dele Kogbe", "Dr. Domoyi Castro Mathew",
       "Pedro Bezerra", "Juliet Nnajiofor-Uyi", "Winnie Kamuya", "Maryam Lawal", "Madalitso Dube",
       "Tobrise Arhawarien",

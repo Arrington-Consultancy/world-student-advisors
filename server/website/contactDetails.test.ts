@@ -43,3 +43,17 @@ describe("the UK Head Office WhatsApp is +44 7470 689 849, not Tim's personal mo
     expect(block).not.toMatch(/791 ?479 ?7830/);
   });
 });
+
+describe("Tim Hunt's answers of 29 October 2026", () => {
+  it("Babatunde's address is spelt babatunde", async () => {
+    const { REGIONAL_REPRESENTATIVES } = await import("../../client/src/lib/team");
+    const b = REGIONAL_REPRESENTATIVES.find(p => p.name.startsWith("Babatunde"))!;
+    expect(b.email).toBe("babatunde@worldstudentadvisors.co.uk");
+  });
+
+  it("Sarafina Kihumbu has left: no record, no photograph, not on the fallback staff list", async () => {
+    const { REGIONAL_REPRESENTATIVES, WSA_TEAM } = await import("../../client/src/lib/team");
+    expect([...WSA_TEAM, ...REGIONAL_REPRESENTATIVES].some(p => p.name.includes("Sarafina"))).toBe(false);
+    expect(read("server/_core/env.ts")).not.toContain("sarafina@");
+  });
+});
