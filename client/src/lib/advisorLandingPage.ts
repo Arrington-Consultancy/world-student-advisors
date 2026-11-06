@@ -58,6 +58,26 @@ export interface AdvisorPerson {
   photoHeight: number;
 }
 
+/** One language's version of a read-first notice. */
+export interface ReadFirstVersion {
+  /** The language's name, on its button, e.g. "English". */
+  language: string;
+  /** The text's language code, so phones and screen readers treat it as that language. */
+  lang: string;
+  heading: string;
+  intro: string;
+  /** Numbered on the page in this order. */
+  points: ReadonlyArray<{ body: string; costs?: ReadonlyArray<string> }>;
+  closing: string;
+  note: string;
+  signOff?: string;
+}
+
+export interface ReadFirstNotice {
+  /** The first version is shown first. */
+  versions: ReadonlyArray<ReadFirstVersion>;
+}
+
 export interface AdvisorLandingContent {
   /** The page's route, e.g. "/speak-to-madalitso". */
   path: string;
@@ -96,6 +116,12 @@ export interface AdvisorLandingContent {
    * the brief gives one (Tim Hunt for Gladys and Manet, 24 October 2026).
    */
   credentials?: string;
+  /**
+   * A notice to read before contacting the representative, offered beside
+   * each contact point in every language it is written in (Tim Hunt for
+   * Madalitso, 5 November 2026). Pages without one show nothing.
+   */
+  readFirst?: ReadFirstNotice;
   podcast: {
     youtubeId: string;
     title: string;

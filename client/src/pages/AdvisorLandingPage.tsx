@@ -19,6 +19,7 @@ import {
   whatsappHref,
   type AdvisorLandingContent,
 } from "@/lib/advisorLandingPage";
+import ReadFirstNotice from "@/components/ReadFirstNotice";
 
 /**
  * The country representative landing page, on Speak to Juliet's design
@@ -222,6 +223,9 @@ export default function AdvisorLandingPage({ content }: { content: AdvisorLandin
                 </li>
               ))}
             </ul>
+
+            {/* Read first, above each contact point, where the page has a notice. */}
+            {content.readFirst && <ReadFirstNotice notice={content.readFirst} className="mt-6 max-w-xl" />}
 
             <div className="mt-6">
               <WhatsAppButton content={content} onRef={el => { heroCtaRef.current = el; }} className="w-full sm:w-auto">
@@ -486,6 +490,7 @@ export default function AdvisorLandingPage({ content }: { content: AdvisorLandin
               <li key={m} className="text-lg leading-relaxed text-white sm:text-xl">{m}</li>
             ))}
           </ul>
+          {content.readFirst && <ReadFirstNotice notice={content.readFirst} tone="dark" className="mt-7" />}
           <div className="mt-7 flex flex-col gap-3 sm:flex-row sm:items-center">
             <WhatsAppButton content={content} className="w-full sm:w-auto">{hero.primaryCta}</WhatsAppButton>
             <a
@@ -501,6 +506,7 @@ export default function AdvisorLandingPage({ content }: { content: AdvisorLandin
       {/* ── The form ─────────────────────────────────────────────── */}
       <section id="send-details" className="border-t border-wsa-navy/10 bg-white px-4 py-12 sm:px-6 lg:py-16">
         <div className="mx-auto max-w-xl rounded-2xl border border-wsa-navy/12 bg-wsa-warm-white p-5 shadow-sm sm:p-6">
+          {content.readFirst && <ReadFirstNotice notice={content.readFirst} className="mb-5" />}
           <PipedriveForm content={content} id="advisor-form" />
         </div>
       </section>
