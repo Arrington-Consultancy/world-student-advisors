@@ -27,6 +27,7 @@
  * here touches it.
  */
 import { FREE_SERVICE_LINE, studyFamiliesFor, type AdvisorLandingContent } from "./advisorLandingPage";
+import { MADALITSO_READ_FIRST } from "./madalitsoReadFirst";
 
 export const MADALITSO_PAGE: AdvisorLandingContent = Object.freeze({
   path: "/speak-to-madalitso",
@@ -82,6 +83,10 @@ export const MADALITSO_PAGE: AdvisorLandingContent = Object.freeze({
     phoneLabel: "Call or WhatsApp",
     emailLabel: "Email Madalitso",
   },
+
+  // Tim Hunt, 5 November 2026: read this before contacting Madalitso, in
+  // English and Chichewa, in more than one place (see madalitsoReadFirst.ts).
+  readFirst: MADALITSO_READ_FIRST,
 
   // WSA 037, already in the Student Support Library (Tim Hunt, 16 October 2026).
   podcast: {
