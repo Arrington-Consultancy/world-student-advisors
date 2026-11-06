@@ -48,8 +48,15 @@ export const QUALIFIED_LEAD = Object.freeze({
  * Pipedrive custom field keys carrying Google attribution. These are the
  * live WSA account's keys, created 17 August 2026 and used by the signup
  * path in server/pipedrive.ts; a test holds the two files to the same
- * values so they cannot drift apart. Lead and Deal share one key set.
+ * values so they cannot drift apart. Lead and Deal share one key set
+ * (server/pipedrive.ts LF writes them on the Lead), so `lead` is the same
+ * object as `deal`, named for whoever reads a Lead.
  */
+const DEAL_AND_LEAD_KEYS = Object.freeze({
+  gclid: "19e66a5b2b1da9bd2d84c0ac33c36bb87204967a",
+  gbraid: "2b218a5930dbb5e1a853137737ed6fdeaecf468f",
+  wbraid: "0a1191cb3cbab21347e92f2fae140eb52e64a2d4",
+});
 export const ATTRIBUTION_FIELD_KEYS = Object.freeze({
   person: Object.freeze({
     gclid: "d970d238a2fb0326527b340d0277167043f53348",
@@ -57,11 +64,8 @@ export const ATTRIBUTION_FIELD_KEYS = Object.freeze({
     wbraid: "19c0ef543f99a042852b58e2bd414361fb6467db",
     gdprConsent: "507b7011ec6784002524c02f940ef8610059cd1e",
   }),
-  deal: Object.freeze({
-    gclid: "19e66a5b2b1da9bd2d84c0ac33c36bb87204967a",
-    gbraid: "2b218a5930dbb5e1a853137737ed6fdeaecf468f",
-    wbraid: "0a1191cb3cbab21347e92f2fae140eb52e64a2d4",
-  }),
+  deal: DEAL_AND_LEAD_KEYS,
+  lead: DEAL_AND_LEAD_KEYS,
 });
 
 /** The Pipedrive option id the signup form writes for "consent given". */
@@ -131,7 +135,10 @@ function primary(list: unknown): string | null {
   return str(chosen?.value);
 }
 
-/** Pipedrive represents a deal's person as a number or as an object carrying value. */
+/**
+ * Pipedrive represents a deal's or lead's person as a number or as an
+ * object carrying value.
+ */
 export function dealPersonId(deal: Record<string, unknown>): number | null {
   const p = deal.person_id;
   if (typeof p === "number") return p;
@@ -144,11 +151,29 @@ export function dealPersonId(deal: Record<string, unknown>): number | null {
  * Pure: reads the raw Deal and Person, writes nothing, calls nothing.
  */
 export function buildQualifiedLeadEvent(deal: Record<string, unknown>, person: Record<string, unknown> | null): BuildResult {
-  const personId = dealPersonId(deal);
-  const pick = (dealKey: string, personKey: string) => str(deal[dealKey]) ?? (person ? str(person[personKey]) : null);
-  const gclid = pick(ATTRIBUTION_FIELD_KEYS.deal.gclid, ATTRIBUTION_FIELD_KEYS.person.gclid);
-  const gbraid = pick(ATTRIBUTION_FIELD_KEYS.deal.gbraid, ATTRIBUTION_FIELD_KEYS.person.gbraid);
-  const wbraid = pick(ATTRIBUTION_FIELD_KEYS.deal.wbraid, ATTRIBUTION_FIELD_KEYS.person.wbraid);
+  return buildClickConversionEvent("deal", deal, person, typeof deal.id === "number" ? transactionIdForDeal(deal.id) : null);
+}
+
+/**
+ * The rules both conversions share, for a Deal (Qualified Lead) or a Lead
+ * (Enquiry, server/ads/enquiry.ts): the click identifier comes from the
+ * record itself, else from its Person; nothing is sent without one; the
+ * hashed email and phone go only where the Person carries consent; the
+ * conversion time is the record's add_time. transactionId is null when the
+ * record has no usable id, and the reason says so.
+ */
+export function buildClickConversionEvent(
+  kind: "deal" | "lead",
+  record: Record<string, unknown>,
+  person: Record<string, unknown> | null,
+  transactionId: string | null,
+): BuildResult {
+  const personId = dealPersonId(record);
+  const keys = ATTRIBUTION_FIELD_KEYS[kind];
+  const pick = (recordKey: string, personKey: string) => str(record[recordKey]) ?? (person ? str(person[personKey]) : null);
+  const gclid = pick(keys.gclid, ATTRIBUTION_FIELD_KEYS.person.gclid);
+  const gbraid = pick(keys.gbraid, ATTRIBUTION_FIELD_KEYS.person.gbraid);
+  const wbraid = pick(keys.wbraid, ATTRIBUTION_FIELD_KEYS.person.wbraid);
 
   const consentRaw = person?.[ATTRIBUTION_FIELD_KEYS.person.gdprConsent];
   const consent = Number(consentRaw) === PIPEDRIVE_GDPR_CONSENT_YES;
@@ -157,14 +182,14 @@ export function buildQualifiedLeadEvent(deal: Record<string, unknown>, person: R
 
   const identifiers: IdentifierFlags = { gclid: Boolean(gclid), gbraid: Boolean(gbraid), wbraid: Boolean(wbraid), email: Boolean(email), phone: Boolean(phone), consent };
 
-  if (typeof deal.id !== "number") return { ok: false, reason: "deal_has_no_id", identifiers, personId };
-  const eventTimestamp = pipedriveTimeToIso(deal.add_time);
-  if (!eventTimestamp) return { ok: false, reason: "deal_add_time_unreadable", identifiers, personId };
+  if (transactionId === null) return { ok: false, reason: `${kind}_has_no_id`, identifiers, personId };
+  const eventTimestamp = pipedriveTimeToIso(record.add_time);
+  if (!eventTimestamp) return { ok: false, reason: `${kind}_add_time_unreadable`, identifiers, personId };
   if (!gclid && !gbraid && !wbraid) return { ok: false, reason: "no_google_click_identifier", identifiers, personId };
 
   const userIdentifiers = [email, phone].filter((u): u is UserIdentifier => u !== null);
   const event: DataManagerEvent = {
-    transactionId: transactionIdForDeal(deal.id),
+    transactionId,
     eventTimestamp,
     adIdentifiers: {
       ...(gclid ? { gclid } : {}),
