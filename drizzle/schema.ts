@@ -779,7 +779,12 @@ export type CrmBackupRun = typeof crmBackupRuns.$inferSelect;
  */
 export const googleAdsConversionUploads = mysqlTable("google_ads_conversion_uploads", {
   id: int("id").autoincrement().primaryKey(),
-  dealId: int("dealId").notNull(),
+  /** What the conversion was built from: a Pipedrive Deal (Qualified Lead) or Lead (Enquiry). Migration 0021. */
+  sourceType: mysqlEnum("sourceType", ["deal", "lead"]).notNull().default("deal"),
+  /** The Deal's id as text, or the Lead's UUID. Migration 0021 backfilled it from dealId. */
+  sourceId: varchar("sourceId", { length: 64 }).notNull(),
+  /** Set for Deal rows only; a Lead row has no Deal. Nullable since 0021. */
+  dealId: int("dealId"),
   personId: int("personId"),
   conversionActionId: varchar("conversionActionId", { length: 32 }).notNull(),
   transactionId: varchar("transactionId", { length: 80 }).notNull(),
@@ -792,7 +797,12 @@ export const googleAdsConversionUploads = mysqlTable("google_ads_conversion_uplo
   googleDetail: varchar("googleDetail", { length: 400 }),
   reason: varchar("reason", { length: 400 }),
   attempts: int("attempts").notNull().default(1),
+  /** Times Google answered PROCESSING or REQUEST_STATUS_UNKNOWN; at five the row is marked UNRESOLVED. Migration 0021. */
+  statusChecks: int("statusChecks").notNull().default(0),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().notNull(),
-}, table => [uniqueIndex("google_ads_conversion_uploads_deal_action").on(table.dealId, table.conversionActionId)]);
+}, table => [
+  uniqueIndex("google_ads_conversion_uploads_deal_action").on(table.dealId, table.conversionActionId),
+  uniqueIndex("google_ads_conversion_uploads_source_action").on(table.sourceType, table.sourceId, table.conversionActionId),
+]);
 export type GoogleAdsConversionUpload = typeof googleAdsConversionUploads.$inferSelect;
