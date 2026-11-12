@@ -24,6 +24,7 @@
  *  - /404 is an error page, not a crawl target.
  */
 import { LIBRARY_RESOURCE_PATHS } from "./studentSupportLibrary";
+import { SUCCESS_STORY_PATHS } from "./successStories";
 
 export const PRERENDER_ROUTES: readonly string[] = [
   "/",
@@ -44,6 +45,8 @@ export const PRERENDER_ROUTES: readonly string[] = [
   "/events",
   "/partners",
   "/student-success-stories",
+  // Each country with a cleared story (shared/successStories.ts).
+  ...SUCCESS_STORY_PATHS,
   "/privacy-policy",
   "/terms",
   "/compliance",

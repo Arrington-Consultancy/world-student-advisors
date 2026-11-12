@@ -1,4 +1,5 @@
 import { LIBRARY_CODE_ALIASES, LIBRARY_PATH, getResourceBySlug } from "./studentSupportLibrary";
+import { SUCCESS_STORIES_PATH, SUCCESS_STORY_COUNTRIES } from "./successStories";
 export interface SeoEntry {
   title: string;
   description: string;
@@ -288,9 +289,25 @@ function getLibraryResourceSeo(path: string): SeoEntry | undefined {
   };
 }
 
+/**
+ * Each success story country page names its country, so a link shared on
+ * WhatsApp previews as that country's stories. Only cleared countries have a
+ * page at all (shared/routes.ts), so this never describes a hidden one.
+ */
+function getSuccessStorySeo(path: string): SeoEntry | undefined {
+  if (!path.startsWith(`${SUCCESS_STORIES_PATH}/`)) return undefined;
+  const slug = path.slice(SUCCESS_STORIES_PATH.length + 1);
+  const country = SUCCESS_STORY_COUNTRIES.find(c => c.slug === slug);
+  if (!country) return undefined;
+  return {
+    title: `Student Success Stories: ${country.name} | World Student Advisors`,
+    description: `How students and families from ${country.name} studied abroad with World Student Advisors, in their own words and published with their permission.`,
+  };
+}
+
 export function getSeoForPath(path: string): SeoEntry {
   const canonical = getCanonicalPath(path);
-  return SEO_MAP[canonical] ?? getLibraryResourceSeo(canonical) ?? DEFAULT_SEO;
+  return SEO_MAP[canonical] ?? getLibraryResourceSeo(canonical) ?? getSuccessStorySeo(canonical) ?? DEFAULT_SEO;
 }
 
 export function shouldNoindex(path: string): boolean {

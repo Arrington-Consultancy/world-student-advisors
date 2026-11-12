@@ -138,29 +138,76 @@ export interface PublicationRecord {
   publishedLocations: readonly StoryPublicationLocation[];
 }
 
+/**
+ * The ten countries on Tim Hunt's Student Success Stories page (his design
+ * of 11 November 2026), in his order. A country appears on the page only
+ * when at least one of its stories passes the gate.
+ */
+export const SUCCESS_STORY_COUNTRIES = [
+  { slug: "angola", name: "Angola", flagCode: "ao" },
+  { slug: "ghana", name: "Ghana", flagCode: "gh" },
+  { slug: "kenya", name: "Kenya", flagCode: "ke" },
+  { slug: "malawi", name: "Malawi", flagCode: "mw" },
+  { slug: "nigeria", name: "Nigeria", flagCode: "ng" },
+  { slug: "south-sudan", name: "South Sudan", flagCode: "ss" },
+  { slug: "tanzania", name: "Tanzania", flagCode: "tz" },
+  { slug: "uganda", name: "Uganda", flagCode: "ug" },
+  { slug: "zambia", name: "Zambia", flagCode: "zm" },
+  { slug: "zimbabwe", name: "Zimbabwe", flagCode: "zw" },
+] as const;
+
+export type SuccessStoryCountry = (typeof SUCCESS_STORY_COUNTRIES)[number];
+export type SuccessStoryCountrySlug = SuccessStoryCountry["slug"];
+
+export const SUCCESS_STORIES_PATH = "/student-success-stories";
+
+export function successStoryCountryPath(slug: SuccessStoryCountrySlug): string {
+  return `${SUCCESS_STORIES_PATH}/${slug}`;
+}
+
+/**
+ * A photograph in a story. `illustration` is a decision, not a default: an
+ * AI-made or staged image is labelled as an illustration on the page, so it
+ * is never passed off as a photograph of the person named.
+ */
+export interface StoryImage {
+  src: string;
+  alt: string;
+  /** The image's own pixel size, so the page reserves its space. */
+  width: number;
+  height: number;
+  caption?: string;
+  illustration: boolean;
+}
+
+export type StoryBlock =
+  | { kind: "paragraph"; text: string }
+  | { kind: "image"; image: StoryImage }
+  /** The closing name and course lines, as Tim set them at the end of a story. */
+  | { kind: "signature"; lines: readonly string[] };
+
+/** The story in one language, exactly as approved for publication. */
+export interface StoryVersion {
+  /** The language's name, on its button, e.g. "English", "Português". */
+  language: string;
+  /** The text's language code, so phones and screen readers treat it as that language. */
+  lang: string;
+  title?: string;
+  /** Name, course, institution and year, under the title. */
+  byline: readonly string[];
+  blocks: readonly StoryBlock[];
+}
+
 export interface SuccessStory {
   id: string;
   identity: StoryIdentity;
-  country: string;
-  /** What the student wanted. The opening of the story sequence. */
-  goal: string;
-  /** The choices or challenges, and the advice WSA actually gave. */
-  decision: string;
-  /** The support actually provided. Not what WSA offers in general. */
-  supportProvided: string;
-  /** The verified outcome. Never a guarantee, a projection or an inference. */
-  outcome: string;
-  /** What the student hopes to do next, where they said so. */
-  nextStep?: string;
-  /** Only where evidenced. */
-  course?: string;
-  institution?: string;
-  destination?: string;
-  /** Only where the adviser relationship is evidenced and use is approved. */
-  adviser?: string;
-  /** The student's own words. */
-  quotation?: string;
-  photograph?: { src: string; alt: string };
+  countrySlug: SuccessStoryCountrySlug;
+  /**
+   * The story as written, first version first. More than one version is the
+   * same story in another language (Tim Hunt's Angola stories are in English
+   * and Portuguese). Every word and image here is what the student approved.
+   */
+  versions: readonly StoryVersion[];
 
   evidence: EvidenceRecord;
   consent: ConsentRecord;
@@ -335,11 +382,47 @@ export function outstandingWithdrawals(stories: readonly SuccessStory[]): Succes
  * Every recorded student success story, at any stage.
  *
  * Empty, and that is the current true state rather than an unfinished one.
- * No student story has passed the consent and evidence gate, so there is
- * nothing here to publish. Adding a record to this list does not publish
- * it: decidePublication still has to allow it, and a real entry needs
- * recorded consent for the channel and duration, traceable evidence,
- * verified outcome claims, a named review owner and an authorised human
- * release of the final asset.
+ * Tim Hunt sent twelve stories from ten countries on 11 November 2026, and
+ * Tom Arrington chose on 12 November that each goes live once Tim confirms
+ * the person has agreed to their words and photographs being published.
+ * Until then they stay out of this list, and out of this repository, which
+ * is public: committing a story's words or photographs here would publish
+ * them before the student agreed, whatever the page shows.
+ *
+ * Adding a record still does not publish it: decidePublication has to allow
+ * it, and a real entry needs recorded consent for the channel and duration,
+ * traceable evidence, verified outcome claims, a named review owner and an
+ * authorised human release of the final asset.
  */
 export const SUCCESS_STORIES: readonly SuccessStory[] = [];
+
+/** One country on the page, with its stories that passed the gate, in the store's order. */
+export interface PublishedCountry {
+  country: SuccessStoryCountry;
+  path: string;
+  stories: SuccessStory[];
+}
+
+/**
+ * The countries that have at least one story cleared for the website, in
+ * Tim Hunt's order. A country with none is left off the page altogether,
+ * so the page never shows a flag that leads nowhere.
+ */
+export function publishedCountries(
+  stories: readonly SuccessStory[],
+  now: Date = new Date(),
+): PublishedCountry[] {
+  const cleared = publishableStories(stories, "website", now);
+  return SUCCESS_STORY_COUNTRIES.map(country => ({
+    country,
+    path: successStoryCountryPath(country.slug),
+    stories: cleared.filter(s => s.countrySlug === country.slug),
+  })).filter(c => c.stories.length > 0);
+}
+
+/**
+ * The country pages that exist, derived from the gate, so the route table,
+ * the prerender list and the sitemap test can never offer a page whose
+ * stories are not cleared.
+ */
+export const SUCCESS_STORY_PATHS: readonly string[] = publishedCountries(SUCCESS_STORIES).map(c => c.path);

@@ -29,18 +29,20 @@ function completeStory(): SuccessStory {
   return {
     id: "fixture-only",
     identity: { kind: "named", displayName: "Test Fixture" },
-    country: "Testland",
-    goal: "A goal recorded in the case file.",
-    decision: "The decision the adviser recorded.",
-    supportProvided: "The support the case record shows was given.",
-    outcome: "The outcome the evidence shows.",
-    nextStep: "What the student said they hope to do next.",
-    course: "Test Course",
-    institution: "Test University",
-    destination: "United Kingdom",
-    adviser: "Recorded Adviser",
-    quotation: "Words the student actually said.",
-    photograph: { src: "/fixture.jpg", alt: "Fixture" },
+    countrySlug: "malawi",
+    versions: [
+      {
+        language: "English",
+        lang: "en-GB",
+        title: "A fictional story",
+        byline: ["Test Fixture", "Test Course, Test University"],
+        blocks: [
+          { kind: "paragraph", text: "Words the student approved." },
+          { kind: "image", image: { src: "/fixture.jpg", alt: "Fixture", width: 4, height: 3, illustration: false } },
+          { kind: "signature", lines: ["Test Fixture, Testland"] },
+        ],
+      },
+    ],
     evidence: {
       reference: "CASE-FIXTURE-1",
       evidenceDate: "2026-01-01",
