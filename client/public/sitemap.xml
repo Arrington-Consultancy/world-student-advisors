@@ -286,6 +286,61 @@
     <priority>0.6</priority>
   </url>
   <url>
+    <loc>https://www.worldstudentadvisors.com/student-success-stories</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://www.worldstudentadvisors.com/student-success-stories/angola</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://www.worldstudentadvisors.com/student-success-stories/ghana</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://www.worldstudentadvisors.com/student-success-stories/kenya</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://www.worldstudentadvisors.com/student-success-stories/malawi</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://www.worldstudentadvisors.com/student-success-stories/nigeria</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://www.worldstudentadvisors.com/student-success-stories/south-sudan</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://www.worldstudentadvisors.com/student-success-stories/tanzania</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://www.worldstudentadvisors.com/student-success-stories/uganda</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://www.worldstudentadvisors.com/student-success-stories/zambia</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://www.worldstudentadvisors.com/student-success-stories/zimbabwe</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
     <loc>https://www.worldstudentadvisors.com/events</loc>
     <changefreq>weekly</changefreq>
     <priority>0.7</priority>

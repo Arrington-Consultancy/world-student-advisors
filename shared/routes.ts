@@ -8,6 +8,7 @@
  * removing a page.
  */
 import { LIBRARY_RESOURCE_PATHS } from "./studentSupportLibrary";
+import { SUCCESS_STORY_PATHS } from "./successStories";
 
 export const VALID_CLIENT_ROUTES: readonly string[] = [
   "/",
@@ -42,6 +43,12 @@ export const VALID_CLIENT_ROUTES: readonly string[] = [
   "/partners",
   "/our-global-education-partners",
   "/student-success-stories",
+  // One page per country on Tim Hunt's Student Success Stories page
+  // (11 November 2026), /student-success-stories/<country>, derived from the
+  // consent gate in shared/successStories.ts: a country exists only once one
+  // of its stories is cleared, so no unconsented story ever has an address.
+  // In App.tsx these are the single pattern /student-success-stories/:country.
+  ...SUCCESS_STORY_PATHS,
   "/contact",
   "/privacy",
   "/privacy-policy",

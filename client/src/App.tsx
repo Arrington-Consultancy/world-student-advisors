@@ -19,6 +19,7 @@ import StaffPortal from "./pages/StaffPortal";
 import Events from "./pages/Events";
 import Partners from "./pages/Partners";
 import StudentSuccessStories from "./pages/StudentSuccessStories";
+import StudentSuccessStoryCountry from "./pages/StudentSuccessStoryCountry";
 import Contact from "./pages/Contact";
 import SportPathways from "./pages/SportPathways";
 import OnlineLearning from "./pages/OnlineLearning";
@@ -96,6 +97,7 @@ function Router() {
       <Route path={"/partners"} component={Partners} />
       <Route path={"/our-global-education-partners"} component={Partners} />
       <Route path={"/student-success-stories"} component={StudentSuccessStories} />
+      <Route path={"/student-success-stories/:country"} component={StudentSuccessStoryCountry} />
       <Route path={"/contact"} component={Contact} />
       <Route path={"/privacy"} component={PrivacyPolicy} />
       <Route path={"/privacy-policy"} component={PrivacyPolicy} />

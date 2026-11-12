@@ -3,6 +3,7 @@ import fs from "fs";
 import path from "path";
 import { VALID_CLIENT_ROUTES } from "../shared/routes";
 import { LIBRARY_RESOURCE_PATHS } from "../shared/studentSupportLibrary";
+import { SUCCESS_STORY_PATHS } from "../shared/successStories";
 
 // shared/routes.ts is a hand-maintained snapshot of client/src/App.tsx's
 // route table (server code can't import App.tsx directly — it pulls in
@@ -16,11 +17,18 @@ describe("shared/routes.ts stays in sync with client/src/App.tsx", () => {
     const appTsxPath = path.resolve(import.meta.dirname, "../client/src/App.tsx");
     const source = fs.readFileSync(appTsxPath, "utf-8");
     const patterns = [...source.matchAll(/<Route path=\{"([^"]+)"\}/g)].map(m => m[1]);
-    // The one parameterised route, the Student Support Library resource
-    // page, stands for every slug in the library data; every other route
-    // is a literal path.
-    const matches = patterns.flatMap(p => (p === "/student-support-library/:slug" ? [...LIBRARY_RESOURCE_PATHS] : [p]));
-    for (const p of matches) expect(p, "only the library resource route may carry a parameter").not.toContain(":");
+    // The two parameterised routes stand for their data: the Student Support
+    // Library resource page for every slug in the library, and the success
+    // story country page for every country with a cleared story. Every other
+    // route is a literal path.
+    const expand = (p: string): string[] =>
+      p === "/student-support-library/:slug"
+        ? [...LIBRARY_RESOURCE_PATHS]
+        : p === "/student-success-stories/:country"
+          ? [...SUCCESS_STORY_PATHS]
+          : [p];
+    const matches = patterns.flatMap(expand);
+    for (const p of matches) expect(p, "only the library and success story routes may carry a parameter").not.toContain(":");
 
     expect(matches.length).toBeGreaterThan(0);
     expect(new Set(matches)).toEqual(new Set(VALID_CLIENT_ROUTES));
