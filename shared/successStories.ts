@@ -69,6 +69,8 @@
  * privileges one outcome shape over another.
  */
 
+import { STORY_RECORDS } from "./successStoryRecords";
+
 /** How the student is identified publicly. Anonymisation must be a decision, not a blank field. */
 export type StoryIdentity =
   | { kind: "named"; displayName: string }
@@ -381,20 +383,13 @@ export function outstandingWithdrawals(stories: readonly SuccessStory[]): Succes
 /**
  * Every recorded student success story, at any stage.
  *
- * Empty, and that is the current true state rather than an unfinished one.
- * Tim Hunt sent twelve stories from ten countries on 11 November 2026, and
- * Tom Arrington chose on 12 November that each goes live once Tim confirms
- * the person has agreed to their words and photographs being published.
- * Until then they stay out of this list, and out of this repository, which
- * is public: committing a story's words or photographs here would publish
- * them before the student agreed, whatever the page shows.
- *
- * Adding a record still does not publish it: decidePublication has to allow
- * it, and a real entry needs recorded consent for the channel and duration,
- * traceable evidence, verified outcome claims, a named review owner and an
- * authorised human release of the final asset.
+ * Tim Hunt's twelve stories of 11 November 2026, approved for the website
+ * and released by Tom Arrington on 12 November 2026
+ * (shared/successStoryRecords.ts). A record being here still does not
+ * publish it: decidePublication has to allow it, so a story whose consent
+ * lapses or is withdrawn leaves every page at once.
  */
-export const SUCCESS_STORIES: readonly SuccessStory[] = [];
+export const SUCCESS_STORIES: readonly SuccessStory[] = STORY_RECORDS;
 
 /** One country on the page, with its stories that passed the gate, in the store's order. */
 export interface PublishedCountry {
