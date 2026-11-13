@@ -94,6 +94,11 @@ export const VALID_CLIENT_ROUTES: readonly string[] = [
   // sitemap, unlinked.
   "/speak-to-gladys",
   "/speak-to-gladys-thank-you",
+  // Speak to Eldah, the first Student Counsellor page, Tim Hunt's email of
+  // 12 November 2026. Published like Gladys's; its thank-you page is there
+  // for her Pipedrive form to send the student to, noindex and unlinked.
+  "/speak-to-eldah",
+  "/speak-to-eldah/thank-you",
   // The Sarkin Fulani Future Leaders Programme landing page, Tim Hunt's brief
   // of 8 October 2026 from Farooq Gajo's revised proposal. A real route so
   // it can be reviewed by the Office of His Royal Highness and Brooke House
