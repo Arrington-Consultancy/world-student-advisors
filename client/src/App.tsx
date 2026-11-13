@@ -59,6 +59,8 @@ import SpeakToMadalitso from "./pages/SpeakToMadalitso";
 import SpeakToMadalitsoThankYou from "./pages/SpeakToMadalitsoThankYou";
 import SpeakToGladys from "./pages/SpeakToGladys";
 import SpeakToGladysThankYou from "./pages/SpeakToGladysThankYou";
+import SpeakToEldah from "./pages/SpeakToEldah";
+import SpeakToEldahThankYou from "./pages/SpeakToEldahThankYou";
 
 
 function Router() {
@@ -135,6 +137,8 @@ function Router() {
           Pipedrive form. See client/src/lib/speakToGladys.ts. */}
       <Route path={"/speak-to-gladys"} component={SpeakToGladys} />
       <Route path={"/speak-to-gladys-thank-you"} component={SpeakToGladysThankYou} />
+      <Route path={"/speak-to-eldah"} component={SpeakToEldah} />
+      <Route path={"/speak-to-eldah/thank-you"} component={SpeakToEldahThankYou} />
       {/* Draft for review, 8 October 2026: noindex, out of the sitemap and
           prerender list, linked from nowhere. See client/src/lib/sarkinFulani.ts. */}
       <Route path={"/sarkin-fulani-future-leaders"} component={SarkinFulaniFutureLeaders} />
