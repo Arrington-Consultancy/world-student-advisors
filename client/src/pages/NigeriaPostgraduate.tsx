@@ -1,4 +1,3 @@
-import { useState, type FormEvent } from "react";
 import { Link } from "wouter";
 import { ArrowRight, BadgeCheck, BookOpen, CheckCircle2, FileText, Mail, MessageCircle, MessageSquare, ShieldCheck, UserRound } from "lucide-react";
 import {
@@ -7,12 +6,11 @@ import {
   CAMPAIGN_PROGRAMMES,
   COUNSELLORS,
   HELP_CONTACT,
-  HELP_ME_DECIDE,
   LIBRARY,
-  NIGERIA_DIALLING_CODE,
   OTHER_DESTINATIONS_NOTE,
-  toInternationalNigerianNumber,
 } from "@/lib/nigeriaLanding";
+import PipedriveFormEmbed from "@/components/PipedriveFormEmbed";
+import { REGISTRATION_FORM_URL } from "@/lib/registrationForm";
 
 /**
  * Nigeria postgraduate landing page. Live since 12 September 2026.
@@ -26,10 +24,10 @@ import {
  * added, all in one change. Paid traffic is a separate decision and had
  * not been given when this page went live; nothing here starts an ad.
  *
- * The short form does not create leads itself. It hands what the student
- * typed to the existing /contact signup, which is the one controlled path
- * into Pipedrive and carries the validation and the bot check. A second,
- * weaker lead route would be a real risk for the sake of a few fields.
+ * THE FORM. Since 14 November 2026 the page embeds Tim Hunt's Pipedrive
+ * Website Registration Form (client/src/lib/registrationForm.ts), which
+ * routes the registration to Claudia and sends the emails. Until then a
+ * short form here handed over to the website's own sign-up on /contact.
  */
 
 const FLAG_GREEN = "#008751";
@@ -52,89 +50,26 @@ function NigerianFlag({ className = "" }: { className?: string }) {
 const BENEFIT_ICONS = [UserRound, FileText, MessageSquare, ShieldCheck];
 
 /**
- * The short CTA form. Five fields, which is the least that lets a
- * counsellor start, and then straight into the controlled signup with
- * those answers carried across.
+ * The registration form: Tim Hunt's Pipedrive Website Registration Form,
+ * embedded in the page (his email of 14 November 2026, "Replace the existing
+ * registration form on the Nigeria landing page with the same Pipedrive
+ * form, embedded within the page"). It replaces the short form that handed
+ * over to the website's own sign-up on /contact. One copy on the page, high
+ * up, where the short form was; the second short form further down is now a
+ * button back to it, so the same Pipedrive form is never loaded twice.
  */
-function EnquiryForm({ id }: { id: string }) {
-  const [firstName, setFirstName] = useState("");
-  const [email, setEmail] = useState("");
-  const [phone, setPhone] = useState("");
-  const [level, setLevel] = useState("");
-  const [destination, setDestination] = useState("");
-
-  const submit = (e: FormEvent) => {
-    e.preventDefault();
-    const params = new URLSearchParams();
-    if (firstName.trim()) params.set("firstName", firstName.trim());
-    if (email.trim()) params.set("email", email.trim());
-    // A local Nigerian number is handed over in international form, or not
-    // at all. A mangled number is worse than a missing one.
-    const international = toInternationalNigerianNumber(phone);
-    if (international) params.set("phone", international);
-    // The value the student picked is the value that is recorded. Taught
-    // Master's stays Taught Master's, Other stays Other, and Germany stays
-    // Germany, all the way into the CRM.
-    if (level) params.set("desiredLevel", level);
-    if (destination) params.set("preferredDestination", destination);
-    window.location.assign(`/contact?${params.toString()}#student-signup`);
-  };
-
-  const field =
-    "w-full min-w-0 max-w-full rounded-xl border border-wsa-navy/15 bg-white px-4 py-3 text-base text-wsa-navy placeholder:text-gray-400 focus:border-wsa-red/60 focus:outline-none";
-
+function RegistrationForm({ id }: { id: string }) {
   return (
-    <form onSubmit={submit} className="min-w-0 max-w-full space-y-2.5" aria-labelledby={`${id}-heading`}>
+    <div id={id} className="min-w-0 max-w-full scroll-mt-28" aria-labelledby={`${id}-heading`}>
       <p id={`${id}-heading`} className="text-lg font-semibold text-wsa-navy">
         Speak to a counsellor
       </p>
-      <p className="pb-1 text-sm text-gray-600">Five questions now, the rest on the next page.</p>
-      <label className="sr-only" htmlFor={`${id}-first`}>First name</label>
-      <input id={`${id}-first`} value={firstName} onChange={e => setFirstName(e.target.value)} placeholder="First name" autoComplete="given-name" required className={field} />
-      <label className="sr-only" htmlFor={`${id}-email`}>Email address</label>
-      <input id={`${id}-email`} type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="Email address" autoComplete="email" required className={field} />
-      <label className="sr-only" htmlFor={`${id}-phone`}>WhatsApp number</label>
-      <div className="flex min-w-0 max-w-full items-stretch overflow-hidden rounded-xl border border-wsa-navy/15 bg-white focus-within:border-wsa-red/60">
-        <span className="flex items-center border-r border-wsa-navy/10 bg-wsa-stone/60 px-3 text-base text-gray-600" aria-hidden>
-          {NIGERIA_DIALLING_CODE}
-        </span>
-        <input
-          id={`${id}-phone`}
-          type="tel"
-          value={phone}
-          onChange={e => setPhone(e.target.value)}
-          placeholder="WhatsApp number"
-          autoComplete="tel"
-          className="min-w-0 flex-1 bg-transparent px-4 py-3 text-base text-wsa-navy placeholder:text-gray-400 focus:outline-none"
-        />
-      </div>
-      <label className="sr-only" htmlFor={`${id}-level`}>What you want to study</label>
-      <select id={`${id}-level`} value={level} onChange={e => setLevel(e.target.value)} required className={`${field} ${level ? "" : "text-gray-400"}`}>
-        <option value="">What do you want to study?</option>
-        {CAMPAIGN_PROGRAMMES.map(p => (
-          <option key={p.value} value={p.value}>{p.label}</option>
-        ))}
-      </select>
-      <label className="sr-only" htmlFor={`${id}-destination`}>Preferred destination</label>
-      <select id={`${id}-destination`} value={destination} onChange={e => setDestination(e.target.value)} className={`${field} ${destination ? "" : "text-gray-400"}`}>
-        <option value="">Preferred destination (optional)</option>
-        {CAMPAIGN_DESTINATIONS.map(d => (
-          <option key={d.value} value={d.value}>{d.label}</option>
-        ))}
-        <option value={HELP_ME_DECIDE}>Help me decide</option>
-      </select>
-      <button
-        type="submit"
-        className="flex w-full items-center justify-center gap-2 rounded-xl bg-wsa-red px-5 py-3.5 text-base font-semibold text-white transition hover:bg-wsa-red/90"
-      >
-        Get my study options
-        <ArrowRight className="h-4 w-4" aria-hidden />
-      </button>
-      <p className="pt-0.5 text-xs leading-relaxed text-gray-500">
-        We use your details to advise you on studying abroad. See our{" "}
-        <Link href="/privacy-policy" className="underline underline-offset-2 hover:text-wsa-navy">privacy policy</Link>.
-      </p>
-    </form>
+      <p className="pb-2 text-sm text-gray-600">Leave your details and our team will contact you.</p>
+      <PipedriveFormEmbed
+        embedUrl={REGISTRATION_FORM_URL}
+        privacyLine="We use your details to advise you on studying abroad."
+      />
+    </div>
   );
 }
 
@@ -259,7 +194,7 @@ export default function NigeriaPostgraduate() {
 
           {/* The form sits high on mobile too: it is the point of the page. */}
           <div className="min-w-0 rounded-2xl border border-wsa-navy/12 bg-white p-5 shadow-sm lg:sticky lg:top-6">
-            <EnquiryForm id="hero-form" />
+            <RegistrationForm id="registration-form" />
           </div>
         </div>
       </section>
@@ -415,7 +350,15 @@ export default function NigeriaPostgraduate() {
             </div>
           </div>
           <div className="min-w-0 rounded-2xl bg-white p-5 shadow-sm">
-            <EnquiryForm id="footer-form" />
+            <p className="text-lg font-semibold text-wsa-navy">Speak to a counsellor</p>
+            <p className="pb-4 pt-1 text-sm text-gray-600">Leave your details and our team will contact you.</p>
+            <a
+              href="#registration-form"
+              className="flex w-full items-center justify-center gap-2 rounded-xl bg-wsa-red px-5 py-3.5 text-base font-semibold text-white transition hover:bg-wsa-red/90"
+            >
+              Send my details
+              <ArrowRight className="h-4 w-4" aria-hidden />
+            </a>
           </div>
         </div>
       </section>

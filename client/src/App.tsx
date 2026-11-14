@@ -21,6 +21,7 @@ import Partners from "./pages/Partners";
 import StudentSuccessStories from "./pages/StudentSuccessStories";
 import StudentSuccessStoryCountry from "./pages/StudentSuccessStoryCountry";
 import Contact from "./pages/Contact";
+import ContactThankYou from "./pages/ContactThankYou";
 import SportPathways from "./pages/SportPathways";
 import OnlineLearning from "./pages/OnlineLearning";
 import Privacy from "./pages/Privacy";
@@ -99,6 +100,9 @@ function Router() {
       <Route path={"/student-success-stories"} component={StudentSuccessStories} />
       <Route path={"/student-success-stories/:country"} component={StudentSuccessStoryCountry} />
       <Route path={"/contact"} component={Contact} />
+      {/* Where Tim Hunt's Pipedrive Website Registration Form sends the student
+          (client/src/lib/registrationForm.ts). Noindex, linked from nowhere. */}
+      <Route path={"/contact/thank-you"} component={ContactThankYou} />
       <Route path={"/privacy"} component={PrivacyPolicy} />
       <Route path={"/privacy-policy"} component={PrivacyPolicy} />
       <Route path={"/terms"} component={Terms} />

@@ -222,14 +222,31 @@ describe("a published campaign page is indexable, discoverable and carries no dr
   });
 });
 
-describe("the short form hands over to the one controlled lead path", () => {
+describe("the page embeds Tim Hunt's Pipedrive Website Registration Form (14 November 2026)", () => {
+  // Tim Hunt: "Replace the existing registration form on the Nigeria landing
+  // page with the same Pipedrive form, embedded within the page." Until then
+  // a short form here handed over to the website's own sign-up on /contact.
   it("does not create a lead itself", () => {
     expect(page).not.toMatch(/createStudentLead|submitStudent|useMutation/);
   });
 
-  it("sends the student to the signup form", () => {
-    expect(page).toContain("/contact?");
+  it("embeds Tim's registration form once, through Pipedrive's loader", () => {
+    expect(page).toContain("embedUrl={REGISTRATION_FORM_URL}");
+    expect(page.match(/<RegistrationForm id=/g)).toHaveLength(1);
+    expect(page).not.toContain("EnquiryForm");
   });
+
+  it("no longer hands anything over to the website's own form", () => {
+    expect(page).not.toContain("/contact?");
+    expect(page).not.toContain("params.set(");
+  });
+
+  it("points the lower call to action back to the same form rather than loading it twice", () => {
+    expect(page).toContain('href="#registration-form"');
+  });
+
+  // The website form still serves campaign hand-offs (Sarkin Fulani), so its
+  // own option and prefill guarantees still hold.
 
   it("only ever emits values the signup form accepts", () => {
     for (const p of CAMPAIGN_PROGRAMMES) expect(isDesiredLevelValue(p.value)).toBe(true);
@@ -336,10 +353,7 @@ describe("the campaign programme scope and five destinations stay separate into 
     expect(germany.value).not.toBe("multiple");
   });
 
-  it("the landing form hands over what the student picked, with no remapping", () => {
-    expect(page).toContain('params.set("desiredLevel", level)');
-    expect(page).toContain('params.set("preferredDestination", destination)');
-    // The old collapsing map is gone.
+  it("the old collapsing map is gone", () => {
     expect(page).not.toContain("recordedAs");
   });
 
