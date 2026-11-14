@@ -114,6 +114,10 @@ export const SEO_MAP: Record<string, SeoEntry> = {
     description:
       "Start your application or get in touch with WorldStudentAdvisors, free personal counsellor guidance for international students.",
   },
+  "/contact/thank-you": {
+    title: "Thank you for registering | World Student Advisors",
+    description: "Thank you for registering with World Student Advisors. Our team will be in touch with you shortly.",
+  },
   "/privacy-policy": {
     title: "Privacy Policy | World Student Advisors",
     description:
@@ -264,7 +268,7 @@ export const NOINDEX_PATH_PREFIXES = ["/portal", "/staff-portal"];
 // supplied the finished content, form and photographs together.
 // /speak-to-gladys-thank-you is the same for Tim's Ghana form (24 October
 // 2026); /speak-to-gladys is published from the start, as Madalitso's was.
-export const NOINDEX_PATHS = new Set(["/404", "/speak-to-juliet/thank-you", "/sarkin-fulani-future-leaders", "/speak-to-madalitso/thank-you", "/speak-to-gladys-thank-you"]);
+export const NOINDEX_PATHS = new Set(["/404", "/speak-to-juliet/thank-you", "/sarkin-fulani-future-leaders", "/speak-to-madalitso/thank-you", "/speak-to-gladys-thank-you", "/contact/thank-you"]);
 
 export function getCanonicalPath(path: string): string {
   return CANONICAL_PATHS[path] ?? path;
