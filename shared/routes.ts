@@ -50,6 +50,11 @@ export const VALID_CLIENT_ROUTES: readonly string[] = [
   // In App.tsx these are the single pattern /student-success-stories/:country.
   ...SUCCESS_STORY_PATHS,
   "/contact",
+  // Where Tim Hunt's Pipedrive Website Registration Form sends the student
+  // after registering (14 November 2026); reports the Google Ads conversion
+  // the website's own form used to. Noindex, out of the sitemap and the
+  // prerender list, linked from nowhere.
+  "/contact/thank-you",
   "/privacy",
   "/privacy-policy",
   "/terms",
