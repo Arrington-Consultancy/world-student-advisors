@@ -220,6 +220,15 @@ export const SEO_MAP: Record<string, SeoEntry> = {
     title: "Thank you, your details are with Glenice | World Student Advisors",
     description: "Thank you for sending your details. Glenice will be in touch with you shortly.",
   },
+  "/speak-to-manet": {
+    title: "Speak to Manet, your WSA Student Counsellor | World Student Advisors",
+    description:
+      "Manet Khamayo is a Student Counsellor in WSA's UK Head Office team, specialising in study destinations beyond the UK and online learning. Message her on WhatsApp for free help choosing a course and destination and preparing your applications.",
+  },
+  "/speak-to-manet/thank-you": {
+    title: "Thank you, your details are with Manet | World Student Advisors",
+    description: "Thank you for sending your details. Manet will be in touch with you shortly.",
+  },
   "/speak-to-eldah/thank-you": {
     title: "Thank you, your details are with Eldah | World Student Advisors",
     description: "Thank you for sending your details. Eldah will be in touch with you shortly.",
@@ -291,7 +300,7 @@ export const NOINDEX_PATH_PREFIXES = ["/portal", "/staff-portal"];
 // supplied the finished content, form and photographs together.
 // /speak-to-gladys-thank-you is the same for Tim's Ghana form (24 October
 // 2026); /speak-to-gladys is published from the start, as Madalitso's was.
-export const NOINDEX_PATHS = new Set(["/404", "/speak-to-juliet/thank-you", "/sarkin-fulani-future-leaders", "/speak-to-madalitso/thank-you", "/speak-to-gladys-thank-you", "/speak-to-eldah/thank-you", "/contact/thank-you", "/speak-to-glenice/thank-you"]);
+export const NOINDEX_PATHS = new Set(["/404", "/speak-to-juliet/thank-you", "/sarkin-fulani-future-leaders", "/speak-to-madalitso/thank-you", "/speak-to-gladys-thank-you", "/speak-to-eldah/thank-you", "/contact/thank-you", "/speak-to-glenice/thank-you", "/speak-to-manet/thank-you"]);
 
 export function getCanonicalPath(path: string): string {
   return CANONICAL_PATHS[path] ?? path;

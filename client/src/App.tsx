@@ -65,6 +65,8 @@ import SpeakToEldahThankYou from "./pages/SpeakToEldahThankYou";
 import SpeakToClaudia from "./pages/SpeakToClaudia";
 import SpeakToGlenice from "./pages/SpeakToGlenice";
 import SpeakToGleniceThankYou from "./pages/SpeakToGleniceThankYou";
+import SpeakToManet from "./pages/SpeakToManet";
+import SpeakToManetThankYou from "./pages/SpeakToManetThankYou";
 
 
 function Router() {
@@ -149,6 +151,8 @@ function Router() {
       <Route path={"/speak-to-claudia"} component={SpeakToClaudia} />
       <Route path={"/speak-to-glenice"} component={SpeakToGlenice} />
       <Route path={"/speak-to-glenice/thank-you"} component={SpeakToGleniceThankYou} />
+      <Route path={"/speak-to-manet"} component={SpeakToManet} />
+      <Route path={"/speak-to-manet/thank-you"} component={SpeakToManetThankYou} />
       {/* Draft for review, 8 October 2026: noindex, out of the sitemap and
           prerender list, linked from nowhere. See client/src/lib/sarkinFulani.ts. */}
       <Route path={"/sarkin-fulani-future-leaders"} component={SarkinFulaniFutureLeaders} />
