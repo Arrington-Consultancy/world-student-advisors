@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Link } from "wouter";
-import { ArrowRight, FileCheck, GraduationCap, Mail, MessageCircle, Plane, Play, X } from "lucide-react";
+import { ArrowRight, Coins, FileCheck, GraduationCap, Mail, MessageCircle, Mic, Phone, Plane, Play, X } from "lucide-react";
 import { Dialog, DialogClose, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { DESTINATION_FLAGS, FORM_FALLBACK, PIPEDRIVE_LOADER_SRC, whatsappHref } from "@/lib/advisorLandingPage";
 import { SUCCESS_STORIES_LINK, type CounsellorLandingContent } from "@/lib/counsellorLandingPage";
@@ -23,7 +23,7 @@ import { SUCCESS_STORIES_LINK, type CounsellorLandingContent } from "@/lib/couns
 
 const WHATSAPP_GREEN = "#128C7E";
 const WSA_LOGO = "/manus-storage/wsa_logo_beb199d6.png";
-const HELP_ICONS = { course: GraduationCap, applications: FileCheck, "next-steps": Plane } as const;
+const HELP_ICONS = { course: GraduationCap, applications: FileCheck, budget: Coins, "next-steps": Plane } as const;
 
 function RedRule() {
   return <span aria-hidden className="mt-2 block h-1 w-12 rounded-full bg-wsa-red" />;
@@ -62,15 +62,22 @@ function ContactLines({ content, className = "" }: { content: CounsellorLandingC
   return (
     <ul className={`space-y-2 text-base ${className}`}>
       <li>
-        <a
-          href={whatsappHref(person.whatsappDigits, person.firstMessage)}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="inline-flex items-center gap-2.5 font-semibold text-wsa-navy hover:underline"
-        >
-          <MessageCircle className="h-5 w-5 shrink-0 text-wsa-red" aria-hidden />
-          {person.whatsapp}
-        </a>
+        {person.callable ? (
+          <a href={`tel:+${person.whatsappDigits}`} className="inline-flex items-center gap-2.5 font-semibold text-wsa-navy hover:underline">
+            <Phone className="h-5 w-5 shrink-0 text-wsa-red" aria-hidden />
+            {person.whatsapp}
+          </a>
+        ) : (
+          <a
+            href={whatsappHref(person.whatsappDigits, person.firstMessage)}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-2.5 font-semibold text-wsa-navy hover:underline"
+          >
+            <MessageCircle className="h-5 w-5 shrink-0 text-wsa-red" aria-hidden />
+            {person.whatsapp}
+          </a>
+        )}
       </li>
       <li>
         <a href={`mailto:${person.email}`} className="inline-flex items-center gap-2.5 break-all font-semibold text-wsa-navy hover:underline">
@@ -82,9 +89,9 @@ function ContactLines({ content, className = "" }: { content: CounsellorLandingC
   );
 }
 
-function Video({ content }: { content: CounsellorLandingContent }) {
+function Video({ content, video }: { content: CounsellorLandingContent; video: NonNullable<CounsellorLandingContent["video"]> }) {
   const [playing, setPlaying] = useState(false);
-  const { video, person } = content;
+  const { person } = content;
 
   return (
     <figure className="min-w-0">
@@ -134,9 +141,8 @@ function Video({ content }: { content: CounsellorLandingContent }) {
   );
 }
 
-function Certificate({ content }: { content: CounsellorLandingContent }) {
+function Certificate({ certificate }: { certificate: NonNullable<CounsellorLandingContent["credentials"]>["certificate"] }) {
   const [open, setOpen] = useState(false);
-  const { certificate } = content.credentials;
   return (
     <div className="flex flex-col items-center gap-2">
       <button
@@ -179,6 +185,86 @@ function Certificate({ content }: { content: CounsellorLandingContent }) {
           </div>
         </DialogContent>
       </Dialog>
+    </div>
+  );
+}
+
+/**
+ * A WSA podcast the counsellor is not in (Claudia's mock-up: WSA 039). Its
+ * poster is WSA's own, a microphone, never the counsellor's photograph. The
+ * video is created only when the visitor presses play.
+ */
+function Waveform({ heights }: { heights: ReadonlyArray<number> }) {
+  return (
+    <span aria-hidden className="flex items-center gap-1">
+      {heights.map((h, i) => (
+        <span key={i} className="w-1 rounded-full bg-sky-500/70" style={{ height: `${h * 0.3}rem` }} />
+      ))}
+    </span>
+  );
+}
+
+function Podcast({ podcast }: { podcast: NonNullable<CounsellorLandingContent["podcast"]> }) {
+  const [playing, setPlaying] = useState(false);
+  const player = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    if (playing) player.current?.scrollIntoView?.({ block: "nearest", behavior: "smooth" });
+  }, [playing]);
+
+  return (
+    <div className="mx-auto grid max-w-6xl items-center gap-6 overflow-hidden rounded-2xl bg-sky-50 p-5 sm:p-6 md:grid-cols-[2fr_3fr] md:gap-8">
+      <div ref={player} className="min-w-0">
+        {playing ? (
+          <div className="overflow-hidden rounded-xl bg-black">
+            <iframe
+              src={`https://www.youtube-nocookie.com/embed/${podcast.youtubeId}?autoplay=1&rel=0`}
+              title={`${podcast.code}: ${podcast.title}`}
+              allow="accelerometer; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+              allowFullScreen
+              className="aspect-video w-full max-w-full border-0"
+            />
+          </div>
+        ) : (
+          <button
+            type="button"
+            onClick={() => setPlaying(true)}
+            aria-label={`Play: ${podcast.title}`}
+            className="group relative flex aspect-video w-full items-center justify-center overflow-hidden rounded-xl bg-gradient-to-br from-white to-sky-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-wsa-navy"
+          >
+            <span className="flex items-center gap-4">
+              <Waveform heights={[2, 4, 7, 5, 9, 6, 3]} />
+              <span className="relative">
+                <Mic className="h-20 w-20 text-wsa-navy" strokeWidth={1.5} aria-hidden />
+                <span className="absolute -bottom-1 -right-3 flex h-11 w-11 items-center justify-center rounded-full bg-wsa-red shadow transition group-hover:scale-105">
+                  <Play className="ml-0.5 h-5 w-5 text-white" aria-hidden />
+                </span>
+              </span>
+              <Waveform heights={[3, 6, 9, 5, 7, 4, 2]} />
+            </span>
+          </button>
+        )}
+      </div>
+      <div className="min-w-0">
+        <Link
+          href={podcast.libraryPath}
+          className="inline-flex rounded-full bg-wsa-navy px-3 py-1 text-sm font-semibold text-white hover:opacity-90"
+        >
+          {podcast.code} · Student Support Library
+        </Link>
+        <h2 className="mt-3 text-2xl font-bold leading-tight tracking-tight text-wsa-navy sm:text-3xl">{podcast.title}</h2>
+        <p className="mt-3 text-lg leading-relaxed text-gray-800">{podcast.body}</p>
+        {!playing && (
+          <button
+            type="button"
+            onClick={() => setPlaying(true)}
+            className="mt-5 inline-flex min-h-[3rem] w-full items-center justify-center gap-2.5 rounded-xl bg-wsa-red px-6 py-3 text-base font-semibold text-white transition hover:opacity-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-wsa-navy sm:w-auto"
+          >
+            <Play className="h-5 w-5" aria-hidden />
+            {podcast.cta}
+          </button>
+        )}
+      </div>
     </div>
   );
 }
@@ -286,6 +372,12 @@ export default function CounsellorLandingPage({ content }: { content: Counsellor
               />
             </div>
             <p className="mt-4 text-xl font-semibold text-wsa-navy">{hero.subheading}</p>
+            {hero.showNameAndRole && (
+              <p className="mt-4 text-wsa-navy">
+                <span className="block text-2xl font-bold leading-tight">{person.name}</span>
+                <span className="mt-1 block text-lg font-semibold leading-snug">{person.role}</span>
+              </p>
+            )}
             {hero.intro.map(p => (
               <p key={p.slice(0, 32)} className="mt-3 max-w-xl text-lg leading-relaxed text-gray-800">{p}</p>
             ))}
@@ -323,19 +415,25 @@ export default function CounsellorLandingPage({ content }: { content: Counsellor
       </section>
 
       {/* ── Video and credentials ────────────────────────────────── */}
-      <section className="px-4 py-10 sm:px-6 lg:py-14">
-        <div className="mx-auto grid max-w-6xl gap-8 lg:grid-cols-2 lg:gap-12">
-          <Video content={content} />
-          <div className="flex flex-col gap-5 sm:flex-row sm:items-start">
-            <div className="min-w-0 flex-1">
-              <h2 className="text-2xl font-bold leading-tight tracking-tight text-wsa-navy sm:text-3xl">{content.credentials.heading}</h2>
-              <RedRule />
-              <p className="mt-4 text-lg leading-relaxed text-gray-800">{content.credentials.body}</p>
-            </div>
-            <Certificate content={content} />
+      {content.video || content.credentials ? (
+        <section className="px-4 py-10 sm:px-6 lg:py-14">
+          <div className="mx-auto grid max-w-6xl gap-8 lg:grid-cols-2 lg:gap-12">
+            {content.video && <Video content={content} video={content.video} />}
+            {content.credentials && (
+              <div className="flex flex-col gap-5 sm:flex-row sm:items-start">
+                <div className="min-w-0 flex-1">
+                  <h2 className="text-2xl font-bold leading-tight tracking-tight text-wsa-navy sm:text-3xl">{content.credentials.heading}</h2>
+                  <RedRule />
+                  <p className="mt-4 text-lg leading-relaxed text-gray-800">{content.credentials.body}</p>
+                </div>
+                <Certificate certificate={content.credentials.certificate} />
+              </div>
+            )}
           </div>
-        </div>
-      </section>
+        </section>
+      ) : (
+        <div aria-hidden className="h-10 lg:h-14" />
+      )}
 
       {/* ── How I can help you ───────────────────────────────────── */}
       <section className="px-4 pb-10 sm:px-6 lg:pb-14">
@@ -373,6 +471,13 @@ export default function CounsellorLandingPage({ content }: { content: Counsellor
           </ul>
         </div>
       </section>
+
+      {/* ── Podcast ──────────────────────────────────────────────── */}
+      {content.podcast && (
+        <section className="px-4 pb-10 sm:px-6 lg:pb-14">
+          <Podcast podcast={content.podcast} />
+        </section>
+      )}
 
       {/* ── Student Success Stories ──────────────────────────────── */}
       <section className="px-4 pb-10 sm:px-6 lg:pb-14">
@@ -418,6 +523,7 @@ export default function CounsellorLandingPage({ content }: { content: Counsellor
 /** Where the counsellor's Pipedrive form can send the student once they have submitted it. */
 export function CounsellorThankYouPage({ content }: { content: CounsellorLandingContent }) {
   const { thankYou } = content;
+  if (!thankYou) return null;
   return (
     <main className="bg-white pt-24 lg:pt-28">
       <section className="px-4 py-12 sm:px-6 lg:py-16">
