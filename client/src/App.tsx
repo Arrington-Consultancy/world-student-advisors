@@ -19,7 +19,9 @@ import StaffPortal from "./pages/StaffPortal";
 import Events from "./pages/Events";
 import Partners from "./pages/Partners";
 import StudentSuccessStories from "./pages/StudentSuccessStories";
+import StudentSuccessStoryCountry from "./pages/StudentSuccessStoryCountry";
 import Contact from "./pages/Contact";
+import ContactThankYou from "./pages/ContactThankYou";
 import SportPathways from "./pages/SportPathways";
 import OnlineLearning from "./pages/OnlineLearning";
 import Privacy from "./pages/Privacy";
@@ -54,6 +56,13 @@ import StudentSupportLibraryResource from "./pages/StudentSupportLibraryResource
 import NigeriaPostgraduate from "./pages/NigeriaPostgraduate";
 import SpeakToJuliet from "./pages/SpeakToJuliet";
 import SarkinFulaniFutureLeaders from "./pages/SarkinFulaniFutureLeaders";
+import SpeakToMadalitso from "./pages/SpeakToMadalitso";
+import SpeakToMadalitsoThankYou from "./pages/SpeakToMadalitsoThankYou";
+import SpeakToGladys from "./pages/SpeakToGladys";
+import SpeakToGladysThankYou from "./pages/SpeakToGladysThankYou";
+import SpeakToEldah from "./pages/SpeakToEldah";
+import SpeakToEldahThankYou from "./pages/SpeakToEldahThankYou";
+import SpeakToClaudia from "./pages/SpeakToClaudia";
 
 
 function Router() {
@@ -92,7 +101,11 @@ function Router() {
       <Route path={"/partners"} component={Partners} />
       <Route path={"/our-global-education-partners"} component={Partners} />
       <Route path={"/student-success-stories"} component={StudentSuccessStories} />
+      <Route path={"/student-success-stories/:country"} component={StudentSuccessStoryCountry} />
       <Route path={"/contact"} component={Contact} />
+      {/* Where Tim Hunt's Pipedrive Website Registration Form sends the student
+          (client/src/lib/registrationForm.ts). Noindex, linked from nowhere. */}
+      <Route path={"/contact/thank-you"} component={ContactThankYou} />
       <Route path={"/privacy"} component={PrivacyPolicy} />
       <Route path={"/privacy-policy"} component={PrivacyPolicy} />
       <Route path={"/terms"} component={Terms} />
@@ -119,6 +132,19 @@ function Router() {
       {/* Where Tim Hunt's Pipedrive form sends the student after a successful
           submission. Noindex, unlinked, no form: see speakToJulietThankYou.ts. */}
       <Route path={"/speak-to-juliet/thank-you"} component={SpeakToJulietThankYou} />
+      {/* Speak to Madalitso, the Malawi page on the country representative
+          template (Tim Hunt, 16 October 2026), and where his Pipedrive form
+          sends the student. See client/src/lib/speakToMadalitso.ts. */}
+      <Route path={"/speak-to-madalitso"} component={SpeakToMadalitso} />
+      <Route path={"/speak-to-madalitso/thank-you"} component={SpeakToMadalitsoThankYou} />
+      {/* Speak to Gladys, the Ghana page on the same template (Tim Hunt, 24
+          October 2026). Her thank-you address is the one Tim gave for his
+          Pipedrive form. See client/src/lib/speakToGladys.ts. */}
+      <Route path={"/speak-to-gladys"} component={SpeakToGladys} />
+      <Route path={"/speak-to-gladys-thank-you"} component={SpeakToGladysThankYou} />
+      <Route path={"/speak-to-eldah"} component={SpeakToEldah} />
+      <Route path={"/speak-to-eldah/thank-you"} component={SpeakToEldahThankYou} />
+      <Route path={"/speak-to-claudia"} component={SpeakToClaudia} />
       {/* Draft for review, 8 October 2026: noindex, out of the sitemap and
           prerender list, linked from nowhere. See client/src/lib/sarkinFulani.ts. */}
       <Route path={"/sarkin-fulani-future-leaders"} component={SarkinFulaniFutureLeaders} />

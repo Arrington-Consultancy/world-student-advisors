@@ -240,28 +240,23 @@ export const REGIONAL_REPRESENTATIVES: RegionalRepresentative[] = [
     role: "Senior Director for Nigeria",
     location: "Ibadan, Oyo State, Nigeria",
     region: "Nigeria",
-    email: "babtunde@worldstudentadvisors.co.uk",
+    // Spelling corrected on Tim Hunt's confirmation of 29 October 2026.
+    email: "babatunde@worldstudentadvisors.co.uk",
     whatsapp: "+234 818 204 9068",
     photo: "/manus-storage/babatunde_azeez_1f9d8fb7.png",
     britishCouncil: false,
   },
-  {
-    name: "Sarafina Kihumbu",
-    role: "Senior Student Counsellor",
-    location: "Nairobi, Kenya",
-    region: "Kenya",
-    email: "sarafina@worldstudentadvisors.com",
-    whatsapp: "+44 734 190 5979",
-    photo: "/manus-storage/sarafina_kihumbu_bf76c0cc.jpg",
-    britishCouncil: true,
-  },
+  // Sarafina Kihumbu removed: Tim Hunt, 29 October 2026, "Sarafina has left".
+  // Claudia Ingado now uses the WhatsApp number that was listed for her.
   {
     name: "Gladys Naadi Banhu",
-    role: "Regional Director, Ghana",
+    // Tim Hunt's title for her, 24 October 2026, as on /contact and /speak-to-gladys.
+    role: "Director for Ghana",
     location: "Ghana",
     region: "Ghana",
     email: "",
-    whatsapp: "+233 55 610 2870",
+    // Tim Hunt, 24 October 2026: +233 55 521 6156, as on /speak-to-gladys.
+    whatsapp: "+233 55 521 6156",
     photo: "/manus-storage/gladys_naadi_banhu_7d1e632e.jpg",
     britishCouncil: true,
   },

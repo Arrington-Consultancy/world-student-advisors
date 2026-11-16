@@ -24,6 +24,7 @@
  *  - /404 is an error page, not a crawl target.
  */
 import { LIBRARY_RESOURCE_PATHS } from "./studentSupportLibrary";
+import { SUCCESS_STORY_PATHS } from "./successStories";
 
 export const PRERENDER_ROUTES: readonly string[] = [
   "/",
@@ -44,6 +45,8 @@ export const PRERENDER_ROUTES: readonly string[] = [
   "/events",
   "/partners",
   "/student-success-stories",
+  // Each country with a cleared story (shared/successStories.ts).
+  ...SUCCESS_STORY_PATHS,
   "/privacy-policy",
   "/terms",
   "/compliance",
@@ -57,6 +60,10 @@ export const PRERENDER_ROUTES: readonly string[] = [
   "/uk-masters-nigeria",
   "/nigeria-postgraduate",
   "/speak-to-juliet",
+  "/speak-to-madalitso",
+  "/speak-to-gladys",
+  "/speak-to-eldah",
+  "/speak-to-claudia",
   // Every Student Support Library resource page, so a link pasted into
   // WhatsApp or email previews with the podcast's own title, and a crawler
   // that runs no JavaScript still sees the resource. Generated from the

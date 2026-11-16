@@ -311,7 +311,7 @@ export default function Portal() {
           <div className="grid sm:grid-cols-3 gap-6 text-sm">
             <div>
               <p className="font-semibold mb-1.5">United Kingdom (HQ)</p>
-              <p className="flex items-center gap-2 text-white/80 mb-1"><Phone className="w-3.5 h-3.5 shrink-0" /> WhatsApp: +44 791 479 7830</p>
+              <p className="flex items-center gap-2 text-white/80 mb-1"><Phone className="w-3.5 h-3.5 shrink-0" /> WhatsApp: +44 7470 689 849</p>
               <a href="mailto:UKHeadOffice@worldstudentadvisors.com" className="flex items-center gap-2 text-white/80 hover:text-white break-all"><Mail className="w-3.5 h-3.5 shrink-0" /> UKHeadOffice@worldstudentadvisors.com</a>
             </div>
             <div>

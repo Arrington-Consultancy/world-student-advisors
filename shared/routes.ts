@@ -8,6 +8,7 @@
  * removing a page.
  */
 import { LIBRARY_RESOURCE_PATHS } from "./studentSupportLibrary";
+import { SUCCESS_STORY_PATHS } from "./successStories";
 
 export const VALID_CLIENT_ROUTES: readonly string[] = [
   "/",
@@ -42,7 +43,18 @@ export const VALID_CLIENT_ROUTES: readonly string[] = [
   "/partners",
   "/our-global-education-partners",
   "/student-success-stories",
+  // One page per country on Tim Hunt's Student Success Stories page
+  // (11 November 2026), /student-success-stories/<country>, derived from the
+  // consent gate in shared/successStories.ts: a country exists only once one
+  // of its stories is cleared, so no unconsented story ever has an address.
+  // In App.tsx these are the single pattern /student-success-stories/:country.
+  ...SUCCESS_STORY_PATHS,
   "/contact",
+  // Where Tim Hunt's Pipedrive Website Registration Form sends the student
+  // after registering (14 November 2026); reports the Google Ads conversion
+  // the website's own form used to. Noindex, out of the sitemap and the
+  // prerender list, linked from nowhere.
+  "/contact/thank-you",
   "/privacy",
   "/privacy-policy",
   "/terms",
@@ -75,6 +87,24 @@ export const VALID_CLIENT_ROUTES: readonly string[] = [
   // The page Tim Hunt's Pipedrive form redirects to after a successful
   // submission (28 September 2026). Noindex, out of the sitemap, unlinked.
   "/speak-to-juliet/thank-you",
+  // Speak to Madalitso, the Malawi landing page on the country
+  // representative template, Tim Hunt's brief of 16 October 2026. Published:
+  // indexable, in the sitemap and prerendered. Its thank-you page is where
+  // his Pipedrive form redirects; noindex, out of the sitemap, unlinked.
+  "/speak-to-madalitso",
+  "/speak-to-madalitso/thank-you",
+  // Speak to Gladys, the Ghana landing page on the same template, Tim Hunt's
+  // email of 24 October 2026. Published like Madalitso's. Its thank-you page
+  // is the address Tim gave for his Pipedrive form; noindex, out of the
+  // sitemap, unlinked.
+  "/speak-to-gladys",
+  "/speak-to-gladys-thank-you",
+  // Speak to Eldah, the first Student Counsellor page, Tim Hunt's email of
+  // 12 November 2026. Published like Gladys's; its thank-you page is there
+  // for her Pipedrive form to send the student to, noindex and unlinked.
+  "/speak-to-eldah",
+  "/speak-to-eldah/thank-you",
+  "/speak-to-claudia",
   // The Sarkin Fulani Future Leaders Programme landing page, Tim Hunt's brief
   // of 8 October 2026 from Farooq Gajo's revised proposal. A real route so
   // it can be reviewed by the Office of His Royal Highness and Brooke House

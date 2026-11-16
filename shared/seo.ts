@@ -1,4 +1,5 @@
 import { LIBRARY_CODE_ALIASES, LIBRARY_PATH, getResourceBySlug } from "./studentSupportLibrary";
+import { SUCCESS_STORIES_PATH, SUCCESS_STORY_COUNTRIES } from "./successStories";
 export interface SeoEntry {
   title: string;
   description: string;
@@ -113,6 +114,10 @@ export const SEO_MAP: Record<string, SeoEntry> = {
     description:
       "Start your application or get in touch with WorldStudentAdvisors, free personal counsellor guidance for international students.",
   },
+  "/contact/thank-you": {
+    title: "Thank you for registering | World Student Advisors",
+    description: "Thank you for registering with World Student Advisors. Our team will be in touch with you shortly.",
+  },
   "/privacy-policy": {
     title: "Privacy Policy | World Student Advisors",
     description:
@@ -182,6 +187,38 @@ export const SEO_MAP: Record<string, SeoEntry> = {
     description:
       "Under the patronage of His Royal Highness the Sarkin Fulani of Lagos, with Brooke House College and World Student Advisors: full-time education, football, Vector leadership, summer schools and tuition fee awards for young people from the Arewa community.",
   },
+  "/speak-to-madalitso": {
+    title: "Speak to Madalitso in Blantyre | World Student Advisors",
+    description:
+      "Madalitso Dube is WSA's Director for Malawi, in Blantyre. Message him about studying abroad, from UK boarding school to a PhD, with Eldah Therone as your WSA Student Counsellor when you apply.",
+  },
+  "/speak-to-gladys": {
+    title: "Speak to Gladys in Accra | World Student Advisors",
+    description:
+      "Gladys Naadi is WSA's Director for Ghana, in Accra. Message her about studying abroad, from UK boarding school to a PhD, with Manet Khamayo as your WSA Student Counsellor when you apply.",
+  },
+  "/speak-to-gladys-thank-you": {
+    title: "Thank you, your details are with Gladys | World Student Advisors",
+    description: "Your enquiry has reached Gladys Naadi, WSA Director for Ghana in Accra. She will be in touch shortly.",
+  },
+  "/speak-to-eldah": {
+    title: "Speak to Eldah, your WSA Student Counsellor | World Student Advisors",
+    description:
+      "Eldah Therone is a Team Leader and Senior Student Counsellor in WSA's UK Head Office team. Message her on WhatsApp for free help choosing a course and destination, preparing your applications and planning your next steps.",
+  },
+  "/speak-to-claudia": {
+    title: "Speak to Claudia about studying abroad | World Student Advisors",
+    description:
+      "Claudia Ingado is WSA's Student Recruitment Relationship Manager in the UK Head Office team. Message her on WhatsApp for free help exploring your study goals, budget and next steps before you meet a WSA Student Counsellor.",
+  },
+  "/speak-to-eldah/thank-you": {
+    title: "Thank you, your details are with Eldah | World Student Advisors",
+    description: "Thank you for sending your details. Eldah will be in touch with you shortly.",
+  },
+  "/speak-to-madalitso/thank-you": {
+    title: "Thank you, your details are with Madalitso | World Student Advisors",
+    description: "Your enquiry has reached Madalitso Dube, WSA Director for Malawi in Blantyre. He will be in touch shortly.",
+  },
   "/speak-to-juliet": {
     title: "Speak to Juliet in Lagos | World Student Advisors",
     description:
@@ -239,7 +276,13 @@ export const NOINDEX_PATH_PREFIXES = ["/portal", "/staff-portal"];
 // material and Brooke House College has confirmed its offers. Publication
 // changes noindex, the sitemap entry and the prerender entry together, as it
 // did for the two pages above.
-export const NOINDEX_PATHS = new Set(["/404", "/speak-to-juliet/thank-you", "/sarkin-fulani-future-leaders"]);
+// /speak-to-madalitso/thank-you is the post-submission page for Tim Hunt's
+// Malawi Pipedrive form (16 October 2026), private in the same way as
+// Juliet's. /speak-to-madalitso itself is published from the start: Tim
+// supplied the finished content, form and photographs together.
+// /speak-to-gladys-thank-you is the same for Tim's Ghana form (24 October
+// 2026); /speak-to-gladys is published from the start, as Madalitso's was.
+export const NOINDEX_PATHS = new Set(["/404", "/speak-to-juliet/thank-you", "/sarkin-fulani-future-leaders", "/speak-to-madalitso/thank-you", "/speak-to-gladys-thank-you", "/speak-to-eldah/thank-you", "/contact/thank-you"]);
 
 export function getCanonicalPath(path: string): string {
   return CANONICAL_PATHS[path] ?? path;
@@ -264,9 +307,25 @@ function getLibraryResourceSeo(path: string): SeoEntry | undefined {
   };
 }
 
+/**
+ * Each success story country page names its country, so a link shared on
+ * WhatsApp previews as that country's stories. Only cleared countries have a
+ * page at all (shared/routes.ts), so this never describes a hidden one.
+ */
+function getSuccessStorySeo(path: string): SeoEntry | undefined {
+  if (!path.startsWith(`${SUCCESS_STORIES_PATH}/`)) return undefined;
+  const slug = path.slice(SUCCESS_STORIES_PATH.length + 1);
+  const country = SUCCESS_STORY_COUNTRIES.find(c => c.slug === slug);
+  if (!country) return undefined;
+  return {
+    title: `Student Success Stories: ${country.name} | World Student Advisors`,
+    description: `How students and families from ${country.name} studied abroad with World Student Advisors, in their own words and published with their permission.`,
+  };
+}
+
 export function getSeoForPath(path: string): SeoEntry {
   const canonical = getCanonicalPath(path);
-  return SEO_MAP[canonical] ?? getLibraryResourceSeo(canonical) ?? DEFAULT_SEO;
+  return SEO_MAP[canonical] ?? getLibraryResourceSeo(canonical) ?? getSuccessStorySeo(canonical) ?? DEFAULT_SEO;
 }
 
 export function shouldNoindex(path: string): boolean {

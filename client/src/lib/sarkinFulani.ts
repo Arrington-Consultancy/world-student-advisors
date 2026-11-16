@@ -22,9 +22,24 @@ import { toInternationalNigerianNumber } from "./nigeriaLanding";
  *     Quranic Memorisation Competition is not on this page. Tim: its
  *     promotion and school registrations belong to the Foundation's own
  *     communications, under the Committee.
+ *  5. Brooke House College's confirmation of 12 October 2026 (Chad Male,
+ *     Admissions Consultant, forwarded by Tim Hunt on 15 October): January
+ *     2027 entry for around 32 students, with places by year group; the
+ *     tuition fee awards, 10% and then a further 15% on football ability
+ *     and/or academic level, decided on a football assessment and/or a
+ *     current school report; recruitment can begin. Tim's other points
+ *     (Football Academy, Vector, Summer Schools, Essay Competition) wait
+ *     for Giles Williams.
+ *  6. Tim Hunt, 15 October 2026, on the Expression of Interest: it goes
+ *     first to the Office of His Royal Highness (Farooq Gajo), Maryam Lawal
+ *     and Tim, with only what an eligibility check needs; the Student
+ *     Counsellors come in once Farooq has confirmed eligibility and Maryam
+ *     is ready to progress the student. Maryam is the principal WSA
+ *     contact in Nigeria. The page stays in draft until Farooq and Brooke
+ *     House College confirm everything for publication.
  *
- * WHAT IS PROVISIONAL, and said so on the page: the tuition fee award
- * wording and every Brooke House College offer await the College's
+ * WHAT IS PROVISIONAL, and said so on the page: the Football Academy,
+ * Vector Programme and Summer School descriptions await the College's
  * confirmation, and the Essay Competition is proposed, not announced.
  * REVIEW_NOTES below lists each open item for the reviewers.
  *
@@ -46,7 +61,7 @@ export const DRAFT = Object.freeze({
   isDraft: true,
   label: "Draft for review",
   line:
-    "Not yet published. Royal material subject to approval by the Office of His Royal Highness. Brooke House College offers and tuition fee awards subject to the College's confirmation.",
+    "Not yet published. Royal material subject to approval by the Office of His Royal Highness. Brooke House College confirmed January 2027 entry and the tuition fee awards on 12 October 2026; its other offers remain subject to the College's confirmation.",
 });
 
 export const PATRON = Object.freeze({
@@ -148,6 +163,9 @@ export interface OpportunityCard {
   body: string[];
   /** Items Brooke House College will confirm before publication, shown as such. */
   pending?: string[];
+  /** Facts the College has confirmed, shown as a list under a heading. */
+  confirmedHeading?: string;
+  confirmed?: string[];
 }
 
 /**
@@ -165,6 +183,14 @@ export const OPPORTUNITY_CARDS: ReadonlyArray<OpportunityCard> = Object.freeze([
       "Brooke House College is a British boarding school in England providing academic education alongside extensive opportunities for personal development. Students follow a pathway suited to their age, academic background, abilities and ambitions.",
       "The aim is to prepare young people for university, future careers and adult life while building confidence, independence and the ability to succeed in an international environment.",
       "Families should express their interest early, to allow time for counselling, application, assessment, admission, financial planning and Student Visa preparation.",
+    ],
+    // Brooke House College, 12 October 2026: around 32 places in all.
+    confirmedHeading: "Places for January 2027, confirmed by Brooke House College",
+    confirmed: [
+      "Years 7, 8 and 9 (aged 12, 13 or 14 on or after 1 September): 17 places",
+      "Year 10 (aged 15 on or after 1 September): 6 to 8 places, for students whose first language is English",
+      "Year 11 (aged 16 on or after 1 September): full",
+      "Years 12 and 13 (aged 17 on or after 1 September): 7 to 8 places",
     ],
   },
   {
@@ -208,19 +234,22 @@ export const OPPORTUNITY_CARDS: ReadonlyArray<OpportunityCard> = Object.freeze([
 ]);
 
 /**
- * Tuition fee awards, Tim Hunt's fourth requirement, with his caveat
- * carried onto the page: the wording is subject to Brooke House College's
- * confirmation. The figures are those in the 19 August 2026 proposal.
+ * Tuition fee awards, Tim Hunt's fourth requirement. The figures are those
+ * in the 19 August 2026 proposal, confirmed by Brooke House College on 12
+ * October 2026 with the basis for the further 15%: football ability and/or
+ * academic level, decided on a football assessment and/or a current school
+ * report. Which fees the awards apply to, Tim's follow-up question, is
+ * still with the College, and the note says so.
  */
 export const AWARDS = Object.freeze({
   heading: "How much financial support is available?",
   paragraphs: [
     "Every student admitted for full-time education through the Sarkin Fulani Future Leaders Programme is eligible for a 10% tuition fee award from Brooke House College.",
-    "Exceptional students may be considered by Brooke House College for a further reduction of up to 15% for academic, sporting or leadership achievement, so the maximum tuition fee reduction will normally be 25%.",
+    "Brooke House College may award a further reduction of up to 15% on football ability and/or academic level, so the maximum tuition fee reduction is 25%. The College decides the further award on a football assessment and/or a current school report showing the student's grades.",
     "All admissions and tuition fee award decisions are made independently by Brooke House College. The programme is not a fully funded scholarship: families fund the remaining cost of the student's education and other expenses.",
     "Before a family makes any commitment, World Student Advisors makes sure they understand the fees, any award received and the additional costs involved. Every family receives a clear financial breakdown first.",
   ],
-  confirmationNote: "Award wording subject to confirmation by Brooke House College.",
+  confirmationNote: "Awards confirmed by Brooke House College on 12 October 2026. Precisely which fees they apply to is to be confirmed by the College.",
   includedHeading: "The published Brooke House College tuition fee includes",
   included: [
     "Academic tuition",
@@ -248,8 +277,12 @@ export const STEPS: ReadonlyArray<{ title: string; body: string }> = Object.free
     body: "A student, parent or guardian completes the short form on this page.",
   },
   {
-    title: "Talk to a Student Counsellor",
-    body: "A World Student Advisors Student Counsellor contacts the family personally to discuss the student's education, interests and ambitions, and which opportunity may suit. For full-time education, the family's ability to meet the costs of studying in the United Kingdom is discussed too.",
+    title: "The Office of His Royal Highness confirms eligibility",
+    body: "Your Expression of Interest goes first to the Office of His Royal Highness, which confirms that the family is part of the community the programme serves.",
+  },
+  {
+    title: "Talk to Maryam Lawal or a Student Counsellor",
+    body: "Once eligibility is confirmed, Maryam Lawal, our Director in Nigeria, or a World Student Advisors Student Counsellor contacts the family personally to discuss the student's education, interests and ambitions, and which opportunity may suit. For full-time education, the family's ability to meet the costs of studying in the United Kingdom is discussed too.",
   },
   {
     title: "Apply",
@@ -290,10 +323,9 @@ export const BEHIND = Object.freeze({
  * 2026: her card sits immediately below "Who is behind the programme?" and
  * above the Expression of Interest, with both contact details live and a
  * WhatsApp icon rather than a telephone one. She answers general questions;
- * the Expression of Interest form stays separate. His Royal Highness
- * approved the procedure on 10 October 2026, but how an Expression of
- * Interest reaches his Office is still to be decided (REVIEW_NOTES), so the
- * form's routing is unchanged.
+ * the Expression of Interest form stays separate and, since 15 October
+ * 2026, goes first to the Office of His Royal Highness for the eligibility
+ * check, with Maryam and Tim copied (shared/campaignEnquiry.ts).
  * Her photograph is the one already on the Our Team page.
  */
 export const MARYAM = Object.freeze({
@@ -347,11 +379,11 @@ export const ENQUIRER_ROLES: ReadonlyArray<{ value: string; label: string }> = O
 export const EXPRESS_INTEREST = Object.freeze({
   heading: "Express your interest",
   supporting:
-    "You do not need to know which opportunity is right before contacting us. A World Student Advisors Student Counsellor will talk to you and your family and help you explore the most appropriate option.",
+    "You do not need to know which opportunity is right before contacting us. Once the Office of His Royal Highness has confirmed eligibility, Maryam Lawal or a World Student Advisors Student Counsellor will talk to you and your family and help you explore the most appropriate option.",
   nextPageLine: "Six questions here, the rest on the next page.",
   cta: "Continue",
   noPromise: "Completing the form does not mean admission or a tuition fee award. It starts a conversation.",
-  privacy: "Your details go to World Student Advisors' student records system so that a Student Counsellor can contact you.",
+  privacy: "Your details go to World Student Advisors' student records system, and your name, contact details and chosen opportunity go to the Office of His Royal Highness to confirm eligibility, so that Maryam Lawal or a Student Counsellor can contact you.",
 });
 
 /**
@@ -361,8 +393,9 @@ export const EXPRESS_INTEREST = Object.freeze({
  * the /contact sign-up, which validates every field, runs the bot check
  * and writes the Lead, exactly as the Nigeria postgraduate page does. The
  * campaign slug makes the Lead note name this programme and sends the
- * programme's own notification as well as the Student Counsellors' usual
- * one (shared/campaignEnquiry.ts). A second, weaker route into the CRM for
+ * programme's own short notification, to the Office of His Royal Highness,
+ * Maryam and Tim, instead of the Student Counsellors' usual one
+ * (shared/campaignEnquiry.ts). A second, weaker route into the CRM for
  * the sake of six fields would be the wrong trade.
  */
 export function expressInterestHandoffUrl(input: {
@@ -411,11 +444,13 @@ export const FOOTER_LINE = Object.freeze({
 export const REVIEW_NOTES: ReadonlyArray<{ owner: string; item: string }> = Object.freeze([
   { owner: "Office of His Royal Highness (Farooq Gajo)", item: "The display of the Palace seal. Farooq approved the vision wording and confirmed the Foundation's name on 10 October 2026; the seal was in the screenshots he reviewed but he did not mention it." },
   { owner: "Office of His Royal Highness (Farooq Gajo)", item: "A dignified photograph of His Royal Highness for the hero, if one is to be used; the seal stands in its place for now." },
-  { owner: "Brooke House College", item: "Confirmation of the tuition fee award wording (10%, up to a further 15%, normally 25% maximum)." },
-  { owner: "Brooke House College", item: "Summer School 2027 dates, ages, duration, fees and inclusions; Essay Competition details; Vector Programme wording; photographs of the College, the Football Academy and students." },
+  { owner: "Brooke House College", item: "Confirmed on 12 October 2026 (Chad Male): January 2027 entry for around 32 students, with the places by year group now on the page, and the awards (10%, then a further 15% on football ability and/or academic level, decided on a football assessment and/or a current school report). Still to confirm: precisely which fees the awards apply to." },
+  { owner: "Brooke House College", item: "With Giles Williams when he is recovered: the Football Academy description and its separate fees; the Vector Programme wording; Summer School 2027 dates, ages, duration, fees and inclusions; the Essay Competition; photographs of the College, the Football Academy and students." },
+  { owner: "Tim Hunt", item: "The places list uses Brooke House's own words: the ages are 'on or after 1 September' and Year 10 is 'if English is their first language'. Tim to confirm these read as the College means them before publication." },
   { owner: "Tim Hunt", item: "Who else receives the programme's enquiry notification alongside the Student Counsellors (Maryam Lawal, for instance), and the timeline dates now that September 2026 has passed." },
   { owner: "Tim Hunt", item: "Maryam's photograph: the card uses the Our Team photograph; if the one attached to his email of 9 October is different, it needs filing where the site can take it." },
-  { owner: "Tim Hunt", item: "His Royal Highness approved the procedure on 10 October 2026: Expressions of Interest go first to his Office (Farooq Gajo, the designated contact) for the community eligibility check, then approved families are referred to WSA. How the website's enquiries reach Farooq, and the steps on the page that describe it, are Tim's to decide. The form's routing is unchanged until then." },
+  { owner: "Tim Hunt", item: "Decided 15 October 2026: an Expression of Interest notifies Farooq Gajo, Maryam Lawal and Tim only, as a short version (name, contact details, nationality, country, chosen opportunity and the Lead id; no date of birth or passport number). The Student Counsellors are not notified until Farooq has confirmed eligibility and Maryam is ready. The page's steps and privacy line say so. Farooq's address is set in production, not in the code." },
+  { owner: "Tim Hunt", item: "Pipedrive status for these Leads: Tim wants enquiries awaiting eligibility confirmation told apart from those approved for counselling, so none fall through. The website can apply a Lead label on creation once Tim has created it and named it; the switch to approved is then Maryam's, in Pipedrive." },
 ]);
 
 /** Every string a visitor can read, for the copy tests. */
@@ -428,7 +463,7 @@ export function allRenderedCopy(): string[] {
     VISION.heading, VISION.motto, ...VISION.paragraphs, VISION.patronRole, VISION.foundationLine,
     WHAT_IS.heading, ...WHAT_IS.paragraphs, WHAT_IS.offersHeading, ...WHAT_IS.offers,
     WHO_FOR.heading, WHO_FOR.intro, ...WHO_FOR.criteria, WHO_FOR.close,
-    ...OPPORTUNITY_CARDS.flatMap(c => [c.eyebrow, c.title, ...c.body, ...(c.pending ?? [])]),
+    ...OPPORTUNITY_CARDS.flatMap(c => [c.eyebrow, c.title, ...c.body, ...(c.pending ?? []), ...(c.confirmedHeading ? [c.confirmedHeading] : []), ...(c.confirmed ?? [])]),
     AWARDS.heading, ...AWARDS.paragraphs, AWARDS.confirmationNote, AWARDS.includedHeading, ...AWARDS.included,
     AWARDS.budgetHeading, ...AWARDS.budget, AWARDS.separateLine,
     ...STEPS.flatMap(s => [s.title, s.body]),

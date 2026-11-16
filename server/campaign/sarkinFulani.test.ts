@@ -1,19 +1,23 @@
 import { describe, expect, it } from "vitest";
 import { existsSync, readFileSync } from "fs";
 import {
+  AWARDS,
   CAMPAIGN_SLUG,
   DRAFT,
+  EXPRESS_INTEREST,
   MARYAM,
   OPPORTUNITIES,
+  OPPORTUNITY_CARDS,
   PAGE_PATH,
   PARTNERS,
   PATRON,
   REVIEW_NOTES,
+  STEPS,
   allRenderedCopy,
   expressInterestHandoffUrl,
   maryamWhatsAppHref,
 } from "../../client/src/lib/sarkinFulani";
-import { CAMPAIGN_PATHS, campaignReplacesGeneralNotification, isCampaignSlug } from "../../shared/campaignEnquiry";
+import { CAMPAIGN_PATHS, campaignNotificationDetail, campaignReplacesGeneralNotification, isCampaignSlug } from "../../shared/campaignEnquiry";
 import { NOINDEX_PATHS, SEO_MAP, shouldNoindex } from "../../shared/seo";
 import { VALID_CLIENT_ROUTES, isValidClientRoute } from "../../shared/routes";
 import { ALL_PRERENDER_ROUTES } from "../../shared/prerenderRoutes";
@@ -93,10 +97,29 @@ describe("no promise Brooke House College has not made", () => {
     expect(statesAnUnnegatedGuarantee(COPY)).toBe(false);
   });
 
-  it("says the College decides, and that the award wording awaits its confirmation", () => {
+  it("says the College decides, and carries its confirmation of the awards with the one point still open", () => {
     expect(COPY).toMatch(/made independently by Brooke House College/);
-    expect(COPY).toContain("Award wording subject to confirmation by Brooke House College.");
+    expect(COPY).toContain("Awards confirmed by Brooke House College on 12 October 2026. Precisely which fees they apply to is to be confirmed by the College.");
     expect(COPY).toContain("not a fully funded scholarship");
+  });
+
+  it("carries Brooke House College's confirmation of 12 October 2026: the places for January 2027 and the basis of the further 15%", () => {
+    const fullTime = OPPORTUNITY_CARDS.find(c => c.id === "full-time")!;
+    expect(fullTime.confirmedHeading).toBe("Places for January 2027, confirmed by Brooke House College");
+    expect(fullTime.confirmed).toEqual([
+      "Years 7, 8 and 9 (aged 12, 13 or 14 on or after 1 September): 17 places",
+      "Year 10 (aged 15 on or after 1 September): 6 to 8 places, for students whose first language is English",
+      "Year 11 (aged 16 on or after 1 September): full",
+      "Years 12 and 13 (aged 17 on or after 1 September): 7 to 8 places",
+    ]);
+    // Leadership is not a basis Brooke House gave for the further 15%.
+    const further = AWARDS.paragraphs.find(p => p.includes("further reduction"))!;
+    expect(further).toContain("football ability and/or academic level");
+    expect(further).toContain("football assessment and/or a current school report");
+    expect(further).not.toMatch(/leadership/);
+    expect(DRAFT.line).toContain("confirmed January 2027 entry and the tuition fee awards on 12 October 2026");
+    // The page renders the confirmed list.
+    expect(PAGE).toContain("card.confirmed");
   });
 
   it("uses UK English and no em dash", () => {
@@ -108,16 +131,31 @@ describe("no promise Brooke House College has not made", () => {
 });
 
 describe("the Expression of Interest goes down the one controlled path", () => {
-  it("is a registered campaign that keeps the Student Counsellors' general notification", () => {
+  it("is a registered campaign whose own notification replaces the Student Counsellors' general one (Tim Hunt, 15 October 2026)", () => {
     expect(isCampaignSlug(CAMPAIGN_SLUG)).toBe(true);
     expect(CAMPAIGN_PATHS[CAMPAIGN_SLUG]).toBe(PAGE_PATH);
-    expect(campaignReplacesGeneralNotification(CAMPAIGN_SLUG)).toBe(false);
+    expect(campaignReplacesGeneralNotification(CAMPAIGN_SLUG)).toBe(true);
+    expect(campaignNotificationDetail(CAMPAIGN_SLUG)).toBe("eligibility");
   });
 
-  it("resolves a recipient list for its own labelled copy", async () => {
+  it("notifies Tim and Maryam by default, with Farooq's address left to production", async () => {
     const { ENV } = await import("../_core/env");
-    expect(ENV.campaignNotifyEmails[CAMPAIGN_SLUG]?.length).toBeGreaterThan(0);
-    expect(ENV.staffNotifyEmails.length).toBeGreaterThan(0);
+    const list = (ENV.campaignNotifyEmails[CAMPAIGN_SLUG] ?? []).map(a => a.toLowerCase());
+    expect(list).toContain("tim.hunt@worldstudentadvisors.com");
+    expect(list).toContain("maryam@worldstudentadvisors.com");
+    for (const counsellor of ["eldah", "glenice", "manet", "claudia", "sarafina", "pipedrive@", "tom@"]) {
+      expect(list.join(" "), `${counsellor} is told once eligibility is confirmed, not before`).not.toContain(counsellor);
+    }
+    // No personal address in a public repository.
+    expect(readFileSync("server/_core/env.ts", "utf8")).not.toMatch(/gmail\.com/i);
+  });
+
+  it("tells families where their details go, and lists the eligibility check as a step", () => {
+    expect(EXPRESS_INTEREST.privacy).toContain("Office of His Royal Highness");
+    expect(EXPRESS_INTEREST.privacy).toContain("name, contact details and chosen opportunity");
+    expect(STEPS[1].title).toBe("The Office of His Royal Highness confirms eligibility");
+    expect(STEPS[2].title).toBe("Talk to Maryam Lawal or a Student Counsellor");
+    expect(STEPS[2].body).toMatch(/^Once eligibility is confirmed/);
   });
 
   it("hands off to /contact with the slug, the level, the destination and the opportunity", () => {
@@ -197,6 +235,20 @@ describe("Maryam Lawal's contact card, Tim Hunt's request of 9 October 2026", ()
     expect(card).toContain("<Mail");
   });
 
+  it("puts the WSA logo centred over her photograph and details, and her email on one line (Tim Hunt, 18 October 2026)", () => {
+    const card = PAGE.slice(PAGE.indexOf('id="maryam"'), PAGE.indexOf('id="express-interest"'));
+    const logo = card.indexOf("src={PARTNERS.wsa.logo}");
+    const photo = card.indexOf("src={MARYAM.photo}");
+    const name = card.indexOf("{MARYAM.name}");
+    expect(logo).toBeGreaterThan(0);
+    expect(photo).toBeGreaterThan(logo);
+    expect(name).toBeGreaterThan(photo);
+    expect(card).toMatch(/rounded-2xl border bg-wsa-warm-white[^"]*text-center/);
+    expect(card).not.toMatch(/sm:flex-row|sm:text-left/);
+    expect(card).toMatch(/className="whitespace-nowrap[^"]*">\{MARYAM\.email\}/);
+    expect(card).not.toContain("break-all");
+  });
+
   it("ships her photograph from this site", () => {
     expect(publicFile(MARYAM.photo)).toBe(true);
   });
@@ -240,11 +292,13 @@ describe("the reviewers' open items are written down", () => {
     expect(owners).toContain("Tim Hunt");
   });
 
-  it("records Farooq's answers of 10 October 2026 and leaves the referral routing to Tim", () => {
+  it("records Farooq's answers of 10 October 2026 and Tim's routing decision of 15 October", () => {
     expect(REVIEW_NOTES.some(n => n.item.includes("Committee"))).toBe(false);
-    const routing = REVIEW_NOTES.find(n => n.item.includes("eligibility check"));
+    const routing = REVIEW_NOTES.find(n => n.item.startsWith("Decided 15 October 2026"));
     expect(routing?.owner).toBe("Tim Hunt");
-    expect(routing?.item).toContain("routing is unchanged");
+    expect(routing?.item).toContain("Farooq Gajo, Maryam Lawal and Tim only");
+    expect(routing?.item).toContain("no date of birth or passport number");
+    expect(REVIEW_NOTES.some(n => n.item.includes("Pipedrive status"))).toBe(true);
     expect(PATRON.foundationName).toBe("Sarkin Fulanin Lagos Foundation");
   });
 });

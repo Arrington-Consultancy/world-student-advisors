@@ -89,12 +89,20 @@ export async function applyRetention(client: DriveClient, rootId: string, latest
 
 export type DatabaseBackupState = "ready" | "disabled" | "no_database" | `drive_${string}`;
 
-/** Why a run would stand down, or "ready". DATABASE_BACKUP_ENABLED="false" switches the nightly run off. */
+/**
+ * Why a run would stand down, or "ready". DATABASE_BACKUP_ENABLED="false" switches the nightly run off.
+ * Never throws: a Drive grant that cannot be read (no grants table in a PR preview's empty database,
+ * the database down at boot) is "drive_unavailable", so the run stands down instead of crashing the server.
+ */
 export async function databaseBackupConfigState(env: NodeJS.ProcessEnv = process.env): Promise<DatabaseBackupState> {
   if (env.DATABASE_BACKUP_ENABLED === "false") return "disabled";
   if (!env.DATABASE_URL) return "no_database";
-  const drive = await getDriveMirrorStatus();
-  return drive === "operational" ? "ready" : `drive_${drive}`;
+  try {
+    const drive = await getDriveMirrorStatus();
+    return drive === "operational" ? "ready" : `drive_${drive}`;
+  } catch {
+    return "drive_unavailable";
+  }
 }
 
 export interface DatabaseBackupOutcome {

@@ -127,7 +127,7 @@ describe("an ordinary enquiry is untouched", () => {
     for (const address of [
       "tim.hunt@worldstudentadvisors.com",
       "eldah@worldstudentadvisors.com",
-      "sarafina@worldstudentadvisors.com",
+      "claudia@worldstudentadvisors.com",
       "glenice@worldstudentadvisors.com",
       "manet@worldstudentadvisors.com",
       "tom@arringtonconsultancy.com",

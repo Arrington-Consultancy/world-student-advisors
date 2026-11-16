@@ -17,7 +17,10 @@ vi.mock("../mirror/driveMirrorOAuth", async importOriginal => {
   const actual = await importOriginal<typeof import("../mirror/driveMirrorOAuth")>();
   return {
     ...actual,
-    getDriveMirrorStatus: vi.fn(async () => driveStatus.value),
+    getDriveMirrorStatus: vi.fn(async () => {
+      if (driveStatus.value === "throws") throw new Error("Table 'railway.connector_oauth_grants' doesn't exist");
+      return driveStatus.value;
+    }),
     getDriveMirrorAccess: vi.fn(async () => (driveStatus.value === "operational" ? { ok: true, accessToken: "drive-access-token-test" } : { ok: false, status: driveStatus.value })),
   };
 });
@@ -161,6 +164,15 @@ describe("standing down", () => {
     expect(await databaseBackupConfigState({})).toBe("no_database");
     driveStatus.value = "needs_reauthorisation";
     expect(await databaseBackupConfigState(ENV)).toBe("drive_needs_reauthorisation");
+    const r = await run();
+    expect(r.status).toBe("skipped");
+    expect(drive.requests).toHaveLength(0);
+  });
+
+  it("stands down, without throwing, when the Drive grant cannot be read", async () => {
+    // A PR preview's empty database has no grants table; at boot that rejection crashed the server.
+    driveStatus.value = "throws";
+    expect(await databaseBackupConfigState(ENV)).toBe("drive_unavailable");
     const r = await run();
     expect(r.status).toBe("skipped");
     expect(drive.requests).toHaveLength(0);

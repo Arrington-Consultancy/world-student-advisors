@@ -13,6 +13,8 @@ import { getStoredAdClickIds } from "@/lib/adClickIds";
 import { recallCampaign, rememberCampaign } from "@/lib/campaignHandoff";
 import { reportSignupConversion } from "@/lib/googleAdsConversion";
 import { SPONSOR_STATUS_OPTIONS, SCHOLARSHIP_STATUS_OPTIONS } from "@shared/fundingStatus";
+import PipedriveFormEmbed from "@/components/PipedriveFormEmbed";
+import { REGISTRATION_FORM_URL } from "@/lib/registrationForm";
 
 /**
  * Every field this form asks for when Education Funding is sponsor or
@@ -99,7 +101,9 @@ const offices = [
     name: "Gladys Naadi",
     title: "Director for Ghana",
     address: "Afotey Osapesua Avenue, Adjiringanor, East Legon, Accra, Ghana",
-    whatsapp: "+233 55 610 2870",
+    // Tim Hunt, 24 October 2026 ("Gladys Landing Page.docx"): her WhatsApp
+    // is +233 55 521 6156, as on /speak-to-gladys.
+    whatsapp: "+233 55 521 6156",
     email: "GhanaOffice@worldstudentadvisors.com",
   },
   {
@@ -145,7 +149,6 @@ function StudentForm() {
     ...BLANK_FUNDING_DETAILS,
     referredToWSA: "",
     referredByWhom: "",
-    recommendedCounsellor: "",
     gdprConsent: false,
     website: "", // honeypot: real users never see or fill this field
   });
@@ -731,34 +734,24 @@ function StudentForm() {
               <option value="no">No</option>
             </select>
           </div>
-          <div>
-            <label className="block text-sm font-medium text-wsa-navy mb-1.5">Recommended Student Counsellor?</label>
-            <select
-              value={formData.recommendedCounsellor}
-              onChange={(e) => setFormData({ ...formData, recommendedCounsellor: e.target.value })}
-              className="w-full px-4 py-3 border border-border bg-white focus:outline-none focus:ring-2 focus:ring-wsa-red/20 focus:border-wsa-red transition-colors"
-            >
-              <option value="">Select...</option>
-              <option value="eldah">Eldah Therone</option>
-              <option value="glenice">Glenice Owino</option>
-              <option value="manet">Manet Khamayo</option>
-              <option value="claudia">Claudia Ingado</option>
-              <option value="help-me-choose">Help me choose</option>
-            </select>
-          </div>
+          {/* "Recommended Student Counsellor?" was removed on Tim Hunt's instruction
+              of 28 October 2026: enquiries from this form go to Claudia, who
+              qualifies them. The referral question stays so she can see who
+              introduced the student. The server still accepts the field and
+              records an empty one as "Unallocated". */}
+          {formData.referredToWSA === "yes" && (
+            <div>
+              <label className="block text-sm font-medium text-wsa-navy mb-1.5">Referred by whom?</label>
+              <input
+                type="text"
+                value={formData.referredByWhom}
+                onChange={(e) => setFormData({ ...formData, referredByWhom: e.target.value })}
+                className="w-full px-4 py-3 border border-border bg-white focus:outline-none focus:ring-2 focus:ring-wsa-red/20 focus:border-wsa-red transition-colors"
+                placeholder="Name of the person or organisation who referred you"
+              />
+            </div>
+          )}
         </div>
-        {formData.referredToWSA === "yes" && (
-          <div>
-            <label className="block text-sm font-medium text-wsa-navy mb-1.5">Referred by whom?</label>
-            <input
-              type="text"
-              value={formData.referredByWhom}
-              onChange={(e) => setFormData({ ...formData, referredByWhom: e.target.value })}
-              className="w-full px-4 py-3 border border-border bg-white focus:outline-none focus:ring-2 focus:ring-wsa-red/20 focus:border-wsa-red transition-colors"
-              placeholder="Name of the person or organisation who referred you"
-            />
-          </div>
-        )}
 
         {/* GDPR Consent */}
         <div className="pt-4">
@@ -810,7 +803,23 @@ function StudentForm() {
   );
 }
 
+/**
+ * Whether this visit is a campaign hand-off, which keeps the website's own
+ * form (client/src/lib/registrationForm.ts, WHAT STAYS). Read after mount,
+ * so the prerendered page and the first render always show the
+ * registration form most visitors get.
+ */
+function useCampaignHandoff(): boolean {
+  const [handoff, setHandoff] = useState(false);
+  useEffect(() => {
+    const fromUrl = new URLSearchParams(window.location.search).get("campaign") ?? "";
+    setHandoff(isCampaignSlug(fromUrl) || recallCampaign() !== "");
+  }, []);
+  return handoff;
+}
+
 export default function Contact() {
+  const campaignHandoff = useCampaignHandoff();
   return (
     <div className="min-h-screen">
       <section className="pt-32 lg:pt-40 pb-20 lg:pb-28">
@@ -822,7 +831,7 @@ export default function Contact() {
                 Ready to Study Abroad?
               </h1>
              <p className="text-xl text-muted-foreground leading-relaxed max-w-2xl">
-                Complete the form below and one of our Student Counsellors will contact you personally to discuss your plans and help you take the next step.
+                Complete the form below and a member of our team will contact you personally to discuss your plans and help you take the next step.
              </p>
             </div>
           </ScrollReveal>
@@ -839,7 +848,19 @@ export default function Contact() {
                 <h2 className="text-xl font-semibold text-wsa-navy mb-8 pb-3 border-b border-border/40">
                   Start Your Application
                 </h2>
-                <StudentForm />
+                {/* Tim Hunt's Pipedrive Website Registration Form (14 November
+                    2026), which every "Start Your Application" button leads
+                    to. A campaign hand-off keeps the website's own form. */}
+                {campaignHandoff ? (
+                  <StudentForm />
+                ) : (
+                  <div id="student-signup" className="scroll-mt-28">
+                    <PipedriveFormEmbed
+                      embedUrl={REGISTRATION_FORM_URL}
+                      privacyLine="Your details go to WSA's student records system so that our team can contact you."
+                    />
+                  </div>
+                )}
               </div>
             </ScrollReveal>
 
@@ -908,14 +929,7 @@ export default function Contact() {
                 What happens after you apply?
               </h2>
               <p className="text-[17px] text-muted-foreground leading-relaxed mb-6">
-                A named Student Counsellor will contact you personally within 48 hours. They'll listen to your study abroad plans, answer your questions and help you explore the right options for you. Your counsellor will support you from your first conversation through application, admission, visa and enrolment.
-              </p>
-              <p className="text-[17px] text-muted-foreground leading-relaxed">
-                You'll also get your own Student Portal account, giving you free access to our{" "}
-                <Link href="/portal/interview-coach" className="text-wsa-navy font-semibold hover:text-wsa-red transition-colors">
-                  AI Interview Readiness Coach
-                </Link>{" "}
-                to help you prepare for CAS, UKVI, university and course interviews.
+                A member of our team will contact you personally within 48 hours. They'll listen to your study abroad plans, answer your questions and help you explore the right options for you, then introduce you to a named Student Counsellor, who will support you through application, admission, visa and enrolment.
               </p>
             </div>
           </ScrollReveal>
