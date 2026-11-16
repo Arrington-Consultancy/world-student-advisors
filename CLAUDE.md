@@ -40,7 +40,7 @@ pnpm build      # vite build + prerender + esbuild server bundle
 pnpm format     # prettier
 ```
 
-`server/pipedrive.test.ts` "should authenticate successfully with the Pipedrive API" calls the live API and fails without `PIPEDRIVE_API_TOKEN`. Every other test runs offline. See `.env.example` for the full environment list.
+Two tests need the network and fail without it: `server/pipedrive.test.ts` "should authenticate successfully with the Pipedrive API" (also needs `PIPEDRIVE_API_TOKEN`) and `server/social-links.test.ts` "facebook share links resolve without server error". Every other test runs offline. See `.env.example` for the full environment list.
 
 ## Guard tests that will catch you
 
