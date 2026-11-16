@@ -236,6 +236,8 @@ export function registerGoogleAuthRoutes(app: Express) {
 
     const sub = claims.sub as string | undefined;
     const email = claims.email as string | undefined;
+    // Google sends a boolean; accept the string form some libraries produce.
+    const emailVerified = claims.email_verified === true || claims.email_verified === "true";
     const givenName = (claims.given_name as string | undefined) ?? "";
     const familyName = (claims.family_name as string | undefined) ?? "";
     const name = (claims.name as string | undefined) ?? "";
@@ -268,7 +270,7 @@ export function registerGoogleAuthRoutes(app: Express) {
     // ── Login flow: find (never create) the portal user and issue a session
     // token. The application is the registration — Google sign-in here is
     // only a login method for an account that already exists.
-    const result = await findGoogleUser({ sub, email, firstName, lastName });
+    const result = await findGoogleUser({ sub, email, emailVerified, firstName, lastName });
     if (!result) {
       res.redirect("/portal/login?error=google_token");
       return;
@@ -279,6 +281,14 @@ export function registerGoogleAuthRoutes(app: Express) {
     }
     if (result.status === "inactive") {
       res.redirect("/portal/login?error=google_account");
+      return;
+    }
+    if (result.status === "unverified_email") {
+      res.redirect("/portal/login?error=google_email_unverified");
+      return;
+    }
+    if (result.status === "conflict") {
+      res.redirect("/portal/login?error=google_account_conflict");
       return;
     }
 
