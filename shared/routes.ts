@@ -7,7 +7,10 @@
  * the build if the two ever drift apart, so update both when adding or
  * removing a page.
  */
-export const VALID_CLIENT_ROUTES = [
+import { LIBRARY_RESOURCE_PATHS } from "./studentSupportLibrary";
+import { SUCCESS_STORY_PATHS } from "./successStories";
+
+export const VALID_CLIENT_ROUTES: readonly string[] = [
   "/",
   "/about",
   "/study-options",
@@ -27,6 +30,10 @@ export const VALID_CLIENT_ROUTES = [
   "/study-options/undergraduate-degrees",
   "/study-options/pre-masters-top-up-degrees",
   "/study-options/masters-doctoral-degrees",
+  "/our-team",
+  // Kept alongside /our-team: the page was renamed on 14 September 2026 and
+  // /counsellors 301s to it (CANONICAL_PATHS), but the old path stays a real
+  // route so an in-app link that still points at it renders rather than 404s.
   "/counsellors",
   "/student-support-library",
   "/staff-portal",
@@ -35,7 +42,19 @@ export const VALID_CLIENT_ROUTES = [
   "/events",
   "/partners",
   "/our-global-education-partners",
+  "/student-success-stories",
+  // One page per country on Tim Hunt's Student Success Stories page
+  // (11 November 2026), /student-success-stories/<country>, derived from the
+  // consent gate in shared/successStories.ts: a country exists only once one
+  // of its stories is cleared, so no unconsented story ever has an address.
+  // In App.tsx these are the single pattern /student-success-stories/:country.
+  ...SUCCESS_STORY_PATHS,
   "/contact",
+  // Where Tim Hunt's Pipedrive Website Registration Form sends the student
+  // after registering (14 November 2026); reports the Google Ads conversion
+  // the website's own form used to. Noindex, out of the sitemap and the
+  // prerender list, linked from nowhere.
+  "/contact/thank-you",
   "/privacy",
   "/privacy-policy",
   "/terms",
@@ -55,8 +74,52 @@ export const VALID_CLIENT_ROUTES = [
   "/DDVavita",
   "/uk-masters-study",
   "/uk-masters-nigeria",
+  // Working-draft campaign landing page. A real route so it can be reviewed,
+  // but noindex and absent from the sitemap and the prerender list until the
+  // Google Ads brief is reconciled with the MPhil/MRes/PhD scope.
+  "/nigeria-postgraduate",
+  // Speak to Juliet, the Nigeria landing page for Juliet Nnajiofor-Uyi.
+  // Built 19 September 2026. A real route so it can be reviewed, but
+  // noindex and absent from the sitemap and the prerender list while the
+  // copy is provisional and Tim Hunt's revised brief is outstanding.
+  // /LPJuliet 301s here (CANONICAL_PATHS).
+  "/speak-to-juliet",
+  // The page Tim Hunt's Pipedrive form redirects to after a successful
+  // submission (28 September 2026). Noindex, out of the sitemap, unlinked.
+  "/speak-to-juliet/thank-you",
+  // Speak to Madalitso, the Malawi landing page on the country
+  // representative template, Tim Hunt's brief of 16 October 2026. Published:
+  // indexable, in the sitemap and prerendered. Its thank-you page is where
+  // his Pipedrive form redirects; noindex, out of the sitemap, unlinked.
+  "/speak-to-madalitso",
+  "/speak-to-madalitso/thank-you",
+  // Speak to Gladys, the Ghana landing page on the same template, Tim Hunt's
+  // email of 24 October 2026. Published like Madalitso's. Its thank-you page
+  // is the address Tim gave for his Pipedrive form; noindex, out of the
+  // sitemap, unlinked.
+  "/speak-to-gladys",
+  "/speak-to-gladys-thank-you",
+  // Speak to Eldah, the first Student Counsellor page, Tim Hunt's email of
+  // 12 November 2026. Published like Gladys's; its thank-you page is there
+  // for her Pipedrive form to send the student to, noindex and unlinked.
+  "/speak-to-eldah",
+  "/speak-to-eldah/thank-you",
+  "/speak-to-claudia",
+  // The Sarkin Fulani Future Leaders Programme landing page, Tim Hunt's brief
+  // of 8 October 2026 from Farooq Gajo's revised proposal. A real route so
+  // it can be reviewed by the Office of His Royal Highness and Brooke House
+  // College, but noindex, absent from the sitemap and the prerender list,
+  // and linked from nowhere until it is approved for publication.
+  "/sarkin-fulani-future-leaders",
   "/404",
-] as const;
+  // One permanent page per Student Support Library resource,
+  // /student-support-library/<slug>, generated from the library data so the
+  // registry can never disagree with it. In App.tsx these are the single
+  // pattern /student-support-library/:slug; server/routes-sync.test.ts
+  // expands that pattern with the same list. Tim Hunt's structure of
+  // 26 September 2026, built on Tom Arrington's GO of 29 September.
+  ...LIBRARY_RESOURCE_PATHS,
+];
 
 const VALID_CLIENT_ROUTE_SET = new Set<string>(VALID_CLIENT_ROUTES);
 

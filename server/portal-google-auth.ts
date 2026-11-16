@@ -17,7 +17,8 @@ import type { Express } from "express";
 import crypto from "crypto";
 import * as jose from "jose";
 import { ENV } from "./_core/env";
-import { findOrCreateGoogleUser, mintSignupPrefillToken } from "./portal-auth";
+import { findGoogleUser, mintSignupPrefillToken } from "./portal-auth";
+import { isCampaignSlug } from "../shared/campaignEnquiry";
 
 const GOOGLE_AUTH_URL = "https://accounts.google.com/o/oauth2/v2/auth";
 const GOOGLE_TOKEN_URL = "https://oauth2.googleapis.com/token";
@@ -40,8 +41,32 @@ function isRateLimited(ip: string, windowMs = 60_000, max = 20): boolean {
   return bucket.count > max;
 }
 
+/**
+ * The campaign landing page a sign-up started from, taken from an untrusted
+ * source. Only a slug on the closed list survives; everything else becomes "".
+ * Used on the way into the OAuth state and again on the way out of it.
+ */
+export function campaignFromUntrusted(raw: unknown): string {
+  return typeof raw === "string" && isCampaignSlug(raw) ? raw : "";
+}
+
+/**
+ * Where the student lands after signing up with Google. The callback cannot
+ * reuse the URL they left from, so this rebuilds it: the prefill token, and
+ * the campaign marker when there is one. Anything not put back here is lost
+ * for the rest of the journey, which is how a Speak to Juliet enquiry came to
+ * notify the general staff list on 19 September 2026.
+ */
+export function buildSignupReturnUrl(redirectUri: string, prefillToken: string, campaign: unknown): string {
+  const url = new URL(redirectUri.replace("/api/portal/auth/google/callback", "/contact"));
+  url.searchParams.set("gpt", prefillToken);
+  const slug = campaignFromUntrusted(campaign);
+  if (slug) url.searchParams.set("campaign", slug);
+  return url.toString();
+}
+
 /** Safely parse base64-encoded JSON state without throwing. */
-function decodeOAuthState(raw: unknown): { redirectUri?: string; nonce?: string; flow?: string } {
+function decodeOAuthState(raw: unknown): { redirectUri?: string; nonce?: string; flow?: string; campaign?: string } {
   if (typeof raw !== "string") return {};
   try {
     return JSON.parse(Buffer.from(raw, "base64url").toString("utf8"));
@@ -91,7 +116,13 @@ export function registerGoogleAuthRoutes(app: Express) {
     // Mint a one-time nonce
     const nonce = crypto.randomUUID();
     const flow = typeof req.query.flow === "string" && req.query.flow === "signup" ? "signup" : "login";
-    const state = Buffer.from(JSON.stringify({ redirectUri, nonce, flow })).toString("base64url");
+    // Which campaign landing page the student started from, if any. The
+    // callback rebuilds the /contact URL from scratch, so a marker that is not
+    // carried here is lost for the rest of the journey and the enquiry ends up
+    // notifying the general staff list instead of the campaign's recipients.
+    // Only a slug on the closed list survives, here and again at submission.
+    const campaign = campaignFromUntrusted(req.query.campaign);
+    const state = Buffer.from(JSON.stringify({ redirectUri, nonce, flow, campaign })).toString("base64url");
 
     // Bind the nonce to the browser via a host-only, Secure, SameSite=None cookie
     // (SameSite=None is required because Google redirects back cross-site)
@@ -143,7 +174,7 @@ export function registerGoogleAuthRoutes(app: Express) {
     const cookies = parseCookies(req.headers.cookie);
     const cookieNonce = cookies[STATE_COOKIE];
     if (!cookieNonce || cookieNonce !== decoded.nonce) {
-      res.status(403).send("OAuth state mismatch — possible CSRF.");
+      res.status(403).send("OAuth state mismatch. Possible CSRF.");
       return;
     }
 
@@ -228,16 +259,25 @@ export function registerGoogleAuthRoutes(app: Express) {
         res.redirect("/contact?google_error=token");
         return;
       }
-      const contactRedirect = new URL(`${decoded.redirectUri.replace("/api/portal/auth/google/callback", "/contact")}`);
-      contactRedirect.searchParams.set("gpt", prefillToken);
-      res.redirect(contactRedirect.toString());
+      // Validated again rather than trusted, because the state travelled
+      // through the browser.
+      res.redirect(buildSignupReturnUrl(decoded.redirectUri, prefillToken, decoded.campaign));
       return;
     }
 
-    // ── Login flow: find or create portal user and issue a session token ──────
-    // Find or create the portal user
-    const result = await findOrCreateGoogleUser({ sub, email, firstName, lastName });
+    // ── Login flow: find (never create) the portal user and issue a session
+    // token. The application is the registration — Google sign-in here is
+    // only a login method for an account that already exists.
+    const result = await findGoogleUser({ sub, email, firstName, lastName });
     if (!result) {
+      res.redirect("/portal/login?error=google_token");
+      return;
+    }
+    if (result.status === "not_found") {
+      res.redirect("/portal/login?error=google_no_account");
+      return;
+    }
+    if (result.status === "inactive") {
       res.redirect("/portal/login?error=google_account");
       return;
     }

@@ -1,0 +1,32 @@
+name: Connector setup - generate PIPEDRIVE_OAUTH_TOKEN_KEY
+
+# Manual only. Generates the 32-byte sealing key for the WSA Pipedrive OAuth
+# tokens and places it on the app service. The key is created inside the
+# runner, masked, never printed and never stored anywhere but the Railway
+# variable. Refuses to overwrite a key that already exists, because rotating
+# it would make every sealed token unreadable and force re-authorisation.
+# Auth: githubactionsprod, the production-scoped Railway Project Token.
+on:
+  workflow_dispatch: {}
+
+jobs:
+  key:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Install Railway CLI
+        run: npm install -g @railway/cli
+      - name: Generate and set the key if absent (value never printed)
+        env:
+          RAILWAY_TOKEN: ${{ secrets.githubactionsprod }}
+        run: |
+          set +x
+          PRESENT=$(railway variables --service "world-student-advisors" --environment "production" --json | jq -r 'has("PIPEDRIVE_OAUTH_TOKEN_KEY") and (.PIPEDRIVE_OAUTH_TOKEN_KEY | length > 0)')
+          if [ "$PRESENT" = "true" ]; then
+            echo "PIPEDRIVE_OAUTH_TOKEN_KEY is already present. Not replaced."
+            exit 0
+          fi
+          KEY=$(openssl rand -base64 32)
+          echo "::add-mask::$KEY"
+          railway variables --service "world-student-advisors" --environment "production" \
+            --set "PIPEDRIVE_OAUTH_TOKEN_KEY=${KEY}" --skip-deploys > /dev/null
+          echo "PIPEDRIVE_OAUTH_TOKEN_KEY set (44 characters, base64, 32 bytes). Value not shown."

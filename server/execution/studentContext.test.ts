@@ -1,0 +1,307 @@
+import { describe, expect, it, vi } from "vitest";
+
+vi.mock("../db", () => ({ getDb: async () => null }));
+
+const { extractNameCandidates, extractSingleNameCandidate, resolveStudentByName, searchTerms } = await import("./studentContext");
+const { gatherConnectorEvidence } = await import("./evidence");
+const { LOOKUP_ACTOR } = await import("../crm/staffLookup");
+import type { LookupDeps, CrmCandidate } from "../crm/staffLookup";
+import type { ProfileResolution } from "../access/identity";
+
+/**
+ * A staff member names a student in ordinary language; the worker gets that
+ * one record and nothing else. Tom Arrington, 16 September 2026. The
+ * properties that matter: the worker never searches, the staff member's own
+ * lookup and case scope decide what is found, one match becomes a read,
+ * several become a question, none becomes a plain statement, and a refusal
+ * stays a refusal.
+ */
+describe("extractNameCandidates", () => {
+  it("finds a three-part name in a natural question and ignores sentence-initial capitals", () => {
+    expect(extractNameCandidates("Where is Vivian Ene Onuh in the application process, who is her counsellor, and what should happen next?")).toEqual(["Vivian Ene Onuh"]);
+  });
+  it("handles a possessive, punctuation and upper-case CRM spelling", () => {
+    expect(extractNameCandidates("Bring me up to speed on Peter Agada's application.")).toEqual(["Peter Agada"]);
+    expect(extractNameCandidates("Is CHRISTOPHER MASIRI ready to submit?")).toEqual(["CHRISTOPHER MASIRI"]);
+  });
+  it("does not treat WSA vocabulary, worker names or institutions as students", () => {
+    expect(extractNameCandidates("What are the entry requirements at Teesside University for a pre-master's?")).toEqual([]);
+    expect(extractNameCandidates("James, what does the CAS Status field mean?")).toEqual([]);
+    expect(extractNameCandidates("Is this application ready to send?")).toEqual([]);
+  });
+  it("stops a name where an employer or address begins: the question of 16 September 2026", () => {
+    expect(extractNameCandidates("How is managing this lead?  Joyce Kitakang Federal Ministry of Environment Department of Forestry, Utako District, Abuja, Nigeria")).toEqual(["Joyce Kitakang"]);
+    expect(extractNameCandidates("Peter Agada Lagos State University applicant")).toEqual(["Peter Agada"]);
+  });
+  it("never proposes a single word, and stops at four", () => {
+    expect(extractNameCandidates("Ask Vivian please")).toEqual([]);
+    expect(extractNameCandidates("Alpha Beta Gamma Delta Epsilon Zeta arrived")).toEqual([]);
+  });
+});
+
+function profile(scopes: string[], level = 1): ProfileResolution {
+  return {
+    resolved: true,
+    profile: {
+      staffUserId: 7, baseAccessLevel: level as 1, functionalScopes: scopes as never, caseScope: "organisation", actionPermissions: ["read"], sensitiveOverlays: [], temporaryGrants: [], status: "active", teamId: null,
+    } as never,
+  } as ProfileResolution;
+}
+function candidate(id: number, name: string, stage = "S9 - Offers & Conditions"): CrmCandidate {
+  return { personId: id, name, email: `${id}@example.invalid`, phone: null, ownerEmail: "eldah@worldstudentadvisors.com", ownerName: "Eldah Therone", stageLabel: stage, updateTime: "2026-09-14 15:50:00" };
+}
+function deps(found: CrmCandidate[], scopes = ["admissions"]): { deps: LookupDeps; audits: unknown[]; searches: string[] } {
+  const audits: unknown[] = []; const searches: string[] = [];
+  return {
+    audits, searches,
+    deps: {
+      resolveProfile: async () => profile(scopes),
+      search: async (term, by) => { searches.push(`${by}:${term}`); return found; },
+      resolveOwner: async () => 3,
+      audit: e => audits.push(e),
+    },
+  };
+}
+const ask = { workerId: "james" as const, staffUserId: 7, authMethod: "entra_sso" as const };
+
+describe("searchTerms", () => {
+  it("tries the full name, then first and last, then the first two words, then the surname, and never a first name alone", () => {
+    expect(searchTerms("Vivian Ene Onuh")).toEqual(["Vivian Ene Onuh", "Vivian Onuh", "Vivian Ene", "Onuh"]);
+    expect(searchTerms("Peter Agada")).toEqual(["Peter Agada", "Agada"]);
+  });
+});
+
+describe("resolveStudentByName", () => {
+  it("finds a student whose CRM record lacks a middle name by falling back to first and last, and stops there", async () => {
+    const searches: string[] = [];
+    const d = deps([]);
+    d.deps.search = async term => { searches.push(term); return term === "Vivian Onuh" ? [candidate(369, "VIVIAN ONUH")] : []; };
+    const r = await resolveStudentByName({ ...ask, name: "Vivian Ene Onuh" }, d.deps);
+    expect(r).toEqual({ kind: "one", personId: 369, name: "VIVIAN ONUH" });
+    expect(searches).toEqual(["Vivian Ene Onuh", "Vivian Onuh"]);
+  });
+  it("a surname shared by several students: the one the typed name is closest to is proposed and questioned, the other named as an alternative", async () => {
+    // Before 17 September 2026 this was a flat "which one?"; Tom Arrington
+    // asked for thinking: "Gracie" is Grace, not Amaka, so Grace is offered
+    // as a probable match with Amaka listed, and the worker must confirm.
+    const d = deps([]);
+    d.deps.search = async term => term === "Okoro" ? [candidate(1, "Grace Okoro"), candidate(2, "Amaka Okoro")] : [];
+    const r = await resolveStudentByName({ ...ask, name: "Gracie Okoro" }, d.deps);
+    expect(r.kind).toBe("probable");
+    if (r.kind !== "probable") return;
+    expect(r.name).toBe("Grace Okoro");
+    expect(r.alternatives.join(" ")).toContain("Amaka Okoro");
+  });
+  it("a surname shared by students the typed name is equally far from becomes a question naming the spelling searched", async () => {
+    const d = deps([]);
+    d.deps.search = async term => term === "Okoro" ? [candidate(1, "Grace Okoro"), candidate(2, "Gracia Okoro")] : [];
+    const r = await resolveStudentByName({ ...ask, name: "Gracie Okoro" }, d.deps);
+    expect(r.kind).toBe("many");
+    expect((r as { note: string }).note).toContain(`searched as "Okoro"`);
+  });
+  it("one match under the staff member's own authority becomes one person id, audited as the staff lookup, not as the worker", async () => {
+    const d = deps([candidate(369, "VIVIAN ENE ONUH")]);
+    const r = await resolveStudentByName({ ...ask, name: "Vivian Ene Onuh" }, d.deps);
+    expect(r).toEqual({ kind: "one", personId: 369, name: "VIVIAN ENE ONUH" });
+    expect(d.searches).toEqual(["name:Vivian Ene Onuh"]);
+    const [event] = d.audits as Array<{ workerId: string; permissionReason: string; targetResourceId?: string }>;
+    expect(event.workerId).toBe(LOOKUP_ACTOR);
+    expect(event.permissionReason).toContain("scope=admissions");
+    expect(event.targetResourceId).toBe("person:369");
+  });
+  it("several matches become a question, never a merge or a pick", async () => {
+    const d = deps([candidate(1, "Grace Okoro"), candidate(2, "Grace Okoro", "S8 - App. Submitted")]);
+    const r = await resolveStudentByName({ ...ask, name: "Grace Okoro" }, d.deps);
+    expect(r.kind).toBe("many");
+    expect((r as { note: string }).note).toContain("2 CRM students match");
+    expect((r as { note: string }).note).toContain("which one they mean");
+  });
+  it("no match is stated plainly, with any case-scope withholding counted but never identified", async () => {
+    const d = deps([]);
+    expect((await resolveStudentByName({ ...ask, name: "Nobody Here" }, d.deps))).toMatchObject({ kind: "none" });
+  });
+  it("a staff member without the worker's scope is refused before the CRM is contacted", async () => {
+    const d = deps([candidate(369, "VIVIAN ENE ONUH")], ["marketing_seo"]);
+    const r = await resolveStudentByName({ ...ask, name: "Vivian Ene Onuh" }, d.deps);
+    expect(r.kind).toBe("refused");
+    expect(d.searches).toEqual([]);
+  });
+  it("a shared-password session has no identity and is refused", async () => {
+    const d = deps([candidate(369, "VIVIAN ENE ONUH")]);
+    d.deps.resolveProfile = async () => ({ resolved: false, reason: "no_profile" } as never);
+    const r = await resolveStudentByName({ ...ask, staffUserId: null, authMethod: "shared_password", name: "Vivian Ene Onuh" }, d.deps);
+    expect(r.kind).toBe("refused");
+    expect(d.searches).toEqual([]);
+  });
+});
+
+describe("the question of 16 September 2026, replayed against a search double", () => {
+  it("finds the student from the pasted line, exactly, by her first two names", async () => {
+    const d = deps([]);
+    d.deps.search = async term => { d.searches.push(term); return term === "Joyce Kitakang" ? [candidate(8534, "Joyce Iya Kitakang", "Getting to know you")] : []; };
+    const r = await resolveStudentByName({ ...ask, name: "Joyce Kitakang" }, d.deps);
+    expect(r).toEqual({ kind: "one", personId: 8534, name: "Joyce Iya Kitakang" });
+  });
+  it("even the whole four-word run would now find her and treat her as the person meant", async () => {
+    const d = deps([]);
+    d.deps.search = async term => { d.searches.push(term); return term === "Joyce Kitakang" || term === "Joyce" ? [candidate(8534, "Joyce Iya Kitakang", "Getting to know you")] : []; };
+    const r = await resolveStudentByName({ ...ask, name: "Joyce Kitakang Federal Ministry" }, d.deps);
+    expect(r.kind).toBe("one");
+    expect(d.searches.slice(0, 3)).toEqual(["Joyce Kitakang Federal Ministry", "Joyce Ministry", "Joyce Kitakang"]);
+  });
+});
+
+describe("near matches: think, then question (Tom Arrington, 17 September 2026)", () => {
+  /** A search double keyed on the term: exact spellings find nothing, the stem finds the record. */
+  function fuzzyDeps(found: Record<string, CrmCandidate[]>) {
+    const d = deps([]);
+    d.deps.search = async (term, by) => { d.searches.push(`${by}:${term}`); return found[term] ?? []; };
+    return d;
+  }
+  it("a misspelt surname becomes a probable match carrying the name as recorded, after the exact spellings were tried", async () => {
+    const d = fuzzyDeps({ Kitak: [candidate(8534, "Joyce Iya Kitakang", "Getting to know you")] });
+    const r = await resolveStudentByName({ ...ask, name: "Joyce Kitakhang" }, d.deps);
+    expect(r.kind).toBe("probable");
+    if (r.kind !== "probable") return;
+    expect(r.personId).toBe(8534);
+    expect(r.name).toBe("Joyce Iya Kitakang");
+    expect(r.typed).toBe("Joyce Kitakhang");
+    expect(r.score).toBeGreaterThan(0.9);
+    expect(d.searches.slice(0, 2)).toEqual(["name:Joyce Kitakhang", "name:Kitakhang"]);
+    expect(d.searches).toContain("name:Kitak");
+  });
+  it("a short first name finds the long form and is questioned, not assumed", async () => {
+    const d = fuzzyDeps({ Thomas: [candidate(11, "Thomas Carl", "Application Submitted")] });
+    const r = await resolveStudentByName({ ...ask, name: "Tom Karl" }, d.deps);
+    expect(r.kind).toBe("probable");
+    if (r.kind === "probable") expect(r.name).toBe("Thomas Carl");
+  });
+  it("two records equally close become a question naming both, never a pick", async () => {
+    const d = fuzzyDeps({ Okafo: [candidate(21, "Chidi Okafor"), candidate(22, "Chidi Okafor", "Application Submitted")] });
+    const r = await resolveStudentByName({ ...ask, name: "Chidi Okafore" }, d.deps);
+    expect(r.kind).toBe("many");
+    if (r.kind === "many") { expect(r.note).toContain("closest matches"); expect(r.note).toContain("do not choose"); }
+  });
+  it("nothing alike anywhere stays none, and says near spellings were tried", async () => {
+    const d = fuzzyDeps({ Onuh: [candidate(31, "Peter Agada")] });
+    const r = await resolveStudentByName({ ...ask, name: "Vivian Onuh" }, d.deps);
+    expect(r.kind).toBe("none");
+    if (r.kind === "none") expect(r.note).toContain("near spellings");
+  });
+  it("a name typed without capitals is read leniently only when nothing capitalised was found", () => {
+    expect(extractNameCandidates("where is joyce kitakang in the application process", { lenient: true })).toEqual(["joyce kitakang"]);
+    expect(extractNameCandidates("where is joyce kitakang in the application process")).toEqual([]);
+    expect(extractNameCandidates("what should happen next for her application", { lenient: true })).toEqual([]);
+  });
+  it("a probable match reaches the worker as evidence with the question attached", async () => {
+    const evidence = await gatherConnectorEvidence({
+      ...ask, requestText: "Where is Joyce Kitakhang in the application process?",
+      resolveByName: async () => ({ kind: "probable", personId: 8534, name: "Joyce Iya Kitakang", typed: "Joyce Kitakhang", score: 0.97, alternatives: [] }),
+    });
+    const all = [...evidence.blocks.map(b => b.label), ...evidence.notes.map(n => n.note)].join("\n");
+    expect(all).toContain("person 8534");
+    expect(all).toContain("PROBABLE match");
+    expect(all).toContain("Joyce Iya Kitakang");
+    expect(all).toContain("ask the staff member to confirm");
+  });
+});
+
+describe("gatherConnectorEvidence with a named student", () => {
+  it("resolves the name under the staff member's authority and reads that one person under the worker's grant; the label says how it was identified", async () => {
+    const seen: string[] = [];
+    const evidence = await gatherConnectorEvidence({
+      ...ask, requestText: "Where is Vivian Ene Onuh in the application process, who is her counsellor, and what should happen next?",
+      resolveByName: async input => { seen.push(input.name); return { kind: "one", personId: 369, name: "VIVIAN ENE ONUH" }; },
+    });
+    expect(seen).toEqual(["Vivian Ene Onuh"]);
+    // The read itself goes through the real gated connector, which in this
+    // test has no database and no grant, so it reports a note rather than a
+    // block: the point is that person 369 was the one and only thing asked for.
+    const all = [...evidence.blocks.map(b => b.label), ...evidence.notes.map(n => n.note)].join("\n");
+    expect(all).toContain("person 369");
+    expect(all).not.toMatch(/person (?!369)\d+/);
+  });
+  it("does not resolve a name at all when the staff member typed an identifier", async () => {
+    const seen: string[] = [];
+    await gatherConnectorEvidence({ ...ask, requestText: "Where is Vivian Ene Onuh, CRM person 369?", resolveByName: async input => { seen.push(input.name); return { kind: "none", note: "x" }; } });
+    expect(seen).toEqual([]);
+  });
+  it("does not resolve a name for a worker with no CRM grant", async () => {
+    const seen: string[] = [];
+    const evidence = await gatherConnectorEvidence({ ...ask, workerId: "amelia", requestText: "Tell me about Vivian Ene Onuh", resolveByName: async input => { seen.push(input.name); return { kind: "none", note: "x" }; } });
+    expect(seen).toEqual([]);
+    expect(evidence.blocks).toEqual([]);
+  });
+  it("relays a many-or-none resolution as a note the worker can state", async () => {
+    const evidence = await gatherConnectorEvidence({ ...ask, requestText: "Where is Grace Okoro up to?", resolveByName: async () => ({ kind: "many", note: "2 CRM students match \"Grace Okoro\": ..." }) });
+    expect(evidence.blocks).toEqual([]);
+    expect(evidence.notes[0].note).toContain("2 CRM students match");
+  });
+});
+
+/**
+ * Tom Arrington, 17 September 2026, typed into Reception: "ar ethere any
+ * toms on pipedrive". A lone first name, plural, mis-typed around it.
+ */
+describe("a single first name: extractSingleNameCandidate", () => {
+  it("reads a plural known first name as a request for everybody of that name", () => {
+    expect(extractSingleNameCandidate("ar ethere any toms on pipedrive")).toBe("Tom");
+    expect(extractSingleNameCandidate("are there any Thomases on Pipedrive?")).toBe("Thomas");
+    expect(extractSingleNameCandidate("do we have a Joyce on the crm")).toBe("Joyce");
+  });
+  it("accepts a name introduced by called or named even when the list does not know it", () => {
+    expect(extractSingleNameCandidate("do we have a student called Adaeze")).toBe("Adaeze");
+  });
+  it("proposes nothing for ordinary words, stoplisted words or two unknown words", () => {
+    expect(extractSingleNameCandidate("Is the application ready to send?")).toBeNull();
+    expect(extractSingleNameCandidate("what is the visa rule on dependants")).toBeNull();
+    expect(extractSingleNameCandidate("check pipedrive status")).toBeNull();
+    expect(extractSingleNameCandidate("tom and joyce both")).toBeNull();
+  });
+});
+
+describe("resolveStudentByName with a first name alone", () => {
+  it("lists every student recorded under the name or a form of it, with stage and counsellor, and asks which is meant", async () => {
+    const d = deps([]);
+    d.deps.search = async (term, by) => {
+      d.searches.push(`${by}:${term}`);
+      if (term === "Tom") return [candidate(1, "Tom Adeyemi"), candidate(3, "Tomasz Nowak")];
+      if (term === "Thomas") return [candidate(2, "Thomas Okafor", "Getting to know you")];
+      return [];
+    };
+    const r = await resolveStudentByName({ ...ask, name: "Tom" }, d.deps);
+    expect(r.kind).toBe("many");
+    if (r.kind !== "many") return;
+    expect(r.note).toContain("2 CRM students are recorded with the name \"Tom\"");
+    expect(r.note).toContain("Tom Adeyemi");
+    expect(r.note).toContain("Thomas Okafor (Getting to know you, counsellor Eldah Therone)");
+    expect(r.note).not.toContain("Tomasz");
+    expect(r.note).toContain("ask which one the staff member means");
+    expect(d.searches[0]).toBe("name:Tom");
+    expect(d.searches).toContain("name:Thomas");
+  });
+  it("one student of that name is a probable match to be confirmed, never assumed", async () => {
+    const d = deps([]);
+    d.deps.search = async term => (term === "Thomas" ? [candidate(2, "Thomas Okafor")] : []);
+    const r = await resolveStudentByName({ ...ask, name: "Tom" }, d.deps);
+    expect(r).toMatchObject({ kind: "probable", personId: 2, name: "Thomas Okafor", typed: "Tom" });
+  });
+  it("none says so plainly with the forms that were tried", async () => {
+    const d = deps([]);
+    const r = await resolveStudentByName({ ...ask, name: "Tom" }, d.deps);
+    expect(r.kind).toBe("none");
+    if (r.kind !== "none") return;
+    expect(r.note).toContain("\"Tom\" or a form of it (Thomas");
+  });
+});
+
+describe("lenient extraction does not manufacture a name out of a lower-case sentence", () => {
+  it("Tom's sentence of 17 September 2026 yields no run, so the lone first name is what gets searched", () => {
+    expect(extractNameCandidates("ar ethere any toms on pipedrive", { lenient: true })).toEqual([]);
+    expect(extractSingleNameCandidate("ar ethere any toms on pipedrive")).toBe("Tom");
+  });
+  it("still reads a lower-case full name, and splits at ordinary words rather than swallowing them", () => {
+    expect(extractNameCandidates("who has joyce kitakang", { lenient: true })).toEqual(["joyce kitakang"]);
+    expect(extractNameCandidates("is joyce kitakang or any grace okoro on the crm", { lenient: true })).toEqual(["joyce kitakang", "grace okoro"]);
+  });
+});

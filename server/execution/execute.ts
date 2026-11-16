@@ -1,0 +1,404 @@
+/**
+ * The worker execution layer.
+ *
+ * One function, one path, every gate on it. A staff member's request
+ * reaches a model only after: their own access is checked, the worker is
+ * confirmed approved AND executable, an approved controlled brief exists
+ * to run under, and context has been assembled by the isolation layer.
+ * Afterwards the output passes the quality gate before anybody sees it.
+ *
+ * The order is deliberate and each step consumes the previous one, so
+ * there is no arrangement of arguments that skips a gate.
+ *
+ * Model choice is configuration, not identity. The worker decides what is
+ * said; server/_core/llm.ts decides which model says it. A worker's brief
+ * contains no model name, so WSA can change model or provider without
+ * touching a single line of worker governance.
+ *
+ * Nothing here writes to a connector, sends anything externally, or takes
+ * a consequential action. Execution produces text and a record of having
+ * produced it. Acting on that text remains the pipeline's decision and,
+ * for anything consequential, a human's.
+ */
+import { invokeLLM } from "../_core/llm";
+import { completeStudentLists } from "./listCompleteness";
+import { readFollowUp, frameFollowUp, priorCompletionClaimIsUnfounded } from "./followUp";
+import { getWorker } from "../workforce/registry";
+import { evaluateStaffPortalExecutionPermission } from "../workforce/permissions";
+import { buildWorkerContext, type CaseData, type UpstreamOutput } from "../workforce/context";
+import { checkAccessForStaffUser } from "../access/enforcement";
+import { WORKER_FUNCTIONAL_SCOPE } from "../access/workerScope";
+import { runQualityCheck, findSubstanceChanges, type QualityCheckResult } from "../operating/qualityCheck";
+import { normaliseMechanicalStyle, stripMarkdown } from "../operating/styleNormalise";
+import { getControlledBrief, NO_CONTROLLED_BRIEF } from "./briefs";
+import { checkPreparationOnly, checkRuleStatementsAreSourced, PRIYA_REFUSAL } from "../workforce/priyaScope";
+import { composeSystemPrompt, composeUserMessage, type ContributorInput } from "./prompt";
+import { gatherConnectorEvidence } from "./evidence";
+import type { AuditAuthMethod } from "../workforce/audit";
+import type { WorkerId } from "../workforce/types";
+
+export type ExecutionOutcome =
+  | "answered"
+  | "refused_staff_access"
+  | "refused_worker_not_executable"
+  | "refused_no_brief"
+  | "refused_no_context"
+  | "blocked_quality"
+  | "blocked_scope"
+  | "blocked_incomplete"
+  | "model_unavailable";
+
+export interface ExecutionRequest {
+  /** From the verified session. Never from request input. */
+  staffUserId: number | null;
+  /**
+   * From the verified session, for the connector audit rows. Defaults to
+   * the honest reading of staffUserId: an individual where one exists and
+   * the shared password where none does.
+   */
+  authMethod?: AuditAuthMethod;
+  workerId: WorkerId;
+  /** What the staff member typed. Always a user message, never system text. */
+  requestText: string;
+  caseId?: string;
+  studentId?: string;
+  availableCases?: CaseData[];
+  availableUpstreamOutputs?: UpstreamOutput[];
+  contributions?: readonly ContributorInput[];
+  /**
+   * Prior turns of this conversation, oldest first, read from the store by
+   * the caller. Never supplied by a browser: see execution/conversation.ts
+   * for why a client-posted transcript would be a way to forge what a
+   * worker previously said.
+   */
+  history?: readonly { role: "staff" | "worker"; content: string }[];
+}
+
+export interface ExecutionResult {
+  outcome: ExecutionOutcome;
+  /** The text a staff member may actually see. Null unless the flow completed. */
+  visibleText: string | null;
+  /** Why, in terms the staff member can act on. */
+  reason: string;
+  workerId: WorkerId;
+  workerName: string;
+  /** The controlled document the worker executed under, for the record. */
+  briefReference: string | null;
+  qualityCheck: QualityCheckResult | null;
+}
+
+function refuse(
+  outcome: ExecutionOutcome,
+  reason: string,
+  workerId: WorkerId,
+  briefReference: string | null = null,
+): ExecutionResult {
+  return {
+    outcome,
+    visibleText: null,
+    reason,
+    workerId,
+    workerName: getWorker(workerId).canonicalName,
+    briefReference,
+    qualityCheck: null,
+  };
+}
+
+export async function executeWorker(request: ExecutionRequest): Promise<ExecutionResult> {
+  const worker = getWorker(request.workerId);
+
+  // 1. The requesting human's own access, before anything is assembled.
+  const staffAccess = await checkAccessForStaffUser(request.staffUserId, {
+    action: "read",
+    functionalScope: WORKER_FUNCTIONAL_SCOPE[request.workerId],
+  });
+  if (!staffAccess.allowed) {
+    return refuse("refused_staff_access", staffAccess.reason, request.workerId);
+  }
+
+  // 2. The worker's own approval and deployment authorisation.
+  const execution = evaluateStaffPortalExecutionPermission(request.workerId);
+  if (!execution.allowed) {
+    return refuse("refused_worker_not_executable", execution.reason, request.workerId);
+  }
+
+  // 3. An approved controlled brief to run under. A worker with no brief
+  //    cannot execute even if every flag above is open, because there is
+  //    nothing it would lawfully be executing.
+  const brief = getControlledBrief(request.workerId);
+  if (!brief) {
+    return refuse(
+      "refused_no_brief",
+      `${worker.canonicalName} has no approved controlled operating guide. ${NO_CONTROLLED_BRIEF}`,
+      request.workerId,
+    );
+  }
+
+  // 4. Context, assembled by the isolation layer rather than by the caller.
+  const context = buildWorkerContext({
+    workerId: request.workerId,
+    caseId: request.caseId ?? "",
+    requestedByStudentId: request.studentId ?? "",
+    availableCases: request.availableCases ?? [],
+    availableUpstreamOutputs: request.availableUpstreamOutputs ?? [],
+  });
+  if (context.denied) {
+    return refuse("refused_no_context", context.deniedReason ?? "Context was refused.", request.workerId, brief.sourceDocument);
+  }
+
+  // 4b. Evidence from WSA systems, through the gated connector path. Every
+  //     call inside is permission-checked and audited; a refusal becomes a
+  //     note the worker can state rather than a gap it might paper over.
+  //     A short reply ("yes", "go ahead", "no thanks") names no student, so
+  //     the student is read from the staff member's earlier messages in this
+  //     conversation and their record gathered again. Tom Arrington, 18
+  //     September 2026.
+  const history = request.history ?? [];
+  const priorRequests = history.filter(t => t.role === "staff").map(t => t.content).reverse();
+  const evidence = await gatherConnectorEvidence({
+    workerId: request.workerId,
+    requestText: request.requestText,
+    staffUserId: request.staffUserId,
+    authMethod: request.authMethod ?? (request.staffUserId === null ? "shared_password" : "entra_sso"),
+    caseId: request.caseId,
+    priorRequests,
+  });
+
+  // 4c. A short reply that answers the worker's own previous offer or
+  //     question is read against that offer, which is quoted back to the
+  //     model with the reading (accepts, declines, unclear) so "yes" is
+  //     resolved rather than guessed at. Tom Arrington, 18 September 2026.
+  const followUp = readFollowUp(request.requestText, history);
+  const effectiveRequest = followUp ? frameFollowUp(followUp) : request.requestText;
+
+  const promptInputs = { brief, context, contributions: request.contributions ?? [], evidence };
+  const system = composeSystemPrompt(promptInputs);
+  const user = composeUserMessage(effectiveRequest, promptInputs);
+
+  // 5. Model execution. Model choice is configuration; the worker's
+  //    governance says nothing about which model runs it.
+  let modelText: string;
+  let finishReason: string | null = null;
+  try {
+    // Prior turns go in as real messages between the system prompt and the
+    // new one, never appended into the system text. A staff member's typed
+    // words are user content; the moment they are concatenated into system
+    // text they read as instructions to the model, and a worker whose
+    // brief can be edited by whoever types into it is not governed at all.
+    const priorMessages = (request.history ?? []).map(turn => ({
+      role: turn.role === "staff" ? ("user" as const) : ("assistant" as const),
+      content: turn.content,
+    }));
+
+    const response = await invokeLLM({
+      messages: [
+        { role: "system", content: system },
+        ...priorMessages,
+        { role: "user", content: user },
+      ],
+      maxTokens: 4096,
+    });
+    const choice = response.choices[0];
+    modelText = choice?.message?.content ?? "";
+    finishReason = choice?.finish_reason ?? null;
+  } catch (err) {
+    return refuse(
+      "model_unavailable",
+      `The model could not be reached: ${err instanceof Error ? err.message : "unknown error"}. ` +
+      "Nothing was recorded and no work was done.",
+      request.workerId,
+      brief.sourceDocument,
+    );
+  }
+
+  if (modelText.trim() === "") {
+    return refuse("model_unavailable", "The model returned nothing.", request.workerId, brief.sourceDocument);
+  }
+
+  // 5b. An answer the model did not finish is not an answer. A reply cut
+  //     off at the length limit reads as complete to whoever receives it,
+  //     and a staff member acting on half an answer is worse served than
+  //     one told to ask again. 16 September 2026.
+  if (finishReason === "length") {
+    return refuse(
+      "blocked_incomplete",
+      `${worker.canonicalName}'s answer ran past the length limit and was cut off before it finished. ` +
+      "It has not been shown, because a partial answer reads as a whole one. Ask again, more narrowly, or in parts.",
+      request.workerId,
+      brief.sourceDocument,
+    );
+  }
+
+  // 5c. A list of students is given in full or it is not an answer. Tom
+  //     Arrington, 17 September 2026. Checked against the list the evidence
+  //     layer built; one rewrite is asked for, then the list is appended in
+  //     plain text from the records themselves.
+  let listSummary: string | null = null;
+  if (evidence.studentLists && evidence.studentLists.length > 0) {
+    const completed = await completeStudentLists(modelText, evidence, async correction => {
+      const again = await invokeLLM({
+        messages: [
+          { role: "system", content: system },
+          ...(request.history ?? []).map(turn => ({
+            role: turn.role === "staff" ? ("user" as const) : ("assistant" as const),
+            content: turn.content,
+          })),
+          { role: "user", content: user },
+          { role: "assistant", content: modelText },
+          { role: "user", content: correction },
+        ],
+        maxTokens: 4096,
+      });
+      const c = again.choices[0];
+      if (c?.finish_reason === "length") return null;
+      return c?.message?.content ?? null;
+    });
+    modelText = completed.text;
+    listSummary = completed.summary;
+  }
+
+  // 5d. Nothing exists until it is written. A reply that says the offered
+  //     work was already produced, sent or shared, when nothing earlier in
+  //     this conversation contains it, is put back to the model once and,
+  //     if the claim stands, withheld. Tom Arrington, 18 September 2026.
+  let unfoundedClaim = priorCompletionClaimIsUnfounded(modelText, followUp, history);
+  let completionSummary: string | null = null;
+  if (unfoundedClaim) {
+    try {
+      const again = await invokeLLM({
+        messages: [
+          { role: "system", content: system },
+          ...history.map(turn => ({
+            role: turn.role === "staff" ? ("user" as const) : ("assistant" as const),
+            content: turn.content,
+          })),
+          { role: "user", content: user },
+          { role: "assistant", content: modelText },
+          {
+            role: "user",
+            content:
+              `Your reply says "${unfoundedClaim}". Nothing earlier in this conversation contains that work: it has not been produced, sent or shared. ` +
+              "Rewrite your whole reply without that claim. If the staff member accepted an offer, do the offered work now, in full, from the evidence available; " +
+              "otherwise say plainly that it has not been produced yet and what you need in order to produce it.",
+          },
+        ],
+        maxTokens: 4096,
+      });
+      const c = again.choices[0];
+      const rewritten = c?.finish_reason === "length" ? "" : (c?.message?.content ?? "").trim();
+      if (rewritten !== "" && !priorCompletionClaimIsUnfounded(rewritten, followUp, history)) {
+        modelText = rewritten;
+        unfoundedClaim = null;
+        completionSummary = "The reply was rewritten once because it said work already existed that this conversation does not contain.";
+      }
+    } catch {
+      // The claim stands and is withheld below.
+    }
+  }
+
+  // 6. Priya's boundary, checked on the output rather than trusted to
+  //    the prompt. Her permitted work is preparation, and a model asked
+  //    to prepare a case will drift into answering it, usually while
+  //    being helpful. A rule statement that reaches a staff member is
+  //    regulated advice whether or not anybody intended it, so the text
+  //    is inspected before anyone sees it. This runs before the quality
+  //    gate because scope is the more serious failure.
+  if (request.workerId === "priya") {
+    const scope = checkPreparationOnly(modelText);
+    if (!scope.withinScope) {
+      return refuse(
+        "blocked_scope",
+        `${PRIYA_REFUSAL} Her draft answer made a determination about this person and was withheld: ` +
+        scope.violations.slice(0, 2).map(v => `"${v}"`).join(" "),
+        request.workerId,
+        brief.sourceDocument,
+      );
+    }
+
+    // Core Operating System section 8: information that changes regularly
+    // must be verified before it is relied upon. An immigration rule
+    // stated with no source is the exact failure Priya's approval block
+    // existed to prevent, so it is withheld as an evidence failure rather
+    // than passed on with a caveat.
+    const evidence = checkRuleStatementsAreSourced(modelText);
+    if (!evidence.sourced) {
+      return refuse(
+        "blocked_scope",
+        "Priya stated an immigration rule without naming the official source and the date it was checked, " +
+        "which the Core Operating System requires for information that changes regularly. It has not been " +
+        "shown. Ask her again, or put the question to a named authorised human. Withheld: " +
+        evidence.unsourced.slice(0, 2).map(v => `"${v}"`).join(" "),
+        request.workerId,
+        brief.sourceDocument,
+      );
+    }
+  }
+
+  // 7. Mechanical style, then the quality gate, before any staff member
+  //    sees it. Tom Arrington, 16 September 2026: a punctuation violation
+  //    must not destroy a valid answer. Em dashes and prose double hyphens
+  //    are replaced with ordinary punctuation, Markdown markers are removed
+  //    because the panel renders none, and the RESULT is checked. If
+  //    anything but punctuation and markup moved, the less-changed text is
+  //    used instead, down to the original, which then blocks exactly as
+  //    before. Every other failure the gate knows (guarantees, evidence,
+  //    boundary, permission, disagreement) is as blocking as it always was,
+  //    because none of those is punctuation or markup.
+  const release = prepareForRelease(modelText);
+  const releaseText = release.text;
+  const quality = runQualityCheck({
+    text: releaseText,
+    permissionChecked: true,
+    hasUnresolvedDisagreement: false,
+    disagreementVisibleInText: false,
+    workerBoundaryBreaches: [],
+    evidenceInsufficient: false,
+    unfoundedCompletionClaim: unfoundedClaim,
+  });
+
+  if (!quality.passed) {
+    return {
+      outcome: "blocked_quality",
+      visibleText: null,
+      reason:
+        `${worker.canonicalName}'s answer did not pass the release check: ` +
+        quality.blocking.map(f => f.detail).join(" ") +
+        " It has not been shown, and nothing was recorded as advice.",
+      workerId: request.workerId,
+      workerName: worker.canonicalName,
+      briefReference: brief.sourceDocument,
+      qualityCheck: quality,
+    };
+  }
+
+  return {
+    outcome: "answered",
+    visibleText: releaseText,
+    reason: `${worker.canonicalName} answered under ${brief.sourceDocument}.${completionSummary ? ` ${completionSummary}` : ""}${listSummary ? ` ${listSummary}` : ""}${release.summary ? ` ${release.summary}` : ""}`,
+    workerId: request.workerId,
+    workerName: worker.canonicalName,
+    briefReference: brief.sourceDocument,
+    qualityCheck: quality,
+  };
+}
+
+/**
+ * The text that goes to the release check and, if it passes, to the
+ * screen. Punctuation and markup are corrected; substance is compared
+ * against the model's own words at each step and the most corrected text
+ * whose substance is unchanged is used. Exported for the harness that
+ * checks what a staff member actually receives.
+ */
+export function prepareForRelease(modelText: string): { text: string; summary: string } {
+  const styled = normaliseMechanicalStyle(modelText);
+  const plain = stripMarkdown(styled.text);
+  const candidates: { text: string; summary: string }[] = [
+    { text: plain.text, summary: [styled.summary, plain.summary].filter(Boolean).join(" ") },
+    { text: styled.text, summary: styled.summary },
+  ];
+  for (const candidate of candidates) {
+    if (candidate.text === modelText) return { text: modelText, summary: "" };
+    if (findSubstanceChanges(modelText, candidate.text).length === 0) return candidate;
+  }
+  return { text: modelText, summary: "" };
+}

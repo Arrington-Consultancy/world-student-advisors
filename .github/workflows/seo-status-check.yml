@@ -28,7 +28,10 @@ jobs:
             echo "$code  $url"
           done
 
-      - name: Check a deliberately nonexistent path (expect: does it 200 or 404?)
+      # Quoted: an unquoted ": " inside the name made the whole file invalid
+      # YAML, so GitHub recorded a failed run on every push and the check
+      # could never be dispatched.
+      - name: "Check a deliberately nonexistent path (expect: does it 200 or 404?)"
         run: |
           code=$(curl -sS -o /dev/null -w "%{http_code}" --max-time 15 "https://www.worldstudentadvisors.com/this-path-does-not-exist-seo-check-xyz")
           echo "$code  https://www.worldstudentadvisors.com/this-path-does-not-exist-seo-check-xyz (should be 404 if real; 200 here would confirm the soft-404 mechanism)"

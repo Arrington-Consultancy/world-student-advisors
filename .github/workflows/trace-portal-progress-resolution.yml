@@ -1,0 +1,49 @@
+name: Trace portal progress resolution for a Person (read-only)
+
+# Manual-only. Strictly read-only — see
+# scripts/trace-portal-progress-resolution.mjs. Reproduces exactly what
+# server/portal-resolver.ts's resolvePortalDashboard() computes for a given
+# Pipedrive Person id: which open Deal (if any) or most-recent non-archived
+# Lead it would select, and what dashboard state that produces. No writes,
+# no Pipedrive mutation, no database access at all.
+on:
+  workflow_dispatch:
+    inputs:
+      person_id:
+        description: "Pipedrive Person id to trace"
+        required: true
+      service_name:
+        description: "Railway service name"
+        required: true
+        default: "world-student-advisors"
+      environment_name:
+        description: "Railway environment name"
+        required: true
+        default: "production"
+
+jobs:
+  trace:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Install Railway CLI
+        run: npm install -g @railway/cli
+
+      - name: Trace resolvePortalDashboard for this Person
+        env:
+          RAILWAY_TOKEN: ${{ secrets.githubactionsprod }}
+          TRACE_PERSON_ID: ${{ github.event.inputs.person_id }}
+        run: |
+          railway run --service "${{ github.event.inputs.service_name }}" --environment "${{ github.event.inputs.environment_name }}" -- \
+            node scripts/trace-portal-progress-resolution.mjs

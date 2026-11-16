@@ -1,0 +1,365 @@
+/**
+ * Which student a staff member means when they name one in a worker request.
+ *
+ * A worker such as James holds a CRM read of one person by id and no search
+ * (Connector Access Matrix v0.3 section 2). Staff, on the other hand, do not
+ * think in ids: they ask "where is Vivian in the process?". The gap between
+ * the two is closed here without widening any worker: the typed name is
+ * resolved by the STAFF MEMBER's own approved student lookup (Tom Arrington,
+ * 9 September 2026; server/crm/staffLookup.ts), under the functional scope
+ * that let them open this worker, with their case scope applied and the
+ * lookup audited against their identity. Only when exactly one record
+ * survives does the worker get to read it, through its own grant, in
+ * evidence.ts. Several matches are put back to the person as a question;
+ * no match is stated as a fact. Operational Standard v1.0 section 12:
+ * ambiguous identities are never merged silently.
+ *
+ * The credential is the WSA Pipedrive OAuth grant (lookupDeps.oauthLookupDeps),
+ * never the website's token: nothing on a worker path reads with that.
+ */
+import { lookupStudents, type LookupDeps } from "../crm/staffLookup";
+import { oauthLookupDeps } from "../crm/lookupDeps";
+import { WORKER_FUNCTIONAL_SCOPE } from "../access/workerScope";
+import { fuzzySearchTerms, isKnownNameForm, nameForms, normaliseNamePart, rankNameMatches, sameNameForm } from "./nameMatch";
+import { isVocabularyWord } from "../workforce/intent";
+import type { AuditAuthMethod } from "../workforce/audit";
+import type { WorkerId } from "../workforce/types";
+
+/** Words that begin a sentence or a clause and are never the start of a student's name. */
+const NOT_A_NAME_START = new Set([
+  "where", "what", "who", "whose", "whom", "when", "why", "how", "which", "is", "are", "was", "were", "can", "could", "should", "would", "will",
+  "please", "tell", "give", "show", "find", "check", "look", "bring", "update", "does", "do", "did", "has", "have", "had", "the", "a", "an", "i",
+  "we", "you", "my", "our", "your", "this", "that", "these", "those", "there", "here", "and", "or", "but", "in", "on", "for", "to", "of", "with",
+  "about", "from", "at", "by", "as", "if", "then", "also", "her", "his", "their", "she", "he", "they", "it", "student", "students", "application",
+  "applications", "counsellor", "counselor", "process", "stage", "next", "status", "record", "case", "offer", "visa", "cas", "crm", "wsa", "uk", "usa",
+  "pipedrive", "university", "college", "master", "masters", "msc", "ma", "mba", "phd", "bsc", "ba", "ielts", "ucas", "ask", "help", "get", "send",
+  "review", "prepare", "explain", "summarise", "summarize", "confirm", "advise", "draft", "write", "list", "compare", "assess",
+  "any", "all", "some", "every", "each", "both", "several", "many", "no", "not", "yes", "so", "just", "still", "again", "ever", "never",
+]);
+/** Capitalised words that appear inside a run but belong to WSA vocabulary, not a name. */
+const NOT_A_NAME_WORD = new Set([
+  "University", "College", "School", "Institute", "Academy", "Pipedrive", "CRM", "WSA", "UK", "USA", "CAS", "UKVI", "IELTS", "UCAS", "MSc", "MA", "MBA", "PhD", "BSc", "BA",
+  "Status", "Stage", "Offer", "Visa", "Application", "September", "October", "November", "December", "January", "February", "March", "April", "May", "June", "July", "August",
+  "Monday", "Tuesday", "Wednesday", "Thursday", "Friday",
+  // Where a name stops and an employer or address begins. Tom Arrington's
+  // question of 16 September 2026 read "Joyce Kitakang Federal Ministry of
+  // Environment ...", and the whole run was taken as the name.
+  "Federal", "Ministry", "Department", "District", "Government", "State", "Bank", "Company", "Limited", "Ltd", "Hospital", "Office", "Council", "Authority", "Agency", "Commission",
+  "Nigeria", "Abuja", "Lagos", "Ibadan", "Kano", "Kenya", "Nairobi", "Ghana", "Accra", "Uganda", "Kampala", "Cameroon", "London", "England", "Scotland", "Germany", "Canada",
+  // A field of study, a qualification or a nationality written with capitals
+  // is not a person. Tom Arrington, 18 September 2026: an enquiry about "a
+  // 2:1 in Mechanical Engineering" and "an MSc in Artificial Intelligence"
+  // named nobody, yet both phrases became CRM searches and the worker told
+  // the staff member that no record could be matched.
+  "Engineering", "Science", "Sciences", "Intelligence", "Artificial", "Mechanical", "Electrical", "Electronic", "Civil", "Chemical", "Computer", "Computing",
+  "Data", "Software", "Mathematics", "Maths", "Physics", "Chemistry", "Biology", "Biomedical", "Medicine", "Medical", "Nursing", "Pharmacy", "Dentistry", "Health", "Public",
+  "Business", "Management", "Administration", "Finance", "Financial", "Accounting", "Economics", "Marketing", "Law", "International", "Relations", "Development", "Studies",
+  "Psychology", "Sociology", "Politics", "Political", "History", "Philosophy", "Literature", "Linguistics", "English", "Education", "Teaching", "Architecture", "Design", "Arts",
+  "Humanities", "Media", "Communications", "Journalism", "Environmental", "Environment", "Energy", "Petroleum", "Agriculture", "Technology", "Information", "Systems", "Security",
+  "Cyber", "Analytics", "Machine", "Learning", "Robotics", "Aerospace", "Automotive", "Supply", "Chain", "Logistics", "Hospitality", "Tourism", "Sport", "Sports",
+  "Bachelor", "Bachelors", "Master", "Masters", "Doctorate", "Diploma", "Certificate", "Foundation", "Degree", "Postgraduate", "Undergraduate", "Honours", "Honors",
+  "Nigerian", "Kenyan", "Ghanaian", "Ugandan", "Cameroonian", "Indian", "Pakistani", "Bangladeshi", "Chinese", "British", "American", "Canadian", "European", "African", "Asian",
+  "United", "Kingdom", "States", "Europe", "Africa", "Asia", "India", "Pakistan", "Bangladesh", "China", "Manchester", "Birmingham", "Leeds", "Glasgow", "Edinburgh", "Cardiff", "Bristol", "Sheffield", "Nottingham", "Coventry", "Liverpool",
+]);
+
+const NOT_A_NAME_WORD_LOWER = new Set(Array.from(NOT_A_NAME_WORD, w => w.toLowerCase()));
+/** A word that is WSA vocabulary, ordinary English, a subject, a qualification, a place or a nationality: never part of a person's name. */
+export function isNotAPersonWord(word: string): boolean {
+  return isVocabularyWord(word) || NOT_A_NAME_WORD_LOWER.has(word.toLowerCase());
+}
+
+const WORD = /^[A-Z][A-Za-z'’-]*$/;
+const LENIENT_WORD = /^[A-Za-z][A-Za-z'’-]{1,}$/;
+
+/**
+ * Runs of two to four capitalised words that could be a person's name, in
+ * order of appearance, without duplicates. Purely lexical on purpose: it
+ * proposes candidates and nothing else; the lookup decides what exists and
+ * what this staff member may see.
+ */
+export function extractNameCandidates(text: string, options: { lenient?: boolean } = {}): string[] {
+  const tokens = text.replace(/[“”"]/g, " ").split(/\s+/).filter(Boolean);
+  // Lenient: a staff member typing on a phone writes "joyce kitakang". Runs
+  // of lower-case words are then also proposed, with the same stoplists;
+  // the lookup decides whether any such run is a student. Used only when
+  // the ordinary pass found nothing, so a capitalised name always wins.
+  const wordTest = options.lenient ? LENIENT_WORD : WORD;
+  const out: string[] = [];
+  let run: string[] = [];
+  const propose = (segment: string[]) => {
+    while (segment.length > 0 && NOT_A_NAME_START.has(segment[0].toLowerCase())) segment.shift();
+    while (segment.length > 0 && NOT_A_NAME_START.has(segment[segment.length - 1].toLowerCase())) segment.pop();
+    // In lower-case text a run of ordinary English ("now needs", "help
+    // finding") is not a name. Tom Arrington, 18 September 2026: such a run
+    // became a CRM search and surfaced four unrelated students.
+    if (options.lenient && segment.some(w => isVocabularyWord(w))) return;
+    if (segment.length >= 2 && segment.length <= 4) {
+      const name = segment.join(" ");
+      if (!out.includes(name)) out.push(name);
+    }
+  };
+  const flush = () => {
+    if (options.lenient) {
+      // Lower-case text has no capitals to mark where a name starts, so an
+      // ordinary word inside the run splits it rather than ending it: "ar
+      // ethere any toms" is not a name, and neither half of it is.
+      let segment: string[] = [];
+      for (const w of run) {
+        if (NOT_A_NAME_WORD.has(w) || NOT_A_NAME_START.has(w.toLowerCase())) { propose(segment); segment = []; }
+        else segment.push(w);
+      }
+      propose(segment);
+    } else {
+      // A vocabulary word ends the name: what precedes it may still be one.
+      const stop = run.findIndex(w => NOT_A_NAME_WORD.has(w));
+      propose(stop >= 0 ? run.slice(0, stop) : run);
+    }
+    run = [];
+  };
+  for (const raw of tokens) {
+    // Strip the punctuation that clings to a name in a sentence, and a possessive.
+    const word = raw.replace(/^[(\[]+|[)\],.;:!?]+$/g, "").replace(/(['’]s)$/i, "");
+    // In lower-case text a two-letter word is never part of a name.
+    if (wordTest.test(word) && (!options.lenient || word.length >= 3)) run.push(word);
+    else flush();
+    if (/[,.;:!?]$/.test(raw)) flush();
+  }
+  flush();
+  return out;
+}
+
+/**
+ * One first name on its own, when the question asks about everybody of that
+ * name: "are there any Toms on Pipedrive" (Tom Arrington, 17 September
+ * 2026). Deliberately narrow, because a lone unknown word is usually not a
+ * name: the word must be a name WSA's own list of name forms knows, or must
+ * follow "called" or "named"; every stoplisted word is excluded; a plural
+ * ("toms", "Thomases") is read as a request for all of them. Used only when
+ * no two-to-four-word name was found.
+ */
+export function extractSingleNameCandidate(text: string): string | null {
+  const tokens = text
+    .replace(/[“”"]/g, " ")
+    .split(/\s+/)
+    .filter(Boolean)
+    .map(raw => raw.replace(/^[(\[]+|[)\],.;:!?]+$/g, "").replace(/(['’]s)$/i, ""));
+  const singular = (w: string) => {
+    const lower = w.toLowerCase();
+    if (/es$/.test(lower) && lower.length > 5 && isKnownNameForm(lower.slice(0, -2))) return lower.slice(0, -2);
+    if (/[^s]s$/.test(lower) && lower.length > 3 && isKnownNameForm(lower.slice(0, -1))) return lower.slice(0, -1);
+    return lower;
+  };
+  const candidates: string[] = [];
+  tokens.forEach((word, i) => {
+    if (!LENIENT_WORD.test(word) || word.length < 3) return;
+    const lower = word.toLowerCase();
+    if (NOT_A_NAME_START.has(lower) || NOT_A_NAME_WORD.has(word) || NOT_A_NAME_WORD.has(word[0].toUpperCase() + lower.slice(1))) return;
+    const base = singular(word);
+    const introduced = i > 0 && /^(called|named)$/i.test(tokens[i - 1]);
+    if (isKnownNameForm(base) || introduced) candidates.push(base[0].toUpperCase() + base.slice(1));
+  });
+  return candidates.length === 1 ? candidates[0] : null;
+}
+
+export type StudentResolution =
+  | { kind: "one"; personId: number; name: string }
+  /**
+   * The exact spellings found nothing, and one CRM record is a clear near
+   * match: a different spelling, or a short form for a long one. It is
+   * offered to the worker AS a probable match, with the name as recorded,
+   * and the worker is told to name the record it used and ask the staff
+   * member to confirm. Tom Arrington, 17 September 2026.
+   */
+  | { kind: "probable"; personId: number; name: string; typed: string; score: number; alternatives: string[] }
+  /**
+   * Several students match. `students` carries the list the note describes
+   * so the execution layer can check the worker's reply names every one of
+   * them, and complete it if not (Tom Arrington, 17 September 2026: a count
+   * in place of the names is not an answer).
+   */
+  | { kind: "many"; note: string; typed?: string; students?: ListedStudent[] }
+  | { kind: "none" | "refused"; note: string };
+
+export interface ListedStudent {
+  personId: number;
+  name: string;
+  stageLabel: string;
+  counsellor: string | null;
+}
+
+export interface ResolveInput {
+  name: string;
+  workerId: WorkerId;
+  staffUserId: number | null;
+  authMethod: AuditAuthMethod;
+}
+
+/**
+ * The staff member's own lookup of the name, under the scope that opened
+ * this worker. Returns one id only when exactly one record is both a match
+ * and within their case scope; otherwise a plain note for the worker to
+ * relay.
+ */
+export async function resolveStudentByName(input: ResolveInput, deps: LookupDeps = oauthLookupDeps): Promise<StudentResolution> {
+  const scope = WORKER_FUNCTIONAL_SCOPE[input.workerId];
+  if (input.name.trim().split(/\s+/).filter(Boolean).length === 1) return resolveByFirstName(input, scope, deps);
+  let withheldTotal = 0;
+  // A CRM record rarely carries every name a person is known by: the deal
+  // may say "Vivian Ene Onuh" while the person record says "Vivian Onuh".
+  // So the spellings are tried from the most specific to the least, and
+  // the first that finds anything decides. Every attempt is audited by
+  // the lookup itself.
+  const near = new Map<number, { personId: number; name: string; stageLabel: string; counsellor: string | null }>();
+  const describe = (c: { name: string; stageLabel: string; counsellor: string | null }) => `${c.name} (${c.stageLabel}${c.counsellor ? `, counsellor ${c.counsellor}` : ""})`;
+  // Does what was typed read as a person's name at all: two or more parts,
+  // none an ordinary English or WSA vocabulary word? If not, only an exact
+  // hit counts. A stray phrase ("now needs") never earns a probable match or
+  // a list of real students' names. Tom Arrington, 18 September 2026.
+  const nameParts = input.name.trim().split(/\s+/).filter(Boolean);
+  const readsAsName = nameParts.length >= 2 && nameParts.every(p => p.length >= 2 && !isNotAPersonWord(p));
+  for (const term of searchTerms(input.name)) {
+    const result = await lookupStudents(
+      { staffUserId: input.staffUserId, authMethod: input.authMethod, term, by: "name", scope },
+      deps,
+    );
+    if (result.refused) {
+      return { kind: "refused", note: `The CRM could not be checked for "${input.name}" under the staff member's own access: ${result.reason}` };
+    }
+    withheldTotal += result.withheldCount;
+    if (result.results.length === 0) continue;
+    // What the search returned is checked against what was typed before it
+    // is believed. A surname search that returns one differently named
+    // person is not a match; it is a lead for the near-match pass below.
+    const ranking = rankNameMatches(input.name, result.results);
+    if (ranking.kind === "exact") {
+      const one = ranking.match.candidate;
+      return { kind: "one", personId: one.personId, name: one.name };
+    }
+    if (!readsAsName) continue;
+    if (ranking.kind === "probable") {
+      const m = ranking.match.candidate;
+      return { kind: "probable", personId: m.personId, name: m.name, typed: input.name, score: Math.round(ranking.match.score * 100) / 100, alternatives: ranking.others.map(o => describe(o.candidate)) };
+    }
+    if (ranking.kind === "several") {
+      return {
+        kind: "many",
+        typed: input.name,
+        students: ranking.matches.map(m => m.candidate),
+        note: `${ranking.matches.length} CRM students match "${input.name}" (searched as "${term}"): ${ranking.matches.map(m => describe(m.candidate)).join("; ")}. Name every one of them and ask the staff member which one they mean, by email address or telephone number, before using any record.`,
+      };
+    }
+    for (const r of result.results) if (!near.has(r.personId)) near.set(r.personId, { personId: r.personId, name: r.name, stageLabel: r.stageLabel, counsellor: r.counsellor });
+  }
+  // Nothing under the exact spellings. Think before saying so: try the
+  // stems, the long forms of a short first name and the commonest
+  // alternative spellings, then rank whatever comes back against what was
+  // typed. One clear near match is offered as probable and questioned; a
+  // few are put to the person by name; none stays none.
+  if (!readsAsName) {
+    return { kind: "none", note: `"${input.name}" does not read as a student's name and no record is recorded exactly under it. If a particular student is meant, ask for their full name, email address or telephone number.` };
+  }
+  for (const term of fuzzySearchTerms(input.name)) {
+    const result = await lookupStudents(
+      { staffUserId: input.staffUserId, authMethod: input.authMethod, term, by: "name", scope },
+      deps,
+    );
+    if (result.refused) break;
+    withheldTotal += result.withheldCount;
+    for (const r of result.results) if (!near.has(r.personId)) near.set(r.personId, { personId: r.personId, name: r.name, stageLabel: r.stageLabel, counsellor: r.counsellor });
+    if (near.size >= 30) break;
+  }
+  const ranking = rankNameMatches(input.name, Array.from(near.values()));
+  if (ranking.kind === "exact" || ranking.kind === "probable") {
+    const m = ranking.match.candidate;
+    return {
+      kind: "probable",
+      personId: m.personId,
+      name: m.name,
+      typed: input.name,
+      score: Math.round(ranking.match.score * 100) / 100,
+      alternatives: ranking.kind === "probable" ? ranking.others.map(o => describe(o.candidate)) : [],
+    };
+  }
+  if (ranking.kind === "several") {
+    return {
+      kind: "many",
+      typed: input.name,
+      students: ranking.matches.map(m => m.candidate),
+      note: `No CRM student is recorded exactly as "${input.name}". The closest matches are: ${ranking.matches.map(m => describe(m.candidate)).join("; ")}. Name every one of them and ask the staff member which of these they mean before using any record; do not choose for them.`,
+    };
+  }
+  const withheld = withheldTotal > 0
+    ? ` ${withheldTotal} matching record${withheldTotal === 1 ? " is" : "s are"} outside the staff member's case scope and cannot be shown.`
+    : "";
+  return { kind: "none", note: `No CRM student matching "${input.name}" is within the staff member's access, including near spellings and short forms of the name.${withheld} Ask for the student's email address or telephone number, or the name as it was given at sign-up.` };
+}
+
+/**
+ * A first name on its own: everybody recorded under that name or a form of
+ * it. "Are there any Toms on Pipedrive" wants Tom, Thomas and Tommy alike.
+ * One such record is a probable match to be confirmed, never assumed;
+ * several are listed for the staff member to choose from; none is said
+ * plainly with the forms that were tried.
+ */
+async function resolveByFirstName(
+  input: ResolveInput,
+  scope: (typeof WORKER_FUNCTIONAL_SCOPE)[WorkerId],
+  deps: LookupDeps,
+): Promise<StudentResolution> {
+  const typed = input.name.trim();
+  const forms = nameForms(typed);
+  const found = new Map<number, { personId: number; name: string; stageLabel: string; counsellor: string | null }>();
+  for (const term of forms) {
+    const result = await lookupStudents(
+      { staffUserId: input.staffUserId, authMethod: input.authMethod, term, by: "name", scope },
+      deps,
+    );
+    if (result.refused) {
+      return { kind: "refused", note: `The CRM could not be checked for "${typed}" under the staff member's own access: ${result.reason}` };
+    }
+    for (const r of result.results) {
+      // Only a record whose own name carries this first name or a form of
+      // it: "Tom" must not collect "Tomasz" because the search matched a prefix.
+      const parts = r.name.split(/\s+/).filter(Boolean);
+      const carries = parts.some(p => sameNameForm(p, typed) || normaliseNamePart(p) === normaliseNamePart(typed));
+      if (carries && !found.has(r.personId)) found.set(r.personId, { personId: r.personId, name: r.name, stageLabel: r.stageLabel, counsellor: r.counsellor });
+    }
+  }
+  const formsText = forms.length > 1 ? ` or a form of it (${forms.slice(1).join(", ")})` : "";
+  const describe = (c: { name: string; stageLabel: string; counsellor: string | null }) => `${c.name} (${c.stageLabel}${c.counsellor ? `, counsellor ${c.counsellor}` : ""})`;
+  const all = Array.from(found.values());
+  if (all.length === 0) {
+    return { kind: "none", note: `No CRM student is recorded with the name "${typed}"${formsText} within the staff member's access. Say so plainly; do not guess.` };
+  }
+  if (all.length === 1) {
+    return { kind: "probable", personId: all[0].personId, name: all[0].name, typed, score: 0.9, alternatives: [] };
+  }
+  // Enough for a whole first name at WSA's size (17 Toms on 17 September
+  // 2026); beyond that the count of the remainder is stated.
+  const shown = all.slice(0, 25);
+  const more = all.length > shown.length ? ` and ${all.length - shown.length} more` : "";
+  return {
+    kind: "many",
+    typed,
+    students: shown,
+    note:
+      `${all.length} CRM students are recorded with the name "${typed}"${formsText}: ${shown.map(describe).join("; ")}${more}. ` +
+      "Your reply must name every one of these students, one per line, each with their stage and counsellor exactly as given here; " +
+      "a count or a summary in place of the names is not an answer. Then ask which one the staff member means before using any single record.",
+  };
+}
+
+/**
+ * The full name, then first and last, then (for a long run) the first two
+ * words, then the surname alone; never a first name alone. The first two
+ * words matter because a pasted line often carries the person's employer
+ * or address after the name.
+ */
+export function searchTerms(name: string): string[] {
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  const out = [parts.join(" ")];
+  if (parts.length >= 3) out.push(`${parts[0]} ${parts[parts.length - 1]}`);
+  if (parts.length >= 3) out.push(`${parts[0]} ${parts[1]}`);
+  if (parts.length >= 2) out.push(parts[parts.length - 1]);
+  return Array.from(new Set(out));
+}

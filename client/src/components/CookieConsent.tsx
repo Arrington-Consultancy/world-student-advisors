@@ -2,28 +2,40 @@
  * Cookie Consent Banner - WSA design system
  * Navy (#1B2A4A-family) / WSA red accent / cream background tokens.
  * Fixed bottom bar, slides up on first visit, persists choice in localStorage.
- * GDPR/PECR: no non-essential scripts should fire until consent is granted.
+ * GDPR/PECR: no analytics or advertising cookie is set until consent is
+ * granted. The Google Ads tag itself loads on every page under Consent Mode
+ * v2 with consent denied (cookieless), and is switched to granted only by
+ * "Accept all"; see client/src/lib/googleAdsTag.ts for why. The Meta Pixel
+ * loads the same way with Meta's consent revoked, and is granted only by
+ * "Accept all"; see client/src/lib/metaPixel.ts.
  */
 import { useEffect, useState } from "react";
 import { Link } from "wouter";
+import { loadGoogleAdsTag, updateGoogleConsent } from "@/lib/googleAdsTag";
+import { loadMetaPixel, updateMetaConsent } from "@/lib/metaPixel";
+import { CONSENT_KEY, getCookieConsent } from "@/lib/cookieConsentStorage";
+import type { ConsentValue } from "@/lib/cookieConsentStorage";
 
-const CONSENT_KEY = "wsa-cookie-consent";
-
-export type ConsentValue = "accepted" | "declined";
-
-export function getCookieConsent(): ConsentValue | null {
-  try {
-    const v = localStorage.getItem(CONSENT_KEY);
-    return v === "accepted" || v === "declined" ? v : null;
-  } catch {
-    return null;
-  }
-}
+export { getCookieConsent };
+export type { ConsentValue };
 
 export default function CookieConsent() {
   const [visible, setVisible] = useState(false);
 
   useEffect(() => {
+    // The tag loads on every page view with consent denied (Consent Mode
+    // v2); a returning visitor's earlier "Accept all" is replayed as an
+    // update so their measurement continues without re-showing the banner.
+    loadGoogleAdsTag();
+    // A stored "Accept all" loads the Meta Pixel already granted. Meta's
+    // script holds a queued grant behind a queued revoke and never reaches
+    // it, so replaying the grant after a revoke left the pixel silent for
+    // every returning accepted visitor (found 3 October 2026).
+    loadMetaPixel(getCookieConsent() === "accepted" ? "granted" : "revoked");
+    if (getCookieConsent() === "accepted") {
+      updateGoogleConsent("granted");
+      updateMetaConsent("granted");
+    }
     // Show only if no prior choice has been recorded
     if (getCookieConsent() === null) {
       const t = setTimeout(() => setVisible(true), 800);
@@ -38,6 +50,10 @@ export default function CookieConsent() {
       /* storage unavailable — banner will reappear next visit */
     }
     setVisible(false);
+    loadGoogleAdsTag();
+    loadMetaPixel();
+    updateGoogleConsent(value === "accepted" ? "granted" : "denied");
+    updateMetaConsent(value === "accepted" ? "granted" : "denied");
     // Notify listeners (e.g. analytics loader) that consent state changed
     window.dispatchEvent(new CustomEvent("wsa-consent-change", { detail: value }));
   };

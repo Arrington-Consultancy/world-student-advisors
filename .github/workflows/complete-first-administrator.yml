@@ -1,0 +1,145 @@
+name: Complete the first access administrator
+
+# Manual-only, SEPARATELY AUTHORISED. Completes WSA's first access
+# administrator to the approved profile in
+# server/access/firstAdministratorProfile.ts, and retires the duplicate
+# grant rows the pre-correction bootstrap left behind.
+#
+# Defaults to a DRY RUN. Nothing is written unless `apply` is set to true.
+#
+# WHY IT EXISTS. On 3 September 2026 the bootstrap deadlocked WSA in
+# production: it established a partial profile, and the access screen then
+# correctly refused to let the only administrator complete their own
+# access. The bootstrap is now atomic and complete, so a future first
+# administrator never reaches that state. This is for the account already
+# in it.
+#
+# WHAT IT CANNOT DO, by construction (rules in
+# server/access/administration.ts, tested in
+# server/access/firstAdministrator.test.ts):
+#   - grant anything other than the approved first-administrator profile:
+#     there is NO input that says what to grant, so no workflow parameter
+#     can widen it;
+#   - appoint an administrator: it refuses an account that does not
+#     already hold access_admin;
+#   - run once a second administrator exists: it refuses when more than
+#     one account holds access_admin, so it closes permanently the moment
+#     a real administration estate exists;
+#   - run twice to any effect: it refuses a no-op;
+#   - add or remove a sensitive overlay;
+#   - grant submit, external_send, financial_action, approve,
+#     delete_destructive or credential_admin, none of which appear in the
+#     approved profile;
+#   - create a staff account, or act on a row whose display name does not
+#     match the one the run states.
+#
+# Auth: githubactionsprod, the same production-scoped Railway Project
+# Token the other production workflows use.
+on:
+  workflow_dispatch:
+    inputs:
+      staff_user_id:
+        description: "staff_users.id of the first administrator to complete"
+        required: true
+      expect_display_name:
+        description: "The displayName you believe that row carries. A mismatch stops the run."
+        required: true
+      reason:
+        description: "Why this completion"
+        required: true
+      apply:
+        description: "Set to true to actually write. Anything else is a dry run."
+        required: true
+        default: "false"
+      service_name:
+        description: "Railway app service name"
+        required: true
+        default: "world-student-advisors"
+      environment_name:
+        description: "Railway environment name"
+        required: true
+        default: "production"
+      database_service_name:
+        description: "Railway MySQL service name"
+        required: true
+        default: "MySQL"
+
+jobs:
+  complete:
+    runs-on: ubuntu-latest
+    # Main only: an access change must be made by reviewed, merged code.
+    if: github.ref == 'refs/heads/main'
+    env:
+      APP_SERVICE_NAME: ${{ github.event.inputs.service_name }}
+      APP_ENV_NAME: ${{ github.event.inputs.environment_name }}
+      DB_SERVICE_NAME: ${{ github.event.inputs.database_service_name }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Install Railway CLI
+        run: npm install -g @railway/cli
+
+      - name: Discover the MySQL service's public-URL variable NAME (key only, value never printed)
+        id: discover
+        env:
+          RAILWAY_TOKEN: ${{ secrets.githubactionsprod }}
+        run: |
+          KEYS=$(railway variables --service "$DB_SERVICE_NAME" --environment "$APP_ENV_NAME" --json | jq -r 'keys[]')
+          PUBLIC_KEY=$(echo "$KEYS" | grep -i -E '^(MYSQL_PUBLIC_URL|DATABASE_PUBLIC_URL)$' | head -n1)
+          if [ -z "$PUBLIC_KEY" ]; then
+            echo "No public-URL-shaped variable found on $DB_SERVICE_NAME. Stopping — not guessing further."
+            exit 1
+          fi
+          echo "Using public URL variable: $PUBLIC_KEY"
+          echo "public_key=$PUBLIC_KEY" >> "$GITHUB_OUTPUT"
+
+      - name: Set a temporary public-reachable URL on the app service
+        env:
+          RAILWAY_TOKEN: ${{ secrets.githubactionsprod }}
+          PUBLIC_KEY: ${{ steps.discover.outputs.public_key }}
+        run: |
+          REF=$(printf '\044{{%s.%s}}' "$DB_SERVICE_NAME" "$PUBLIC_KEY")
+          railway variables \
+            --service "$APP_SERVICE_NAME" \
+            --environment "$APP_ENV_NAME" \
+            --set "FIRSTADMIN_DATABASE_URL=${REF}" \
+            --skip-deploys
+
+      - name: Complete the first administrator
+        timeout-minutes: 10
+        env:
+          RAILWAY_TOKEN: ${{ secrets.githubactionsprod }}
+          # Passed as environment variables, never interpolated into a shell
+          # string. An apostrophe in a reason would otherwise break the
+          # quoting, and a quote plus a semicolon would be executed. Note
+          # there is deliberately no input for the profile: it comes from
+          # firstAdministratorProfile.ts and nothing here can change it.
+          WSA_FIRSTADMIN_STAFF_USER_ID: ${{ github.event.inputs.staff_user_id }}
+          WSA_FIRSTADMIN_EXPECT_DISPLAY_NAME: ${{ github.event.inputs.expect_display_name }}
+          WSA_FIRSTADMIN_REASON: ${{ github.event.inputs.reason }}
+          WSA_FIRSTADMIN_APPLY: ${{ github.event.inputs.apply }}
+        run: |
+          railway run --service "$APP_SERVICE_NAME" --environment "$APP_ENV_NAME" -- \
+            sh -c 'DATABASE_URL="$FIRSTADMIN_DATABASE_URL" npx tsx scripts/complete-first-administrator.ts'
+
+      - name: Remove the temporary variable
+        if: always()
+        timeout-minutes: 10
+        env:
+          RAILWAY_TOKEN: ${{ secrets.githubactionsprod }}
+        run: |
+          railway variables \
+            --service "$APP_SERVICE_NAME" \
+            --environment "$APP_ENV_NAME" \
+            --set "FIRSTADMIN_DATABASE_URL=" \
+            --skip-deploys

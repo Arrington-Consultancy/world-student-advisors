@@ -11,6 +11,7 @@
  */
 import bcrypt from "bcryptjs";
 import * as jose from "jose";
+import { TRPCError } from "@trpc/server";
 import { ENV } from "./_core/env";
 
 const STAFF_PORTAL_JWT_SECRET = new TextEncoder().encode(ENV.cookieSecret + "-staff-portal");
@@ -56,5 +57,20 @@ export async function verifyStaffPortalToken(token: string): Promise<boolean> {
     return payload.purpose === "staff_portal";
   } catch {
     return false;
+  }
+}
+
+/**
+ * The gate every protected Staff Portal procedure (worker registry, worker
+ * workspaces, connector actions, etc.) must call before doing anything.
+ * Throws on a missing, invalid, or expired token so a caller fails closed
+ * the same way requireActivePortalIdentity does for the Student Portal —
+ * there is no protected staffPortal content yet in Stage 1, but nothing
+ * added later may skip this.
+ */
+export async function requireStaffPortalAuth(token: string): Promise<void> {
+  const authenticated = await verifyStaffPortalToken(token);
+  if (!authenticated) {
+    throw new TRPCError({ code: "UNAUTHORIZED", message: "Please sign in to the Staff Portal to use this tool." });
   }
 }

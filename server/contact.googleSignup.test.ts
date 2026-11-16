@@ -32,7 +32,7 @@ vi.mock("./portal-auth", () => ({
   getPortalUserById: vi.fn(),
   verifySignupPrefillToken: vi.fn(),
   mintSignupPrefillToken: vi.fn(),
-  findOrCreateGoogleUser: vi.fn(),
+  findGoogleUser: vi.fn(),
 }));
 vi.mock("./_core/turnstile", () => ({ requireTurnstile: vi.fn().mockResolvedValue(undefined) }));
 
@@ -42,14 +42,14 @@ const { sendPortalSetupEmail } = await import("./_core/notification");
 const {
   createPortalUser,
   verifySignupPrefillToken,
-  findOrCreateGoogleUser,
+  findGoogleUser,
 } = await import("./portal-auth");
 
 const mockedCreateStudentLead = vi.mocked(createStudentLead);
 const mockedCreatePortalUser = vi.mocked(createPortalUser);
 const mockedVerifySignupPrefillToken = vi.mocked(verifySignupPrefillToken);
 const mockedSendPortalSetupEmail = vi.mocked(sendPortalSetupEmail);
-const mockedFindOrCreateGoogleUser = vi.mocked(findOrCreateGoogleUser);
+const mockedFindGoogleUser = vi.mocked(findGoogleUser);
 
 function makeCaller() {
   return appRouter.createCaller({ req: { ip: "203.0.113.1" } as any, res: {} as any });
@@ -94,7 +94,8 @@ beforeEach(() => {
   mockedCreatePortalUser.mockResolvedValue({ userId: 42, token: "setup-token", isExisting: false });
   mockedVerifySignupPrefillToken.mockResolvedValue(null); // default: not a Google signup
   mockedSendPortalSetupEmail.mockResolvedValue(true);
-  mockedFindOrCreateGoogleUser.mockResolvedValue({
+  mockedFindGoogleUser.mockResolvedValue({
+    status: "ok",
     token: "portal-jwt",
     user: { id: 42, email: GOOGLE_PROFILE.email, firstName: GOOGLE_PROFILE.firstName, lastName: GOOGLE_PROFILE.lastName },
   });
@@ -293,36 +294,42 @@ describe("5 – Google registration stores googleSub on the portal account", () 
 });
 
 // ── Test 6: Linked account can use existing Google portal login ───────────────
-describe("6 – findOrCreateGoogleUser honours the linked googleSub on subsequent login", () => {
-  it("findOrCreateGoogleUser is the shared lookup used by both portal login and registration", async () => {
+describe("6 – findGoogleUser honours the linked googleSub on subsequent login", () => {
+  it("findGoogleUser is the shared lookup used by both portal login and registration", async () => {
     // The function is exported from portal-auth and used by portal-google-auth.
     // Here we verify that calling it with the same sub returns the existing account
     // (simulating a subsequent portal login after Google-linked registration).
-    mockedFindOrCreateGoogleUser.mockResolvedValue({
+    mockedFindGoogleUser.mockResolvedValue({
+      status: "ok",
       token: "portal-session-jwt",
       user: { id: 42, email: GOOGLE_PROFILE.email, firstName: "Amara", lastName: "Osei" },
     });
 
-    const result = await findOrCreateGoogleUser(GOOGLE_PROFILE);
+    const result = await findGoogleUser(GOOGLE_PROFILE);
 
     expect(result).not.toBeNull();
-    expect(result?.token).toBe("portal-session-jwt");
-    expect(result?.user.id).toBe(42);
+    expect(result?.status).toBe("ok");
+    if (result?.status === "ok") {
+      expect(result.token).toBe("portal-session-jwt");
+      expect(result.user.id).toBe(42);
+    }
   });
 
   it("does not create a new portal account when one already exists with that googleSub", async () => {
-    // Simulate a returning Google user — findOrCreateGoogleUser should return
-    // the existing record, not insert a duplicate.
-    mockedFindOrCreateGoogleUser.mockResolvedValueOnce({
+    // Simulate a returning Google user — findGoogleUser should return the
+    // existing record, not insert a duplicate.
+    mockedFindGoogleUser.mockResolvedValueOnce({
+      status: "ok",
       token: "portal-session-jwt-existing",
       user: { id: 42, email: GOOGLE_PROFILE.email, firstName: "Amara", lastName: "Osei" },
     });
 
-    const result = await findOrCreateGoogleUser(GOOGLE_PROFILE);
+    const result = await findGoogleUser(GOOGLE_PROFILE);
 
     // Only one account lookup was needed — no second insert
-    expect(mockedFindOrCreateGoogleUser).toHaveBeenCalledTimes(1);
-    expect(result?.user.id).toBe(42);
+    expect(mockedFindGoogleUser).toHaveBeenCalledTimes(1);
+    expect(result?.status).toBe("ok");
+    if (result?.status === "ok") expect(result.user.id).toBe(42);
   });
 });
 

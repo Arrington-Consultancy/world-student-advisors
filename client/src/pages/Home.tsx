@@ -25,7 +25,7 @@ import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 // whole — never rotate positions independently within a set.
 const BENEFIT_SETS = [
   [
-    "British Council Certified Counsellors",
+    "British Council UK knowledge-trained counsellors",
     "Your Own Dedicated Student Counsellor",
     "No Fees to Students or Families",
     "Application and Visa Guidance",
@@ -234,7 +234,7 @@ export default function Home() {
                 </p>
                 <div className="flex flex-col sm:flex-row gap-4">
                   <Link
-                    href="/counsellors"
+                    href="/our-team"
                     className="inline-flex items-center justify-center px-7 py-4 border-2 border-wsa-navy text-wsa-navy text-[15px] font-semibold tracking-wide transition-all duration-200 hover:bg-wsa-navy hover:text-white active:scale-[0.98]"
                   >
                     Talk to a Counsellor
@@ -371,7 +371,7 @@ export default function Home() {
                   After many years working in international education, Tim wanted to create a different kind of organisation. One built around personal advice, long term relationships and people who genuinely care about the students they support. That philosophy became the WSA Family.
                 </p>
                 <Link
-                  href="/counsellors"
+                  href="/our-team"
                   className="inline-flex items-center text-wsa-navy font-semibold hover:text-wsa-red transition-colors duration-200"
                 >
                   Meet your WSA Counsellors
@@ -458,7 +458,7 @@ export default function Home() {
                   One named professional.<br />Dedicated to you.
                 </h2>
                 <p className="text-[17px] text-muted-foreground leading-relaxed mb-6">
-                  From your first enquiry, you will have your own named WSA Student Counsellor. They will get to know you, understand what and where you want to study, and personally support you throughout your journey — from choosing a course and making your application, through to your visa, travel and enrolment.
+                  From your first enquiry, you will have your own named WSA Student Counsellor. They will get to know you, understand what and where you want to study, and personally support you throughout your journey: from choosing a course and making your application, through to your visa, travel and enrolment.
                 </p>
                 <p className="text-[17px] text-muted-foreground leading-relaxed mb-8">
                   You can speak to your counsellor directly by WhatsApp, telephone or email. They recommend what's genuinely right, and they never submit anything without your approval.
@@ -467,7 +467,7 @@ export default function Home() {
                   For parents: your child's counsellor is available to you directly. You'll always know who to call.
                 </p>
                 <Link
-                  href="/counsellors"
+                  href="/our-team"
                   className="inline-flex items-center text-wsa-navy font-semibold hover:text-wsa-red transition-colors duration-200"
                 >
                   Meet your WSA Counsellors
@@ -555,7 +555,7 @@ export default function Home() {
                     <div className="absolute inset-0 bg-gradient-to-t from-black/65 via-black/10 to-transparent" />
                     <div className="absolute bottom-0 left-0 right-0 p-6 lg:p-8">
                       <h3 className="text-2xl font-semibold text-white mb-1">Europe</h3>
-                      <p className="text-white/70 text-sm">Cyprus, Hungary, and more — lower-budget options with quality programmes</p>
+                      <p className="text-white/70 text-sm">Cyprus, Hungary, and more (lower-budget options with quality programmes)</p>
                     </div>
                   </div>
                 </Link>
@@ -626,6 +626,54 @@ export default function Home() {
       </section>
 
       {/* ═══════════════════════════════════════════════════════════════
+          SECTION 6B: INTERVIEW READINESS COACH
+         A named, linked placement for the AI Interview Coach — an
+         applicant benefit, not a vague bullet point elsewhere on the page.
+      ═══════════════════════════════════════════════════════════════ */}
+      <section className="py-20 lg:py-28 bg-wsa-cream">
+        <div className="container">
+          <div className="grid lg:grid-cols-2 gap-12 lg:gap-20 items-center">
+            <ScrollReveal>
+              <div>
+                <p className="text-sm font-medium tracking-[0.2em] uppercase text-wsa-red mb-5">Applicant benefit</p>
+                <h2 className="text-3xl md:text-4xl font-semibold text-wsa-navy leading-[1.15] mb-6">
+                  Prepare for your interview with our AI Interview Readiness Coach
+                </h2>
+                <p className="text-[17px] text-muted-foreground leading-relaxed mb-6">
+                  Once you're a WSA applicant, you get free access to the AI Interview Readiness Coach through your Student Portal: structured practice for CAS interviews, UKVI credibility interviews, university interviews and course-specific interviews, with honest AI feedback before your live mock interview with your Student Counsellor.
+                </p>
+                <p className="text-sm text-muted-foreground/80 leading-relaxed mb-8">
+                  It never gives you model answers to memorise, because genuine, personal answers are what interviewers and visa officers are listening for.
+                </p>
+                <Link
+                  href="/portal/interview-coach"
+                  className="inline-flex items-center text-wsa-navy font-semibold hover:text-wsa-red transition-colors duration-200"
+                >
+                  Explore the Interview Readiness Coach
+                  <ArrowRight className="ml-2" size={16} />
+                </Link>
+              </div>
+            </ScrollReveal>
+            <ScrollReveal delay={80}>
+              <div className="grid sm:grid-cols-2 gap-4">
+                {[
+                  { label: "CAS Interview Preparation", copy: "Prepare for your CAS interview" },
+                  { label: "UKVI Credibility Interview Preparation", copy: "Practise for your UK visa credibility interview" },
+                  { label: "University Interview Preparation", copy: "Prepare for your university interview" },
+                  { label: "Course-Specific Interview Preparation", copy: "Practise course-specific interview questions" },
+                ].map((mode) => (
+                  <div key={mode.label} className="bg-white border border-border/40 p-5">
+                    <p className="font-semibold text-wsa-navy text-sm mb-1">{mode.label}</p>
+                    <p className="text-xs text-muted-foreground">{mode.copy}</p>
+                  </div>
+                ))}
+              </div>
+            </ScrollReveal>
+          </div>
+        </div>
+      </section>
+
+      {/* ═══════════════════════════════════════════════════════════════
           SECTION 7: WHY WSA?
          Shorter. Bolder. Three human promises, not corporate values.
          Phrased as what a student actually cares about.
@@ -648,7 +696,7 @@ export default function Home() {
               },
               {
                 statement: "We recommend what's right",
-                detail: "British Council certified. We guide based on what's genuinely best for you, not what pays the highest commission. If studying abroad isn't the right choice, we'll say so."
+                detail: "British Council UK knowledge-trained counsellors. We guide based on what's genuinely best for you, not what pays the highest commission. If studying abroad isn't the right choice, we'll say so."
               },
               {
                 statement: "No fees. No pressure. No surprises.",
@@ -668,7 +716,7 @@ export default function Home() {
             <div className="mt-12 flex flex-col sm:flex-row items-center justify-center gap-8 text-white/60">
               <div className="flex items-center gap-3">
                 <img src="/manus-storage/british_council_badge_694f3fc2.png" alt="British Council" className="h-8 w-8" />
-                <span className="text-sm">British Council Certified</span>
+                <span className="text-sm">British Council UK knowledge-trained counsellors</span>
               </div>
               <span className="hidden sm:inline text-white/20">|</span>
               <div className="flex items-center gap-2">

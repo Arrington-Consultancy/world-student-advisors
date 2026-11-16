@@ -1,0 +1,32 @@
+name: Check Student Support Library links
+
+# Manual and weekly. READ-ONLY: touches nothing but YouTube's public oEmbed
+# endpoint, and writes nothing anywhere.
+#
+# A deleted YouTube video leaves a link that is still a valid string, so the
+# build and the test suite both pass while a student sees "Video unavailable".
+# Nothing else in this repository can catch that, because the check needs
+# outbound internet access.
+#
+# Fails the run when any link is dead, and prints a failure notice naming the
+# resource, its title and what YouTube said, which is what Tim asks for when
+# something stops working.
+on:
+  workflow_dispatch:
+  schedule:
+    # Monday 08:00 UTC. Weekly is enough: links break when somebody replaces
+    # a recording, which is a known event rather than a random one.
+    - cron: "0 8 * * 1"
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Check every library video is still playable
+        run: node scripts/check-library-links.mjs

@@ -115,6 +115,31 @@ describe("portal.dashboard — status states", () => {
   });
 });
 
+describe("portal.dashboard — repaired account no longer stuck on no_application", () => {
+  it("reaches the normal 'ok' dashboard once pipedrivePersonId has been repaired, not no_application", async () => {
+    // Simulates the state right after createPortalUser's repair path (see
+    // server/portal-auth.test.ts) has run: the account's pipedrivePersonId
+    // is no longer null, so getPortalUserById now returns a real id and
+    // portal.dashboard must take the "ok" branch, never no_application.
+    mockedVerifyPortalToken.mockResolvedValue({ portalUserId: 7, email: "tom@arringtonconsultancy.com", firstName: "Tom", lastName: "Arrington" });
+    mockedGetPortalUserById.mockResolvedValue({ firstName: "Tom", pipedrivePersonId: 8371 });
+    mockedResolvePortalDashboard.mockResolvedValue({
+      state: "resolved",
+      stageLabel: "Getting to know you",
+      nextAction: "Your counsellor is learning about your goals and options",
+      position: 0,
+      counsellor: null,
+    });
+
+    const caller = makeCaller();
+    const result = await caller.portal.dashboard({ token: "valid-token" });
+
+    expect(result.status).toBe("ok");
+    expect(result.status).not.toBe("no_application");
+    expect(mockedResolvePortalDashboard).toHaveBeenCalledWith(8371);
+  });
+});
+
 describe("portal.dashboard — allowlist drift guard", () => {
   it("an ok response contains exactly the locked allowlist keys, never a raw Pipedrive field", async () => {
     mockedVerifyPortalToken.mockResolvedValue({ portalUserId: 1, email: "a@b.com", firstName: "Amara", lastName: "B" });

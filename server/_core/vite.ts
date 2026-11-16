@@ -106,7 +106,18 @@ export function serveStatic(app: Express, distPathOverride?: string) {
   // and the prerendered-route lookup for the single most important path on
   // the site. Every other static asset (JS/CSS/images/downloads) is still
   // served exactly as before by exact filename match.
-  app.use(express.static(distPath, { index: false }));
+  //
+  // redirect: false — express.static's other default, when a request path
+  // names a DIRECTORY under dist/public, is to 301 it to the trailing-slash
+  // form. client/public/partners/ (the partner logos, 25 September 2026)
+  // shares its name with the /partners page, so "/partners" was 301'd to
+  // "/partners/", which legacyRedirects then 301'd back to "/partners": an
+  // infinite loop, "too many redirects" in every browser, and the "Redirect
+  // error" Google Search Console reported for a sitemap page on 7 October
+  // 2026. With redirect: false a directory path falls through to the route
+  // handler below like any other page, and the files inside the directory
+  // are still served by exact filename.
+  app.use(express.static(distPath, { index: false, redirect: false }));
 
   // Fall through to the SPA shell for any request express.static didn't
   // serve a real file for. Known client routes (shared/routes.ts) get a

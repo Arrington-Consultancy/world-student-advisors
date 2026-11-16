@@ -1,0 +1,769 @@
+/**
+ * PRODUCTION ACCEPTANCE SUITE for the WSA Staff AI operating system.
+ *
+ * Runs the real shipped modules against the real production database. It
+ * is not a unit-test rerun: it imports the same server/access and
+ * server/operating code the deployed process runs, and resolves the same
+ * staff rows, so a mismatch between the code and production data shows up
+ * here rather than in front of a staff member.
+ *
+ * Two things it deliberately does NOT do:
+ *
+ *   - It never writes. No staff row, no grant, no audit event, no enquiry.
+ *     Audit row counts are taken before and after and asserted identical,
+ *     so the suite proves it did not pollute the record it is checking.
+ *   - It never mints a token or invents an identity. Where a StaffSession
+ *     is needed it is built from the real production staff row's own
+ *     values, which is exactly what resolveStaffSession would produce for
+ *     that person. Authentication itself (validating a genuine Entra
+ *     token) cannot be exercised without a real browser sign-in and is
+ *     reported as such rather than faked.
+ *
+ * Where a negative case needs a profile nobody in production holds — a
+ * narrower case scope, a lower level — it is DERIVED from the real
+ * resolved profile and labelled "[derived]". Those assertions test the
+ * model as deployed; they are not claims about a second real person.
+ */
+import { drizzle } from "drizzle-orm/mysql2";
+import { sql } from "drizzle-orm";
+
+import { resolveStaffAccessProfile } from "../server/access/identity";
+import {
+  checkAccessForStaffUser, decideForProfile, filterAccessibleCases,
+  filterSearchResults, authoriseExport, selectAuthorisedContext,
+  authoriseConnectorRetrieval,
+} from "../server/access/enforcement";
+import {
+  CONSEQUENTIAL_ACTIONS, consequentialActionsHeld,
+  type StaffAccessProfile, type CaseContext,
+} from "../server/access/accessControl";
+import type { StaffSession } from "../server/staffSession";
+import { listWorkers } from "../server/workforce/registry";
+import { routeStaffRequest } from "../server/workforce/router";
+import { WORKER_FUNCTIONAL_SCOPE } from "../server/access/workerScope";
+import { FUNCTIONAL_SCOPES } from "../server/access/accessControl";
+import { evaluateConnectorPermission, evaluateStaffPortalExecutionPermission } from "../server/workforce/permissions";
+import { WORKER_CRM_SCOPE } from "../server/workforce/crmScope";
+import { connectorScopeGrants, WORKER_CONNECTOR_SCOPE } from "../server/workforce/connectorScope";
+import { decideSharePointLocation, WORKER_SHAREPOINT_LOCATIONS, NEVER_DESIGNATED } from "../server/workforce/sharePointLocations";
+import { evaluateWsaScope, isRingFenced } from "../server/workforce/wsaScope";
+import { getSharePointStatus } from "../server/workforce/connectors/sharepoint";
+import { combineContributions } from "../server/operating/collaboration";
+import { runQualityCheck, acceptHumanisation, findSubstanceChanges } from "../server/operating/qualityCheck";
+import { routeEscalation, validateEscalation } from "../server/operating/escalation";
+import { milestoneState, shouldEscalateSlippage, orderEvents } from "../server/operating/timeline";
+import { collectAttentionItems, buildManagerAttention, determineNextAction } from "../server/operating/managerAttention";
+import { runPipeline, decideActions } from "../server/operating/pipeline";
+
+if (!process.env.DATABASE_URL) {
+  console.error("DATABASE_URL is not set in this environment.");
+  process.exit(1);
+}
+
+const db = drizzle(process.env.DATABASE_URL);
+let failures = 0;
+let checks = 0;
+
+function check(condition: boolean, message: string): void {
+  checks += 1;
+  if (condition) console.log(`  OK: ${message}`);
+  else {
+    console.error(`  FAILED: ${message}`);
+    failures += 1;
+  }
+}
+
+function section(title: string): void {
+  console.log(`\n=== ${title} ===`);
+}
+
+const NOW = new Date("2026-08-30T12:00:00Z");
+/** A row as a caller would hold it: an identifier plus the case context the gate reads. */
+interface CaseRow { id: string; ctx: CaseContext }
+const ROW_MINE: CaseRow = { id: "case-mine", ctx: { assignedStaffUserIds: [], teamId: "team-a" } };
+const ROW_THEIRS: CaseRow = { id: "case-theirs", ctx: { assignedStaffUserIds: [2_000_000_001], teamId: "team-b" } };
+const toCtx = (r: CaseRow): CaseContext => r.ctx;
+
+/** mysql2 through Drizzle types execute() loosely; one cast here rather than at every call site. */
+async function rows<T>(query: string): Promise<T[]> {
+  const [result] = await db.execute(sql.raw(query));
+  return result as unknown as T[];
+}
+
+async function auditCounts(): Promise<Record<string, number>> {
+  const r = await rows<Record<string, number>>(
+    "SELECT (SELECT COUNT(*) FROM `workforce_audit_events`) AS wf," +
+    " (SELECT COUNT(*) FROM `staff_access_changes`) AS ac," +
+    " (SELECT COUNT(*) FROM `staff_enquiries`) AS en," +
+    " (SELECT COUNT(*) FROM `staff_enquiry_contributions`) AS ec",
+  );
+  return r[0];
+}
+
+async function main() {
+  const before = await auditCounts();
+
+  // ── 1. Schema alignment ───────────────────────────────────────────────
+  // The real risk of deploying schema.ts: Drizzle emits explicit column
+  // lists, so a column declared here but absent in production breaks every
+  // query on that table. Selecting one row from each proves they agree.
+  section("1. Schema alignment — deployed code against the production database");
+  const tables = [
+    "staff_users", "staff_access_grants", "staff_access_changes",
+    "staff_enquiries", "staff_enquiry_contributions", "workforce_audit_events",
+  ];
+  for (const t of tables) {
+    try {
+      await db.execute(sql.raw(`SELECT * FROM \`${t}\` LIMIT 1`));
+      check(true, `${t} is readable with the deployed schema`);
+    } catch (err) {
+      check(false, `${t} is readable — ${(err as Error).message}`);
+    }
+  }
+
+  // ── 2. Identity resolution against real production rows ───────────────
+  section("2. Identity resolution — real production rows");
+  const staff = await rows<{ id: number; displayName: string }>(
+    "SELECT `id`, `displayName` FROM `staff_users` ORDER BY `id` ASC",
+  );
+  check(staff.length >= 1, `at least one staff row exists (found ${staff.length})`);
+
+  const anonymous = await resolveStaffAccessProfile(null);
+  check(!anonymous.resolved && anonymous.reason === "no_individual_identity",
+    "a shared-password session (no individual identity) resolves to no profile");
+
+  const missing = await resolveStaffAccessProfile(2_000_000_000);
+  check(!missing.resolved && missing.reason === "staff_record_not_found",
+    "a staff id that does not exist resolves to staff_record_not_found, not to a default profile");
+
+  const resolution = await resolveStaffAccessProfile(staff[0].id);
+  if (!resolution.resolved) {
+    console.error(`  FAILED: the real staff row did not resolve (${resolution.reason}: ${resolution.detail})`);
+    failures += 1;
+    return;
+  }
+  const profile: StaffAccessProfile = resolution.profile;
+  console.log(`  resolved: "${staff[0].displayName}" level=${profile.baseAccessLevel} ` +
+    `caseScope=${profile.caseScope} status=${profile.status} ` +
+    `scopes=[${profile.functionalScopes.join(",")}] ` +
+    `actions=[${profile.actionPermissions.join(",")}] ` +
+    `overlays=[${profile.sensitiveOverlays.join(",")}]`);
+  check(profile.status === "active", "the resolved profile is active");
+  check(resolution.droppedGrantValues.length === 0,
+    `no stored grant value was dropped as unrecognised (found [${resolution.droppedGrantValues.join(",")}])`);
+
+  const scope = profile.functionalScopes[0];
+
+  // ── 3. Authorised access ──────────────────────────────────────────────
+  section("3. Authorised access — the positive case");
+  const allowedRead = await checkAccessForStaffUser(staff[0].id,
+    { action: "read", functionalScope: scope });
+  check(allowedRead.allowed, `read in the held scope "${scope}" is allowed`);
+
+  // ── 4. Consequential actions are refused ──────────────────────────────
+  section("4. Consequential actions — seniority never implies capability");
+  // access_admin is held by the first administrator and is the ONLY
+  // consequential permission that account holds. This used to assert that
+  // NONE was held, which was true until the first-administrator bootstrap
+  // ran on 2 September and would have had to be rewritten anyway. It now
+  // asserts what the control actually promises: a consequential permission
+  // is allowed exactly when it has been granted by name, and never
+  // inherited from Level 1.
+  const held = consequentialActionsHeld(profile, NOW);
+  console.log(`  consequential permissions held: ${held.join(", ") || "(none)"}`);
+  check(held.every(a => a === "access_admin"),
+    `access_admin is the only consequential permission held (found [${held.join(",")}])`);
+  let consequentialMatches = true;
+  for (const action of Array.from(CONSEQUENTIAL_ACTIONS)) {
+    const outcome = await checkAccessForStaffUser(staff[0].id, { action, functionalScope: scope });
+    const granted = (profile.actionPermissions as readonly string[]).includes(action);
+    if (outcome.allowed !== granted) consequentialMatches = false;
+    if (!granted) check(!outcome.allowed, `${action} is DENIED to the real production profile`);
+  }
+  check(consequentialMatches,
+    "a consequential permission is allowed exactly when it is granted by name, and never implied by the level");
+
+  // ── 5. Unheld scope, overlays ─────────────────────────────────────────
+  section("5. Scope and sensitive overlays");
+  // The scope this account does NOT hold, found by asking the live profile
+  // rather than by naming one. Every negative check below leans on it, and
+  // naming a scope is a bet that nobody will ever be granted it: when Tom
+  // Arrington's account was widened to the thirteen worker scopes on
+  // 1 September, the hard-coded "admissions" became a scope he held, and
+  // nine checks stopped testing anything and started failing. A negative
+  // control has to be derived from the state it is testing against.
+  const unheld = FUNCTIONAL_SCOPES.filter(s => !profile.functionalScopes.includes(s));
+  if (unheld.length === 0) {
+    console.error(
+      "  STOPPING: this profile holds all " + FUNCTIONAL_SCOPES.length + " functional scopes, so there is no " +
+      "unheld scope to test the refusal with. The negative cases below would pass vacuously.",
+    );
+    process.exit(1);
+  }
+  const otherScope = unheld[0];
+  console.log(`  unheld scopes available for the negative cases: [${unheld.join(", ")}]`);
+  const wrongScope = await checkAccessForStaffUser(staff[0].id,
+    { action: "read", functionalScope: otherScope as never });
+  check(!wrongScope.allowed, `read in the unheld scope "${otherScope}" is DENIED`);
+
+  for (const overlay of ["finance", "safeguarding", "visa_regulated", "hr_staff_private",
+    "complaints_legal", "credentials_security", "records_destructive"] as const) {
+    const outcome = decideForProfile(profile,
+      { action: "read", functionalScope: scope, sensitiveCategory: overlay }, NOW);
+    const holds = profile.sensitiveOverlays.includes(overlay);
+    check(holds ? outcome.allowed : !outcome.allowed,
+      `sensitive overlay ${overlay}: ${holds ? "held, allowed" : "not held, DENIED"}`);
+  }
+
+  const companyFinancial = decideForProfile(profile,
+    { action: "read", functionalScope: scope, businessDataClass: "company_financial" }, NOW);
+  check(!companyFinancial.allowed,
+    "company financial records are DENIED without the finance overlay, whatever the level");
+
+  // ── 6. Case scope, search, export, AI context ─────────────────────────
+  section("6. Case scope, search omission, export, AI context");
+  const session: StaffSession = {
+    authMethod: "entra_sso",
+    staffUserId: staff[0].id,
+    email: "",             // not used by any gate; never printed
+    displayName: staff[0].displayName,
+  };
+
+  const cases = await filterAccessibleCases(session, [ROW_MINE, ROW_THEIRS], toCtx,
+    { action: "read", functionalScope: scope });
+  const orgWide = profile.caseScope === "organisation";
+  check(orgWide ? cases.rows.length === 2 : cases.rows.length < 2,
+    `case filtering matches the recorded case scope "${profile.caseScope}" (${cases.rows.length}/2 visible)`);
+
+  // [derived] a narrower case scope must exclude another person's case.
+  const narrowed: StaffAccessProfile = { ...profile, caseScope: "own_applicants" };
+  const theirs = decideForProfile(narrowed,
+    { action: "read", functionalScope: scope, case: ROW_THEIRS.ctx }, NOW);
+  check(!theirs.allowed, "[derived] own_applicants scope DENIES a case assigned to someone else");
+  const mine = decideForProfile(narrowed,
+    { action: "read", functionalScope: scope, case: { assignedStaffUserIds: [profile.staffUserId], teamId: "team-a" } }, NOW);
+  check(mine.allowed, "[derived] own_applicants scope still allows the person's own assigned case");
+
+  const search = await filterSearchResults(session, [ROW_MINE, ROW_THEIRS], toCtx,
+    { action: "read", functionalScope: otherScope as never });
+  check(search.results.length === 0 && search.withheldCount === 2,
+    "search in an unheld scope returns NOTHING and reports the withheld count — omission, not a redacted placeholder");
+  check(!JSON.stringify(search.results).includes("case-theirs"),
+    "no withheld record identifier appears anywhere in the search result payload");
+
+  // authoriseExport routes through requireAccess, which THROWS rather than
+  // returning a shaped result: a consequential denial stops the request
+  // instead of quietly returning fewer rows. Asserting the throw is the
+  // stronger property, so the test asserts that rather than a false flag.
+  const holdsExport = profile.actionPermissions.includes("export_download");
+  let exportThrew = false;
+  let exportedRows = -1;
+  try {
+    const exported = await authoriseExport(session, [ROW_MINE, ROW_THEIRS], toCtx, { functionalScope: scope });
+    exportedRows = exported.rows.length;
+  } catch {
+    exportThrew = true;
+  }
+  check(holdsExport ? !exportThrew : exportThrew,
+    holdsExport
+      ? `export is permitted and returned ${exportedRows} readable row(s)`
+      : "export THROWS — export_download is a separate permission, not held, and the denial stops the request rather than shaping it");
+
+  const context = await selectAuthorisedContext(session, [ROW_MINE, ROW_THEIRS], toCtx,
+    { action: "read", functionalScope: otherScope as never });
+  check(context.context.length === 0,
+    "AI context assembly yields NOTHING in an unheld scope — unauthorised material never enters the context window");
+
+  // ── 7. Worker isolation and connector denial ──────────────────────────
+  section("7. Worker isolation and connector denial");
+  const connectors = ["sharepoint", "google_drive", "pipedrive"] as const;
+  const operations = ["search", "read", "create", "update", "delete", "external_send"] as const;
+  // Execution authority and connector authority are SEPARATE questions,
+  // and this check used to add them into one counter and assert zero.
+  // That was a true statement of the pre-activation position and became
+  // false the moment Tom Arrington's consolidated authority activated
+  // thirteen workers. Counting them together is the same defect that was
+  // corrected in the platform itself in Change Entry 075: a single switch
+  // for two different decisions. Asserting them separately is also
+  // stronger than asserting zero, because it pins execution to the
+  // Register rather than to a number.
+  let connectorPermitted = 0;
+  for (const w of listWorkers()) {
+    for (const c of connectors) for (const o of operations) {
+      if (evaluateConnectorPermission({ workerId: w.id, connector: c, operation: o, resourceScope: "x" }).allowed) connectorPermitted += 1;
+    }
+  }
+  const connectorTotal = listWorkers().length * connectors.length * operations.length;
+  check(connectorPermitted === 0,
+    `every connector operation is denied for every worker (${connectorPermitted} permitted of ${connectorTotal})`);
+
+  // Execution must match the controlled record exactly — not merely be
+  // non-zero, and not merely include the ten. A worker the Register does
+  // not authorise must still be refused, and a worker retired by merger
+  // (Daniel, Oliver, Olivia; Register v0.47, 18 September 2026) most of all.
+  const SUBSTANTIVE = [
+    "sophie", "amelia", "james", "priya", "harper",
+    "grace", "ethan", "maya", "alex", "nia",
+  ];
+  const executable = listWorkers({ includeRetired: true }).filter(w => evaluateStaffPortalExecutionPermission(w.id).allowed).map(w => w.id).sort();
+  check(JSON.stringify(executable) === JSON.stringify([...SUBSTANTIVE].sort()),
+    `exactly the ten Register-authorised workers may execute, and no other (found ${executable.length}: ${executable.join(", ")})`);
+  for (const retired of ["daniel", "oliver", "olivia"] as const) {
+    check(!evaluateStaffPortalExecutionPermission(retired).allowed, `${retired} is retired by merger and cannot be opened`);
+  }
+
+  for (const id of ["wsa_core_brain", "wsa_governance_assurance", "staff_receptionist"]) {
+    if (!listWorkers().some(w => w.id === id)) continue;
+    check(!evaluateStaffPortalExecutionPermission(id).allowed,
+      `${id} is NOT executable as a substantive worker — the Register does not authorise it`);
+  }
+  check(Object.values(WORKER_CRM_SCOPE).every(v => v === null),
+    "no worker holds a CRM scope — the Access Matrix has no CRM column");
+
+  const retrieval = await authoriseConnectorRetrieval(
+    session,
+    { action: "read", functionalScope: scope, resourceReference: "sharepoint:/controlled" },
+    evaluateConnectorPermission({ workerId: "sophie", connector: "sharepoint", operation: "read", resourceScope: "x" }),
+  );
+  check(!retrieval.allowed, "connector retrieval is DENIED");
+  check(retrieval.deniedDimension === "worker_authorisation",
+    "the denial is reported at the WORKER gate — a platform fact true whoever is asking, not the person's own permissions");
+
+  // ── 8. Collaboration ──────────────────────────────────────────────────
+  section("8. Collaboration — one lead, lanes enforced, disagreement visible");
+  const noLead = combineContributions({
+    caseId: "case-a", leadWorkerId: "james",
+    contributions: [{ workerId: "priya", position: "p", confidence: "likely", evidenceQuality: "verified", functionalScope: "visa_compliance" }],
+  });
+  check(noLead.outcome === "invalid", "a contribution set whose lead did not contribute cannot produce a recommendation");
+
+  const outOfLane = combineContributions({
+    caseId: "case-a", leadWorkerId: "james",
+    contributions: [
+      { workerId: "james", position: "p", confidence: "likely", evidenceQuality: "verified", functionalScope: "admissions" },
+      { workerId: "priya", position: "q", confidence: "likely", evidenceQuality: "verified", functionalScope: "admissions" },
+    ],
+  });
+  check(outOfLane.rejectedContributions.some(r => r.workerId === "priya"),
+    "a contribution outside the contributor's own registered scope is REJECTED and reported, not folded in");
+
+  const disagreeing = combineContributions({
+    caseId: "case-a", leadWorkerId: "james",
+    contributions: [
+      { workerId: "james", position: "Proceed", confidence: "likely", evidenceQuality: "verified", functionalScope: "admissions" },
+      { workerId: "priya", position: "Do not proceed", confidence: "certain", evidenceQuality: "verified", functionalScope: "visa_compliance", disagreesWith: ["james"] },
+    ],
+  });
+  check(disagreeing.outcome === "recommendation_with_unresolved_disagreement",
+    "an unresolved disagreement is carried through rather than resolved by picking a side");
+  check(disagreeing.unresolvedDisagreements.length > 0, "the disagreement is recorded, not smoothed over");
+
+  // ── 9. Quality gate and humanisation guard ────────────────────────────
+  section("9. Quality gate and humanisation guard");
+  const guarantee = runQualityCheck({
+    text: "We guarantee your visa will be approved.", permissionChecked: true,
+    hasUnresolvedDisagreement: false, disagreementVisibleInText: false,
+    workerBoundaryBreaches: [], evidenceInsufficient: false,
+  });
+  check(!guarantee.passed && guarantee.blocking.some(f => f.code === "guarantee_language"),
+    "guarantee language is BLOCKING, not advisory");
+
+  const unchecked = runQualityCheck({
+    text: "A plain sentence.", permissionChecked: false,
+    hasUnresolvedDisagreement: false, disagreementVisibleInText: false,
+    workerBoundaryBreaches: [], evidenceInsufficient: false,
+  });
+  check(!unchecked.passed && unchecked.blocking.some(f => f.code === "permission_not_checked"),
+    "text assembled without a recorded permission decision is BLOCKED");
+
+  const hidden = runQualityCheck({
+    text: "Everything is agreed.", permissionChecked: true,
+    hasUnresolvedDisagreement: true, disagreementVisibleInText: false,
+    workerBoundaryBreaches: [], evidenceInsufficient: false,
+  });
+  check(!hidden.passed, "a disagreement hidden from the text is BLOCKED");
+
+  const dropped = findSubstanceChanges(
+    "The fee is 12000 GBP and admission is not guaranteed.",
+    "The fee is 12000 GBP and admission is guaranteed.");
+  check(dropped.length > 0, "removing a negation is detected as a substance change");
+
+  const humanised = acceptHumanisation(
+    "The deposit is 2000 GBP, due 1 March 2027.",
+    "The deposit is 3000 GBP, due 1 March 2027.");
+  check(!humanised.accepted, "a humanisation pass that changes a figure is REJECTED");
+  check(humanised.text === "The deposit is 2000 GBP, due 1 March 2027.",
+    "on rejection the checked text is returned unchanged — never a half-edited blend");
+
+  // ── 10. Escalation ────────────────────────────────────────────────────
+  section("10. Escalation — relevance plus authority, never clearance alone");
+  const candidate = { staffUserId: profile.staffUserId, displayName: staff[0].displayName, profile };
+  const safeguarding = routeEscalation(
+    { reason: "safeguarding_concern", functionalScope: scope, caseId: "case-mine" },
+    [candidate], NOW);
+  const holdsSafeguarding = profile.sensitiveOverlays.includes("safeguarding");
+  check(holdsSafeguarding ? !safeguarding.unroutable : safeguarding.unroutable,
+    holdsSafeguarding
+      ? "a safeguarding escalation routes to a recipient holding the overlay"
+      : "a safeguarding escalation is NOT routed to the most senior person in the company, who lacks the safeguarding overlay");
+  if (!holdsSafeguarding) {
+    check(safeguarding.recipients.length === 0,
+      "with no qualified recipient the escalation stays unrouted rather than being sent to whoever is available");
+    check(safeguarding.excluded.length === 1,
+      "the excluded candidate is recorded with a reason, so over-exposure stays auditable");
+  }
+
+  // Clearance alone is never enough. blocked_case carries no sensitive
+  // overlay, so this isolates the second requirement: a recipient must also
+  // be able to DECIDE, and a read-only profile cannot own an escalation.
+  const ordinary = routeEscalation(
+    { reason: "blocked_case", functionalScope: scope, caseId: null }, [candidate], NOW);
+  const canDecide = profile.actionPermissions.includes("approve")
+    || profile.actionPermissions.includes("access_admin");
+  check(canDecide ? !ordinary.unroutable : ordinary.unroutable,
+    canDecide
+      ? "a recipient who can read AND decide is a valid escalation owner"
+      : "a read-only profile is NOT a valid escalation owner — clearance alone is insufficient");
+
+  const unclosable = validateEscalation({
+    escalationId: "e2", reason: "complaint", decisionRequired: "d", caseId: "case-mine",
+    functionalScope: scope, workersInvolved: ["grace"], raisedAt: NOW,
+    ownerStaffUserId: null, status: "closed", outcome: null,
+    decidedByStaffUserId: null, decidedAt: null, learningCaptured: false,
+  });
+  check(!unclosable.valid, "an escalation cannot be closed without an owner, an outcome and a named decider");
+
+  // ── 11. Timeline and deadlines ────────────────────────────────────────
+  section("11. Timeline, status and deadline risk");
+  const trivial = {
+    milestoneId: "m1", caseId: "case-mine", description: "d",
+    dueAt: new Date(NOW.getTime() - 86_400_000), completedAt: null, material: true,
+    humanOwnerStaffUserId: profile.staffUserId, specialistWorkerId: "james" as const,
+  };
+  check(!shouldEscalateSlippage(trivial, NOW), "trivial lateness (1 day) does not escalate");
+
+  const immaterial = {
+    milestoneId: "m2", caseId: "case-mine", description: "d",
+    dueAt: new Date(NOW.getTime() - 30 * 86_400_000), completedAt: null, material: false,
+    humanOwnerStaffUserId: profile.staffUserId, specialistWorkerId: "james" as const,
+  };
+  check(milestoneState(immaterial, NOW) !== "critical",
+    "an immaterial milestone never becomes critical however late (30 days overdue)");
+
+  const actor = { type: "worker" as const, workerId: "james" as const };
+  const ordered = orderEvents([
+    { eventId: "b", caseId: "c", kind: "decision" as const, at: NOW, actor, summary: "s" },
+    { eventId: "a", caseId: "c", kind: "decision" as const, at: NOW, actor, summary: "s" },
+  ]);
+  check(ordered[0].eventId === "a", "same-instant events order stably by id");
+
+  // ── 12. Manager Attention ─────────────────────────────────────────────
+  section("12. Manager Attention — genuine items only, same permission filter");
+  const quiet = collectAttentionItems(
+    { escalations: [], pendingApprovals: [], permissionRequests: [], blockedCases: [], milestones: [], unroutedEscalationIds: [] },
+    NOW);
+  check(quiet.length === 0, "work that is on track produces no attention item at all");
+
+  const leaky = buildManagerAttention(profile, {
+    escalations: [], pendingApprovals: [], permissionRequests: [],
+    blockedCases: [{ caseId: "case-theirs", functionalScope: otherScope as never, blockedReason: "r", blockedSince: NOW }],
+    milestones: [], unroutedEscalationIds: [],
+  }, NOW);
+  check(leaky.items.length === 0,
+    "Manager Attention cannot surface work in a scope the manager could not open — same filter as any other read");
+  check(!JSON.stringify(leaky.items).includes("case-theirs"),
+    "the withheld case identifier appears nowhere in the Manager Attention payload");
+
+  // ── 13. Pipeline and the consequential-action boundary ────────────────
+  section("13. Pipeline — routine executes, consequential is prepared, unheld is refused");
+  const decisions = decideActions(profile, [
+    { actionId: "a1", action: "read", functionalScope: scope, description: "d", preparedPayload: "p" },
+    { actionId: "a2", action: "external_send", functionalScope: scope, description: "d", preparedPayload: "p" },
+    { actionId: "a3", action: "financial_action", functionalScope: scope, description: "d", preparedPayload: "p" },
+  ], NOW);
+  const byId = new Map(decisions.map(d => [d.actionId, d]));
+  check(byId.get("a1")?.disposition === "executed", "a routine, permitted action is executed rather than described");
+  check(byId.get("a2")?.disposition !== "executed", "a consequential action is NEVER executed");
+  check(byId.get("a3")?.disposition !== "executed", "a financial action is NEVER executed");
+  for (const id of ["a2", "a3"]) {
+    const d = byId.get(id);
+    if (d?.disposition === "prepared_for_approval") {
+      check(Boolean(d.preparedPayload), `${id} is prepared in full so the human approves rather than rebuilding it`);
+    } else {
+      check(d?.disposition === "refused", `${id} is refused outright (permission not held)`);
+    }
+  }
+
+  const refused = runPipeline({
+    profile, routedToWorkerId: "james", functionalScope: otherScope as never,
+    collaboration: { caseId: "case-a", leadWorkerId: "james", contributions: [
+      { workerId: "james", position: "p", confidence: "likely", evidenceQuality: "verified", functionalScope: "admissions" }] },
+  }, NOW);
+  check(refused.outcome === "refused" && refused.visibleText === null,
+    "a pipeline refused at the access stage produces no visible text");
+  check(refused.reachedStage === "access", "the reported stage says truthfully how far the flow got");
+  check(refused.collaboration === null, "nothing downstream of a refused access check runs");
+
+  // ── 14. Enquiry history ───────────────────────────────────────────────
+  section("14. Enquiry and response history (clause 3)");
+  const enq = await rows<{ n: number }>("SELECT COUNT(*) AS n FROM `staff_enquiries`");
+  const con = await rows<{ n: number }>("SELECT COUNT(*) AS n FROM `staff_enquiry_contributions`");
+  console.log(`  staff_enquiries: ${enq[0].n} rows, staff_enquiry_contributions: ${con[0].n} rows`);
+  check(true, "both clause-3 tables exist in production and are queryable by the deployed code");
+
+  // ── 16. Reception routes into every substantive worker ───────────────
+  section("16. Reception routes a plain-language request to the right worker");
+  // Reception is the front door. A worker nobody can be routed to is a
+  // worker nobody will use, however correct it is in isolation.
+  const ROUTES: ReadonlyArray<readonly [string, string]> = [
+    ["A new student has emailed us asking for help, can someone triage this enquiry", "sophie"],
+    ["Help me understand what this student is actually looking for and their background", "sophie"],
+    ["Help me research English courses for this student", "amelia"],
+    ["Which of these two universities is the better fit for this student", "amelia"],
+    ["What is the application deadline and what do we need for admissions", "james"],
+    ["What does the visa rule say about maintenance funds", "priya"],
+    ["What scholarship and funding options could close this student's funding gap", "harper"],
+    ["The student has their offer, what do they need before they arrive and enrol", "james"],
+    ["Can you quality check this case file before it goes out", "grace"],
+    ["How can we improve the website search ranking for this page", "ethan"],
+    ["How should we structure our SharePoint records and retention", "maya"],
+    ["How are our paid advertising campaigns performing", "alex"],
+    ["I want help creating a social media post", "nia"],
+  ];
+  let routedCorrectly = 0;
+  for (const [request, expected] of ROUTES) {
+    const routed = routeStaffRequest(request);
+    const ok = routed.matched && routed.responsibleWorkerId === expected;
+    if (ok) routedCorrectly += 1;
+    check(ok, `Reception routes to ${expected}` + (ok ? "" : ` — got ${routed.responsibleWorkerId ?? "no match"} for "${request.slice(0, 50)}"`));
+  }
+  check(routedCorrectly === ROUTES.length,
+    `all ${ROUTES.length} substantive workers are reachable through Reception (${routedCorrectly}/${ROUTES.length})`);
+
+  const nonsense = routeStaffRequest("please reconcile the VAT return and file the statutory accounts");
+  check(!nonsense.matched || nonsense.availability !== "available",
+    "Reception does not invent an owner for work no worker owns");
+
+  // ── 17. A worker is reachable only by a staff member holding its scope ─
+  section("17. Worker scope gating, against the real production profile");
+  const scopeDenied: string[] = [];
+  const scopeAllowed: string[] = [];
+  for (const id of SUBSTANTIVE) {
+    const required = WORKER_FUNCTIONAL_SCOPE[id as keyof typeof WORKER_FUNCTIONAL_SCOPE];
+    const decision = decideForProfile(profile, { action: "read", functionalScope: required });
+    (decision.allowed ? scopeAllowed : scopeDenied).push(`${id}(${required})`);
+  }
+  console.log(`  reachable by this profile: ${scopeAllowed.join(", ") || "(none)"}`);
+  console.log(`  refused for this profile : ${scopeDenied.length} worker(s)`);
+
+  // The control is an equivalence, not a count. Asserting "somebody is
+  // refused something" only holds while the live profile happens to be
+  // narrow, and would have to be rewritten every time access changes,
+  // which is how a control quietly becomes a snapshot. This says what the
+  // gate actually promises: a worker is reachable exactly when the staff
+  // member holds its scope, and never otherwise.
+  let equivalenceHolds = true;
+  for (const id of SUBSTANTIVE) {
+    const required = WORKER_FUNCTIONAL_SCOPE[id as keyof typeof WORKER_FUNCTIONAL_SCOPE];
+    const holds = (profile.functionalScopes as readonly string[]).includes(required);
+    const allowed = decideForProfile(profile, { action: "read", functionalScope: required }).allowed;
+    if (holds !== allowed) equivalenceHolds = false;
+  }
+  check(equivalenceHolds,
+    "a worker is reachable exactly when the staff member holds its functional scope, and never otherwise");
+
+  // [derived] the negative, held independently of what the live profile
+  // happens to carry: strip a scope and the worker goes out of reach.
+  // Stripped of a scope the profile ACTUALLY holds, so the check cannot
+  // pass vacuously by removing something that was never there.
+  const heldScope = profile.functionalScopes[0];
+  const stripped: StaffAccessProfile = {
+    ...profile,
+    functionalScopes: profile.functionalScopes.filter(s => s !== heldScope),
+  };
+  check(decideForProfile(profile, { action: "read", functionalScope: heldScope }).allowed
+    && !decideForProfile(stripped, { action: "read", functionalScope: heldScope }).allowed,
+    `[derived] removing the ${heldScope} scope removes that access, so the gate is the scope and not the account`);
+
+  // The approved end state of 1 September: the named account reaches every
+  // staff-facing worker through the ordinary permission model, rather than
+  // through the shared executive route.
+  check(scopeAllowed.length === SUBSTANTIVE.length,
+    `the named production profile reaches all ${SUBSTANTIVE.length} staff-facing workers ` +
+    `(${scopeAllowed.length}/${SUBSTANTIVE.length}, refused: ${scopeDenied.join(", ") || "none"})`);
+
+  // Nia specifically, because this is the defect Tom Arrington reported.
+  const niaScope = WORKER_FUNCTIONAL_SCOPE.nia;
+  check(String(niaScope) === "social_media", `Nia requires the ${niaScope} scope`);
+  check((FUNCTIONAL_SCOPES as readonly string[]).includes(niaScope),
+    "social_media is an approved functional scope, so it CAN now be granted through the controlled route");
+  check(decideForProfile(profile, { action: "read", functionalScope: niaScope }).allowed,
+    "Nia is reachable by the named production profile, which now holds social_media");
+  // [derived] — the refusal Tom Arrington first reported, reproduced from
+  // the live model rather than remembered, so the fix is shown to be a
+  // granted permission and not a weakened gate.
+  const withoutSocial: StaffAccessProfile = {
+    ...profile,
+    functionalScopes: profile.functionalScopes.filter(s => s !== niaScope),
+  };
+  check(!decideForProfile(withoutSocial, { action: "read", functionalScope: niaScope }).allowed,
+    "[derived] without social_media Nia is still refused — the scope was granted, the gate was not removed");
+
+  // ── 18. Conversation memory: real, owned, and isolated ───────────────
+  section("18. Conversation memory against the real production table");
+  // Everything here runs inside a transaction that is ALWAYS rolled back,
+  // so the production table is unchanged when it finishes. The row count is
+  // taken before and after and asserted identical, which makes that a
+  // demonstrated fact rather than an intention.
+  const [turnsBeforeRows] = await db.execute(sql`SELECT COUNT(*) AS n FROM worker_conversation_turns`);
+  const turnsBefore = Number((turnsBeforeRows as unknown as Array<{ n: number }>)[0].n);
+  const SENTINEL = `acceptance-${Date.now()}`;
+  const OTHER_STAFF = -424242;
+  const me = staff[0].id;
+
+  try {
+    await db.transaction(async tx => {
+      await tx.execute(sql`
+        INSERT INTO worker_conversation_turns (conversationId, staffUserId, workerId, role, content) VALUES
+        (${SENTINEL}, ${me}, 'amelia', 'staff', 'Help me research English courses for this student'),
+        (${SENTINEL}, ${me}, 'amelia', 'worker', 'Structured options with sources, pending the student level.')
+      `);
+
+      const own = await tx.execute(sql`
+        SELECT role FROM worker_conversation_turns
+        WHERE conversationId = ${SENTINEL} AND workerId = 'amelia' AND staffUserId = ${me} ORDER BY id ASC
+      `);
+      check((own[0] as unknown as unknown[]).length === 2,
+        "the same staff member and same worker retrieve both turns — follow-up context is genuinely server-held");
+
+      const otherWorker = await tx.execute(sql`
+        SELECT id FROM worker_conversation_turns
+        WHERE conversationId = ${SENTINEL} AND workerId = 'priya' AND staffUserId = ${me}
+      `);
+      check((otherWorker[0] as unknown as unknown[]).length === 0,
+        "ANOTHER WORKER cannot inherit the conversation — Amelia's thread is invisible to Priya even with the same id");
+
+      const otherStaff = await tx.execute(sql`
+        SELECT id FROM worker_conversation_turns
+        WHERE conversationId = ${SENTINEL} AND workerId = 'amelia' AND staffUserId = ${OTHER_STAFF}
+      `);
+      check((otherStaff[0] as unknown as unknown[]).length === 0,
+        "ANOTHER STAFF MEMBER cannot inherit the conversation — the same id under a different person returns nothing");
+
+      const unknown = await tx.execute(sql`
+        SELECT id FROM worker_conversation_turns
+        WHERE conversationId = 'no-such-conversation' AND workerId = 'amelia' AND staffUserId = ${me}
+      `);
+      check((unknown[0] as unknown as unknown[]).length === 0,
+        "an unknown conversation id yields an empty history rather than somebody else's thread");
+
+      throw new Error("acceptance-rollback");
+    });
+  } catch (err) {
+    if (!(err instanceof Error) || err.message !== "acceptance-rollback") throw err;
+  }
+
+  const [turnsAfterRows] = await db.execute(sql`SELECT COUNT(*) AS n FROM worker_conversation_turns`);
+  const turnsAfter = Number((turnsAfterRows as unknown as Array<{ n: number }>)[0].n);
+  check(turnsAfter === turnsBefore,
+    `the conversation checks left the table exactly as they found it (${turnsBefore} -> ${turnsAfter})`);
+  const [left] = await db.execute(sql`SELECT COUNT(*) AS n FROM worker_conversation_turns WHERE conversationId = ${SENTINEL}`);
+  check(Number((left as unknown as Array<{ n: number }>)[0].n) === 0,
+    "no acceptance row survived the rollback");
+
+  // ── 19. SharePoint access, worker by worker ───────────────────────────
+  section("19. SharePoint access for all thirteen workers, against production");
+  // Everything here runs the DECISION layer, not the connector. Calling a
+  // connector action would write an audit row, and this suite's own
+  // guarantee is that it writes nothing. The decisions below are the same
+  // ones runConnectorAction consults, in the same order, so what they say
+  // is what a live request would get. Audit-on-connector-action is proven
+  // in server/workforce/connectors/shared.test.ts, where the in-memory log
+  // can be read without touching production.
+  const SP_SITE = process.env.SHAREPOINT_GRAPH_SITE_ID;
+  console.log(`  SHAREPOINT_GRAPH_SITE_ID configured: ${SP_SITE ? "yes" : "no"}`);
+  console.log(`  SharePoint connector state: ${getSharePointStatus()}`);
+  check(getSharePointStatus() !== "operational",
+    "the SharePoint connector does not report operational, because no tested Graph Sites/Files credential exists");
+
+  const SP_OPERATIONS = ["search", "read", "create", "update", "delete", "external_send"] as const;
+  let spPermitted = 0;
+  for (const id of SUBSTANTIVE) {
+    const worker = id as keyof typeof WORKER_CONNECTOR_SCOPE;
+    const granted = SP_OPERATIONS.filter(op => connectorScopeGrants(worker, "sharepoint", op));
+    const decision = evaluateConnectorPermission({
+      workerId: worker, connector: "sharepoint", operation: "read", resourceScope: `${SP_SITE ?? "wsa-site"}/x`,
+    });
+    const location = decideSharePointLocation(worker, `${SP_SITE ?? "wsa-site"}/17_Senior Management Team/AI_Operating_System`);
+    for (const op of SP_OPERATIONS) {
+      if (evaluateConnectorPermission({ workerId: worker, connector: "sharepoint", operation: op, resourceScope: `${SP_SITE ?? "wsa-site"}/x` }).allowed) spPermitted += 1;
+    }
+    console.log(`  ${id}: matrix grant [${granted.join(", ") || "none"}] | designated locations ${WORKER_SHAREPOINT_LOCATIONS[worker].length} | read decision: ${decision.allowed ? "ALLOWED" : "denied"}`);
+    check(!decision.allowed && decision.reason.trim().length > 0,
+      `${id} is refused a SharePoint read, with a reason that names what is blocking`);
+    check(!location.permitted,
+      `${id} has no designated SharePoint location, so no path is reachable even inside the WSA site`);
+  }
+  check(spPermitted === 0,
+    `no worker is permitted any SharePoint operation (0 of ${SUBSTANTIVE.length * SP_OPERATIONS.length} permitted)`);
+
+  // An unauthorised record class, refused for every worker. These are real
+  // folders at the root of the live WSA drive, and before the location
+  // gate every one of them was inside scope for any worker with a grant.
+  for (const area of ["03_FAMILY_&_PERSONAL/x", "04_FINANCE_&_BANKING/statements", "05_HUB/13. Appraisals_Feedback_Docs/review.docx"]) {
+    let refusedForAll = true;
+    for (const id of SUBSTANTIVE) {
+      const d = decideSharePointLocation(id as keyof typeof WORKER_SHAREPOINT_LOCATIONS, SP_SITE ? `${SP_SITE}/${area}` : area);
+      if (d.permitted || !d.reason.includes("can never be designated")) refusedForAll = false;
+    }
+    check(refusedForAll, `"${area}" is refused to every worker for a reason no designation could fix`);
+  }
+  check(NEVER_DESIGNATED.length > 0, `${NEVER_DESIGNATED.length} area(s) are permanently out of bounds for the whole workforce`);
+
+  // Credential material, refused by the ring fence before any allowlist.
+  for (const path of ["01_ADMIN_&_GOVERNANCE/07_Templates_&_Standards/Password/Passwords January 2026.xlsx", "05_HUB/14_HUB Password/list.xlsx"]) {
+    check(isRingFenced(path), `ring-fenced: ${path.split("/").pop()}`);
+    check(!evaluateWsaScope("sharepoint", path).withinWsaScope, "a ring-fenced path is out of WSA scope whatever else allows it");
+  }
+
+  // Cross-staff isolation on the SharePoint path. The connector consults
+  // the signed-in person's own permissions using the WORKER's functional
+  // scope, so a profile without that scope is refused the worker's reads.
+  const spScope = WORKER_FUNCTIONAL_SCOPE.maya;
+  const withoutRecords: StaffAccessProfile = {
+    ...profile,
+    functionalScopes: profile.functionalScopes.filter(s => s !== spScope),
+  };
+  check(!decideForProfile(withoutRecords, { action: "read", functionalScope: spScope }).allowed,
+    "[derived] a staff member without records_control is refused Maya's SharePoint reads, whatever Maya is granted");
+  check(decideForProfile(profile, { action: "read", functionalScope: spScope }).allowed,
+    "the named production profile does hold records_control, so the refusal above is the scope and not the account");
+
+  // Honest failure. An unconfigured connector must never be reported as a
+  // successful read, and the state check is what stands between the two.
+  check(getSharePointStatus() === "unconfigured" || getSharePointStatus() === "permission_missing",
+    `SharePoint reports its true state (${getSharePointStatus()}) rather than a usable one`);
+
+  // ── 15. This suite wrote nothing ──────────────────────────────────────
+  section("15. The suite itself wrote nothing");
+  const after = await auditCounts();
+  for (const key of ["wf", "ac", "en", "ec"] as const) {
+    check(Number(before[key]) === Number(after[key]),
+      `${key} row count unchanged (${before[key]} -> ${after[key]})`);
+  }
+
+  section("Result");
+  console.log(`  ${checks - failures}/${checks} checks passed.`);
+  if (failures > 0) console.error(`  ${failures} FAILED.`);
+  console.log("\n  NOT covered here, and reported rather than faked:");
+  console.log("  - Authentication itself. Validating a genuine Entra token needs a real");
+  console.log("    browser sign-in. Production evidence for it is the live staff_users row's");
+  console.log("    lastLoginAt, stamped by a real Microsoft sign-in.");
+}
+
+main()
+  .then(() => process.exit(failures === 0 ? 0 : 1))
+  .catch(err => {
+    console.error("Acceptance suite failed:", err instanceof Error ? err.message : String(err));
+    process.exit(1);
+  });

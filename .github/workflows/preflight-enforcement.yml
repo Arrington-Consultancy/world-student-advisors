@@ -1,0 +1,109 @@
+name: Enforcement pre-flight (read-only)
+
+# Manual-only, READ-ONLY. Stage 1 pre-flight for the access-control
+# enforcement gate.
+#
+# Answers the question the assignment verifier does not: if enforcement
+# were switched on over live Staff Portal surfaces right now, exactly who
+# would still get in and who would be locked out. It re-reads production
+# rather than trusting any earlier report, and re-implements the
+# resolution rules from server/access/identity.ts so the answer comes from
+# the same logic the server applies.
+#
+# Reports: applied migration history; the 0007 columns as production
+# actually has them (nullable, default-free); every staff_users row with a
+# per-row retain/deny verdict; grants including revoked and expired ones;
+# and whether any consequential permission or sensitive overlay is live.
+#
+# Personal data is kept to the minimum needed to identify whose row is
+# whose — display name, an 8-character Entra oid prefix, and the email as
+# first-two-characters plus domain. The full address is never printed.
+#
+# No writes of any kind.
+#
+# Auth: githubactionsprod — the same production-scoped Railway Project
+# Token the other production workflows use.
+on:
+  workflow_dispatch:
+    inputs:
+      service_name:
+        description: "Railway app service name"
+        required: true
+        default: "world-student-advisors"
+      environment_name:
+        description: "Railway environment name"
+        required: true
+        default: "production"
+      database_service_name:
+        description: "Railway MySQL service name"
+        required: true
+        default: "MySQL"
+
+jobs:
+  preflight:
+    runs-on: ubuntu-latest
+    env:
+      APP_SERVICE_NAME: ${{ github.event.inputs.service_name }}
+      APP_ENV_NAME: ${{ github.event.inputs.environment_name }}
+      DB_SERVICE_NAME: ${{ github.event.inputs.database_service_name }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Install Railway CLI
+        run: npm install -g @railway/cli
+
+      - name: Discover the MySQL service's public-URL variable NAME (key only, value never printed)
+        id: discover
+        env:
+          RAILWAY_TOKEN: ${{ secrets.githubactionsprod }}
+        run: |
+          KEYS=$(railway variables --service "$DB_SERVICE_NAME" --environment "$APP_ENV_NAME" --json | jq -r 'keys[]')
+          PUBLIC_KEY=$(echo "$KEYS" | grep -i -E '^(MYSQL_PUBLIC_URL|DATABASE_PUBLIC_URL)$' | head -n1)
+          if [ -z "$PUBLIC_KEY" ]; then
+            echo "No public-URL-shaped variable found on $DB_SERVICE_NAME. Stopping — not guessing further."
+            exit 1
+          fi
+          echo "Using public URL variable: $PUBLIC_KEY"
+          echo "public_key=$PUBLIC_KEY" >> "$GITHUB_OUTPUT"
+
+      - name: Set a temporary public-reachable URL on the app service
+        env:
+          RAILWAY_TOKEN: ${{ secrets.githubactionsprod }}
+          PUBLIC_KEY: ${{ steps.discover.outputs.public_key }}
+        run: |
+          REF=$(printf '\044{{%s.%s}}' "$DB_SERVICE_NAME" "$PUBLIC_KEY")
+          railway variables \
+            --service "$APP_SERVICE_NAME" \
+            --environment "$APP_ENV_NAME" \
+            --set "PREFLIGHT_DATABASE_URL=${REF}" \
+            --skip-deploys
+
+      - name: Run the enforcement pre-flight
+        timeout-minutes: 10
+        env:
+          RAILWAY_TOKEN: ${{ secrets.githubactionsprod }}
+        run: |
+          railway run --service "$APP_SERVICE_NAME" --environment "$APP_ENV_NAME" -- \
+            sh -c 'DATABASE_URL="$PREFLIGHT_DATABASE_URL" node scripts/preflight-enforcement.mjs'
+
+      - name: Remove the temporary variable
+        if: always()
+        timeout-minutes: 10
+        env:
+          RAILWAY_TOKEN: ${{ secrets.githubactionsprod }}
+        run: |
+          railway variables \
+            --service "$APP_SERVICE_NAME" \
+            --environment "$APP_ENV_NAME" \
+            --set "PREFLIGHT_DATABASE_URL=" \
+            --skip-deploys

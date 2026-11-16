@@ -1,10 +1,11 @@
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import NotFound from "@/pages/NotFound";
-import { Route, Switch } from "wouter";
+import { Route, Switch, useLocation } from "wouter";
 import ErrorBoundary from "./components/ErrorBoundary";
 import ScrollToTop from "./components/ScrollToTop";
 import CookieConsent from "./components/CookieConsent";
+import MetaPixelRouteTracker from "./components/MetaPixelRouteTracker";
 import SeoHead from "./components/SeoHead";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import Home from "./pages/Home";
@@ -12,12 +13,15 @@ import Header from "./components/Header";
 import Footer from "./components/Footer";
 import About from "./pages/About";
 import StudyOptions from "./pages/StudyOptions";
-import Counsellors from "./pages/Counsellors";
+import OurTeam from "./pages/OurTeam";
 import StudentSupportLibrary from "./pages/StudentSupportLibrary";
 import StaffPortal from "./pages/StaffPortal";
 import Events from "./pages/Events";
 import Partners from "./pages/Partners";
+import StudentSuccessStories from "./pages/StudentSuccessStories";
+import StudentSuccessStoryCountry from "./pages/StudentSuccessStoryCountry";
 import Contact from "./pages/Contact";
+import ContactThankYou from "./pages/ContactThankYou";
 import SportPathways from "./pages/SportPathways";
 import OnlineLearning from "./pages/OnlineLearning";
 import Privacy from "./pages/Privacy";
@@ -47,6 +51,18 @@ import WebUKVisa from "./pages/WebUKVisa";
 import DDVavita from "./pages/DDVavita";
 import UKMastersStudy from "./pages/UKMastersStudy";
 import UKMastersNigeria from "./pages/UKMastersNigeria";
+import SpeakToJulietThankYou from "./pages/SpeakToJulietThankYou";
+import StudentSupportLibraryResource from "./pages/StudentSupportLibraryResource";
+import NigeriaPostgraduate from "./pages/NigeriaPostgraduate";
+import SpeakToJuliet from "./pages/SpeakToJuliet";
+import SarkinFulaniFutureLeaders from "./pages/SarkinFulaniFutureLeaders";
+import SpeakToMadalitso from "./pages/SpeakToMadalitso";
+import SpeakToMadalitsoThankYou from "./pages/SpeakToMadalitsoThankYou";
+import SpeakToGladys from "./pages/SpeakToGladys";
+import SpeakToGladysThankYou from "./pages/SpeakToGladysThankYou";
+import SpeakToEldah from "./pages/SpeakToEldah";
+import SpeakToEldahThankYou from "./pages/SpeakToEldahThankYou";
+import SpeakToClaudia from "./pages/SpeakToClaudia";
 
 
 function Router() {
@@ -72,15 +88,24 @@ function Router() {
       <Route path={"/study-options/undergraduate-degrees"} component={UndergraduateDegrees} />
       <Route path={"/study-options/pre-masters-top-up-degrees"} component={PreMasters} />
       <Route path={"/study-options/masters-doctoral-degrees"} component={MastersDoctoral} />
-      <Route path={"/counsellors"} component={Counsellors} />
+      <Route path={"/our-team"} component={OurTeam} />
+      <Route path={"/counsellors"} component={OurTeam} />
       <Route path={"/student-support-library"} component={StudentSupportLibrary} />
+      {/* One permanent page per library resource. The registry lists every
+          slug (shared/routes.ts) and routes-sync.test.ts expands this pattern. */}
+      <Route path={"/student-support-library/:slug"} component={StudentSupportLibraryResource} />
       <Route path={"/staff-portal"} component={StaffPortal} />
       <Route path={"/learning-hub/cv-university-application"} component={CVUniversityApplication} />
       <Route path={"/training-workshops"} component={TrainingWorkshops} />
       <Route path={"/events"} component={Events} />
       <Route path={"/partners"} component={Partners} />
       <Route path={"/our-global-education-partners"} component={Partners} />
+      <Route path={"/student-success-stories"} component={StudentSuccessStories} />
+      <Route path={"/student-success-stories/:country"} component={StudentSuccessStoryCountry} />
       <Route path={"/contact"} component={Contact} />
+      {/* Where Tim Hunt's Pipedrive Website Registration Form sends the student
+          (client/src/lib/registrationForm.ts). Noindex, linked from nowhere. */}
+      <Route path={"/contact/thank-you"} component={ContactThankYou} />
       <Route path={"/privacy"} component={PrivacyPolicy} />
       <Route path={"/privacy-policy"} component={PrivacyPolicy} />
       <Route path={"/terms"} component={Terms} />
@@ -100,25 +125,61 @@ function Router() {
       <Route path={"/DDVavita"} component={DDVavita} />
       <Route path={"/uk-masters-study"} component={UKMastersStudy} />
       <Route path={"/uk-masters-nigeria"} component={UKMastersNigeria} />
+      {/* Working draft landing page. Noindex and out of the sitemap until the
+          Google Ads brief is reconciled with the MPhil/MRes/PhD scope. */}
+      <Route path={"/nigeria-postgraduate"} component={NigeriaPostgraduate} />
+      <Route path={"/speak-to-juliet"} component={SpeakToJuliet} />
+      {/* Where Tim Hunt's Pipedrive form sends the student after a successful
+          submission. Noindex, unlinked, no form: see speakToJulietThankYou.ts. */}
+      <Route path={"/speak-to-juliet/thank-you"} component={SpeakToJulietThankYou} />
+      {/* Speak to Madalitso, the Malawi page on the country representative
+          template (Tim Hunt, 16 October 2026), and where his Pipedrive form
+          sends the student. See client/src/lib/speakToMadalitso.ts. */}
+      <Route path={"/speak-to-madalitso"} component={SpeakToMadalitso} />
+      <Route path={"/speak-to-madalitso/thank-you"} component={SpeakToMadalitsoThankYou} />
+      {/* Speak to Gladys, the Ghana page on the same template (Tim Hunt, 24
+          October 2026). Her thank-you address is the one Tim gave for his
+          Pipedrive form. See client/src/lib/speakToGladys.ts. */}
+      <Route path={"/speak-to-gladys"} component={SpeakToGladys} />
+      <Route path={"/speak-to-gladys-thank-you"} component={SpeakToGladysThankYou} />
+      <Route path={"/speak-to-eldah"} component={SpeakToEldah} />
+      <Route path={"/speak-to-eldah/thank-you"} component={SpeakToEldahThankYou} />
+      <Route path={"/speak-to-claudia"} component={SpeakToClaudia} />
+      {/* Draft for review, 8 October 2026: noindex, out of the sitemap and
+          prerender list, linked from nowhere. See client/src/lib/sarkinFulani.ts. */}
+      <Route path={"/sarkin-fulani-future-leaders"} component={SarkinFulaniFutureLeaders} />
       <Route path={"/404"} component={NotFound} />
       <Route component={NotFound} />
     </Switch>
   );
 }
 
+/**
+ * Routes that are a signed-in internal application rather than a page of
+ * the public website. They carry their own header, so the marketing header
+ * (which is fixed to the top of the viewport) would sit on top of it and
+ * make the portal's own navigation unreachable on a phone. Reported by Tom
+ * Arrington on 12 September 2026: the account menu, and therefore Staff
+ * access, could not be opened at all.
+ */
+const APP_SHELL_ROUTES = ["/staff-portal"];
+
 function App() {
+  const [location] = useLocation();
+  const isAppShell = APP_SHELL_ROUTES.some(r => location === r || location.startsWith(`${r}/`));
   return (
     <ErrorBoundary>
       <ThemeProvider defaultTheme="light">
         <TooltipProvider>
           <Toaster />
           <ScrollToTop />
+          <MetaPixelRouteTracker />
           <SeoHead />
-          <Header />
+          {!isAppShell && <Header />}
           <main>
             <Router />
           </main>
-          <Footer />
+          {!isAppShell && <Footer />}
           <CookieConsent />
         </TooltipProvider>
       </ThemeProvider>

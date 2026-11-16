@@ -1,0 +1,114 @@
+name: Repair Tom's orphaned portal account (one-time, controlled)
+
+# Manual-only. Links the one known orphaned portal_users row for
+# tom@arringtonconsultancy.com to its real Pipedrive Person/Lead — see
+# scripts/repair-tom-portal-account.mjs for the exact logic and the SQL
+# this is equivalent to. Scoped to this one account only; the other five
+# orphaned accounts identified in the earlier diagnostic are deliberately
+# untouched by this workflow.
+#
+# target_pipedrive_person_id and target_pipedrive_lead_id must be supplied
+# at dispatch time (no default) so the values used are whatever was most
+# recently confirmed live in Pipedrive, not baked into this file.
+#
+# dry_run defaults to true: prints exactly what would change without
+# writing anything. Re-run with dry_run set to false only after reviewing
+# the dry-run output.
+#
+# Uses the MySQL service's public TCP proxy for the database connection,
+# same pattern as this repo's other one-off database workflows, since the
+# app service's own DATABASE_URL points at Railway's private-network-only
+# hostname, unreachable from this GitHub-hosted runner.
+on:
+  workflow_dispatch:
+    inputs:
+      target_pipedrive_person_id:
+        description: "The Pipedrive Person id to link this account to"
+        required: true
+      target_pipedrive_lead_id:
+        description: "The Pipedrive Lead id (UUID) to record as the linked object"
+        required: true
+      dry_run:
+        description: "true = print what would change, write nothing. false = actually update the row."
+        required: true
+        default: "true"
+      service_name:
+        description: "Railway app service name"
+        required: true
+        default: "world-student-advisors"
+      environment_name:
+        description: "Railway environment name"
+        required: true
+        default: "production"
+      database_service_name:
+        description: "Railway MySQL service name"
+        required: true
+        default: "MySQL"
+
+jobs:
+  repair:
+    runs-on: ubuntu-latest
+    env:
+      APP_SERVICE_NAME: ${{ github.event.inputs.service_name }}
+      APP_ENV_NAME: ${{ github.event.inputs.environment_name }}
+      DB_SERVICE_NAME: ${{ github.event.inputs.database_service_name }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Install Railway CLI
+        run: npm install -g @railway/cli
+
+      - name: Discover the MySQL service's public-URL variable NAME (key only, value never printed)
+        id: discover
+        env:
+          RAILWAY_TOKEN: ${{ secrets.githubactionsprod }}
+        run: |
+          KEYS=$(railway variables --service "$DB_SERVICE_NAME" --environment "$APP_ENV_NAME" --json | jq -r 'keys[]')
+          PUBLIC_KEY=$(echo "$KEYS" | grep -i -E '^(MYSQL_PUBLIC_URL|DATABASE_PUBLIC_URL)$' | head -n1)
+          if [ -z "$PUBLIC_KEY" ]; then
+            echo "No public-URL-shaped variable found on $DB_SERVICE_NAME. Stopping — not guessing further."
+            exit 1
+          fi
+          echo "Using public URL variable: $PUBLIC_KEY"
+          echo "public_key=$PUBLIC_KEY" >> "$GITHUB_OUTPUT"
+
+      - name: Set a temporary public-reachable database URL on the app service
+        env:
+          RAILWAY_TOKEN: ${{ secrets.githubactionsprod }}
+          PUBLIC_KEY: ${{ steps.discover.outputs.public_key }}
+        run: |
+          REF=$(printf '\044{{%s.%s}}' "$DB_SERVICE_NAME" "$PUBLIC_KEY")
+          railway variables \
+            --service "$APP_SERVICE_NAME" \
+            --environment "$APP_ENV_NAME" \
+            --set "REPAIR_SCRIPT_DATABASE_URL=${REF}"
+
+      - name: Run repair script
+        env:
+          RAILWAY_TOKEN: ${{ secrets.githubactionsprod }}
+          DRY_RUN: ${{ github.event.inputs.dry_run }}
+          TARGET_PIPEDRIVE_PERSON_ID: ${{ github.event.inputs.target_pipedrive_person_id }}
+          TARGET_PIPEDRIVE_LEAD_ID: ${{ github.event.inputs.target_pipedrive_lead_id }}
+        run: |
+          railway run --service "$APP_SERVICE_NAME" --environment "$APP_ENV_NAME" -- \
+            sh -c 'DATABASE_URL="$REPAIR_SCRIPT_DATABASE_URL" node scripts/repair-tom-portal-account.mjs'
+
+      - name: Remove the temporary database URL variable
+        if: always()
+        env:
+          RAILWAY_TOKEN: ${{ secrets.githubactionsprod }}
+        run: |
+          railway variables \
+            --service "$APP_SERVICE_NAME" \
+            --environment "$APP_ENV_NAME" \
+            --set "REPAIR_SCRIPT_DATABASE_URL="

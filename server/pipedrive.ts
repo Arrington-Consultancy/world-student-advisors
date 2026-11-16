@@ -1,3 +1,4 @@
+import { CAMPAIGN_LABELS, CAMPAIGN_PATHS, isCampaignSlug } from "../shared/campaignEnquiry";
 import { ENV } from "./_core/env";
 
 const PIPEDRIVE_BASE = "https://api.pipedrive.com/v1";
@@ -20,10 +21,24 @@ interface StudentFormData {
   preferredStartMonth: string;
   preferredDestination: string;
   educationFunding: string;
-  promoCode: string;
+  sponsorName?: string;
+  sponsorStatus?: string;
+  scholarshipName?: string;
+  scholarshipStatus?: string;
+  scholarshipCoverage?: string;
+  mixedFundingSources?: string;
+  mixedFundingConfirmedAmount?: string;
+  mixedFundingRemaining?: string;
   referredToWSA: string;
   referredByWhom?: string;
   recommendedCounsellor: string;
+  /**
+   * The campaign landing page this enquiry came from, if any: a slug from
+   * shared/campaignEnquiry.ts, already validated by the caller. It appears in
+   * the Lead note so a Lead can be traced back to its page. It sets no
+   * Pipedrive field, no owner and no counsellor.
+   */
+  campaign?: string;
   gdprConsent: boolean;
   /** Google Ads click identifiers, captured client-side from the landing URL. */
   gclid?: string;
@@ -70,7 +85,13 @@ const PF = {
   preferredStartMonth: "3c131beee887a4391db98adf659bf03b67c2d576",
   preferredDestination: "1f3f30e974eaf7b88d1cd95b43efffc129abd71c",
   educationFunding: "147e0f451a4bd38bc35d7c1fe8c8631fee212160",
-  promoCode: "7243d4c977d88d238d62f109f4e8c9a323a7f23a",
+  // Dedicated Person field created 2026-08-27 to carry a condensed summary
+  // of the sponsor/scholarship/mixed-funding answer. Deliberately separate
+  // from the old, now-unused "Promotional Code" field (key
+  // 7243d4c977d88d238d62f109f4e8c9a323a7f23a) — that field is left
+  // completely untouched, not renamed or repurposed, and isn't referenced
+  // anywhere in this codebase.
+  fundingSource: "ccc2c853c22101435d6059306fcb644e2bf0a284",
   referredBy: "a08cf6343f3d302fdf15306c24d01e004ab47724",
   recommendedCounsellor: "91cce905e99d4d7ad6a8e2b4db41b89f8a5a72cf",
   gdprConsent: "507b7011ec6784002524c02f940ef8610059cd1e",
@@ -118,12 +139,27 @@ const QUALIFICATION_MAP: Record<string, number> = {
   other: 36,
 };
 
+/**
+ * Form value to Pipedrive "Desired Level of Study" option id.
+ *
+ * The four postgraduate routes the Nigeria campaign advertises each map to
+ * their own option, so reporting can tell them apart. Tom Arrington,
+ * 12 September 2026: do not collapse them.
+ *
+ * MRes had no option until 12 September 2026, when option 314 was added
+ * (scripts/pipedrive-campaign-options.mjs, run and verified). Until then it
+ * was left unmapped rather than rounded to Taught Master's: a lead recorded
+ * as the wrong programme is worse than one recorded as none, which is the
+ * mistake the destination comment below still warns about.
+ */
 const LEVEL_MAP: Record<string, number> = {
   foundation: 39, // International Foundation Program
   undergraduate: 41, // Undergraduate (Bachelor's)
   "top-up": 42, // Top-Up Degree
   "pre-masters": 261, // Pre Masters
   postgraduate: 43, // Taught Master's
+  mphil: 44, // MPhil research degree
+  mres: 314, // MRes research degree (added 12 September 2026)
   doctorate: 45, // PhD Doctorate
   boarding: 38, // GCSE (closest — no dedicated boarding-school option)
   language: 46, // Other
@@ -151,6 +187,9 @@ const AREA_MAP: Record<string, number> = {
 
 const MODE_MAP: Record<string, number> = {
   "full-time": 59, // Study Abroad Full Time
+  // Removed from the form by Tom Arrington, 25 September 2026. Kept here so a
+  // submission already in flight is still recorded rather than rejected, as
+  // loan and mixed were when they left the funding options.
   "part-time": 65, // Other (no dedicated part-time option)
   online: 64,
   blended: 63, // Hybrid (online & abroad) — closest match
@@ -170,6 +209,11 @@ const DESTINATION_MAP: Record<string, number> = {
   canada: 86, Canada: 86,
   europe: 84, Europe: 84, "Other European Counties": 84,
   multiple: 88, "Not Sure": 88, "Not Sure - Need Advice": 88,
+  // Germany is its own option (315, added 12 September 2026) rather than
+  // "Other European Counties". Recording it as a continent would answer
+  // "did Germany work?" with a shrug, which is the whole reason Tom asked
+  // for the destinations to stay separate.
+  germany: 315, Germany: 315,
   // No live "Australia" option exists in Pipedrive's Preferred Study
   // Destination field. "Australia" was removed from the public dropdown
   // (client/src/pages/Contact.tsx) rather than silently recording it as New
@@ -185,11 +229,23 @@ const FUNDING_MAP: Record<string, number> = {
   mixed: 92, // Looking for a partial scholarship (closest — implies partial self + other funding)
 };
 
+/**
+ * Option ids of the Pipedrive person field "Recommended Student Counsellor"
+ * (91cce905e99d4d7ad6a8e2b4db41b89f8a5a72cf), read from production on
+ * 25 September 2026 by the read-only schema inventory (run 36112377289):
+ * 95 Eldah Therone, 96 Glenice Owino, 97 Manet Khamayo, 317 Claudia Ingado,
+ * 99 Help me choose. Sarafina Kihumbu's option 98 no longer exists in
+ * Pipedrive, so a "sarafina" value still arriving from a form already open
+ * when this deployed records as Help me choose rather than sending an id
+ * the CRM would reject. Tom Arrington, 25 September 2026: remove Sarafina,
+ * replace with Claudia Ingado.
+ */
 const COUNSELLOR_MAP: Record<string, number> = {
   eldah: 95, "Eldah Therone": 95, Eldah: 95,
   glenice: 96, "Glenice Owino": 96, Glenice: 96,
   manet: 97, "Manet Khamayo": 97, Manet: 97,
-  sarafina: 98, "Sarafina Kihumbu": 98, Sarafina: 98,
+  claudia: 317, "Claudia Ingado": 317, Claudia: 317,
+  sarafina: 99, "Sarafina Kihumbu": 99, Sarafina: 99,
   "help-me-choose": 99, "Help me choose": 99, "": 99,
 };
 
@@ -200,7 +256,9 @@ const COUNSELLOR_LABELS: Record<string, string> = {
   eldah: "Eldah Therone",
   glenice: "Glenice Owino",
   manet: "Manet Khamayo",
-  sarafina: "Sarafina Kihumbu",
+  claudia: "Claudia Ingado",
+  // No entry for sarafina: a late "sarafina" value reads as Unallocated,
+  // which is what it now records as (see COUNSELLOR_MAP).
 };
 
 /** "Unallocated", not "None" — no counsellor was selected, which is a
@@ -249,8 +307,10 @@ const levelLabels: Record<string, string> = {
   undergraduate: "Undergraduate (Bachelor's)",
   "top-up": "Top-up Degree",
   "pre-masters": "Pre-Master's",
-  postgraduate: "Postgraduate (Master's)",
-  doctorate: "Doctorate (PhD)",
+  postgraduate: "Taught Master's",
+  mphil: "MPhil",
+  mres: "MRes",
+  doctorate: "PhD / Doctorate",
   boarding: "Boarding School",
   language: "Language Programme",
   summer: "Summer Programme",
@@ -259,8 +319,8 @@ const levelLabels: Record<string, string> = {
 };
 
 const destinationLabels: Record<string, string> = {
-  uk: "United Kingdom", usa: "United States", canada: "Canada",
-  europe: "Europe", multiple: "Multiple / Not sure",
+  uk: "United Kingdom", germany: "Germany", usa: "United States", canada: "Canada",
+  europe: "Other European destinations", multiple: "Multiple / Not sure",
 };
 
 interface PipedrivePersonSearchItem {
@@ -308,6 +368,25 @@ function extractMonth(value: string): string {
   return value;
 }
 
+/**
+ * Condenses the structured sponsor/scholarship/mixed-funding answers into
+ * the single line PF.fundingSource (one Pipedrive text field) can hold.
+ * The full breakdown also goes into buildNote() below, unabbreviated.
+ */
+function buildFundingSourceSummary(data: StudentFormData): string | undefined {
+  if (data.educationFunding === "sponsor") {
+    return `Sponsor: ${data.sponsorName || "Not given"} (${data.sponsorStatus || "status not given"})`;
+  }
+  if (data.educationFunding === "scholarship") {
+    const coverage = data.scholarshipCoverage ? `, covers: ${data.scholarshipCoverage}` : "";
+    return `Scholarship: ${data.scholarshipName || "Not given"} (${data.scholarshipStatus || "status not given"})${coverage}`;
+  }
+  if (data.educationFunding === "mixed") {
+    return `Mixed: ${data.mixedFundingSources || "Not given"}; confirmed: ${data.mixedFundingConfirmedAmount || "Not given"}; remaining: ${data.mixedFundingRemaining || "Not given"}`;
+  }
+  return undefined;
+}
+
 function buildPersonPayload(data: StudentFormData): Record<string, unknown> {
   const payload: Record<string, unknown> = {
     name: `${data.firstName}${data.middleName ? " " + data.middleName : ""} ${data.lastName}`,
@@ -325,8 +404,8 @@ function buildPersonPayload(data: StudentFormData): Record<string, unknown> {
     [PF.preferredStartMonth]: MONTH_MAP[extractMonth(data.preferredStartMonth)] || undefined,
     [PF.preferredDestination]: DESTINATION_MAP[data.preferredDestination] || undefined,
     [PF.educationFunding]: FUNDING_MAP[data.educationFunding] || undefined,
-    [PF.promoCode]: data.promoCode || undefined,
-    [PF.referredBy]: data.referredToWSA === "yes" && data.referredByWhom ? `yes — ${data.referredByWhom}` : (data.referredToWSA || undefined),
+    [PF.fundingSource]: buildFundingSourceSummary(data),
+    [PF.referredBy]: data.referredToWSA === "yes" && data.referredByWhom ? `yes, ${data.referredByWhom}` : (data.referredToWSA || undefined),
     [PF.recommendedCounsellor]: COUNSELLOR_MAP[data.recommendedCounsellor] ?? COUNSELLOR_MAP["help-me-choose"],
     [PF.gdprConsent]: data.gdprConsent ? 105 : 106,
     [PF.gclid]: data.gclid || undefined,
@@ -345,30 +424,45 @@ function buildNote(data: StudentFormData): string {
   const lines = [
     `## Student Sign-up Summary`,
     `**Full Name:** ${data.firstName}${data.middleName ? " " + data.middleName : ""} ${data.lastName}`,
-    `**Date of Birth:** ${data.dateOfBirth || "—"}`,
+    `**Date of Birth:** ${data.dateOfBirth || "Not given"}`,
     `**Email:** ${data.email}`,
-    `**Phone:** ${data.phone || "—"}`,
-    `**Gender:** ${data.gender || "—"}`,
-    `**Passport Number:** ${data.passportNumber || "—"}`,
-    `**Nationality:** ${data.nationality || "—"}`,
-    `**Country of Residence:** ${data.country || "—"}`,
-    `**Highest Qualification:** ${data.highestQualification || "—"}`,
-    `**Desired Level of Study:** ${levelLabels[data.desiredLevel] || data.desiredLevel || "—"}`,
-    `**Area of Interest:** ${data.areaOfStudy || "—"}`,
-    `**Preferred Mode:** ${data.preferredMode || "—"}`,
-    `**Preferred Start Month:** ${data.preferredStartMonth || "—"}`,
-    `**Preferred Destination:** ${destinationLabels[data.preferredDestination] || data.preferredDestination || "—"}`,
-    `**Education Funding:** ${data.educationFunding || "—"}`,
-    `**Promotional Code:** ${data.promoCode || "—"}`,
-    `**Referred to WSA:** ${data.referredToWSA === "yes" ? "Yes" : data.referredToWSA === "no" ? "No" : "—"}`,
-    `**Referrer Name:** ${data.referredToWSA === "yes" && data.referredByWhom ? data.referredByWhom : "—"}`,
+    `**Phone:** ${data.phone || "Not given"}`,
+    `**Gender:** ${data.gender || "Not given"}`,
+    `**Passport Number:** ${data.passportNumber || "Not given"}`,
+    `**Nationality:** ${data.nationality || "Not given"}`,
+    `**Country of Residence:** ${data.country || "Not given"}`,
+    `**Highest Qualification:** ${data.highestQualification || "Not given"}`,
+    `**Desired Level of Study:** ${levelLabels[data.desiredLevel] || data.desiredLevel || "Not given"}`,
+    `**Area of Interest:** ${data.areaOfStudy || "Not given"}`,
+    `**Preferred Mode:** ${data.preferredMode || "Not given"}`,
+    `**Preferred Start Month:** ${data.preferredStartMonth || "Not given"}`,
+    `**Preferred Destination:** ${destinationLabels[data.preferredDestination] || data.preferredDestination || "Not given"}`,
+    `**Education Funding:** ${data.educationFunding || "Not given"}`,
+    ...(data.educationFunding === "sponsor" ? [
+      `**Sponsor Name:** ${data.sponsorName || "Not given"}`,
+      `**Funding Status:** ${data.sponsorStatus || "Not given"}`,
+    ] : []),
+    ...(data.educationFunding === "scholarship" ? [
+      `**Scholarship Name:** ${data.scholarshipName || "Not given"}`,
+      `**Scholarship Status:** ${data.scholarshipStatus || "Not given"}`,
+      `**Covers:** ${data.scholarshipCoverage || "Not given"}`,
+    ] : []),
+    ...(data.educationFunding === "mixed" ? [
+      `**Funding Sources:** ${data.mixedFundingSources || "Not given"}`,
+      `**Already Confirmed:** ${data.mixedFundingConfirmedAmount || "Not given"}`,
+      `**Still Dependent on Approval:** ${data.mixedFundingRemaining || "Not given"}`,
+    ] : []),
+    `**Referred to WSA:** ${data.referredToWSA === "yes" ? "Yes" : data.referredToWSA === "no" ? "No" : "Not given"}`,
+    `**Referrer Name:** ${data.referredToWSA === "yes" && data.referredByWhom ? data.referredByWhom : "Not given"}`,
     `**Recommended Student Counsellor:** ${data.recommendedCounsellor || "Help me choose"}`,
     `**GDPR Consent:** ${data.gdprConsent ? "Yes" : "No"}`,
     ...(data.gclid ? [`**Google Click ID (gclid):** ${data.gclid}`] : []),
     ...(data.gbraid ? [`**Google Click ID (gbraid):** ${data.gbraid}`] : []),
     ...(data.wbraid ? [`**Google Click ID (wbraid):** ${data.wbraid}`] : []),
     ``,
-    `**Source:** WSA Website - Sign-up Form`,
+    data.campaign && isCampaignSlug(data.campaign)
+      ? `**Source:** WSA Website - Sign-up Form, from ${CAMPAIGN_LABELS[data.campaign]} (${CAMPAIGN_PATHS[data.campaign]})`
+      : `**Source:** WSA Website - Sign-up Form`,
   ];
   return lines.join("\n");
 }

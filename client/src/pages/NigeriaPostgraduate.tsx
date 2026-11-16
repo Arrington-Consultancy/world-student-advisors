@@ -1,0 +1,376 @@
+import { Link } from "wouter";
+import { ArrowRight, BadgeCheck, BookOpen, CheckCircle2, FileText, Mail, MessageCircle, MessageSquare, ShieldCheck, UserRound } from "lucide-react";
+import {
+  BENEFITS,
+  CAMPAIGN_DESTINATIONS,
+  CAMPAIGN_PROGRAMMES,
+  COUNSELLORS,
+  HELP_CONTACT,
+  LIBRARY,
+  OTHER_DESTINATIONS_NOTE,
+} from "@/lib/nigeriaLanding";
+import PipedriveFormEmbed from "@/components/PipedriveFormEmbed";
+import { REGISTRATION_FORM_URL } from "@/lib/registrationForm";
+
+/**
+ * Nigeria postgraduate landing page. Live since 12 September 2026.
+ *
+ * Built to the Tom-approved Implementation Direction of 12 September 2026
+ * and the review of the same date. Deliberately simple: who it is for,
+ * why WSA, who you will actually deal with, and one short form.
+ *
+ * PUBLISHED on Tom Arrington's GO of 12 September 2026 (Change Entry 097):
+ * noindex lifted, draft banner removed, sitemap and prerender entries
+ * added, all in one change. Paid traffic is a separate decision and had
+ * not been given when this page went live; nothing here starts an ad.
+ *
+ * THE FORM. Since 14 November 2026 the page embeds Tim Hunt's Pipedrive
+ * Website Registration Form (client/src/lib/registrationForm.ts), which
+ * routes the registration to Claudia and sends the emails. Until then a
+ * short form here handed over to the website's own sign-up on /contact.
+ */
+
+const FLAG_GREEN = "#008751";
+
+/** The Nigerian flag, drawn rather than fetched, so the hero has no image dependency. */
+function NigerianFlag({ className = "" }: { className?: string }) {
+  return (
+    <span
+      className={`inline-flex overflow-hidden rounded-[2px] border border-black/10 ${className}`}
+      role="img"
+      aria-label="Flag of Nigeria"
+    >
+      <span className="block h-full w-1/3" style={{ backgroundColor: FLAG_GREEN }} />
+      <span className="block h-full w-1/3 bg-white" />
+      <span className="block h-full w-1/3" style={{ backgroundColor: FLAG_GREEN }} />
+    </span>
+  );
+}
+
+const BENEFIT_ICONS = [UserRound, FileText, MessageSquare, ShieldCheck];
+
+/**
+ * The registration form: Tim Hunt's Pipedrive Website Registration Form,
+ * embedded in the page (his email of 14 November 2026, "Replace the existing
+ * registration form on the Nigeria landing page with the same Pipedrive
+ * form, embedded within the page"). It replaces the short form that handed
+ * over to the website's own sign-up on /contact. One copy on the page, high
+ * up, where the short form was; the second short form further down is now a
+ * button back to it, so the same Pipedrive form is never loaded twice.
+ */
+function RegistrationForm({ id }: { id: string }) {
+  return (
+    <div id={id} className="min-w-0 max-w-full scroll-mt-28" aria-labelledby={`${id}-heading`}>
+      <p id={`${id}-heading`} className="text-lg font-semibold text-wsa-navy">
+        Speak to a counsellor
+      </p>
+      <p className="pb-2 text-sm text-gray-600">Leave your details and our team will contact you.</p>
+      <PipedriveFormEmbed
+        embedUrl={REGISTRATION_FORM_URL}
+        privacyLine="We use your details to advise you on studying abroad."
+      />
+    </div>
+  );
+}
+
+/**
+ * A counsellor, with a credential only where WSA holds the certificate.
+ * The British Council's own disclaimer sits next to the credential, so
+ * the page never reads as though the British Council endorses WSA.
+ */
+function CounsellorCard({ person }: { person: (typeof COUNSELLORS)[number] }) {
+  return (
+    <div className="rounded-2xl border border-wsa-navy/10 bg-white p-5">
+      <div className="flex items-start gap-4">
+        <img
+          src={person.photo}
+          alt={`${person.name}, ${person.role} at World Student Advisors`}
+          width={80}
+          height={107}
+          loading="lazy"
+          className="block aspect-[3/4] w-20 shrink-0 rounded-xl border border-wsa-navy/10 bg-wsa-stone object-cover object-top"
+        />
+        <div className="min-w-0">
+          <p className="text-lg font-semibold leading-tight text-wsa-navy">{person.name}</p>
+          <p className="mt-0.5 text-base text-gray-700">{person.role}</p>
+          <p className="mt-0.5 text-sm text-gray-500">{person.location}</p>
+        </div>
+      </div>
+
+      {/* Contact details appear only for a person who has approved them in
+          writing. Babatunde has not, so his card shows none. */}
+      {person.contact && (
+        <div className="mt-4 flex flex-wrap gap-2">
+          <a
+            href={person.contact.whatsappHref}
+            className="inline-flex items-center gap-1.5 rounded-xl bg-[#128C7E] px-3.5 py-2 text-sm font-medium text-white transition hover:bg-[#0f7568]"
+          >
+            <MessageCircle className="h-4 w-4" aria-hidden />
+            WhatsApp {person.contact.whatsapp}
+          </a>
+          <a
+            href={`mailto:${person.contact.email}`}
+            className="inline-flex items-center gap-1.5 rounded-xl border border-wsa-navy/20 px-3.5 py-2 text-sm font-medium text-wsa-navy transition hover:border-wsa-red/50 hover:text-wsa-red"
+          >
+            <Mail className="h-4 w-4" aria-hidden />
+            Email
+          </a>
+        </div>
+      )}
+
+      {person.credential && (
+        <div className="mt-4 rounded-xl bg-wsa-stone/70 p-3.5">
+          <p className="flex items-start gap-2 text-sm font-medium text-wsa-navy">
+            <BadgeCheck className="mt-0.5 h-4 w-4 shrink-0 text-wsa-red" aria-hidden />
+            <span>
+              {person.credential.label}
+              <span className="block font-normal text-gray-600">Valid to {person.credential.validUntil}</span>
+            </span>
+          </p>
+          <p className="mt-1.5 text-xs leading-relaxed text-gray-500">{person.credential.disclaimer}</p>
+          {/* The certificate file is linked only once it is published in the
+              campaign asset location with the holder's consent for that use.
+              Until then the credential is stated, not linked: an unfinished-
+              looking placeholder on a paid landing page is worse than a clean
+              statement of the same fact. */}
+          {person.credential.href && (
+            <a href={person.credential.href} className="mt-2 inline-block text-sm font-medium text-wsa-red underline underline-offset-2">
+              View the certificate
+            </a>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+export default function NigeriaPostgraduate() {
+  return (
+    // The marketing header is fixed, so the page starts below it.
+    <main className="bg-wsa-warm-white pt-24 lg:pt-28">
+      {/* ── Hero ────────────────────────────────────────────────── */}
+      {/* Tim Hunt, 15 November 2026: on desktop, the section under the
+          photograph "appears for a split second and disappears". His
+          Pipedrive form is far taller than the short form it replaced, so
+          once it loaded beside the photograph it pushed everything after
+          the hero down and left an empty column. The introduction and the
+          photograph now sit side by side, with the form straight after them
+          at full width, still high on the page and in the same order on a
+          phone. */}
+      <section className="px-4 pb-8 pt-8 sm:px-6 lg:pb-10 lg:pt-12">
+        <div className="mx-auto grid max-w-6xl gap-8 lg:grid-cols-2 lg:items-center lg:gap-12">
+          {/* min-w-0: a grid item's automatic minimum is its content's
+              intrinsic width (seen on Chromium 129 at 390px, where a column
+              became 456px and the page scrolled sideways). */}
+          <div className="min-w-0">
+            <p className="flex items-center gap-3.5">
+              <NigerianFlag className="h-12 w-[4.5rem]" />
+              <span className="text-sm font-semibold uppercase tracking-wider text-wsa-navy">For Nigerian graduates</span>
+            </p>
+            {/* Headline and standfirst set word for word by Tim Hunt in the
+                landing page review of 14 September 2026, narrowed to taught
+                Master's on his instruction of 2 October 2026 ("Concentrate on
+                taught masters"), approved by Tom Arrington the same day. */}
+            <h1 className="mt-4 text-3xl font-bold leading-[1.12] tracking-tight text-wsa-navy sm:text-4xl lg:text-5xl">
+              Study for Your Master&rsquo;s Abroad
+            </h1>
+            <p className="mt-4 max-w-xl text-lg leading-relaxed text-gray-700">
+              Taught Master&rsquo;s opportunities for Nigerian graduates, with your own WSA Student
+              Counsellor from course selection through to visa preparation.
+            </p>
+
+            <ul className="mt-5 flex flex-wrap gap-2">
+              {CAMPAIGN_PROGRAMMES.map(p => (
+                <li key={p.value} className="rounded-full border border-wsa-navy/15 bg-white px-3.5 py-1.5 text-sm font-medium text-wsa-navy">
+                  {p.label}
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          <div className="min-w-0 overflow-hidden rounded-2xl">
+            <img
+              src="/manus-storage/wsa_confident_graduate_0e9accf4.jpg"
+              alt="A World Student Advisors student in the United Kingdom"
+              width={1000}
+              height={560}
+              className="h-52 w-full object-cover object-center sm:h-72 lg:h-80"
+            />
+          </div>
+        </div>
+      </section>
+
+      {/* ── The form ────────────────────────────────────────────── */}
+      {/* Straight after the introduction: it is the point of the page. */}
+      <section className="px-4 pb-10 sm:px-6 lg:pb-16">
+        <div className="mx-auto min-w-0 max-w-2xl rounded-2xl border border-wsa-navy/12 bg-white p-5 shadow-sm sm:p-7">
+          <RegistrationForm id="registration-form" />
+        </div>
+      </section>
+
+      {/* ── Why WSA ─────────────────────────────────────────────── */}
+      <section className="border-t border-wsa-navy/10 bg-white px-4 py-12 sm:px-6 lg:py-16">
+        <div className="mx-auto max-w-6xl">
+          <h2 className="text-2xl font-bold tracking-tight text-wsa-navy sm:text-3xl">What you get with WSA</h2>
+          <div className="mt-7 grid gap-4 sm:grid-cols-2">
+            {BENEFITS.map((b, i) => {
+              const Icon = BENEFIT_ICONS[i] ?? CheckCircle2;
+              return (
+                <div key={b.title} className="rounded-2xl border border-wsa-navy/10 bg-wsa-warm-white p-5">
+                  <Icon className="h-6 w-6 text-wsa-red" aria-hidden />
+                  <h3 className="mt-3 text-lg font-semibold leading-snug text-wsa-navy">{b.title}</h3>
+                  <p className="mt-1.5 text-base leading-relaxed text-gray-700">{b.body}</p>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      </section>
+
+      {/* ── The people ──────────────────────────────────────────── */}
+      <section className="px-4 py-12 sm:px-6 lg:py-16">
+        <div className="mx-auto max-w-6xl">
+          {/* Heading and standfirst set word for word by Tim Hunt on
+              16 September 2026, replacing "Who you will be dealing with". */}
+          <h2 className="text-2xl font-bold tracking-tight text-wsa-navy sm:text-3xl">Meet the team who will support you</h2>
+          <p className="mt-2 max-w-2xl text-base leading-relaxed text-gray-700">
+            Real people. Personal support. Your dedicated WSA advisor will be with you throughout your journey.
+          </p>
+          <div className="mt-6 grid gap-4 sm:grid-cols-2">
+            {COUNSELLORS.map(p => (
+              <CounsellorCard key={p.name} person={p} />
+            ))}
+          </div>
+          <Link
+            href="/our-team"
+            className="mt-5 inline-flex items-center gap-1.5 text-base font-medium text-wsa-red underline-offset-2 hover:underline"
+          >
+            See the full WSA team
+            <ArrowRight className="h-4 w-4" aria-hidden />
+          </Link>
+        </div>
+      </section>
+
+      {/* ── Destinations, as text. No thumbnail strip. ──────────── */}
+      <section className="border-y border-wsa-navy/10 bg-white px-4 py-12 sm:px-6 lg:py-16">
+        <div className="mx-auto max-w-6xl">
+          <h2 className="text-2xl font-bold tracking-tight text-wsa-navy sm:text-3xl">Where we place postgraduates</h2>
+          <ul className="mt-6 space-y-3">
+            {CAMPAIGN_DESTINATIONS.map(d => (
+              <li key={d.value} className="flex items-start gap-3">
+                {/* Tim's copy leads each destination with its flag. The flag is
+                    decorative: the country is named in the text beside it, so a
+                    screen reader is not read a run of regional indicators. */}
+                <span className="mt-0.5 shrink-0 text-lg leading-none" aria-hidden>{d.flag}</span>
+                <p className="text-base leading-relaxed text-gray-700">
+                  <span className="font-semibold text-wsa-navy">{d.placementLabel}.</span> {d.note}
+                </p>
+              </li>
+            ))}
+          </ul>
+          <p className="mt-4 text-sm leading-relaxed text-gray-500">{OTHER_DESTINATIONS_NOTE}</p>
+        </div>
+      </section>
+
+      {/* ── Student Support Library ─────────────────────────────── */}
+      <section className="px-4 py-12 sm:px-6 lg:py-16">
+        <div className="mx-auto max-w-6xl">
+          <div className="rounded-2xl border border-wsa-navy/10 bg-white p-5 sm:p-7">
+            <div className="flex flex-col gap-6 sm:flex-row sm:items-center sm:justify-between">
+              <div className="min-w-0 max-w-2xl">
+                <p className="flex items-center gap-2 text-sm font-semibold uppercase tracking-wider text-wsa-red">
+                  <BookOpen className="h-4 w-4" aria-hidden />
+                  Free to use
+                </p>
+                <h2 className="mt-2 text-2xl font-bold tracking-tight text-wsa-navy">{LIBRARY.title}</h2>
+                <p className="mt-2 text-base leading-relaxed text-gray-700">{LIBRARY.body}</p>
+                <Link
+                  href={LIBRARY.path}
+                  className="mt-4 inline-flex items-center gap-2 rounded-xl border border-wsa-navy/20 px-4 py-2.5 text-base font-medium text-wsa-navy transition hover:border-wsa-red/50 hover:text-wsa-red"
+                >
+                  Open the library
+                  <ArrowRight className="h-4 w-4" aria-hidden />
+                </Link>
+              </div>
+              {/* Restrained QR: encodes the real library URL, nothing else.
+                  Hidden on small screens, where a QR code is useless. */}
+              <div className="hidden shrink-0 text-center sm:block">
+                <img
+                  src="/images/nigeria-landing/student-support-library-qr.svg"
+                  alt="QR code linking to the WSA Student Support Library"
+                  width={120}
+                  height={120}
+                  loading="lazy"
+                  className="h-[120px] w-[120px] rounded-lg border border-wsa-navy/10 bg-white p-1.5"
+                />
+                <p className="mt-1.5 text-xs text-gray-500">Scan to open</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Two genuine, consented Nigerian student testimonials belong here,
+          between the library and the final CTA. Tom Arrington, 12 September
+          2026: do not delay the build waiting for them, and the page does not
+          look empty without them. Each one needs the student's permission for
+          this specific use, the exact words shown to them first, and a check
+          against the case record, which is what WSA already promises publicly
+          on /student-success-stories. */}
+
+      {/* ── Final CTA ───────────────────────────────────────────── */}
+      <section className="bg-wsa-navy px-4 py-12 sm:px-6 lg:py-16">
+        <div className="mx-auto grid max-w-6xl items-center gap-8 lg:grid-cols-[1fr_minmax(320px,420px)]">
+          {/* min-w-0 for the same reason as the hero cells above. */}
+          <div className="min-w-0">
+            <p className="flex items-center gap-3.5">
+              <NigerianFlag className="h-12 w-[4.5rem]" />
+              <span className="text-sm font-semibold uppercase tracking-wider text-white/70">For Nigerian graduates</span>
+            </p>
+            <h2 className="mt-3 text-2xl font-bold leading-tight tracking-tight text-white sm:text-3xl">
+              Start with a conversation, not a form letter
+            </h2>
+            <p className="mt-3 max-w-xl text-lg leading-relaxed text-white/80">
+              Tell us what you studied and what you want to do next. Your counsellor will take it from there.
+            </p>
+            {/* The named help route. Eldah approved her number and email in
+                writing on 12 September 2026; nobody else's appear. */}
+            <div className="mt-6 rounded-2xl border border-white/15 bg-white/5 p-4">
+              <p className="text-sm uppercase tracking-wider text-white/60">Would rather just ask someone?</p>
+              <p className="mt-1.5 text-base text-white/90">
+                {HELP_CONTACT.name}, {HELP_CONTACT.role}, answers WhatsApp directly.
+              </p>
+              <div className="mt-3 flex flex-wrap gap-2">
+                <a
+                  href={HELP_CONTACT.whatsappHref}
+                  className="inline-flex items-center gap-1.5 rounded-xl bg-[#128C7E] px-4 py-2.5 text-base font-medium text-white transition hover:bg-[#0f7568]"
+                >
+                  <MessageCircle className="h-4 w-4" aria-hidden />
+                  {HELP_CONTACT.whatsapp}
+                </a>
+                <a
+                  href={`mailto:${HELP_CONTACT.email}`}
+                  className="inline-flex items-center gap-1.5 rounded-xl border border-white/25 px-4 py-2.5 text-base font-medium text-white transition hover:border-white/50"
+                >
+                  <Mail className="h-4 w-4" aria-hidden />
+                  Email Eldah
+                </a>
+              </div>
+            </div>
+          </div>
+          <div className="min-w-0 rounded-2xl bg-white p-5 shadow-sm">
+            <p className="text-lg font-semibold text-wsa-navy">Speak to a counsellor</p>
+            <p className="pb-4 pt-1 text-sm text-gray-600">Leave your details and our team will contact you.</p>
+            <a
+              href="#registration-form"
+              className="flex w-full items-center justify-center gap-2 rounded-xl bg-wsa-red px-5 py-3.5 text-base font-semibold text-white transition hover:bg-wsa-red/90"
+            >
+              Send my details
+              <ArrowRight className="h-4 w-4" aria-hidden />
+            </a>
+          </div>
+        </div>
+      </section>
+    </main>
+  );
+}

@@ -1,0 +1,393 @@
+import { describe, expect, it } from "vitest";
+import {
+  ALLOWED_VARIABLE_NAMES,
+  AUTOMATION_IDENTITY,
+  AUTOMATION_SECRET_PREFIX,
+  AutomationAuthorityError,
+  MANAGED_SSO_APP_DISPLAY_NAME,
+  PRODUCTION_REDIRECT_URI,
+  RAILWAY_TARGET,
+  assertAuthorisedRailwayTarget,
+  assertAuthorisedVariableNames,
+  automationSecretDisplayName,
+  buildApplicationCreatePayload,
+  buildAuditEvent,
+  buildGraphTokenRequest,
+  buildRailwayVariablesMutation,
+  buildRedirectPatchIfNeeded,
+  evaluateDeploymentAfterWrite,
+  selectManagedApplication,
+  selectPasswordsToPrune,
+  type GraphApplication,
+} from "./automation";
+
+const managedApp = (overrides: Partial<GraphApplication> = {}): GraphApplication => ({
+  id: "obj-1",
+  appId: "app-1",
+  displayName: MANAGED_SSO_APP_DISPLAY_NAME,
+  signInAudience: "AzureADMyOrg",
+  web: { redirectUris: [PRODUCTION_REDIRECT_URI] },
+  passwordCredentials: [],
+  ...overrides,
+});
+
+describe("Railway authority boundaries", () => {
+  it("accepts only the exact authorised project/environment/service triple", () => {
+    expect(() => assertAuthorisedRailwayTarget({ ...RAILWAY_TARGET })).not.toThrow();
+    for (const field of ["projectId", "environmentId", "serviceId"] as const) {
+      expect(() =>
+        assertAuthorisedRailwayTarget({ ...RAILWAY_TARGET, [field]: "spoofed-id" }),
+      ).toThrow(AutomationAuthorityError);
+    }
+  });
+
+  it("permits only the four STAFF_SSO_* variable names and rejects everything else", () => {
+    expect(() => assertAuthorisedVariableNames(ALLOWED_VARIABLE_NAMES)).not.toThrow();
+    expect(() => assertAuthorisedVariableNames([])).toThrow(AutomationAuthorityError);
+    for (const forbidden of [
+      "DATABASE_URL",
+      "STAFF_PORTAL_PASSWORD_HASH",
+      "ANTHROPIC_API_KEY",
+      "STAFF_SSO_EXTRA",
+      "MICROSOFT_CLIENT_SECRET",
+    ]) {
+      expect(() => assertAuthorisedVariableNames([...ALLOWED_VARIABLE_NAMES, forbidden])).toThrow(
+        AutomationAuthorityError,
+      );
+    }
+  });
+
+  it("builds the variable mutation against the pinned target and never with replace semantics", () => {
+    const mutation = buildRailwayVariablesMutation({
+      STAFF_SSO_TENANT_ID: "tenant",
+      STAFF_SSO_CLIENT_ID: "client",
+      STAFF_SSO_CLIENT_SECRET: "secret-value",
+      STAFF_SSO_REDIRECT_URI: PRODUCTION_REDIRECT_URI,
+    });
+    expect(mutation.variables.input).toMatchObject(RAILWAY_TARGET);
+    // replace: true would delete every unrelated production variable — it must never appear.
+    expect(JSON.stringify(mutation)).not.toContain('"replace"');
+    expect(() => buildRailwayVariablesMutation({ NOT_ALLOWED: "x" })).toThrow(
+      AutomationAuthorityError,
+    );
+  });
+});
+
+describe("Entra application idempotency", () => {
+  it("creates when the owned app is absent, manages when exactly one exists", () => {
+    expect(selectManagedApplication([])).toEqual({ decision: "create" });
+    const app = managedApp();
+    expect(selectManagedApplication([app])).toEqual({ decision: "manage", application: app });
+  });
+
+  it("ignores other owned apps and never manages one with a different name", () => {
+    const other = managedApp({ displayName: "Some Other App" });
+    expect(selectManagedApplication([other])).toEqual({ decision: "create" });
+  });
+
+  it("stops on ambiguity instead of guessing between duplicates", () => {
+    expect(() => selectManagedApplication([managedApp(), managedApp({ id: "obj-2" })])).toThrow(
+      /Ambiguous/,
+    );
+  });
+
+  it("prefers the pinned stable client ID over display-name matching", () => {
+    const pinned = managedApp({ appId: "pinned-app-id" });
+    const impostor = managedApp({ id: "obj-2", appId: "other-app-id" });
+    // With a pin, duplicates by name are no longer ambiguous — the ID decides.
+    expect(selectManagedApplication([impostor, pinned], "pinned-app-id")).toEqual({
+      decision: "manage",
+      application: pinned,
+    });
+  });
+
+  it("stops when the pinned ID and the controlled name disagree", () => {
+    const renamed = managedApp({ appId: "pinned-app-id", displayName: "Renamed App" });
+    expect(() => selectManagedApplication([renamed], "pinned-app-id")).toThrow(/disagree/);
+  });
+
+  it("never silently adopts a name-alike app when the pinned app is missing", () => {
+    const nameAlike = managedApp({ appId: "other-app-id" });
+    expect(() => selectManagedApplication([nameAlike], "pinned-app-id")).toThrow(
+      /Refusing to adopt/,
+    );
+  });
+
+  it("recreates legitimately when the pinned app is gone and nothing name-alike exists", () => {
+    expect(selectManagedApplication([], "pinned-app-id")).toEqual({ decision: "create" });
+  });
+
+  it("declares a single-tenant app with only the three OIDC sign-in scopes", () => {
+    const payload = buildApplicationCreatePayload() as {
+      displayName: string;
+      signInAudience: string;
+      web: { redirectUris: string[] };
+      requiredResourceAccess: Array<{ resourceAccess: Array<{ type: string }> }>;
+    };
+    expect(payload.displayName).toBe(MANAGED_SSO_APP_DISPLAY_NAME);
+    expect(payload.signInAudience).toBe("AzureADMyOrg");
+    expect(payload.web.redirectUris).toEqual([PRODUCTION_REDIRECT_URI]);
+    expect(payload.requiredResourceAccess).toHaveLength(1);
+    const access = payload.requiredResourceAccess[0].resourceAccess;
+    expect(access).toHaveLength(3);
+    // Delegated scopes only — an application-permission ("Role") entry here would be an escalation.
+    expect(access.every(entry => entry.type === "Scope")).toBe(true);
+  });
+
+  it("adds the production redirect without removing an admin's existing entries", () => {
+    expect(buildRedirectPatchIfNeeded(managedApp())).toBeNull();
+    const patched = buildRedirectPatchIfNeeded(
+      managedApp({ web: { redirectUris: ["https://other.example/callback"] } }),
+    );
+    expect(patched).toEqual({
+      web: { redirectUris: ["https://other.example/callback", PRODUCTION_REDIRECT_URI] },
+    });
+  });
+});
+
+describe("secret rotation hygiene", () => {
+  it("prunes only automation-named credentials and never the one just created", () => {
+    const keep = "kid-new";
+    const prune = selectPasswordsToPrune(
+      [
+        { keyId: keep, displayName: `${AUTOMATION_SECRET_PREFIX}2026-08-29` },
+        { keyId: "kid-old-auto", displayName: `${AUTOMATION_SECRET_PREFIX}2026-05-01` },
+        { keyId: "kid-human", displayName: "created-by-admin" },
+        { keyId: "kid-unnamed" },
+      ],
+      keep,
+    );
+    expect(prune).toEqual(["kid-old-auto"]);
+  });
+
+  it("names rotated secrets with the automation prefix and date", () => {
+    expect(automationSecretDisplayName(new Date("2026-08-29T19:00:00Z"))).toBe(
+      `${AUTOMATION_SECRET_PREFIX}2026-08-29`,
+    );
+  });
+});
+
+describe("federated Graph token request", () => {
+  it("uses the client-assertion flow with no client_secret parameter anywhere", () => {
+    const request = buildGraphTokenRequest({
+      tenantId: "tenant-id",
+      clientId: "client-id",
+      githubOidcToken: "github-jwt",
+    });
+    expect(request.url).toBe("https://login.microsoftonline.com/tenant-id/oauth2/v2.0/token");
+    expect(request.body.get("grant_type")).toBe("client_credentials");
+    expect(request.body.get("client_assertion_type")).toBe(
+      "urn:ietf:params:oauth:client-assertion-type:jwt-bearer",
+    );
+    expect(request.body.get("scope")).toBe("https://graph.microsoft.com/.default");
+    expect(request.body.has("client_secret")).toBe(false);
+  });
+});
+
+describe("deployment evaluation after a variable write", () => {
+  const writeAt = new Date("2026-08-29T20:00:00Z");
+  it("never mistakes the pre-write deployment's SUCCESS for the new one", () => {
+    expect(
+      evaluateDeploymentAfterWrite(
+        [{ id: "old", status: "SUCCESS", createdAt: "2026-08-29T18:33:07Z" }],
+        writeAt,
+      ),
+    ).toEqual({ state: "pending" });
+  });
+
+  it("reports success/failure only from a deployment created after the write", () => {
+    expect(
+      evaluateDeploymentAfterWrite(
+        [
+          { id: "new", status: "SUCCESS", createdAt: "2026-08-29T20:00:30Z" },
+          { id: "old", status: "SUCCESS", createdAt: "2026-08-29T18:33:07Z" },
+        ],
+        writeAt,
+      ),
+    ).toEqual({ state: "success", deploymentId: "new" });
+    expect(
+      evaluateDeploymentAfterWrite(
+        [{ id: "new", status: "CRASHED", createdAt: "2026-08-29T20:00:30Z" }],
+        writeAt,
+      ),
+    ).toEqual({ state: "failed", deploymentId: "new", status: "CRASHED" });
+    expect(
+      evaluateDeploymentAfterWrite(
+        [{ id: "new", status: "BUILDING", createdAt: "2026-08-29T20:00:30Z" }],
+        writeAt,
+      ),
+    ).toEqual({ state: "pending" });
+  });
+});
+
+describe("durable audit gate", () => {
+  const base = {
+    action: "railway_variables_write",
+    phase: "result" as const,
+    targetSystem: "railway" as const,
+    targetResource: "world-student-advisors: STAFF_SSO_TENANT_ID, STAFF_SSO_CLIENT_ID",
+    permissionDecision: "allowed" as const,
+    permissionReason: "Within the approved STAFF_SSO_* allowlist for the authorised service.",
+    success: 1,
+    errorCategory: "none",
+    runReference: "https://github.com/Arrington-Consultancy/world-student-advisors/actions/runs/1",
+  };
+
+  it("stamps the automation identity on every event", () => {
+    expect(buildAuditEvent(base).automationIdentity).toBe(AUTOMATION_IDENTITY);
+  });
+
+  it("refuses secret-shaped content in any text field, including Azure-style secrets and full UUIDs", () => {
+    const azureStyleSecret = "Q~8xVbn2_pLm4TgRs7Yw1Ee9KjHdC3aZxWqPo6Nt";
+    expect(() => buildAuditEvent({ ...base, targetResource: `value ${azureStyleSecret}` })).toThrow(
+      AutomationAuthorityError,
+    );
+    expect(() =>
+      buildAuditEvent({ ...base, permissionReason: `bearer eyJhbGciOiJSUzI1NiJ9.payload` }),
+    ).toThrow(AutomationAuthorityError);
+    expect(() =>
+      buildAuditEvent({ ...base, targetResource: "app 3cd481de-9208-4b57-afb6-60dae1215de5" }),
+    ).toThrow(AutomationAuthorityError);
+    expect(() => buildAuditEvent({ ...base, targetResource: "app prefix 3cd481de…" })).not.toThrow();
+  });
+});
+
+import {
+  GRAPH_RESOURCE_APP_ID,
+  MANAGED_SHAREPOINT_APP_DISPLAY_NAME,
+  SITES_SELECTED_APP_ROLE_ID,
+  MANAGED_SITE_GRANT_APP_DISPLAY_NAME,
+  SITES_FULLCONTROL_APP_ROLE_ID,
+  buildSiteGrantApplicationCreatePayload,
+  buildSitePermissionGrantBody,
+  declaresOnlySitesSelected,
+  evaluateSiteGrant,
+  rolesClaimIsExactly,
+} from "./automation";
+
+/**
+ * The temporary grant application. Tom Arrington, 11 September 2026: it
+ * exists to make one call and is deleted by the run that makes it. These
+ * tests pin what it may declare, what it may grant, and what counts as
+ * proof afterwards.
+ */
+describe("temporary site-grant application", () => {
+  it("declares Sites.FullControl.All on Microsoft Graph and nothing else, with no sign-in surface", () => {
+    const p = buildSiteGrantApplicationCreatePayload() as { displayName: string; signInAudience: string; web?: unknown; requiredResourceAccess: Array<{ resourceAppId: string; resourceAccess: Array<{ id: string; type: string }> }> };
+    expect(p.displayName).toBe(MANAGED_SITE_GRANT_APP_DISPLAY_NAME);
+    expect(p.signInAudience).toBe("AzureADMyOrg");
+    expect(p.web).toBeUndefined();
+    expect(p.requiredResourceAccess).toHaveLength(1);
+    expect(p.requiredResourceAccess[0].resourceAppId).toBe(GRAPH_RESOURCE_APP_ID);
+    expect(p.requiredResourceAccess[0].resourceAccess).toEqual([{ id: SITES_FULLCONTROL_APP_ROLE_ID, type: "Role" }]);
+  });
+
+  it("is a managed name, so selection accepts it, and an unmanaged name is still refused", () => {
+    expect(() => selectManagedApplication([], undefined, MANAGED_SITE_GRANT_APP_DISPLAY_NAME)).not.toThrow();
+    expect(() => selectManagedApplication([], undefined, "WSA Site Grant" as never)).toThrow(AutomationAuthorityError);
+  });
+
+  it("grants read only, to the worker application only", () => {
+    const body = buildSitePermissionGrantBody("app-1") as { roles: string[]; grantedToIdentities: Array<{ application: { id: string; displayName: string } }> };
+    expect(body.roles).toEqual(["read"]);
+    expect(body.grantedToIdentities).toHaveLength(1);
+    expect(body.grantedToIdentities[0].application.id).toBe("app-1");
+    expect(body.grantedToIdentities[0].application.displayName).toBe(MANAGED_SHAREPOINT_APP_DISPLAY_NAME);
+  });
+});
+
+describe("site grant verification", () => {
+  const entry = (id: string, appId: string, roles: string[]) => ({ id, roles, grantedToIdentitiesV2: [{ application: { id: appId } }] });
+
+  it("passes only for exactly one read-only entry for the worker", () => {
+    expect(evaluateSiteGrant([entry("p1", "worker", ["read"]), entry("p2", "someone-else", ["write"])], "worker")).toEqual({ ok: true, permissionId: "p1" });
+  });
+  it("fails when the worker has no entry", () => {
+    expect(evaluateSiteGrant([entry("p2", "someone-else", ["read"])], "worker").ok).toBe(false);
+  });
+  it("fails when the worker's entry is wider than read", () => {
+    const r = evaluateSiteGrant([entry("p1", "worker", ["read", "write"])], "worker");
+    expect(r.ok).toBe(false);
+    expect((r as { reason: string }).reason).toContain("only [read] is approved");
+  });
+  it("fails when the worker has two entries, even if both are read", () => {
+    expect(evaluateSiteGrant([entry("p1", "worker", ["read"]), entry("p2", "worker", ["read"])], "worker").ok).toBe(false);
+  });
+  it("reads the older grantedToIdentities shape too", () => {
+    expect(evaluateSiteGrant([{ id: "p1", roles: ["read"], grantedToIdentities: [{ application: { id: "worker" } }] }], "worker").ok).toBe(true);
+  });
+});
+
+describe("token roles claim must be exact", () => {
+  const token = (roles: unknown) => `h.${Buffer.from(JSON.stringify({ roles })).toString("base64url")}.s`;
+  it("accepts exactly the expected set regardless of order", () => {
+    expect(rolesClaimIsExactly(token(["Sites.FullControl.All"]), ["Sites.FullControl.All"]).ok).toBe(true);
+  });
+  it("rejects a superset: consent to more than the declared permission stops the run", () => {
+    const r = rolesClaimIsExactly(token(["Sites.FullControl.All", "Directory.Read.All"]), ["Sites.FullControl.All"]);
+    expect(r.ok).toBe(false);
+    expect(r.held).toContain("Directory.Read.All");
+  });
+  it("rejects an empty claim: consent not yet granted", () => {
+    expect(rolesClaimIsExactly(token(undefined), ["Sites.FullControl.All"]).ok).toBe(false);
+  });
+  it("rejects garbage", () => {
+    expect(rolesClaimIsExactly("not-a-jwt", ["x"]).ok).toBe(false);
+  });
+});
+
+describe("worker application must still declare only Sites.Selected afterwards", () => {
+  it("passes for exactly the one Graph role", () => {
+    expect(declaresOnlySitesSelected([{ resourceAppId: GRAPH_RESOURCE_APP_ID, resourceAccess: [{ id: SITES_SELECTED_APP_ROLE_ID, type: "Role" }] }]).ok).toBe(true);
+  });
+  it("fails if FullControl was ever added to the worker application", () => {
+    expect(declaresOnlySitesSelected([{ resourceAppId: GRAPH_RESOURCE_APP_ID, resourceAccess: [{ id: SITES_SELECTED_APP_ROLE_ID, type: "Role" }, { id: SITES_FULLCONTROL_APP_ROLE_ID, type: "Role" }] }]).ok).toBe(false);
+  });
+  it("fails if a delegated scope or another resource appears", () => {
+    expect(declaresOnlySitesSelected([{ resourceAppId: GRAPH_RESOURCE_APP_ID, resourceAccess: [{ id: SITES_SELECTED_APP_ROLE_ID, type: "Scope" }] }]).ok).toBe(false);
+    expect(declaresOnlySitesSelected([]).ok).toBe(false);
+    expect(declaresOnlySitesSelected(undefined).ok).toBe(false);
+  });
+});
+
+import { readFileSync } from "fs";
+import { assertNoSecretLikeContent, redactForAudit } from "./automation";
+
+/**
+ * Run B failed at its first line on 11 September 2026 because an audit
+ * row named the WSA SharePoint hostname, which is long enough to look
+ * like a secret to the guard. The guard is right; the wording was wrong.
+ * These tests keep every fixed audit fragment in the two scripts inside
+ * the guard, and make failure messages safe before they are written.
+ */
+describe("site-grant scripts write audit text the guard accepts", () => {
+  const scripts = ["scripts/infra/provision-site-grant-app.ts", "scripts/infra/apply-site-grant.ts"];
+  it("every fixed fragment of targetResource and permissionReason passes the secret guard", () => {
+    for (const path of scripts) {
+      const src = readFileSync(path, "utf8");
+      const fields = [...src.matchAll(/(targetResource|permissionReason):\s*(`[^`]*`|"[^"]*")/g)];
+      expect(fields.length).toBeGreaterThan(5);
+      for (const [, field, literal] of fields) {
+        // Strip interpolations; what remains is the fixed text the row always carries.
+        const fixed = literal.slice(1, -1).replace(/\$\{[^}]*\}/g, " x ");
+        expect(() => assertNoSecretLikeContent(field, fixed), `${path}: ${fixed.slice(0, 60)}`).not.toThrow();
+      }
+    }
+  });
+  it("neither script places the SharePoint hostname in an audit field", () => {
+    for (const path of scripts) {
+      const src = readFileSync(path, "utf8");
+      for (const m of src.matchAll(/(targetResource|permissionReason):\s*`([^`]*)`/g)) {
+        expect(m[2]).not.toContain("${WSA_HOST}");
+      }
+    }
+  });
+  it("redactForAudit removes GUIDs and long tokens so a failure message can always be recorded", () => {
+    const msg = "Graph DELETE /applications/3f2504e0-4f89-11d3-9a0c-0305e82c3301 failed: HTTP 403 worldstudentadvisors123.sharepoint.com";
+    const out = redactForAudit(msg);
+    expect(() => assertNoSecretLikeContent("permissionReason", out)).not.toThrow();
+    expect(out).toContain("<guid>");
+    expect(out).toContain("<token>");
+    expect(() => assertNoSecretLikeContent("permissionReason", msg)).toThrow();
+  });
+});

@@ -1,0 +1,22 @@
+name: Staff Portal library links verification (read-only)
+
+# Manual-only, READ-ONLY. After a deploy, confirms from outside the sign-in
+# that the production client bundle carries the Staff Portal's Student
+# Support Library links section (PR #187) and that every permanent link it
+# prints resolves live. Signs in to nothing, submits nothing, uses no
+# secrets. See scripts/staff-portal-library-links-verify.mjs.
+on:
+  workflow_dispatch:
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Verify the live bundle and links
+        run: node scripts/staff-portal-library-links-verify.mjs

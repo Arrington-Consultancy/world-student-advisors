@@ -196,9 +196,9 @@ export default function Portal() {
           </Link>
 
           {/* Interview Readiness Coach */}
-          <Link href="/portal/interview-coach">
-            <div className="bg-white border border-border/70 p-8 cursor-pointer group transition-all duration-200 hover:-translate-y-1 hover:shadow-[0_18px_60px_rgba(15,23,42,0.08)]">
-              <div className="flex items-start gap-4">
+          <div className="bg-white border border-border/70 p-8 group transition-all duration-200 hover:-translate-y-1 hover:shadow-[0_18px_60px_rgba(15,23,42,0.08)]">
+            <Link href="/portal/interview-coach">
+              <div className="flex items-start gap-4 cursor-pointer">
                 <div className="w-14 h-14 bg-wsa-navy flex items-center justify-center shrink-0">
                   <Mic className="w-7 h-7 text-white" />
                 </div>
@@ -207,15 +207,30 @@ export default function Portal() {
                     AI Interview Coach
                   </h3>
                   <p className="text-gray-600 text-sm mb-4">
-                    Practise CAS, UKVI, university, and course interviews. Marked against an 85% pass mark with honest feedback — never model answers.
+                    Practise CAS, UKVI, university, and course interviews. Marked against an 85% pass mark with honest feedback: never model answers.
                   </p>
                   <div className="flex items-center text-wsa-red text-sm font-medium">
                     Start Practising <ChevronRight className="w-4 h-4 ml-1" />
                   </div>
                 </div>
               </div>
+            </Link>
+            {/* Jump straight into a specific mode via InterviewCoach.tsx's ?mode= support. */}
+            <div className="mt-5 pt-5 border-t border-border/50 flex flex-wrap gap-2">
+              {[
+                { mode: "cas", label: "CAS" },
+                { mode: "ukvi", label: "UKVI Credibility" },
+                { mode: "university", label: "University" },
+                { mode: "course", label: "Course-Specific" },
+              ].map((m) => (
+                <Link key={m.mode} href={`/portal/interview-coach?mode=${m.mode}`}>
+                  <span className="inline-block text-xs font-medium text-wsa-navy/70 border border-border/60 px-3 py-1.5 hover:border-wsa-red hover:text-wsa-red transition-colors cursor-pointer">
+                    {m.label}
+                  </span>
+                </Link>
+              ))}
             </div>
-          </Link>
+          </div>
 
           {/* Community & Alumni */}
           <div className="bg-white border border-border/70 p-8">
@@ -296,7 +311,7 @@ export default function Portal() {
           <div className="grid sm:grid-cols-3 gap-6 text-sm">
             <div>
               <p className="font-semibold mb-1.5">United Kingdom (HQ)</p>
-              <p className="flex items-center gap-2 text-white/80 mb-1"><Phone className="w-3.5 h-3.5 shrink-0" /> WhatsApp: +44 791 479 7830</p>
+              <p className="flex items-center gap-2 text-white/80 mb-1"><Phone className="w-3.5 h-3.5 shrink-0" /> WhatsApp: +44 7470 689 849</p>
               <a href="mailto:UKHeadOffice@worldstudentadvisors.com" className="flex items-center gap-2 text-white/80 hover:text-white break-all"><Mail className="w-3.5 h-3.5 shrink-0" /> UKHeadOffice@worldstudentadvisors.com</a>
             </div>
             <div>
@@ -306,7 +321,7 @@ export default function Portal() {
             </div>
             <div>
               <p className="font-semibold mb-1.5">Nigeria</p>
-              <p className="flex items-center gap-2 text-white/80 mb-1"><Phone className="w-3.5 h-3.5 shrink-0" /> WhatsApp: +234 812 929 2769</p>
+              <p className="flex items-center gap-2 text-white/80 mb-1"><Phone className="w-3.5 h-3.5 shrink-0" /> WhatsApp: +234 818 204 9068</p>
               <a href="mailto:NigeriaOffice@worldstudentadvisors.com" className="flex items-center gap-2 text-white/80 hover:text-white break-all"><Mail className="w-3.5 h-3.5 shrink-0" /> NigeriaOffice@worldstudentadvisors.com</a>
             </div>
           </div>

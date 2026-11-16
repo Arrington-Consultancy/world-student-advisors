@@ -49,9 +49,10 @@ describe("selectSessionQuestions — bank fidelity", () => {
 
   it("never leaks a question into a category whose own bank doesn't contain it (structural cross-category check)", async () => {
     const { selectSessionQuestions } = await import("./interviewCoach");
-    // Course-Specific is the only bank with 13 (not 14) entries and has
-    // several questions with no near-duplicate elsewhere — a good canary
-    // for accidental leakage from another category's array.
+    // Course-Specific is the only bank with 13 entries (cas/ukvi are 16,
+    // university is 14) and has several questions with no near-duplicate
+    // elsewhere — a good canary for accidental leakage from another
+    // category's array.
     const courseOnly = selectSessionQuestions("course", 13);
     const other = [...QUESTION_BANK.cas, ...QUESTION_BANK.ukvi, ...QUESTION_BANK.university].filter(
       (q) => !QUESTION_BANK.course.includes(q)
@@ -71,17 +72,17 @@ describe("selectSessionQuestions — bank fidelity", () => {
 
   it("returns the full bank, unchanged, when count meets or exceeds the bank size", async () => {
     const { selectSessionQuestions } = await import("./interviewCoach");
-    expect(selectSessionQuestions("cas", 14)).toEqual(QUESTION_BANK.cas);
+    expect(selectSessionQuestions("cas", QUESTION_BANK.cas.length)).toEqual(QUESTION_BANK.cas);
     expect(selectSessionQuestions("cas", 100)).toEqual(QUESTION_BANK.cas);
-    expect(selectSessionQuestions("course", 13)).toEqual(QUESTION_BANK.course);
+    expect(selectSessionQuestions("course", QUESTION_BANK.course.length)).toEqual(QUESTION_BANK.course);
   });
 
   it("spreads a short session across the bank rather than clustering on the first few questions", async () => {
     const { selectSessionQuestions } = await import("./interviewCoach");
     const selected = selectSessionQuestions("cas", 3);
     const indices = selected.map((q) => QUESTION_BANK.cas.indexOf(q));
-    // With 14 questions and a session of 3, the selection should span
-    // meaningfully more than just indices 0-2.
+    // With a session of 3 drawn from a much larger bank, the selection
+    // should span meaningfully more than just indices 0-2.
     expect(Math.max(...indices) - Math.min(...indices)).toBeGreaterThan(3);
   });
 
@@ -389,6 +390,62 @@ describe("prohibition on model answers", () => {
     const call = mockedInvokeLLM.mock.calls[0][0];
     const systemMessage = call.messages.find((m) => m.role === "system")?.content ?? "";
     expect(systemMessage).toMatch(/NEVER provide model answers/i);
+  });
+});
+
+describe("marking fairness — substance over polish", () => {
+  it("instructs the model to assess substance and explicitly never penalise non-native English, minor grammar, or brevity", async () => {
+    const { assessAnswer } = await import("./interviewCoach");
+    mockedInvokeLLM.mockResolvedValueOnce(
+      llmJsonResponse({
+        needsFollowUp: false,
+        followUpQuestion: "",
+        score: 90,
+        strengths: [],
+        weaknesses: [],
+        missingInformation: [],
+        researchHomework: [],
+      })
+    );
+
+    await assessAnswer({ interviewType: "ukvi", question: "Why do you want to study in the UK?", answer: "For get good education and future job." });
+
+    const call = mockedInvokeLLM.mock.calls[0][0];
+    const systemMessage = call.messages.find((m) => m.role === "system")?.content ?? "";
+    expect(systemMessage).toMatch(/never penalise understandable non-native english/i);
+    expect(systemMessage).toMatch(/minor grammar errors/i);
+    expect(systemMessage).toMatch(/culturally different but valid phrasing/i);
+    expect(systemMessage).toMatch(/concise answer/i);
+    expect(systemMessage).toMatch(/relevance, clarity, specificity, genuine understanding, consistency/i);
+  });
+
+  it("a short answer is not automatically treated as a weakness by the prompt's own wording", async () => {
+    const { assessAnswer } = await import("./interviewCoach");
+    mockedInvokeLLM.mockResolvedValueOnce(
+      llmJsonResponse({ needsFollowUp: false, followUpQuestion: "", score: 95, strengths: [], weaknesses: [], missingInformation: [], researchHomework: [] })
+    );
+
+    await assessAnswer({ interviewType: "course", question: "Which module interests you most?", answer: "Applied statistics — it's the foundation for the data science career I want." });
+
+    const call = mockedInvokeLLM.mock.calls[0][0];
+    const systemMessage = call.messages.find((m) => m.role === "system")?.content ?? "";
+    expect(systemMessage).toMatch(/a short, complete answer is not a weakness/i);
+  });
+
+  it("instructs the model not to penalise preparation, but to treat formulaic/rehearsed answers lacking personal substance as a weakness, without inferring memorisation from fluency alone", async () => {
+    const { assessAnswer } = await import("./interviewCoach");
+    mockedInvokeLLM.mockResolvedValueOnce(
+      llmJsonResponse({ needsFollowUp: false, followUpQuestion: "", score: 90, strengths: [], weaknesses: [], missingInformation: [], researchHomework: [] })
+    );
+
+    await assessAnswer({ interviewType: "cas", question: "Why have you chosen this university?", answer: "It has a great reputation and excellent facilities." });
+
+    const call = mockedInvokeLLM.mock.calls[0][0];
+    const systemMessage = call.messages.find((m) => m.role === "system")?.content ?? "";
+    expect(systemMessage).toMatch(/preparation and practice are not weaknesses/i);
+    expect(systemMessage).toMatch(/do not penalise a student for giving a well-prepared answer/i);
+    expect(systemMessage).toMatch(/sounds formulaic or rehearsed but lacks specific personal reasoning/i);
+    expect(systemMessage).toMatch(/do not claim that an answer is memorised merely because it is fluent or well structured/i);
   });
 
   it("no question-generation call site invents replacement questions — question content only ever originates from selectSessionQuestions (bank), never a free-form LLM generation prompt", async () => {

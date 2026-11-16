@@ -23,7 +23,7 @@ export async function verifyTurnstileToken(
   remoteIp?: string
 ): Promise<TurnstileVerifyResult> {
   if (!ENV.turnstileSecretKey) {
-    console.warn("[Turnstile] TURNSTILE_SECRET_KEY is not configured — rejecting all tokens.");
+    console.warn("[Turnstile] TURNSTILE_SECRET_KEY is not configured, rejecting all tokens.");
     return { success: false, errorCodes: ["not-configured"] };
   }
 

@@ -1,0 +1,65 @@
+name: Google Ads Qualified Lead acceptance (production, Data Manager API)
+
+# Manual only. Proves the WSA-owned Qualified Lead conversion path against
+# production: configuration, a Data Manager access token, a validateOnly
+# upload to the real conversion action (Google records nothing), the upload
+# record table, and Pipedrive deal counts. Optionally runs one real sync.
+# Prints counts, ids, statuses and reasons only: never a token, an email, a
+# phone number or a click identifier. Runs inside the service's variables
+# with a public database URL substituted, following the other acceptance
+# workflows. Auth: githubactionsprod, the production-scoped Railway Project Token.
+on:
+  workflow_dispatch:
+    inputs:
+      run_sync:
+        description: "Also run one real sync (sends real qualified leads if any are unrecorded). yes or no."
+        required: false
+        default: "no"
+
+jobs:
+  accept:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Install Railway CLI
+        run: npm install -g @railway/cli
+      - name: Discover the MySQL public-URL variable NAME (key only, value never printed)
+        id: discover
+        env:
+          RAILWAY_TOKEN: ${{ secrets.githubactionsprod }}
+        run: |
+          KEYS=$(railway variables --service "MySQL" --environment "production" --json | jq -r 'keys[]')
+          PUBLIC_KEY=$(echo "$KEYS" | grep -i -E '^(MYSQL_PUBLIC_URL|DATABASE_PUBLIC_URL)$' | head -n1)
+          if [ -z "$PUBLIC_KEY" ]; then echo "No public-URL-shaped variable found on MySQL. Stopping."; exit 1; fi
+          echo "public_key=$PUBLIC_KEY" >> "$GITHUB_OUTPUT"
+      - name: Set a temporary database URL reference on the app service
+        env:
+          RAILWAY_TOKEN: ${{ secrets.githubactionsprod }}
+          PUBLIC_KEY: ${{ steps.discover.outputs.public_key }}
+        run: |
+          REF=$(printf '\044{{%s.%s}}' "MySQL" "$PUBLIC_KEY")
+          railway variables --service "world-student-advisors" --environment "production" \
+            --set "GOOGLE_ADS_ACCEPTANCE_DATABASE_URL=${REF}" --skip-deploys
+      - name: Run the acceptance inside the service variables
+        timeout-minutes: 10
+        env:
+          RAILWAY_TOKEN: ${{ secrets.githubactionsprod }}
+          RUN_SYNC: ${{ github.event.inputs.run_sync }}
+        run: |
+          E2E_RUN_SYNC=0; if [ "$RUN_SYNC" = "yes" ]; then E2E_RUN_SYNC=1; fi
+          railway run --service "world-student-advisors" --environment "production" -- \
+            sh -c "DATABASE_URL=\"\$GOOGLE_ADS_ACCEPTANCE_DATABASE_URL\" E2E_RUN_SYNC=$E2E_RUN_SYNC pnpm exec tsx scripts/google-ads-qualified-lead-acceptance.ts"
+      - name: Remove the temporary database URL reference
+        if: always()
+        env:
+          RAILWAY_TOKEN: ${{ secrets.githubactionsprod }}
+        run: |
+          railway variables --service "world-student-advisors" --environment "production" \
+            --set "GOOGLE_ADS_ACCEPTANCE_DATABASE_URL=" --skip-deploys
