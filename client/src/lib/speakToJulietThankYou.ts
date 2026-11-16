@@ -29,6 +29,12 @@
  * everywhere on the site, the Google Ads tag loads only after analytics
  * consent (CookieConsent.tsx); without consent nothing is sent.
  *
+ * THE META LEAD. Since 4 October 2026, on Tim Hunt's request, the same
+ * arrival also fires Meta's standard "Lead" event (trackMetaLead in
+ * metaPixel.ts), so the Meta campaign can count completed enquiries rather
+ * than page views. It goes through the same once-per-arrival guard below,
+ * and Meta holds it if the visitor has not accepted cookies.
+ *
  * ONCE, AND ONLY FOR AN ARRIVAL. A form submission is one event, so the
  * conversion is reported once per browser session and only for a fresh
  * navigation to this page: a reload or a back/forward return is not a
@@ -40,6 +46,7 @@
  * and is why the page is noindex and unlinked.
  */
 import { reportSignupConversion } from "./googleAdsConversion";
+import { trackMetaLead } from "./metaPixel";
 
 export const THANK_YOU_PATH = "/speak-to-juliet/thank-you";
 
@@ -94,5 +101,6 @@ export function reportJulietFormConversionOnce(): ThankYouConversionOutcome {
   }
 
   void reportSignupConversion();
+  trackMetaLead();
   return "reported";
 }

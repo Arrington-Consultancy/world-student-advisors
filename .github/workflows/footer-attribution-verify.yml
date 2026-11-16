@@ -1,0 +1,45 @@
+name: Footer credit verification (read-only)
+
+# Manual-only, READ-ONLY. Verifies the footer's developer credit on the live
+# site after a deploy (Tom Arrington, 11 October 2026): "Website by Arrington
+# Consultancy" once in the footer, a followed link to
+# https://www.arringtonconsultancy.com/, the footer otherwise unchanged and
+# no sideways overflow, at phone and desktop widths. Follows no link, submits
+# no form and uses no secrets. Footer screenshots are kept.
+on:
+  workflow_dispatch:
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install Playwright (browser only, project dependencies untouched)
+        run: |
+          mkdir -p /tmp/pw && cd /tmp/pw
+          npm init -y >/dev/null
+          npm install playwright@1.47.2 >/dev/null
+          npx playwright install --with-deps chromium
+
+      - name: Verify the live footer
+        timeout-minutes: 10
+        run: |
+          mkdir -p /tmp/pw/out
+          cp scripts/footer-attribution-verify.mjs /tmp/pw/verify.mjs
+          cd /tmp/pw
+          OUT_DIR=/tmp/pw/out node verify.mjs
+
+      - name: Upload screenshots and results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: footer-attribution-verification
+          path: |
+            /tmp/pw/out/*.png
+            /tmp/pw/out/*.json
+          if-no-files-found: ignore

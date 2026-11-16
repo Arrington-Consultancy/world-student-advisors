@@ -26,23 +26,21 @@ import {
 export { CAMPAIGN_DESTINATIONS, CAMPAIGN_PROGRAMMES };
 
 /**
- * The approved scope, confirmed by Tom Arrington on 12 September 2026:
- * Taught Master's, MPhil, MRes and PhD.
+ * The approved scope: taught Master's only, from 2 October 2026.
  *
- * The controlled Google Ads brief of 15 August 2026 covered taught
- * Master's only and excluded MRes, MPhil and PhD by name. That conflict
- * was the page's one hard launch blocker, and it is now closed: the brief
- * was reissued as version 2.0 on 12 September 2026 to the four-programme
- * scope, and filed in 11_SOCIAL_MEDIA/01_CAMPAIGNS. The 15 August document
- * remains in place unchanged as the superseded record.
- *
- * The page stays a draft, because "the brief no longer contradicts it" is
- * not the same decision as "launch it". That one is Tom's.
+ * The scope was Taught Master's, MPhil, MRes and PhD from 12 September 2026
+ * (Tom Arrington's confirmation; Google Ads Brief v2.0 and v2.1). On
+ * 2 October 2026 Tim Hunt instructed by WhatsApp: "don't promote research
+ * postgraduate MRes, MPhil and PhD. Concentrate on taught masters", citing
+ * dependant questions and visa refusals from research applicants. Tom
+ * Arrington approved the same day. The brief moves to v2.2 with the same
+ * change; the v2.1 document stays in 11_SOCIAL_MEDIA/01_CAMPAIGNS unchanged
+ * as the superseded record.
  */
 export const SCOPE_STATUS_NOTE =
-  "Campaign scope: Taught Master's, MPhil, MRes and PhD, confirmed by Tom Arrington on 12 September 2026. " +
-  "The controlled Google Ads brief was reissued as version 2.0 on the same date to match that scope, " +
-  "superseding the taught Master's only brief of 15 August 2026. Published on Tom's GO of 12 September 2026; paid traffic is a separate decision.";
+  "Campaign scope: Taught Master's only, on Tim Hunt's instruction of 2 October 2026, approved by Tom Arrington the same day. " +
+  "Supersedes the four-programme scope (Taught Master's, MPhil, MRes and PhD) of 12 September 2026; the Google Ads brief moves to version 2.2 to match. " +
+  "Published on Tom's GO of 12 September 2026; paid traffic is live on the Nigeria campaign.";
 
 /**
  * Tim Hunt's closing line for "Where we place postgraduates", supplied

@@ -13,6 +13,7 @@ import { warmPipedriveOAuth } from "../crm/pipedriveOAuth";
 import { registerDriveMirrorRoutes } from "../mirror/driveMirrorRoutes";
 import { startMirrorScheduler } from "../mirror/scheduler";
 import { startQualifiedLeadScheduler } from "../ads/scheduler";
+import { startDatabaseBackupScheduler } from "../backup/scheduler";
 
 function isPortAvailable(port: number): Promise<boolean> {
   return new Promise(resolve => {
@@ -81,6 +82,8 @@ async function startServer() {
   startMirrorScheduler();
   // Google Ads Qualified Lead conversions, WSA owned (replaces Zapier). 16 September 2026.
   startQualifiedLeadScheduler();
+  // Nightly database backup to Google Drive, outside Railway. 15 October 2026.
+  startDatabaseBackupScheduler();
 }
 
 startServer().catch(console.error);

@@ -29,18 +29,20 @@ function completeStory(): SuccessStory {
   return {
     id: "fixture-only",
     identity: { kind: "named", displayName: "Test Fixture" },
-    country: "Testland",
-    goal: "A goal recorded in the case file.",
-    decision: "The decision the adviser recorded.",
-    supportProvided: "The support the case record shows was given.",
-    outcome: "The outcome the evidence shows.",
-    nextStep: "What the student said they hope to do next.",
-    course: "Test Course",
-    institution: "Test University",
-    destination: "United Kingdom",
-    adviser: "Recorded Adviser",
-    quotation: "Words the student actually said.",
-    photograph: { src: "/fixture.jpg", alt: "Fixture" },
+    countrySlug: "malawi",
+    versions: [
+      {
+        language: "English",
+        lang: "en-GB",
+        title: "A fictional story",
+        byline: ["Test Fixture", "Test Course, Test University"],
+        blocks: [
+          { kind: "paragraph", text: "Words the student approved." },
+          { kind: "image", image: { src: "/fixture.jpg", alt: "Fixture", width: 4, height: 3, illustration: false } },
+          { kind: "signature", lines: ["Test Fixture, Testland"] },
+        ],
+      },
+    ],
     evidence: {
       reference: "CASE-FIXTURE-1",
       evidenceDate: "2026-01-01",
@@ -66,12 +68,23 @@ function completeStory(): SuccessStory {
 }
 
 describe("the shipped store", () => {
-  it("contains no student stories, so nothing can be published by accident", () => {
-    expect(SUCCESS_STORIES).toHaveLength(0);
+  // Tim Hunt's twelve stories, released by Tom Arrington on 12 November 2026.
+  // Every one must pass the gate on its own record; none may reach any
+  // channel it was not approved for.
+  const RELEASE = new Date("2026-11-12T12:00:00Z");
+
+  it("holds Tim Hunt's twelve stories, each cleared for the website by the gate", () => {
+    expect(SUCCESS_STORIES).toHaveLength(12);
+    expect(publishableStories(SUCCESS_STORIES, "website", RELEASE)).toHaveLength(12);
   });
 
-  it("yields nothing to the website", () => {
-    expect(publishableStories(SUCCESS_STORIES, "website", NOW)).toHaveLength(0);
+  it("publishes none of them on social media or in print, which nobody approved", () => {
+    expect(publishableStories(SUCCESS_STORIES, "social", RELEASE)).toHaveLength(0);
+    expect(publishableStories(SUCCESS_STORIES, "print", RELEASE)).toHaveLength(0);
+  });
+
+  it("dates every approval 12 November 2026, so each release is traceable", () => {
+    for (const s of SUCCESS_STORIES) expect(s.consent.duration.from, s.id).toBe("2026-11-12");
   });
 });
 

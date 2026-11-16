@@ -97,8 +97,8 @@ export default function Footer() {
             <h4 className="text-white/90 text-xs font-semibold tracking-[0.15em] uppercase mb-5">Get in touch</h4>
             <div className="space-y-4 text-sm">
               <div>
-                <p className="text-white/90 font-medium">Head Office</p>
-                <p>2 Newport Close, Clevedon, BS21 5DZ, England, UK</p>
+                <p className="text-white/90 font-medium">UK Head Office</p>
+                <p>Clevedon, North Somerset, England, United Kingdom</p>
               </div>
               <div>
                 <p className="text-white/90 font-medium">Sub-Saharan Africa Regional Office</p>
@@ -124,8 +124,10 @@ export default function Footer() {
                 <a href="mailto:UKHeadOffice@worldstudentadvisors.com" className="hover:text-white transition-colors block">
                   UKHeadOffice@worldstudentadvisors.com
                 </a>
-                <a href="https://wa.me/447914797830" className="hover:text-white transition-colors block mt-1">
-                  WhatsApp: +44 7914 797830
+                {/* The UK Head Office WhatsApp, not Tim Hunt's personal mobile
+                    (his instruction of 15 September 2026). */}
+                <a href="https://wa.me/447470689849" className="hover:text-white transition-colors block mt-1">
+                  WhatsApp: +44 7470 689 849
                 </a>
               </div>
             </div>
@@ -136,9 +138,21 @@ export default function Footer() {
       {/* Bottom bar */}
       <div className="border-t border-white/10">
         <div className="container py-6 flex flex-col sm:flex-row justify-between items-center gap-4">
-          <p className="text-xs text-white/40">
-            &copy; {new Date().getFullYear()} <strong>World</strong><em>Student</em>Advisors. All rights reserved.
-          </p>
+          <div className="text-center sm:text-left">
+            <p className="text-xs text-white/40">
+              &copy; {new Date().getFullYear()} <strong>World</strong><em>Student</em>Advisors. All rights reserved.
+            </p>
+            {/* Developer credit, approved by Tom Arrington on 11 October
+                2026 in exactly these words. Once, here, and a plain followed
+                link: no nofollow, sponsored or ugc. noreferrer is left off
+                so the visit shows as a referral from this site. */}
+            <p className="mt-1 text-xs text-white/40">
+              Website by{" "}
+              <a href="https://www.arringtonconsultancy.com/" target="_blank" rel="noopener" className="hover:text-white/70 transition-colors">
+                Arrington Consultancy
+              </a>
+            </p>
+          </div>
           <div className="flex items-center gap-4 text-xs text-white/40">
             <Link href="/privacy-policy" className="hover:text-white/70 transition-colors">Privacy Policy</Link>
             <span className="text-white/20">|</span>

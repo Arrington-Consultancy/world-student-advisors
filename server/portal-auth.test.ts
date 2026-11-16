@@ -179,6 +179,7 @@ function makeSequencedFakeDb(selectResults: Record<string, unknown>[][]) {
 const GOOGLE_PROFILE = {
   sub: "google-sub-1",
   email: "student@example.com",
+  emailVerified: true,
   firstName: "Amara",
   lastName: "Osei",
 };
@@ -228,6 +229,56 @@ describe("findGoogleUser — find-only Google portal login", () => {
   it("an existing but deactivated account returns inactive, without logging in", async () => {
     const { db, updateSets } = makeSequencedFakeDb([
       [{ id: 3, email: "student@example.com", firstName: "Amara", lastName: "Osei", googleSub: "google-sub-1", isActive: 0 }],
+    ]);
+    mockedGetDb.mockResolvedValue(db as any);
+
+    const result = await findGoogleUser(GOOGLE_PROFILE);
+
+    expect(result).toEqual({ status: "inactive" });
+    expect(updateSets).toEqual([]);
+  });
+
+  it("an email match is not trusted when Google has not verified the address: no link, no login", async () => {
+    const { db, updateSets } = makeSequencedFakeDb([
+      [], // no match by googleSub
+      [{ id: 9, email: "student@example.com", firstName: "Amara", lastName: "Osei", googleSub: null, isActive: 1 }],
+    ]);
+    mockedGetDb.mockResolvedValue(db as any);
+
+    const result = await findGoogleUser({ ...GOOGLE_PROFILE, emailVerified: false });
+
+    expect(result).toEqual({ status: "unverified_email" });
+    expect(updateSets).toEqual([]);
+  });
+
+  it("an unverified email still logs in by googleSub, Google's stable id for an account already linked", async () => {
+    const { db } = makeSequencedFakeDb([
+      [{ id: 7, email: "student@example.com", firstName: "Amara", lastName: "Osei", googleSub: "google-sub-1", isActive: 1 }],
+    ]);
+    mockedGetDb.mockResolvedValue(db as any);
+
+    const result = await findGoogleUser({ ...GOOGLE_PROFILE, emailVerified: false });
+
+    expect(result?.status).toBe("ok");
+  });
+
+  it("never replaces a different Google account already linked to the matched portal account", async () => {
+    const { db, updateSets } = makeSequencedFakeDb([
+      [], // this Google account is not linked anywhere
+      [{ id: 9, email: "student@example.com", firstName: "Amara", lastName: "Osei", googleSub: "google-sub-OTHER", isActive: 1 }],
+    ]);
+    mockedGetDb.mockResolvedValue(db as any);
+
+    const result = await findGoogleUser(GOOGLE_PROFILE);
+
+    expect(result).toEqual({ status: "conflict" });
+    expect(updateSets).toEqual([]);
+  });
+
+  it("does not link a Google account to a deactivated portal account found by email", async () => {
+    const { db, updateSets } = makeSequencedFakeDb([
+      [],
+      [{ id: 9, email: "student@example.com", firstName: "Amara", lastName: "Osei", googleSub: null, isActive: 0 }],
     ]);
     mockedGetDb.mockResolvedValue(db as any);
 

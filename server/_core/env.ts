@@ -1,7 +1,9 @@
 const DEFAULT_STAFF_NOTIFY_EMAILS = [
   "tim.hunt@worldstudentadvisors.com",
   "eldah@worldstudentadvisors.com",
-  "sarafina@worldstudentadvisors.com",
+  // Sarafina Kihumbu has left (Tim Hunt, 29 October 2026); Claudia Ingado is
+  // on the production list (STAFF_NOTIFY_EMAILS), so the fallback matches it.
+  "claudia@worldstudentadvisors.com",
   "glenice@worldstudentadvisors.com",
   "manet@worldstudentadvisors.com",
   "tom@arringtonconsultancy.com",
@@ -39,6 +41,16 @@ const DEFAULT_CAMPAIGN_NOTIFY_EMAILS: Record<string, string[]> = {
     "glenice@worldstudentadvisors.com",
     "eldah@worldstudentadvisors.com",
   ],
+  // Sarkin Fulani Future Leaders Programme. REPLACES the general list
+  // (shared/campaignEnquiry.ts). Tim Hunt, 15 October 2026: the initial
+  // notification goes to Farooq Gajo (the Office of His Royal Highness,
+  // for the eligibility check), Maryam Lawal and Tim only; the Student
+  // Counsellors come in once eligibility is confirmed. Farooq's address is
+  // a personal one and this repository is public, so it is not written
+  // here: production sets the full list, Farooq included, in
+  // CAMPAIGN_NOTIFY_EMAILS_SARKIN_FULANI_FUTURE_LEADERS. Without that
+  // variable the enquiry still reaches Tim and Maryam, who can forward it.
+  "sarkin-fulani-future-leaders": ["tim.hunt@worldstudentadvisors.com", "maryam@worldstudentadvisors.com"],
 };
 
 const campaignNotifyEmails: Record<string, string[]> = Object.fromEntries(
