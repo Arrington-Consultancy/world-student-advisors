@@ -79,12 +79,14 @@ function ContactLines({ content, className = "" }: { content: CounsellorLandingC
           </a>
         )}
       </li>
-      <li>
-        <a href={`mailto:${person.email}`} className="inline-flex items-center gap-2.5 break-all font-semibold text-wsa-navy hover:underline">
-          <Mail className="h-5 w-5 shrink-0 text-wsa-red" aria-hidden />
-          {person.email}
-        </a>
-      </li>
+      {person.email && (
+        <li>
+          <a href={`mailto:${person.email}`} className="inline-flex items-center gap-2.5 break-all font-semibold text-wsa-navy hover:underline">
+            <Mail className="h-5 w-5 shrink-0 text-wsa-red" aria-hidden />
+            {person.email}
+          </a>
+        </li>
+      )}
     </ul>
   );
 }

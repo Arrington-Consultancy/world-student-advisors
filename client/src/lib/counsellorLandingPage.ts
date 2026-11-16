@@ -50,7 +50,12 @@ export interface CounsellorLandingContent {
     whatsapp: string;
     /** Digits only, as wa.me needs. */
     whatsappDigits: string;
-    email: string;
+    /**
+     * Optional: Tim Hunt, 12 November 2026, on Manet's page: "Her email
+     * address is still to be supplied. Please leave that out of the preview
+     * for now and we will add it before publication."
+     */
+    email?: string;
     photo: string;
     photoAlt: string;
     /** The photograph's own pixel size, so the page reserves its space. */
