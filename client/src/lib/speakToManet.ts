@@ -24,9 +24,9 @@
  *
  * HER NUMBER: Tim's mock-up and links document give +44 7555 654 016. Her
  * Our Team record has +44 7555 546016, corrected on Tim's own instruction
- * on 15 September 2026 ("546016, not 547016"). The two differ by swapped
- * digits, so this page uses the number Tim corrected until he confirms
- * which is right. Do not publish the page until he has.
+ * on 15 September 2026 ("546016, not 547016"). Tim confirmed the Our Team
+ * number on 16 November 2026 ("Website Correct", and her contact card), so
+ * the page uses it.
  *
  * THE VIDEO is WSA 038, "Manet Khamayo, Student Counsellor NONUK", from the
  * Student Support Library, with the mock-up's caption.
@@ -37,9 +37,13 @@
  * completed the training.
  *
  * THE FORM is "Manet's Pipedrive form" from the links document, embedded
- * exactly as supplied. The document notes that its embedded testing and
- * routing are not yet confirmed; Tim is to test it and point its redirect at
- * /speak-to-manet/thank-you.
+ * exactly as supplied. Tim set its redirect to /speak-to-manet/thank-you on
+ * 16 November 2026; Manet tests her own form.
+ *
+ * PUBLICATION: Tim Hunt, 16 November 2026: "Glenice and Manet's pages
+ * looks good. Please publish the pages". Her email had still not been
+ * supplied, so the page is published without one; add it to `person.email`
+ * when Tim sends it.
  */
 import type { CounsellorLandingContent } from "./counsellorLandingPage";
 

@@ -14,7 +14,7 @@ import { getYouTubeVideoId } from "../../client/src/lib/youtube";
  * Eldah's structure. What these hold: Tim's wording from the mock-up; her
  * contact details as on her Our Team record; WhatsApp as the main contact,
  * her number also ringing her, and her Pipedrive form as the alternative;
- * her pre-departure video with Tim's description, her certificate and the
+ * her WSA 035 video, her certificate and the
  * Student Success Stories link; the "WSA UK Head Office team" badge; the
  * page published and its thank-you page private.
  */
@@ -96,9 +96,9 @@ describe("the page Tim's mock-up shows", () => {
     ]);
   });
 
-  it("plays WSA 030, her pre-departure video, with Tim's description beneath it, only when pressed", () => {
-    const wsa034 = LIBRARY_RESOURCES.find(r => r.code === "WSA 030")!;
-    expect(E.video.caption).toBe("Practical advice on preparing to travel and life abroad.");
+  it("plays WSA 035, the video Tim chose on 16 November, with the library's description beneath it, only when pressed", () => {
+    const wsa034 = LIBRARY_RESOURCES.find(r => r.code === "WSA 035")!;
+    expect(E.video.caption).toBe(wsa034.description);
     expect(getYouTubeVideoId(wsa034.youtubeUrl)).toBe(E.video.youtubeId);
     expect(E.video.libraryPath).toBe(`/student-support-library/${wsa034.slug}`);
     expect(stripComments(PAGE)).toContain("const [playing, setPlaying] = useState(false);");

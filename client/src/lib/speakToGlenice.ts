@@ -21,9 +21,11 @@
  * and WhatsApp: +44 7459 720 726" and her WSA address. The main button opens
  * WhatsApp; the number under it rings her, as the mock-up's phone icon shows.
  *
- * THE VIDEO is WSA 030, "Pre-Departure by Glenice Owino", from the Student
- * Support Library: "Her video is about preparing for departure and life
- * abroad, so please retain that description beneath it."
+ * THE VIDEO is WSA 035, "Glenice Owino, Senior Student Counsellor", from the
+ * Student Support Library: Tim Hunt, 16 November 2026, "Please also change
+ * Glenice's podcast to: WSA 035 Glenice Owino, Senior Student Counsellor".
+ * It replaces WSA 030 (Pre-Departure), so the caption beneath it is now the
+ * library's own description of WSA 035 rather than the pre-departure line.
  *
  * THE CERTIFICATE is the British Council "UK knowledge agent and counsellor
  * training" certificate Tim attached, valid until 5 May 2027. The page says
@@ -31,9 +33,8 @@
  * endorse or accredit agents.
  *
  * THE FORM is "Glenice's Pipedrive form" from the links document, embedded
- * exactly as supplied. The document notes that its embedded testing and
- * routing are not yet confirmed; Tim is to test it and point its redirect at
- * /speak-to-glenice/thank-you.
+ * exactly as supplied. Tim set its redirect to /speak-to-glenice/thank-you on
+ * 16 November 2026; Glenice tests her own form.
  */
 import type { CounsellorLandingContent } from "./counsellorLandingPage";
 
@@ -71,12 +72,12 @@ export const GLENICE_PAGE = Object.freeze({
 
   trust: ["British Council trained", "Personal guidance", "Support through to arrival"],
 
-  // WSA 030 in the Student Support Library (Tim Hunt, 12 November 2026).
+  // WSA 035 in the Student Support Library (Tim Hunt, 16 November 2026).
   video: {
-    youtubeId: "xnwa_eJPBZ0",
+    youtubeId: "e6-bf2vKoao",
     label: "Meet Glenice",
-    caption: "Practical advice on preparing to travel and life abroad.",
-    libraryPath: "/student-support-library/pre-departure-by-glenice-owino",
+    caption: "Meet Glenice and discover how a WSA Student Counsellor supports students through the important stages of studying abroad.",
+    libraryPath: "/student-support-library/glenice-owino-senior-student-counsellor",
   },
 
   credentials: {

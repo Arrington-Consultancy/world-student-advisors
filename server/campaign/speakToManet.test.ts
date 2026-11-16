@@ -13,8 +13,8 @@ import { getYouTubeVideoId } from "../../client/src/lib/youtube";
  * Speak to Manet: Tim Hunt's email and mock-up of 12 November 2026, on
  * Eldah's structure. What these hold: Tim's wording from the mock-up, with
  * her specialism prominent; her number as on her Our Team record, which Tim
- * corrected on 15 September 2026 (his mock-up's differs and awaits his
- * confirmation); no email until he supplies it; WhatsApp as the main contact,
+ * corrected on 15 September 2026 and confirmed on 16 November 2026; no
+ * email until he supplies it; WhatsApp as the main contact,
  * her number also ringing her, and her Pipedrive form as the alternative;
  * her WSA 038 video, her certificate and the
  * Student Success Stories link; the "WSA UK Head Office team" badge; the
