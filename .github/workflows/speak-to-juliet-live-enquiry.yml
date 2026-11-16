@@ -1,0 +1,56 @@
+name: Speak to Juliet live enquiry (WRITES to production)
+
+# Manual-only, and the only Speak to Juliet workflow that is NOT read-only.
+# It submits one real enquiry through the live sign-up form, which creates a
+# real Pipedrive Person and Lead, a real Student Portal account, and sends
+# the real campaign notification to Juliet, Tim, Glenice and Eldah.
+#
+# Tom Arrington asked for this on 19 September 2026 as the fifth of ten
+# launch checks. It will not run unless the confirmation input is typed
+# exactly, so a stray dispatch does nothing.
+#
+# The identity submitted cannot reach a real person: the name says it is a
+# test, the address is at example.com, and the number is in Ofcom's drama
+# range. The record it leaves is printed so it can be deleted.
+# No secrets are used.
+on:
+  workflow_dispatch:
+    inputs:
+      confirm:
+        description: "Type: CREATE A REAL PIPEDRIVE LEAD"
+        required: true
+        default: ""
+
+jobs:
+  enquire:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install Playwright (browser only, project dependencies untouched)
+        run: |
+          mkdir -p /tmp/pw && cd /tmp/pw
+          npm init -y >/dev/null
+          npm install playwright@1.47.2 >/dev/null
+          npx playwright install --with-deps chromium
+
+      - name: Submit one real enquiry
+        env:
+          CONFIRM: ${{ github.event.inputs.confirm }}
+        run: |
+          mkdir -p /tmp/pw/out
+          cp scripts/speak-to-juliet-live-enquiry.mjs /tmp/pw/enquiry.mjs
+          cd /tmp/pw
+          OUT_DIR=/tmp/pw/out node enquiry.mjs
+
+      - name: Upload screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: speak-to-juliet-live-enquiry
+          path: /tmp/pw/out/*.png
+          if-no-files-found: ignore

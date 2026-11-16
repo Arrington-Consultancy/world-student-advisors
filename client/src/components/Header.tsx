@@ -11,8 +11,11 @@ const navItems = [
   { label: "About", href: "/about" },
   { label: "Study Options", href: "/study-options" },
   { label: "Educational Partners", href: "/partners" },
-  { label: "Counsellors", href: "/counsellors" },
-  { label: "Staff Portal", href: "/staff-portal" },
+  { label: "Our Team", href: "/our-team" },
+  // Staff Portal is not here. It is a staff door, not a page students are
+  // browsing for, and it sat in the main menu taking a slot from something
+  // they do want. It lives in the footer utility bar instead, which is
+  // where a site puts a staff login. Tim Hunt, 15 September 2026.
   { label: "Events", href: "/events" },
   { label: "Student Support Library", href: "/student-support-library" },
   { label: "Interview Readiness Coach", navLabel: "IRC", href: "/portal/interview-coach" },

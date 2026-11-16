@@ -25,7 +25,7 @@ export function PortalAuthShell({ title, description, children }: PortalAuthShel
             <div className="grid gap-3 sm:grid-cols-3">
               {[
                 { icon: Users, label: "Personal counsellor support" },
-                { icon: ShieldCheck, label: "British Council recognised" },
+                { icon: ShieldCheck, label: "British Council UK knowledge-trained" },
                 { icon: Star, label: "Google-reviewed service" },
               ].map((item) => {
                 const Icon = item.icon;

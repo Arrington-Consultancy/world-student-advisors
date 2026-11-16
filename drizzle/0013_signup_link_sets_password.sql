@@ -1,0 +1,39 @@
+-- Staff Portal: the emailed link sets the password, and the same mechanism
+-- serves a forgot-password route.
+--
+-- Tom Arrington's correction of 9 September 2026, hours after 0012: "they
+-- sign up, get an email to their inbox and set the password there. There's a
+-- forgot password route as well."
+--
+-- WHY passwordHash BECOMES NULLABLE HERE. In 0012 the signup form collected a
+-- password and this column carried it until the link was followed. It is no
+-- longer collected at that point, so a pending row genuinely has no password
+-- and the NOT NULL constraint would refuse every insert. The column is left
+-- in place rather than dropped: dropping is destructive, these migrations do
+-- not do destructive things, and an unused nullable column costs nothing.
+-- Nothing writes to it from now on.
+--
+-- That is not only a shape change. The password is now chosen by whoever
+-- opens the mailbox rather than by whoever filled in the form, which closes a
+-- real hole: under 0012 somebody could have submitted a colleague's address
+-- with a password of their own choosing, and the colleague following that
+-- link would have landed in an account whose password a stranger knew.
+--
+-- WHY purpose EXISTS. Signup and reset are the same mechanism aimed at two
+-- situations, so they share this table and one expiry and single-use rule.
+-- The column says which one a link is for, so a reset link cannot create an
+-- account and a signup link cannot change an existing password. It defaults
+-- to 'signup', which is what every row written before now was.
+--
+-- Both statements are additive in effect. NULL is a widening, so no existing
+-- row can fail it, and the new column has a default, so no existing row is
+-- left undefined. The table holds 0 rows in production at the time of
+-- writing in any case.
+--
+-- Each statement is separated by a statement-breakpoint marker. Without them
+-- drizzle-kit sends the whole file as one query and mysql2 refuses it without
+-- printing why, which is what cost migration 0009 a run.
+
+ALTER TABLE `staff_signup_requests` MODIFY COLUMN `passwordHash` VARCHAR(255) NULL DEFAULT NULL;
+--> statement-breakpoint
+ALTER TABLE `staff_signup_requests` ADD COLUMN `purpose` VARCHAR(16) NOT NULL DEFAULT 'signup';

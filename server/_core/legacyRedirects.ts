@@ -15,7 +15,7 @@ const LEGACY_REDIRECTS: Record<string, string> = {
   "/about-us": "/about",
   "/who-we-are": "/about",
   "/AboutUS": "/about",
-  "/meet-our-counsellors": "/counsellors",
+  "/meet-our-counsellors": "/our-team",
 };
 
 /** 301s a known legacy path to its current equivalent, preserving any query

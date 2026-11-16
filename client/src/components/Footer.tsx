@@ -1,6 +1,26 @@
 import { Link } from "wouter";
 import { SOCIAL_LINKS } from "@/lib/socialLinks";
 
+/**
+ * Two claims in this footer rest on named records, and the wording is
+ * deliberately no wider than those records support.
+ *
+ * "British Council UK knowledge-trained counsellors": WSA holds current
+ * British Council "UK knowledge agent and counsellor training" completion
+ * certificates for named staff (01_ADMIN_&_GOVERNANCE/03_British Council_&
+ * _Accreditation, e.g. Eldah Therone valid to 28 April 2027, Winfred Mwikali
+ * valid to 1 September 2028). Each certificate states that the British
+ * Council "does not formally endorse, accredit or validate agents and
+ * counsellors", so the footer must never say certified, accredited,
+ * recognised or endorsed. Tom Arrington, 12 September 2026.
+ *
+ * "since 2012": the Grant Application of 17 June 2026
+ * (01_ADMIN_&_GOVERNANCE/01_Company_&_Legal), signed by the founder, states
+ * "Started 1 April 2012 - Incorporated 09 April 2015" under Companies House
+ * number 09532724. It evidences trading from 2012; the company itself dates
+ * from 2015. If that record is ever withdrawn, so is this phrase.
+ */
+
 export default function Footer() {
   return (
     <footer className="bg-wsa-navy text-white/60">
@@ -14,7 +34,7 @@ export default function Footer() {
               className="h-12 w-auto mb-6 brightness-0 invert opacity-80"
             />
             <p className="text-sm leading-relaxed max-w-xs">
-              Your trusted global advisors for international students since 2012, with British Council Certified Counsellors.
+              Your trusted global advisors for international students since 2012, with British Council UK knowledge-trained counsellors.
             </p>
             <div className="flex items-center gap-3 mt-5">
               <img src="/manus-storage/british_council_badge_694f3fc2.png" alt="British Council" className="h-7 w-7 opacity-80" />
@@ -45,11 +65,12 @@ export default function Footer() {
             <nav className="flex flex-col gap-3">
               <Link href="/about" className="text-sm hover:text-white transition-colors">About WSA</Link>
               <Link href="/study-options" className="text-sm hover:text-white transition-colors">Study Options</Link>
-              <Link href="/counsellors" className="text-sm hover:text-white transition-colors">Counsellors</Link>
+              <Link href="/our-team" className="text-sm hover:text-white transition-colors">Our Team</Link>
               <Link href="/student-support-library" className="text-sm hover:text-white transition-colors">Student Support Library</Link>
               <Link href="/training-workshops" className="text-sm hover:text-white transition-colors">Training & Workshops</Link>
               <Link href="/events" className="text-sm hover:text-white transition-colors">Events</Link>
               <Link href="/partners" className="text-sm hover:text-white transition-colors">Partners</Link>
+              <Link href="/student-success-stories" className="text-sm hover:text-white transition-colors">Student Success Stories</Link>
               <a href={SOCIAL_LINKS.friendshipSociety} target="_blank" rel="noopener noreferrer" className="text-sm hover:text-white transition-colors">
                 International Friendship Society
               </a>
@@ -76,8 +97,8 @@ export default function Footer() {
             <h4 className="text-white/90 text-xs font-semibold tracking-[0.15em] uppercase mb-5">Get in touch</h4>
             <div className="space-y-4 text-sm">
               <div>
-                <p className="text-white/90 font-medium">Head Office</p>
-                <p>2 Newport Close, Clevedon, BS21 5DZ, England, UK</p>
+                <p className="text-white/90 font-medium">UK Head Office</p>
+                <p>Clevedon, North Somerset, England, United Kingdom</p>
               </div>
               <div>
                 <p className="text-white/90 font-medium">Sub-Saharan Africa Regional Office</p>
@@ -103,8 +124,10 @@ export default function Footer() {
                 <a href="mailto:UKHeadOffice@worldstudentadvisors.com" className="hover:text-white transition-colors block">
                   UKHeadOffice@worldstudentadvisors.com
                 </a>
-                <a href="https://wa.me/447914797830" className="hover:text-white transition-colors block mt-1">
-                  WhatsApp: +44 7914 797830
+                {/* The UK Head Office WhatsApp, not Tim Hunt's personal mobile
+                    (his instruction of 15 September 2026). */}
+                <a href="https://wa.me/447470689849" className="hover:text-white transition-colors block mt-1">
+                  WhatsApp: +44 7470 689 849
                 </a>
               </div>
             </div>
@@ -115,15 +138,32 @@ export default function Footer() {
       {/* Bottom bar */}
       <div className="border-t border-white/10">
         <div className="container py-6 flex flex-col sm:flex-row justify-between items-center gap-4">
-          <p className="text-xs text-white/40">
-            &copy; {new Date().getFullYear()} <strong>World</strong><em>Student</em>Advisors. All rights reserved.
-          </p>
+          <div className="text-center sm:text-left">
+            <p className="text-xs text-white/40">
+              &copy; {new Date().getFullYear()} <strong>World</strong><em>Student</em>Advisors. All rights reserved.
+            </p>
+            {/* Developer credit, approved by Tom Arrington on 11 October
+                2026 in exactly these words. Once, here, and a plain followed
+                link: no nofollow, sponsored or ugc. noreferrer is left off
+                so the visit shows as a referral from this site. */}
+            <p className="mt-1 text-xs text-white/40">
+              Website by{" "}
+              <a href="https://www.arringtonconsultancy.com/" target="_blank" rel="noopener" className="hover:text-white/70 transition-colors">
+                Arrington Consultancy
+              </a>
+            </p>
+          </div>
           <div className="flex items-center gap-4 text-xs text-white/40">
             <Link href="/privacy-policy" className="hover:text-white/70 transition-colors">Privacy Policy</Link>
             <span className="text-white/20">|</span>
             <Link href="/compliance" className="hover:text-white/70 transition-colors">Compliance & Policies</Link>
             <span className="text-white/20">|</span>
-            <span>British Council Certified Counsellors</span>
+            {/* Moved out of the main menu on Tim Hunt's instruction, 15
+                September 2026. Staff still need one obvious way in, and a
+                footer utility bar is it. */}
+            <Link href="/staff-portal" className="hover:text-white/70 transition-colors">Staff Portal</Link>
+            <span className="text-white/20">|</span>
+            <span>British Council UK knowledge-trained counsellors</span>
           </div>
         </div>
       </div>

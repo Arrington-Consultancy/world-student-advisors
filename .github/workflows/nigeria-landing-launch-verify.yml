@@ -1,0 +1,44 @@
+name: Nigeria landing page launch verification (read-only)
+
+# Manual-only, READ-ONLY. Verifies the published /nigeria-postgraduate page
+# on the live site after a deploy: HTTP 200, no noindex, no draft banner,
+# route in sitemap.xml, renders at phone and desktop widths, Eldah
+# Therone's WhatsApp and email links present, and the landing form hands
+# all four programme types and three destinations to the signup form with
+# the Nigerian +234 conversion. It never submits the signup form, so it
+# creates no lead. No secrets are used. Screenshots are uploaded as
+# artifacts for the record.
+on:
+  workflow_dispatch:
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install Playwright (browser only, project dependencies untouched)
+        run: |
+          mkdir -p /tmp/pw && cd /tmp/pw
+          npm init -y >/dev/null
+          npm install playwright@1.47.2 >/dev/null
+          npx playwright install --with-deps chromium
+
+      - name: Verify the live page
+        run: |
+          mkdir -p /tmp/pw/out
+          cp scripts/nigeria-landing-launch-verify.mjs /tmp/pw/verify.mjs
+          cd /tmp/pw
+          OUT_DIR=/tmp/pw/out node verify.mjs
+
+      - name: Upload screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: nigeria-landing-live-screenshots
+          path: /tmp/pw/out/*.png
+          if-no-files-found: ignore

@@ -50,7 +50,7 @@ export default function UKMastersStudy() {
                     <ArrowRight className="ml-2.5" size={18} />
                   </Link>
                   <Link
-                    href="/counsellors"
+                    href="/our-team"
                     className="inline-flex items-center justify-center px-8 py-4 border border-wsa-navy/25 text-wsa-navy text-sm font-semibold tracking-wide transition-colors hover:border-wsa-red hover:text-wsa-red"
                   >
                     Speak to a Student Counsellor
@@ -297,7 +297,7 @@ export default function UKMastersStudy() {
                   <ArrowRight className="ml-2.5" size={18} />
                 </Link>
                 <Link
-                  href="/counsellors"
+                  href="/our-team"
                   className="inline-flex items-center justify-center px-8 py-4 border border-white/25 text-white text-sm font-semibold tracking-wide transition-colors hover:border-white hover:bg-white/5"
                 >
                   Speak to a Student Counsellor

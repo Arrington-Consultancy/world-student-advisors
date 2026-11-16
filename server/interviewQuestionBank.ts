@@ -1,7 +1,28 @@
 export type InterviewType = "cas" | "ukvi" | "university" | "course";
 
 /**
- * Standard AI Interview Coach Question Bank, supplied by WSA (31 July 2026).
+ * Standard AI Interview Coach Question Bank, supplied by WSA (31 July 2026),
+ * quality-controlled 27 August 2026 against official sources (GOV.UK Student
+ * and Child Student caseworker guidance; University of Kent and University
+ * of Bradford credibility-interview guidance; UCAS admissions-interview
+ * guidance — see the design/audit report this revision implements). No
+ * question here reproduces any of those sources verbatim; each is an
+ * original question grounded in the theme those sources document.
+ *
+ * cas/ukvi were near-duplicates of each other before this revision (10 of
+ * 14 questions shared substance). Study gaps, prior visa history, and
+ * "why not another country" — all directly evidenced in the GOV.UK
+ * guidance's genuine-student risk factors but previously absent from both
+ * — are now covered once each, with the least immigration-specific of the
+ * old UKVI duplicates ("What other universities did you apply to?")
+ * removed to make room rather than simply padding the bank.
+ *
+ * No African-market-specific question set exists here, deliberately: the
+ * official sources describe the same interview and the same risk-factor
+ * assessment regardless of the applicant's origin. What's added instead is
+ * the funding/study-history/immigration-history depth that's genuinely
+ * evidenced as relevant wherever that scrutiny is real, for any applicant
+ * facing it.
  *
  * This is the primary and only source of interview question content — the
  * LLM is never used to invent replacement questions. Anywhere this module
@@ -19,8 +40,10 @@ export const QUESTION_BANK: Record<InterviewType, string[]> = {
     "Can you explain how this course will help you achieve your long-term career goals?",
     "Why did you choose this university over other institutions offering similar programmes?",
     "What other universities did you consider, and why did you ultimately choose this one?",
+    "Which other countries, if any, did you consider for your studies, and why did you choose the UK instead?",
     "What do you know about your course, including the modules you will study?",
     "What did you study previously, and how does it prepare you for this programme?",
+    "Have you had any breaks in your study history, and if so, how would you explain them?",
     "Who is sponsoring your studies?",
     "How will your tuition fees and living expenses be funded throughout your studies?",
     "Can you explain the source of the funds you have shown for your visa application?",
@@ -31,12 +54,14 @@ export const QUESTION_BANK: Record<InterviewType, string[]> = {
   ],
   ukvi: [
     "Why do you want to study in the UK?",
+    "Which other countries, if any, did you consider for your studies, and why did you choose the UK instead?",
     "Why have you chosen this course?",
     "Why have you chosen this university?",
-    "What other universities did you apply to?",
     "What do you know about your course and its modules?",
     "How does this course relate to your previous studies?",
+    "Have you had any breaks in your study history, and if so, how would you explain them?",
     "How will this course help your future career?",
+    "Have you applied for a UK visa before? If so, what was the outcome?",
     "Who is paying for your studies?",
     "How much are your tuition fees?",
     "How will you meet your living expenses in the UK?",
@@ -59,7 +84,7 @@ export const QUESTION_BANK: Record<InterviewType, string[]> = {
     "What are your career plans after completing the course?",
     "How will this qualification help you contribute to your home country?",
     "What are your expectations of studying and living in the UK?",
-    "What is the nearest airport to your university, and how do you plan to travel from the airport to your accommodation?",
+    "What do you know about the city and campus you'd be studying in, and how did you find that out?",
   ],
   course: [
     "Why are you interested in this specific course?",

@@ -1,7 +1,9 @@
 const DEFAULT_STAFF_NOTIFY_EMAILS = [
   "tim.hunt@worldstudentadvisors.com",
   "eldah@worldstudentadvisors.com",
-  "sarafina@worldstudentadvisors.com",
+  // Sarafina Kihumbu has left (Tim Hunt, 29 October 2026); Claudia Ingado is
+  // on the production list (STAFF_NOTIFY_EMAILS), so the fallback matches it.
+  "claudia@worldstudentadvisors.com",
   "glenice@worldstudentadvisors.com",
   "manet@worldstudentadvisors.com",
   "tom@arringtonconsultancy.com",
@@ -12,6 +14,56 @@ const staffNotifyEmails = (process.env.STAFF_NOTIFY_EMAILS ?? DEFAULT_STAFF_NOTI
   .split(",")
   .map(s => s.trim())
   .filter(Boolean);
+
+/**
+ * Who is emailed for an enquiry that came from a named campaign landing page,
+ * keyed by the slug in shared/campaignEnquiry.ts. This is ADDITIONAL to
+ * staffNotifyEmails, never instead of it: the general list still receives
+ * every enquiry, and this list receives the ones from its own page.
+ *
+ * For a campaign in CAMPAIGN_REPLACES_GENERAL_NOTIFICATION this list is the
+ * whole recipient set for that campaign's enquiries and the general staff
+ * list is not used; for any other campaign it is additional to it.
+ *
+ * SPEAK TO JULIET: exactly Juliet, Tim, Glenice and Eldah. Tim Hunt's master
+ * draft of 19 September 2026 requires those four and excludes Manet, Tom and
+ * Claudia; Tom Arrington confirmed it on the same date, authorising his own
+ * exclusion. Sarafina Kihumbu and the pipedrive mailbox are on the general
+ * list and are therefore not on this one either, which follows from "exactly
+ * these four" and is reported rather than quietly assumed.
+ *
+ * Overridable per campaign, so a recipient can be changed without a deploy.
+ */
+const DEFAULT_CAMPAIGN_NOTIFY_EMAILS: Record<string, string[]> = {
+  "speak-to-juliet": [
+    "juliet@worldstudentadvisors.com",
+    "tim.hunt@worldstudentadvisors.com",
+    "glenice@worldstudentadvisors.com",
+    "eldah@worldstudentadvisors.com",
+  ],
+  // Sarkin Fulani Future Leaders Programme. REPLACES the general list
+  // (shared/campaignEnquiry.ts). Tim Hunt, 15 October 2026: the initial
+  // notification goes to Farooq Gajo (the Office of His Royal Highness,
+  // for the eligibility check), Maryam Lawal and Tim only; the Student
+  // Counsellors come in once eligibility is confirmed. Farooq's address is
+  // a personal one and this repository is public, so it is not written
+  // here: production sets the full list, Farooq included, in
+  // CAMPAIGN_NOTIFY_EMAILS_SARKIN_FULANI_FUTURE_LEADERS. Without that
+  // variable the enquiry still reaches Tim and Maryam, who can forward it.
+  "sarkin-fulani-future-leaders": ["tim.hunt@worldstudentadvisors.com", "maryam@worldstudentadvisors.com"],
+};
+
+const campaignNotifyEmails: Record<string, string[]> = Object.fromEntries(
+  Object.entries(DEFAULT_CAMPAIGN_NOTIFY_EMAILS).map(([slug, fallback]) => {
+    const key = `CAMPAIGN_NOTIFY_EMAILS_${slug.toUpperCase().replace(/-/g, "_")}`;
+    const raw = process.env[key];
+    const list = (raw ?? fallback.join(","))
+      .split(",")
+      .map(s => s.trim())
+      .filter(Boolean);
+    return [slug, list];
+  }),
+);
 
 const DEFAULT_INTERVIEW_COACH_NOTIFY_EMAILS = [
   "tim.hunt@worldstudentadvisors.com",
@@ -36,11 +88,34 @@ export const ENV = {
   pipedriveApiToken: process.env.PIPEDRIVE_API_TOKEN ?? "",
   staffNotifyEmails,
   interviewCoachNotifyEmails,
+  campaignNotifyEmails,
   publicSiteUrl,
   microsoftTenantId: process.env.MICROSOFT_TENANT_ID ?? "",
   microsoftClientId: process.env.MICROSOFT_CLIENT_ID ?? "",
   microsoftClientSecret: process.env.MICROSOFT_CLIENT_SECRET ?? "",
   microsoftSendAsMailbox: process.env.MICROSOFT_SEND_AS_MAILBOX ?? "tim.hunt@worldstudentadvisors.com",
+  /**
+   * Deliberately distinct from microsoftTenantId/ClientId/ClientSecret
+   * above, which were granted only the Mail.Send application permission —
+   * interactive staff sign-in is a different trust boundary (a delegated,
+   * user-facing OIDC flow) and should prove its own configuration rather
+   * than silently reuse mail-sending credentials. May point at the same
+   * Entra app registration if WSA IT decides to reuse it, or a distinct
+   * one — that choice belongs to WSA, not this codebase.
+   */
+  staffSsoTenantId: process.env.STAFF_SSO_TENANT_ID ?? "",
+  staffSsoClientId: process.env.STAFF_SSO_CLIENT_ID ?? "",
+  /** Server-only. Never send this to the client, log it, or include it in any response. */
+  staffSsoClientSecret: process.env.STAFF_SSO_CLIENT_SECRET ?? "",
+  staffSsoRedirectUri: process.env.STAFF_SSO_REDIRECT_URI ?? "",
+  /**
+   * Where Google returns a staff sign-in. Separate from the student portal's
+   * Google redirect because the two flows mint different sessions and must
+   * not be interchangeable. Falls back to the Microsoft staff redirect, which
+   * is the same Staff Portal page.
+   */
+  staffGoogleRedirectUri:
+    process.env.STAFF_GOOGLE_REDIRECT_URI ?? process.env.STAFF_SSO_REDIRECT_URI ?? "",
   /** Safe to expose to the client — served via system.turnstileSiteKey. */
   turnstileSiteKey: process.env.TURNSTILE_SITE_KEY ?? "",
   /** Server-only. Never send this to the client, log it, or include it in any response. */
@@ -53,4 +128,27 @@ export const ENV = {
    * this to the client, log it, or include it in any response. Never falls
    * back to a default: unset means the Staff Portal stays inaccessible. */
   staffPortalPasswordHash: process.env.STAFF_PORTAL_PASSWORD_HASH ?? "",
+  /**
+   * The email of the first access administrator, for the one-time
+   * bootstrap. Access administration requires the access_admin permission,
+   * which itself can only be granted by somebody who already holds it, so
+   * without this nobody could ever hold it.
+   *
+   * Set in Railway by a person with Railway access, which is the same
+   * small group who could otherwise edit the database directly, so it
+   * grants nothing that was not already reachable. The bootstrap refuses
+   * once any account holds access_admin, so it closes itself after the
+   * first use and cannot be replayed by changing this value later.
+   */
+  accessBootstrapEmail: (process.env.ACCESS_BOOTSTRAP_EMAIL ?? "").toLowerCase(),
+  /**
+   * Bcrypt hash of the break-glass executive password. Server-only: never
+   * send it to the client, log it, or include it in any response.
+   *
+   * Unset means the break-glass route does not exist. There is no default
+   * and no fallback, so a missing or mistyped variable closes the door
+   * rather than opening it. See access/executiveAccess.ts for what this
+   * grants and why it exists.
+   */
+  executivePasswordHash: process.env.EXECUTIVE_PASSWORD_HASH ?? "",
 };

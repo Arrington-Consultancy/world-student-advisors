@@ -1,0 +1,47 @@
+name: Speak to Juliet launch verification (read-only)
+
+# Manual-only, READ-ONLY. Verifies the published /speak-to-juliet page on the
+# live site after a deploy: the routes, the /LPJuliet redirect, the WhatsApp
+# link and its pre-filled message, the fallback form's handoff carrying
+# campaign=speak-to-juliet, Glenice's and Juliet's photographs rendering, no
+# overflow or console errors at phone and desktop widths, the canonical and
+# noindex metadata, and that /contact, /nigeria-postgraduate, /our-team and
+# the home page still serve.
+#
+# It fills the landing form but NEVER submits the signup form, so it creates
+# no lead, no portal account and no notification to anybody. No secrets are
+# used. Screenshots are uploaded as artifacts for the record.
+on:
+  workflow_dispatch:
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install Playwright (browser only, project dependencies untouched)
+        run: |
+          mkdir -p /tmp/pw && cd /tmp/pw
+          npm init -y >/dev/null
+          npm install playwright@1.47.2 >/dev/null
+          npx playwright install --with-deps chromium
+
+      - name: Verify the live page
+        run: |
+          mkdir -p /tmp/pw/out
+          cp scripts/speak-to-juliet-launch-verify.mjs /tmp/pw/verify.mjs
+          cd /tmp/pw
+          OUT_DIR=/tmp/pw/out node verify.mjs
+
+      - name: Upload screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: speak-to-juliet-live-screenshots
+          path: /tmp/pw/out/*.png
+          if-no-files-found: ignore

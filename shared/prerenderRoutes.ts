@@ -23,6 +23,9 @@
  *    acts, so only that shell is prerendered.
  *  - /404 is an error page, not a crawl target.
  */
+import { LIBRARY_RESOURCE_PATHS } from "./studentSupportLibrary";
+import { SUCCESS_STORY_PATHS } from "./successStories";
+
 export const PRERENDER_ROUTES: readonly string[] = [
   "/",
   "/about",
@@ -35,12 +38,15 @@ export const PRERENDER_ROUTES: readonly string[] = [
   "/masters-doctoral-degrees",
   "/sport-pathways",
   "/online-learning",
-  "/counsellors",
+  "/our-team",
   "/student-support-library",
   "/learning-hub/cv-university-application",
   "/training-workshops",
   "/events",
   "/partners",
+  "/student-success-stories",
+  // Each country with a cleared story (shared/successStories.ts).
+  ...SUCCESS_STORY_PATHS,
   "/privacy-policy",
   "/terms",
   "/compliance",
@@ -52,6 +58,17 @@ export const PRERENDER_ROUTES: readonly string[] = [
   "/DDVavita",
   "/uk-masters-study",
   "/uk-masters-nigeria",
+  "/nigeria-postgraduate",
+  "/speak-to-juliet",
+  "/speak-to-madalitso",
+  "/speak-to-gladys",
+  "/speak-to-eldah",
+  "/speak-to-claudia",
+  // Every Student Support Library resource page, so a link pasted into
+  // WhatsApp or email previews with the podcast's own title, and a crawler
+  // that runs no JavaScript still sees the resource. Generated from the
+  // library data (shared/studentSupportLibrary.ts).
+  ...LIBRARY_RESOURCE_PATHS,
 ];
 
 /**

@@ -1,4 +1,7 @@
+import { isDesiredLevelValue, isDestinationValue } from "@shared/studentEnquiryOptions";
+import { isCampaignSlug } from "@shared/campaignEnquiry";
 import { ArrowRight, MapPin, Phone, Mail, CheckCircle, Loader2 } from "lucide-react";
+import { Link } from "wouter";
 import CountrySelect from "@/components/CountrySelect";
 import InternationalPhoneInput from "@/components/InternationalPhoneInput";
 import ScrollReveal from "@/components/ScrollReveal";
@@ -7,15 +10,21 @@ import { useTurnstileSiteKey } from "@/hooks/useTurnstileSiteKey";
 import { useRef, useState, useEffect } from "react";
 import { trpc } from "@/lib/trpc";
 import { getStoredAdClickIds } from "@/lib/adClickIds";
+import { recallCampaign, rememberCampaign } from "@/lib/campaignHandoff";
 import { reportSignupConversion } from "@/lib/googleAdsConversion";
 import { SPONSOR_STATUS_OPTIONS, SCHOLARSHIP_STATUS_OPTIONS } from "@shared/fundingStatus";
+import PipedriveFormEmbed from "@/components/PipedriveFormEmbed";
+import { REGISTRATION_FORM_URL } from "@/lib/registrationForm";
 
 /**
- * Every field this form asks for when Education Funding is sponsor,
- * scholarship, or mixed, blanked out when clearing/switching away from that
- * option. Keeping this as one object makes "reset everything not relevant
- * to the newly selected type" a single spread rather than eight separate
- * setters.
+ * Every field this form asks for when Education Funding is sponsor or
+ * scholarship, blanked out when clearing/switching away from that option.
+ * Keeping this as one object makes "reset everything not relevant to the
+ * newly selected type" a single spread rather than five separate setters.
+ *
+ * The three mixed-funding fields went with the Mixed funding option on 15
+ * September 2026. The server still reads them if they ever arrive, so an
+ * older record or an in-flight submission is not rejected.
  */
 const BLANK_FUNDING_DETAILS = {
   sponsorName: "",
@@ -23,15 +32,17 @@ const BLANK_FUNDING_DETAILS = {
   scholarshipName: "",
   scholarshipStatus: "",
   scholarshipCoverage: "",
-  mixedFundingSources: "",
-  mixedFundingConfirmedAmount: "",
-  mixedFundingRemaining: "",
 };
 
 /** Navigates to the Google OAuth start endpoint with flow=signup. */
-function startGoogleSignup() {
+function startGoogleSignup(campaign: string) {
   const origin = window.location.origin;
-  window.location.href = `/api/portal/auth/google?origin=${encodeURIComponent(origin)}&flow=signup`;
+  // The campaign has to be handed to the server here, because the OAuth
+  // callback rebuilds the /contact URL from scratch and anything not carried
+  // through the state is lost. Without this the enquiry comes back looking
+  // like an ordinary one and notifies the general staff list.
+  const campaignParam = campaign ? `&campaign=${encodeURIComponent(campaign)}` : "";
+  window.location.href = `/api/portal/auth/google?origin=${encodeURIComponent(origin)}&flow=signup${campaignParam}`;
 }
 
 /**
@@ -51,12 +62,16 @@ function decodeJwtPayload(token: string): Record<string, unknown> | null {
 const offices = [
   {
     country: "United Kingdom",
-    role: "Head Office",
+    role: "UK Head Office",
     name: "Timothy J. Hunt",
     title: "Managing Director",
-    address: "2 Newport Close, Clevedon, BS21 5DZ, England, UK",
-    whatsapp: "+44 7914 797830",
-    email: "UKHeadOffice@worldstudentadvisors.com",
+    // Tim Hunt, 10 October 2026: no residential address on the website.
+    // Town and county only, in the wording he sent.
+    address: "Clevedon, North Somerset, England, United Kingdom",
+    // Tim Hunt, 15 September 2026: the UK Head Office WhatsApp is
+    // +44 7470 689 849, not his personal mobile.
+    whatsapp: "+44 7470 689 849",
+    email: "UKHeadOffice@WorldStudentAdvisors.com",
   },
   {
     country: "Kenya",
@@ -75,8 +90,9 @@ const offices = [
     name: "Babatunde Abdulia Azeez",
     title: "Senior Director for Nigeria",
     address: "DSTV Complex, Along Akala Express Way, New Garage, Ibadan, Oyo State, Nigeria",
-    phone: "+234 812 929 2769",
-    whatsapp: "+234 812 929 2769",
+    // Tim Hunt, 15 September 2026: one Nigeria office WhatsApp number only.
+    phone: "+234 818 204 9068",
+    whatsapp: "+234 818 204 9068",
     email: "NigeriaOffice@worldstudentadvisors.com",
   },
   {
@@ -85,7 +101,9 @@ const offices = [
     name: "Gladys Naadi",
     title: "Director for Ghana",
     address: "Afotey Osapesua Avenue, Adjiringanor, East Legon, Accra, Ghana",
-    whatsapp: "+233 55 610 2870",
+    // Tim Hunt, 24 October 2026 ("Gladys Landing Page.docx"): her WhatsApp
+    // is +233 55 521 6156, as on /speak-to-gladys.
+    whatsapp: "+233 55 521 6156",
     email: "GhanaOffice@worldstudentadvisors.com",
   },
   {
@@ -131,14 +149,14 @@ function StudentForm() {
     ...BLANK_FUNDING_DETAILS,
     referredToWSA: "",
     referredByWhom: "",
-    recommendedCounsellor: "",
     gdprConsent: false,
-    website: "", // honeypot — real users never see or fill this field
+    website: "", // honeypot: real users never see or fill this field
   });
   const [submitted, setSubmitted] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [turnstileToken, setTurnstileToken] = useState("");
+  const [campaign, setCampaign] = useState("");
   const turnstileRef = useRef<TurnstileWidgetHandle>(null);
   const turnstileSiteKey = useTurnstileSiteKey();
 
@@ -169,14 +187,67 @@ function StudentForm() {
     window.history.replaceState({}, "", url.toString());
   }, []);
 
+  /**
+   * Plain prefill from a campaign landing page, so a student who has
+   * already typed their name and email on the Nigeria postgraduate page
+   * does not type them again here.
+   *
+   * These are the student's own answers to this same form, carried across
+   * as ordinary text. They are placed in the form's state and nowhere
+   * else: every field is still validated, the bot check still runs, and
+   * nothing here can skip a step or grant anything. Only the fields named
+   * below are read, and only when the matching select has that option.
+   */
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const take = (key: string, max = 200) => (params.get(key) ?? "").slice(0, max).trim();
+    const firstName = take("firstName", 60);
+    // lastName and areaOfStudy: the Sarkin Fulani Future Leaders page, 8 October 2026.
+    const lastName = take("lastName", 60);
+    const email = take("email", 120);
+    const phone = take("phone", 40);
+    const desiredLevel = take("desiredLevel", 40);
+    const preferredDestination = take("preferredDestination", 60);
+    const areaOfStudy = take("areaOfStudy", 160);
+    // Which campaign landing page sent them here, if any. Held separately
+    // from the form: it is not the student's answer to anything, it is not
+    // shown, and it is not editable. Only a known slug survives the server.
+    const campaignParam = take("campaign", 64);
+    if (isCampaignSlug(campaignParam)) {
+      setCampaign(campaignParam);
+      rememberCampaign(campaignParam);
+    } else {
+      // No slug in the URL. It may still be this journey: a return from
+      // Google sign-in, a reload, or a wander off the page and back. What the
+      // tab remembers is only ever a slug this same journey put there.
+      const remembered = recallCampaign();
+      if (remembered) setCampaign(remembered);
+    }
+    if (!firstName && !lastName && !email && !phone && !desiredLevel && !preferredDestination && !areaOfStudy) return;
+    setFormData(prev => ({
+      ...prev,
+      firstName: firstName || prev.firstName,
+      lastName: lastName || prev.lastName,
+      email: email || prev.email,
+      phone: phone || prev.phone,
+      areaOfStudy: areaOfStudy || prev.areaOfStudy,
+      // Only accept a value the form itself offers; anything else is ignored.
+      desiredLevel: isDesiredLevelValue(desiredLevel) ? desiredLevel : prev.desiredLevel,
+      preferredDestination: isDestinationValue(preferredDestination) ? preferredDestination : prev.preferredDestination,
+    }));
+  }, []);
+
   const mutation = trpc.contact.submitStudent.useMutation({
-    onSuccess: result => {
+    onSuccess: (result, submitted) => {
       if (result.success) {
         setSubmitted(true);
         // The honeypot bypass also returns success:true (with an empty
         // leadId) so bots get no signal they were caught — only report a
         // conversion for a submission that actually reached Pipedrive.
-        if (result.leadId) reportSignupConversion();
+        // The hashed identifiers are taken from what was actually sent, not
+        // from current form state, and the promise is not awaited because
+        // the confirmation view must not wait on it.
+        if (result.leadId) void reportSignupConversion({ email: submitted.email, phone: submitted.phone });
       } else {
         setSubmitError(result.error);
         setTurnstileToken("");
@@ -220,11 +291,6 @@ function StudentForm() {
       if (!formData.scholarshipName.trim()) newErrors.scholarshipName = "Please tell us which scholarship";
       if (!formData.scholarshipStatus) newErrors.scholarshipStatus = "Please select the funding status";
     }
-    if (formData.educationFunding === "mixed") {
-      if (!formData.mixedFundingSources.trim()) newErrors.mixedFundingSources = "Please describe your funding sources";
-      if (!formData.mixedFundingConfirmedAmount.trim()) newErrors.mixedFundingConfirmedAmount = "Please tell us what's already confirmed";
-      if (!formData.mixedFundingRemaining.trim()) newErrors.mixedFundingRemaining = "Please tell us what still depends on approval";
-    }
     if (!formData.gdprConsent) newErrors.gdprConsent = "You must consent to data processing to submit";
     setErrors(newErrors);
     if (Object.keys(newErrors).length > 0) return;
@@ -233,7 +299,7 @@ function StudentForm() {
       setSubmitError("Please complete the verification check below, then try again.");
       return;
     }
-    mutation.mutate({ ...formData, turnstileToken, googlePrefillToken, ...getStoredAdClickIds() });
+    mutation.mutate({ ...formData, turnstileToken, googlePrefillToken, campaign, ...getStoredAdClickIds() });
   };
 
   if (submitted) {
@@ -259,7 +325,7 @@ function StudentForm() {
         <>
           <button
             type="button"
-            onClick={() => startGoogleSignup()}
+            onClick={() => startGoogleSignup(campaign)}
             className="w-full h-11 flex items-center justify-center gap-3 border border-gray-300 bg-white hover:bg-gray-50 transition-colors rounded-none mb-4 text-sm font-medium text-gray-700"
           >
             <svg className="w-5 h-5" viewBox="0 0 24 24" aria-hidden="true">
@@ -460,8 +526,15 @@ function StudentForm() {
               <option value="undergraduate">Undergraduate (Bachelor's)</option>
               <option value="top-up">Top-up Degree</option>
               <option value="pre-masters">Pre-Master's</option>
-              <option value="postgraduate">Postgraduate (Master's)</option>
-              <option value="doctorate">Doctorate (PhD)</option>
+              {/* The four postgraduate routes stay four values so each can be
+                  measured. Tom Arrington, 12 September 2026. "postgraduate"
+                  carries Taught Master's because that is the value the live
+                  form has always used and it already maps to Pipedrive's
+                  Taught Master's option; renaming it would orphan records. */}
+              <option value="postgraduate">Taught Master's</option>
+              <option value="mphil">MPhil</option>
+              <option value="mres">MRes</option>
+              <option value="doctorate">PhD / Doctorate</option>
               <option value="boarding">Boarding School</option>
               <option value="language">Language Programme</option>
               <option value="summer">Summer Programme</option>
@@ -480,7 +553,6 @@ function StudentForm() {
             >
               <option value="">Select...</option>
               <option value="full-time">Full-time (on campus)</option>
-              <option value="part-time">Part-time</option>
               <option value="online">Online / Distance</option>
               <option value="blended">Blended (online + campus)</option>
             </select>
@@ -525,16 +597,35 @@ function StudentForm() {
             >
               <option value="">Select...</option>
               <option value="uk">United Kingdom</option>
+              <option value="germany">Germany</option>
               <option value="usa">United States</option>
               <option value="canada">Canada</option>
-              <option value="europe">Europe</option>
+              {/* Not "Europe": a continent is not a destination choice. */}
+              <option value="europe">Other European destinations</option>
               <option value="multiple">Multiple / Not sure</option>
             </select>
             {errors.preferredDestination && <p className="text-xs text-red-600 mt-1">{errors.preferredDestination}</p>}
           </div>
         </div>
         <div>
-          <label className="block text-sm font-medium text-wsa-navy mb-1.5">Education Funding *</label>
+          {/*
+            Reworded 1 September 2026 at staff request. Asking how someone is
+            financing their studies reads as a question to the applicant;
+            "Education Funding" read as an internal category name.
+
+            Student Loan and Mixed funding REMOVED 15 September 2026 on Tim
+            Hunt's instruction. The request was made once before and held
+            open pending staff clarification; that clarification has now
+            come from the Managing Director, so the options are gone.
+
+            Neither was mapping honestly in any case: Pipedrive has no loan
+            option, so "loan" was recorded as Self-funded, and "mixed" as
+            "Looking for a partial scholarship". Removing them stops the
+            CRM being told something the student did not say. The server
+            still accepts both values so that an in-flight submission, or a
+            record already carrying one, is never rejected.
+          */}
+          <label className="block text-sm font-medium text-wsa-navy mb-1.5">How are you financing your studies? *</label>
           <select
             required
             value={formData.educationFunding}
@@ -548,9 +639,7 @@ function StudentForm() {
             <option value="">Select...</option>
             <option value="self-funded">Self-funded / Family</option>
             <option value="scholarship">Scholarship</option>
-            <option value="loan">Student Loan</option>
             <option value="sponsor">Sponsor / Employer</option>
-            <option value="mixed">Mixed funding</option>
           </select>
           {errors.educationFunding && <p className="text-xs text-red-600 mt-1">{errors.educationFunding}</p>}
         </div>
@@ -628,47 +717,6 @@ function StudentForm() {
             </div>
           </>
         )}
-        {formData.educationFunding === "mixed" && (
-          <>
-            <div>
-              <label className="block text-sm font-medium text-wsa-navy mb-1.5">Funding sources *</label>
-              <input
-                type="text"
-                required
-                value={formData.mixedFundingSources}
-                onChange={(e) => { setFormData({ ...formData, mixedFundingSources: e.target.value }); setErrors((prev) => ({ ...prev, mixedFundingSources: "" })); }}
-                className={`w-full px-4 py-3 border bg-white focus:outline-none focus:ring-2 focus:ring-wsa-red/20 focus:border-wsa-red transition-colors ${errors.mixedFundingSources ? "border-red-400" : "border-border"}`}
-                placeholder="e.g. self-funded plus a sponsor, or a partial scholarship plus a loan"
-              />
-              {errors.mixedFundingSources && <p className="text-xs text-red-600 mt-1">{errors.mixedFundingSources}</p>}
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-wsa-navy mb-1.5">Amount or proportion already confirmed *</label>
-              <input
-                type="text"
-                required
-                value={formData.mixedFundingConfirmedAmount}
-                onChange={(e) => { setFormData({ ...formData, mixedFundingConfirmedAmount: e.target.value }); setErrors((prev) => ({ ...prev, mixedFundingConfirmedAmount: "" })); }}
-                className={`w-full px-4 py-3 border bg-white focus:outline-none focus:ring-2 focus:ring-wsa-red/20 focus:border-wsa-red transition-colors ${errors.mixedFundingConfirmedAmount ? "border-red-400" : "border-border"}`}
-                placeholder="e.g. 50% self-funded and confirmed, or £10,000 already available"
-              />
-              {errors.mixedFundingConfirmedAmount && <p className="text-xs text-red-600 mt-1">{errors.mixedFundingConfirmedAmount}</p>}
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-wsa-navy mb-1.5">What remains dependent on approval *</label>
-              <input
-                type="text"
-                required
-                value={formData.mixedFundingRemaining}
-                onChange={(e) => { setFormData({ ...formData, mixedFundingRemaining: e.target.value }); setErrors((prev) => ({ ...prev, mixedFundingRemaining: "" })); }}
-                className={`w-full px-4 py-3 border bg-white focus:outline-none focus:ring-2 focus:ring-wsa-red/20 focus:border-wsa-red transition-colors ${errors.mixedFundingRemaining ? "border-red-400" : "border-border"}`}
-                placeholder="e.g. remaining balance depends on a pending scholarship decision"
-              />
-              {errors.mixedFundingRemaining && <p className="text-xs text-red-600 mt-1">{errors.mixedFundingRemaining}</p>}
-            </div>
-          </>
-        )}
-
         {/* Additional Section */}
         <div className="pt-6 mt-6 border-t border-border/50">
           <h3 className="text-lg font-semibold text-wsa-navy mb-5">Additional Information</h3>
@@ -686,34 +734,24 @@ function StudentForm() {
               <option value="no">No</option>
             </select>
           </div>
-          <div>
-            <label className="block text-sm font-medium text-wsa-navy mb-1.5">Recommended Student Counsellor?</label>
-            <select
-              value={formData.recommendedCounsellor}
-              onChange={(e) => setFormData({ ...formData, recommendedCounsellor: e.target.value })}
-              className="w-full px-4 py-3 border border-border bg-white focus:outline-none focus:ring-2 focus:ring-wsa-red/20 focus:border-wsa-red transition-colors"
-            >
-              <option value="">Select...</option>
-              <option value="eldah">Eldah Therone</option>
-              <option value="glenice">Glenice Owino</option>
-              <option value="manet">Manet Khamayo</option>
-              <option value="sarafina">Sarafina Kihumbu</option>
-              <option value="help-me-choose">Help me choose</option>
-            </select>
-          </div>
+          {/* "Recommended Student Counsellor?" was removed on Tim Hunt's instruction
+              of 28 October 2026: enquiries from this form go to Claudia, who
+              qualifies them. The referral question stays so she can see who
+              introduced the student. The server still accepts the field and
+              records an empty one as "Unallocated". */}
+          {formData.referredToWSA === "yes" && (
+            <div>
+              <label className="block text-sm font-medium text-wsa-navy mb-1.5">Referred by whom?</label>
+              <input
+                type="text"
+                value={formData.referredByWhom}
+                onChange={(e) => setFormData({ ...formData, referredByWhom: e.target.value })}
+                className="w-full px-4 py-3 border border-border bg-white focus:outline-none focus:ring-2 focus:ring-wsa-red/20 focus:border-wsa-red transition-colors"
+                placeholder="Name of the person or organisation who referred you"
+              />
+            </div>
+          )}
         </div>
-        {formData.referredToWSA === "yes" && (
-          <div>
-            <label className="block text-sm font-medium text-wsa-navy mb-1.5">Referred by whom?</label>
-            <input
-              type="text"
-              value={formData.referredByWhom}
-              onChange={(e) => setFormData({ ...formData, referredByWhom: e.target.value })}
-              className="w-full px-4 py-3 border border-border bg-white focus:outline-none focus:ring-2 focus:ring-wsa-red/20 focus:border-wsa-red transition-colors"
-              placeholder="Name of the person or organisation who referred you"
-            />
-          </div>
-        )}
 
         {/* GDPR Consent */}
         <div className="pt-4">
@@ -765,7 +803,23 @@ function StudentForm() {
   );
 }
 
+/**
+ * Whether this visit is a campaign hand-off, which keeps the website's own
+ * form (client/src/lib/registrationForm.ts, WHAT STAYS). Read after mount,
+ * so the prerendered page and the first render always show the
+ * registration form most visitors get.
+ */
+function useCampaignHandoff(): boolean {
+  const [handoff, setHandoff] = useState(false);
+  useEffect(() => {
+    const fromUrl = new URLSearchParams(window.location.search).get("campaign") ?? "";
+    setHandoff(isCampaignSlug(fromUrl) || recallCampaign() !== "");
+  }, []);
+  return handoff;
+}
+
 export default function Contact() {
+  const campaignHandoff = useCampaignHandoff();
   return (
     <div className="min-h-screen">
       <section className="pt-32 lg:pt-40 pb-20 lg:pb-28">
@@ -777,7 +831,7 @@ export default function Contact() {
                 Ready to Study Abroad?
               </h1>
              <p className="text-xl text-muted-foreground leading-relaxed max-w-2xl">
-                Complete the form below and one of our Student Counsellors will contact you personally to discuss your plans and help you take the next step.
+                Complete the form below and a member of our team will contact you personally to discuss your plans and help you take the next step.
              </p>
             </div>
           </ScrollReveal>
@@ -794,7 +848,19 @@ export default function Contact() {
                 <h2 className="text-xl font-semibold text-wsa-navy mb-8 pb-3 border-b border-border/40">
                   Start Your Application
                 </h2>
-                <StudentForm />
+                {/* Tim Hunt's Pipedrive Website Registration Form (14 November
+                    2026), which every "Start Your Application" button leads
+                    to. A campaign hand-off keeps the website's own form. */}
+                {campaignHandoff ? (
+                  <StudentForm />
+                ) : (
+                  <div id="student-signup" className="scroll-mt-28">
+                    <PipedriveFormEmbed
+                      embedUrl={REGISTRATION_FORM_URL}
+                      privacyLine="Your details go to WSA's student records system so that our team can contact you."
+                    />
+                  </div>
+                )}
               </div>
             </ScrollReveal>
 
@@ -862,8 +928,8 @@ export default function Contact() {
               <h2 className="text-2xl md:text-3xl font-semibold text-wsa-navy leading-[1.2] mb-5">
                 What happens after you apply?
               </h2>
-              <p className="text-[17px] text-muted-foreground leading-relaxed">
-                A named Student Counsellor will contact you personally within 48 hours. They'll listen to your study abroad plans, answer your questions and help you explore the right options for you. Your counsellor will support you from your first conversation through application, admission, visa and enrolment.
+              <p className="text-[17px] text-muted-foreground leading-relaxed mb-6">
+                A member of our team will contact you personally within 48 hours. They'll listen to your study abroad plans, answer your questions and help you explore the right options for you, then introduce you to a named Student Counsellor, who will support you through application, admission, visa and enrolment.
               </p>
             </div>
           </ScrollReveal>

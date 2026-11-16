@@ -1,0 +1,58 @@
+name: Check the production Anthropic key
+
+# Manual only. Makes ONE short model call using production's own
+# ANTHROPIC_API_KEY, to answer "does the key work" without waiting for a
+# member of staff to discover it does not.
+#
+# Nothing else here would catch a bad key: the test suite never calls the
+# model, and the acceptance suite deliberately does not either. A wrong key
+# fails silently until somebody asks a worker a question and is told the
+# model could not be reached.
+#
+# WRITES NOTHING. No database, no variables set or cleared, no audit rows.
+# It runs inside the app service's own environment so the key is read there
+# and never travels; the key is never printed on any path, including errors.
+#
+# Auth: githubactionsprod, the same production-scoped Railway Project Token
+# the other production workflows use.
+on:
+  workflow_dispatch:
+    inputs:
+      service_name:
+        description: "Railway app service name"
+        required: true
+        default: "world-student-advisors"
+      environment_name:
+        description: "Railway environment name"
+        required: true
+        default: "production"
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    env:
+      APP_SERVICE_NAME: ${{ github.event.inputs.service_name }}
+      APP_ENV_NAME: ${{ github.event.inputs.environment_name }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Install Railway CLI
+        run: npm install -g @railway/cli
+
+      - name: Call the model once with production's key
+        timeout-minutes: 5
+        env:
+          RAILWAY_TOKEN: ${{ secrets.githubactionsprod }}
+        run: |
+          railway run --service "$APP_SERVICE_NAME" --environment "$APP_ENV_NAME" -- \
+            pnpm exec tsx scripts/check-anthropic-key.ts

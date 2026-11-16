@@ -113,7 +113,7 @@ export default function UKMastersNigeria() {
                     <ArrowRight className="ml-2.5" size={18} />
                   </Link>
                   <Link
-                    href="/counsellors"
+                    href="/our-team"
                     className="inline-flex items-center justify-center px-8 py-4 border border-white/25 text-white text-sm font-semibold tracking-wide transition-colors hover:border-white hover:bg-white/5"
                   >
                     Speak to a Student Counsellor
@@ -151,15 +151,25 @@ export default function UKMastersNigeria() {
                   MSc, MA and MBA
                 </p>
                 <h2 className="text-3xl md:text-4xl font-semibold text-wsa-navy leading-[1.15] mb-6">
-                  Choose a taught postgraduate route, not a research route
+                  Taught Master's here, research degrees on our postgraduate page
                 </h2>
                 <div className="space-y-4 text-[17px] text-muted-foreground leading-relaxed">
                   <p>
-                    This page is for students considering taught Master's study: MSc, MA, MBA, LLM and similar structured postgraduate courses. It is not aimed at MRes, MPhil, PhD or doctorate applicants.
+                    This page is about taught Master's study: MSc, MA, MBA, LLM and similar structured postgraduate courses.
                   </p>
                   <p>
                     Taught Master's courses normally combine modules, assignments, exams or projects, and a final dissertation or major project. The right choice depends on your previous degree, the subject you want to study and what you want the qualification to help you do next.
                   </p>
+                  <p>
+                    Considering an <strong className="text-wsa-navy">MRes, MPhil or PhD</strong> instead? A research degree is supervised and largely self-directed, and it is a different decision from a taught Master's rather than a harder version of one. Our Nigeria programme concentrates on taught Master's study, so if you are weighing up a research degree, speak to a WSA counsellor about your options before you apply.
+                  </p>
+                  <Link
+                    href="/nigeria-postgraduate"
+                    className="inline-flex items-center gap-2 text-[17px] font-medium text-wsa-red hover:underline"
+                  >
+                    Taught Master's abroad for Nigerian graduates: UK, Germany, Canada and more
+                    <ArrowRight size={17} />
+                  </Link>
                 </div>
               </div>
             </ScrollReveal>
@@ -337,7 +347,7 @@ export default function UKMastersNigeria() {
                     <ArrowRight className="ml-2.5" size={18} />
                   </Link>
                   <Link
-                    href="/counsellors"
+                    href="/our-team"
                     className="inline-flex items-center justify-center px-8 py-4 border border-wsa-navy/25 text-wsa-navy text-sm font-semibold tracking-wide transition-colors hover:border-wsa-red hover:text-wsa-red"
                   >
                     Speak to a Student Counsellor
@@ -408,7 +418,7 @@ export default function UKMastersNigeria() {
                   <ArrowRight className="ml-2.5" size={18} />
                 </Link>
                 <Link
-                  href="/counsellors"
+                  href="/our-team"
                   className="inline-flex items-center justify-center px-8 py-4 border border-white/25 text-white text-sm font-semibold tracking-wide transition-colors hover:border-white hover:bg-white/5"
                 >
                   Speak to a Student Counsellor

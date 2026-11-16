@@ -26,6 +26,8 @@ interface PartnerCategory {
   intro: string;
   image?: string;
   imageAlt?: string;
+  /** Show the section image at its own proportions rather than in the 4:3 frame. */
+  imageUncropped?: boolean;
   partners: Partner[];
 }
 
@@ -45,7 +47,8 @@ const categories: PartnerCategory[] = [
         description: "A purpose-built, co-educational boarding school for students aged 13–19, renowned for outstanding academic results and progression to leading universities.",
         strengths: "Science, Mathematics",
         usp: "Outstanding academic results; top UK university progression",
-        logo: "/manus-storage/abbey_dld_group_cd40fa74.jpg",
+        // No logo until a sound Abbey DLD Group file is supplied: the one this
+        // card carried was a truncated JPEG, grey below its first rows.
       },
       {
         name: "Abbey College Manchester",
@@ -53,7 +56,7 @@ const categories: PartnerCategory[] = [
         description: "Provides a supportive, co-educational boarding school experience with small class sizes and personalised teaching. Offers a unique Academic Studies with Football Training programme.",
         strengths: "Medicine, Business, Creative Arts, Football Training",
         usp: "Small classes; Academic Studies with Football Training",
-        logo: "/manus-storage/abbey_dld_group_cd40fa74.jpg",
+        // No logo: same truncated Abbey DLD Group file as the Cambridge card.
       },
       {
         name: "DLD College London",
@@ -104,7 +107,7 @@ const categories: PartnerCategory[] = [
         description: "Provides high-quality English language training and academic preparation courses. WSA has a direct partnership with NCG and has successfully sent English language students to their programmes.",
         strengths: "Language training, cultural immersion, academic skills",
         usp: "Strong WSA partnership; city-centre campuses",
-        logo: "/manus-storage/ncg_3a880115.png",
+        logo: "/manus-storage/new_college_group_trimmed.png",
       },
     ],
   },
@@ -147,7 +150,7 @@ const categories: PartnerCategory[] = [
         description: "English Language Summer Schools combining English tuition with sports and cultural activities. Students enjoy excursions, social events and the chance to practise English in real-world settings.",
         strengths: "Language learning + cultural immersion",
         usp: "Combines English tuition with sport & social programme",
-        logo: "/manus-storage/ncg_3a880115.png",
+        logo: "/manus-storage/new_college_group_trimmed.png",
       },
     ],
   },
@@ -166,14 +169,17 @@ const categories: PartnerCategory[] = [
         description: "Partners with universities in the UK, USA and Australia, with centres based directly on campus. Students can choose Foundation, International Year One and Pre-Masters programmes. Over 90% of INTO students successfully progress to their chosen degree.",
         strengths: "Business, Engineering, Computer Science",
         usp: "Full on-campus integration with strong academic and English support",
-        logo: "/manus-storage/into_global_dd630efe.png",
+        // INTO's white-on-transparent mark, recoloured WSA navy so it reads on
+        // the white card. The white original showed as a blank space; Tom
+        // Arrington, 25 September 2026. Shape and proportions unchanged.
+        logo: "/manus-storage/into_global_navy_on_transparent.png",
       },
       {
         name: "ONCAMPUS",
         location: "UK, France, Ireland, Netherlands, USA",
         description: "Operates centres in the UK, France, Ireland, the Netherlands and the USA, including a flagship at the University of Amsterdam. Especially strong in Medicine and Science pathways, preparing students for competitive routes such as Medicine, Dentistry and Engineering.",
         strengths: "Medicine, Dentistry, Science, Engineering",
-        usp: "Strong Medicine/Science focus; guaranteed progression",
+        usp: "Strong Medicine and Science focus, with a defined progression route",
         logo: "/manus-storage/oncampus_6bd095a4.png",
       },
       {
@@ -190,7 +196,7 @@ const categories: PartnerCategory[] = [
         description: "One of the largest pathway providers, working with over 50 universities globally across the UK, Europe, North America, France, Ireland and South East Asia. Through International Study Centres, it offers Foundation, International Year One and Pre-Masters programmes.",
         strengths: "Business, Law, Engineering, Creative Arts",
         usp: "Prestigious global university partnerships and subject-specialist pathways",
-        logo: "/manus-storage/study_group_8ee9a299.jpg",
+        logo: "/partners/study-group-logo.jpg",
       },
     ],
   },
@@ -205,7 +211,7 @@ const categories: PartnerCategory[] = [
     partners: [
       { name: "Aberystwyth University", location: "Aberystwyth, Wales", description: "A historic coastal university with strong rankings in research and teaching.", strengths: "Agriculture, International Politics, Business", usp: "Excellent student satisfaction", logo: "/manus-storage/aberystwyth_university_d2521ae4.png" },
       { name: "Anglia Ruskin University", location: "Cambridge, Chelmsford, Peterborough & London Campus", description: "Modern, career-focused university with multiple campuses, including a dedicated London Campus.", strengths: "Health, Business, Technology", usp: "Excellent employability support", logo: "/manus-storage/anglia_ruskin_university_3f41a15b.svg" },
-      { name: "Bath Spa University", location: "Bath", description: "Set in a World Heritage city, renowned for Creative Arts, Humanities and Education.", strengths: "Creative Arts, Humanities, Education", usp: "Supportive community feel in a beautiful setting", logo: "/manus-storage/bath_spa_university_official_f842eb94.png" },
+      { name: "Bath Spa University", location: "Bath", description: "Set in a World Heritage city, renowned for Creative Arts, Humanities and Education.", strengths: "Creative Arts, Humanities, Education", usp: "Supportive community feel in a beautiful setting", logo: "/manus-storage/bath_spa_university_trimmed.png" },
       { name: "Birmingham City University", location: "Birmingham", description: "Dynamic and industry-focused university in the UK's second city.", strengths: "Media, Business, Engineering", usp: "Strong employer links", logo: "/manus-storage/birmingham_city_university_final_a71309ee.png" },
       { name: "BPP University", location: "London & regional centres", description: "Specialist private university with a focus on practical training closely linked to industry.", strengths: "Law, Business, Professional Studies", usp: "Industry-focused training", logo: "/manus-storage/bpp_university_2a600f2b.svg" },
       { name: "London South Bank University", location: "London", description: "Located in central London with strong vocational courses.", strengths: "Engineering, Health, Business", usp: "Excellent graduate employability", logo: "/manus-storage/london_south_bank_university_58c20e3d.svg" },
@@ -228,8 +234,13 @@ const categories: PartnerCategory[] = [
     subtitle: "International university partners in Europe and beyond",
     icon: Globe,
     intro: "WSA has carefully selected direct international university partners in Europe that combine academic quality, recognised degrees and competitive tuition fees. These universities all sit within the Schengen visa region, allowing students easy mobility across Europe.",
-    image: "/manus-storage/partner_pathway_2_8831de3c.webp",
-    imageAlt: "European university campus",
+    // Tom Arrington's combined campus and branding image, uploaded to
+    // 16_WEBSITE_Ai/05 Landing Pages/Juliet/Website Assets on 25 September
+    // 2026 and imported by scripts/fetch-website-assets.mjs. Shown at its own
+    // proportions, so the logo panel in its corner is never cropped away.
+    image: "/partners/university-of-debrecen-campus-and-logo.jpg",
+    imageAlt: "The main building of the University of Debrecen, Hungary, with the university's logo",
+    imageUncropped: true,
     partners: [
       {
         name: "Cyprus West University (CWU)",
@@ -240,12 +251,19 @@ const categories: PartnerCategory[] = [
         logo: "/manus-storage/cyprus_west_university_db0efd8e.png",
       },
       {
-        name: "The British University in Cyprus (BUC)",
+        // Tom Arrington, 25 September 2026, after checking the institution's
+        // official website: the card is UCLan Cyprus, which describes itself
+        // as the British University of Cyprus. BUC is not a separate
+        // institution and is not presented as one.
+        name: "UCLan Cyprus",
         location: "Larnaca, Cyprus",
         description: "Offers UK-quality education at significantly lower costs, with all degrees validated by the University of Central Lancashire (UCLan). Students graduate with a UK university degree.",
         strengths: "UK degrees awarded by UCLan",
         usp: "British degrees at a fraction of UK tuition fees",
-        logo: "/manus-storage/british_university_cyprus_3c641222.svg",
+        // UCLan Cyprus logo, supplied by Tom Arrington on 25 September 2026
+        // and checked by him against the institution's official website.
+        // Imported from 16_WEBSITE_Ai/05 Landing Pages/Juliet/Website Assets.
+        logo: "/partners/uclan-cyprus-logo.jpg",
       },
       {
         name: "University of Debrecen",
@@ -315,7 +333,7 @@ export default function Partners() {
               {[
                 { title: "Quality first", text: "We only partner with institutions we've vetted and trust. If we wouldn't recommend it to our own family, we don't recommend it to yours." },
                 { title: "Student welfare", text: "Every partner institution must demonstrate strong student support services, pastoral care, and a genuine commitment to international student success." },
-                { title: "Ethical recruitment", text: "As an agency with British Council Certified Counsellors, we maintain strict ethical standards. We never recommend an institution solely because of commercial incentives." },
+                { title: "Ethical recruitment", text: "As an agency with British Council UK knowledge-trained counsellors, we maintain strict ethical standards. We never recommend an institution solely because of commercial incentives." },
               ].map((item, i) => (
                 <ScrollReveal key={item.title} delay={i * 80}>
                   <div>
@@ -354,11 +372,11 @@ export default function Partners() {
                 </p>
                 </div>
                 {cat.image && (
-                  <div className="hidden lg:block aspect-[4/3] overflow-hidden">
+                  <div className={`hidden lg:block overflow-hidden ${cat.imageUncropped ? "" : "aspect-[4/3]"}`}>
                     <img
                       src={cat.image}
                       alt={cat.imageAlt || `${cat.title} partner institutions`}
-                      className="w-full h-full object-cover"
+                      className={cat.imageUncropped ? "w-full h-auto" : "w-full h-full object-cover"}
                       loading="lazy"
                     />
                   </div>
@@ -371,19 +389,22 @@ export default function Partners() {
               {cat.partners.map((partner, i) => (
                <ScrollReveal key={partner.name} delay={i * 40} className="h-full">
                   <div className="border border-border/40 p-6 h-full bg-white flex flex-col">
-                    <div className="flex items-start justify-between gap-3 mb-3 min-h-[2.5rem]">
-                      <h3 className="text-base font-semibold text-wsa-navy leading-snug flex-1">{partner.name}</h3>
-                      {partner.logo && (
-                        <div className="shrink-0 w-12 h-12 flex items-center justify-center">
-                          <img
-                            src={partner.logo}
-                            alt={`${partner.name} logo`}
-                            className="max-w-full max-h-full object-contain"
-                            loading="lazy"
-                          />
-                        </div>
-                      )}
-                    </div>
+                    {/* The logo has its own strip, 48px tall and up to 176px wide,
+                        left-aligned above the name. It used to share the title
+                        row in a 48x48 box, which shrank every wordmark (INTO,
+                        Study Group, Oxford International) to a speck that read
+                        as no logo at all. Tom Arrington, 25 September 2026. */}
+                    {partner.logo && (
+                      <div className="mb-4 flex h-12 items-center">
+                        <img
+                          src={partner.logo}
+                          alt={`${partner.name} logo`}
+                          className="h-full w-auto max-w-[11rem] object-contain object-left"
+                          loading="lazy"
+                        />
+                      </div>
+                    )}
+                    <h3 className="text-base font-semibold text-wsa-navy leading-snug mb-3 min-h-[2.5rem]">{partner.name}</h3>
                     <div className="flex items-center gap-1.5 mb-4">
                       <MapPin size={13} className="text-muted-foreground/60" />
                       <span className="text-sm text-muted-foreground">{partner.location}</span>
@@ -433,7 +454,7 @@ export default function Partners() {
                     If you represent a university, school, or education provider and would like to explore a partnership with World Student Advisors, we'd welcome a conversation.
                   </p>
                   <p>
-                    We have British Council Certified Counsellors, with offices in the UK, Kenya, Nigeria, and Ghana. We support students from across Sub-Saharan Africa with ethical, personalised guidance.
+                    We have British Council UK knowledge-trained counsellors, with offices in the UK, Kenya, Nigeria, and Ghana. We support students from across Sub-Saharan Africa with ethical, personalised guidance.
                   </p>
                   <p className="text-white font-medium">
                     We partner based on quality and shared values, not volume targets.

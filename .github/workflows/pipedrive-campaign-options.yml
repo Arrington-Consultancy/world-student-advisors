@@ -1,0 +1,37 @@
+name: Pipedrive campaign options (MRes, Germany)
+
+# Manual-only. Adds the two Pipedrive person-field options the Nigeria
+# campaign needs so MRes and Germany can be recorded and measured as
+# themselves. Additive: every existing option is re-sent with its id and
+# the script refuses to write if any of them changed. Dry run by default.
+# Runs inside the Railway service's variables so the production token never
+# leaves the server, and never prints it.
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: "dry-run (default) or apply"
+        required: true
+        default: "dry-run"
+        type: choice
+        options: ["dry-run", "apply"]
+
+jobs:
+  options:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Install Railway CLI
+        run: npm install -g @railway/cli
+      - name: Run
+        env:
+          RAILWAY_TOKEN: ${{ secrets.githubactionsprod }}
+          MODE: ${{ inputs.mode }}
+        run: |
+          FLAG=""
+          if [ "$MODE" = "apply" ]; then FLAG="--apply"; fi
+          railway run --service "world-student-advisors" --environment "production" -- \
+            node scripts/pipedrive-campaign-options.mjs $FLAG

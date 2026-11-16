@@ -284,8 +284,15 @@ export default function CVUniversityApplication() {
               <h2 className="text-3xl md:text-4xl font-semibold text-wsa-navy leading-[1.15] mb-6">
                 Want a second pair of eyes on your CV?
               </h2>
-              <p className="text-lg text-muted-foreground leading-relaxed mb-10">
+              <p className="text-lg text-muted-foreground leading-relaxed mb-4">
                 Apply today and a named Student Counsellor will be in touch within 48 hours (free, no obligation).
+              </p>
+              <p className="text-sm text-muted-foreground/80 leading-relaxed mb-10">
+                As a WSA applicant you'll also get free access to our{" "}
+                <Link href="/portal/interview-coach" className="text-wsa-navy font-semibold hover:text-wsa-red transition-colors">
+                  AI Interview Readiness Coach
+                </Link>{" "}
+                to help you prepare for your university interview.
               </p>
               <Link
                 href="/contact"

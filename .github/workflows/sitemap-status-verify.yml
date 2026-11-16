@@ -1,0 +1,23 @@
+name: Sitemap status verification (read-only)
+
+# Manual-only, READ-ONLY. Asks the live site for every URL in its sitemap
+# without following redirects and fails on anything but 200, then follows
+# the trailing-slash forms to prove no redirect loop exists. Written after
+# Google Search Console reported a "Redirect error" on a sitemap page on
+# 7 October 2026 (/partners looping). Signs in to nothing, submits nothing,
+# uses no secrets. See scripts/sitemap-status-verify.mjs.
+on:
+  workflow_dispatch:
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Verify the live sitemap URLs
+        run: node scripts/sitemap-status-verify.mjs

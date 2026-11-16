@@ -217,8 +217,15 @@ export default function WebUKVisa() {
                 through application, offer, CAS, visa preparation and enrolment. Our student counselling
                 and university application service is free to students.
               </p>
-              <p className="text-muted-foreground leading-relaxed mb-10">
+              <p className="text-muted-foreground leading-relaxed mb-4">
                 Complete the short form and a WSA Student Counsellor will contact you within 48 hours.
+              </p>
+              <p className="text-sm text-muted-foreground/80 leading-relaxed mb-10">
+                WSA applicants also get free access to our{" "}
+                <Link href="/portal/interview-coach" className="text-wsa-navy font-semibold hover:text-wsa-red transition-colors">
+                  AI Interview Readiness Coach
+                </Link>{" "}
+                to practise for your UKVI credibility interview.
               </p>
               <Link
                 href="/contact"

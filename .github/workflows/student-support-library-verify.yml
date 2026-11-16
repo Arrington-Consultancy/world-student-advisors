@@ -1,0 +1,44 @@
+name: Student Support Library verification (read-only)
+
+# Manual-only, READ-ONLY. Verifies the rebuilt Student Support Library on the
+# live site after a deploy: the four-section library page with each of the
+# 38 resources once, the 38 permanent resource pages with their own titles
+# and canonicals, every summary PDF, the code-form redirects, the removed
+# resources returning 404, the sitemap, and the pages rendering and
+# searching correctly at phone and desktop widths. Submits nothing, signs in
+# to nothing, uses no secrets. Screenshots are uploaded as artifacts.
+on:
+  workflow_dispatch:
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install Playwright (browser only, project dependencies untouched)
+        run: |
+          mkdir -p /tmp/pw && cd /tmp/pw
+          npm init -y >/dev/null
+          npm install playwright@1.47.2 >/dev/null
+          npx playwright install --with-deps chromium
+
+      - name: Verify the live library
+        run: |
+          mkdir -p /tmp/pw/out
+          cp scripts/student-support-library-verify.mjs /tmp/pw/verify.mjs
+          cp shared/studentSupportLibrary.ts /tmp/pw/studentSupportLibrary.ts
+          cd /tmp/pw
+          OUT_DIR=/tmp/pw/out node verify.mjs
+
+      - name: Upload screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: student-support-library-live-screenshots
+          path: /tmp/pw/out/*.png
+          if-no-files-found: ignore
