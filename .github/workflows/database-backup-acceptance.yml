@@ -29,9 +29,9 @@ jobs:
         options: >-
           --health-cmd="mysqladmin ping -h 127.0.0.1 -uroot -prestore-test-only"
           --health-interval=5s --health-timeout=5s --health-retries=30
-    env:
-      BACKUP_ACCEPTANCE_OUT: ${{ runner.temp }}/database-backup
     steps:
+      - name: Choose the runner's temporary folder for the downloaded copy
+        run: echo "BACKUP_ACCEPTANCE_OUT=$RUNNER_TEMP/database-backup" >> "$GITHUB_ENV"
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
       - uses: actions/setup-node@v4

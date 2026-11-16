@@ -50,6 +50,10 @@ export default function PortalLogin() {
         google_verify: "Google sign-in verification failed. Please try again.",
         google_claims: "Google did not provide the required account information.",
         google_account: "Your account is inactive. Please contact support.",
+        google_email_unverified:
+          "Google has not verified the email address on that Google account. Please sign in with your email and password instead.",
+        google_account_conflict:
+          "Your portal account is linked to a different Google account. Please sign in with that Google account, or with your email and password.",
       };
       setError(messages[oauthError] ?? "Google sign-in failed. Please try again.");
     }

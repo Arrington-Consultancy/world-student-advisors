@@ -149,13 +149,19 @@ export default function NigeriaPostgraduate() {
     // The marketing header is fixed, so the page starts below it.
     <main className="bg-wsa-warm-white pt-24 lg:pt-28">
       {/* ── Hero ────────────────────────────────────────────────── */}
-      <section className="px-4 pb-10 pt-8 sm:px-6 lg:pb-16 lg:pt-12">
-        <div className="mx-auto grid max-w-6xl gap-8 lg:grid-cols-[1.05fr_minmax(320px,420px)] lg:items-start lg:gap-12">
-          {/* min-w-0 on both cells: a grid item's automatic minimum is its
-              content's intrinsic width, and a <select> or <input> at width:100%
-              still reports its intrinsic width during that step in some
-              engines (seen on Chromium 129 at 390px: the column became 456px
-              and the page scrolled sideways). */}
+      {/* Tim Hunt, 15 November 2026: on desktop, the section under the
+          photograph "appears for a split second and disappears". His
+          Pipedrive form is far taller than the short form it replaced, so
+          once it loaded beside the photograph it pushed everything after
+          the hero down and left an empty column. The introduction and the
+          photograph now sit side by side, with the form straight after them
+          at full width, still high on the page and in the same order on a
+          phone. */}
+      <section className="px-4 pb-8 pt-8 sm:px-6 lg:pb-10 lg:pt-12">
+        <div className="mx-auto grid max-w-6xl gap-8 lg:grid-cols-2 lg:items-center lg:gap-12">
+          {/* min-w-0: a grid item's automatic minimum is its content's
+              intrinsic width (seen on Chromium 129 at 390px, where a column
+              became 456px and the page scrolled sideways). */}
           <div className="min-w-0">
             <p className="flex items-center gap-3.5">
               <NigerianFlag className="h-12 w-[4.5rem]" />
@@ -180,22 +186,25 @@ export default function NigeriaPostgraduate() {
                 </li>
               ))}
             </ul>
-
-            <div className="mt-7 overflow-hidden rounded-2xl">
-              <img
-                src="/manus-storage/wsa_confident_graduate_0e9accf4.jpg"
-                alt="A World Student Advisors student in the United Kingdom"
-                width={1000}
-                height={560}
-                className="h-52 w-full object-cover object-center sm:h-72 lg:h-80"
-              />
-            </div>
           </div>
 
-          {/* The form sits high on mobile too: it is the point of the page. */}
-          <div className="min-w-0 rounded-2xl border border-wsa-navy/12 bg-white p-5 shadow-sm lg:sticky lg:top-6">
-            <RegistrationForm id="registration-form" />
+          <div className="min-w-0 overflow-hidden rounded-2xl">
+            <img
+              src="/manus-storage/wsa_confident_graduate_0e9accf4.jpg"
+              alt="A World Student Advisors student in the United Kingdom"
+              width={1000}
+              height={560}
+              className="h-52 w-full object-cover object-center sm:h-72 lg:h-80"
+            />
           </div>
+        </div>
+      </section>
+
+      {/* ── The form ────────────────────────────────────────────── */}
+      {/* Straight after the introduction: it is the point of the page. */}
+      <section className="px-4 pb-10 sm:px-6 lg:pb-16">
+        <div className="mx-auto min-w-0 max-w-2xl rounded-2xl border border-wsa-navy/12 bg-white p-5 shadow-sm sm:p-7">
+          <RegistrationForm id="registration-form" />
         </div>
       </section>
 
