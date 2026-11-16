@@ -25,12 +25,21 @@
  * As on the representative pages, the enquiry form is the counsellor's own
  * Pipedrive web form, embedded by Pipedrive's loader, so a submission goes
  * from the visitor's browser to Pipedrive and never touches this server.
+ *
+ * Tim Hunt, 14 November 2026, "Claudia LP": the same structure for Claudia,
+ * who makes first contact before a Student Counsellor takes over. Her
+ * mock-up has no video of her and no certificate ("She does not yet hold
+ * the British Council qualification and does not have her own podcast"),
+ * names her under the subheading, rings her number as well as offering
+ * WhatsApp, and shows a WSA podcast she is not in. So the video and the
+ * credentials are optional, and the page takes an optional podcast, shown
+ * with a WSA poster rather than a photograph of someone who is not in it.
  */
 
 export interface CounsellorLandingContent {
   /** The page's route, e.g. "/speak-to-eldah". */
   path: string;
-  /** A thank-you page the counsellor's Pipedrive form can send the student to. */
+  /** Where the counsellor's Pipedrive form sends the student after submitting. */
   thankYouPath: string;
   person: {
     name: string;
@@ -49,6 +58,12 @@ export interface CounsellorLandingContent {
     photoHeight: number;
     /** Already typed when WhatsApp opens. */
     firstMessage: string;
+    /**
+     * The number under the WhatsApp button rings the phone (tel:) instead of
+     * opening WhatsApp, which the main button already does. Claudia: Tim
+     * Hunt, 14 November 2026, "WhatsApp and telephone links".
+     */
+    callable?: boolean;
   };
   /**
    * Beside the Union Flag at the top. Tim Hunt, 12 November 2026: "WSA UK
@@ -59,20 +74,24 @@ export interface CounsellorLandingContent {
   hero: {
     headline: string;
     subheading: string;
+    /** Name and role under the subheading, as in Claudia's mock-up. */
+    showNameAndRole?: boolean;
     intro: ReadonlyArray<string>;
     freeLine: string;
     primaryCta: string;
   };
   /** The three points in the band under the hero. */
   trust: ReadonlyArray<string>;
-  video: {
+  /** The counsellor's own video. Optional: Claudia has none yet. */
+  video?: {
     youtubeId: string;
     label: string;
     caption: string;
     /** The resource page in the Student Support Library. */
     libraryPath: string;
   };
-  credentials: {
+  /** A qualification with its certificate. Optional: Claudia has none yet. */
+  credentials?: {
     heading: string;
     body: string;
     certificate: {
@@ -85,9 +104,22 @@ export interface CounsellorLandingContent {
   };
   help: {
     heading: string;
-    items: ReadonlyArray<{ icon: "course" | "applications" | "next-steps"; title: string; body: string }>;
+    items: ReadonlyArray<{ icon: "course" | "applications" | "budget" | "next-steps"; title: string; body: string }>;
   };
   destinationsHeading: string;
+  /**
+   * A WSA podcast from the Student Support Library that the counsellor is
+   * not in, after the destinations. It plays in the page only when pressed.
+   */
+  podcast?: {
+    /** As the library numbers it, e.g. "WSA 039". */
+    code: string;
+    youtubeId: string;
+    title: string;
+    body: string;
+    cta: string;
+    libraryPath: string;
+  };
   stories: { heading: string; body: string; linkLabel: string };
   form: {
     embedUrl: string;
@@ -95,7 +127,12 @@ export interface CounsellorLandingContent {
     supporting: string;
     privacyLine: string;
   };
-  thankYou: {
+  /**
+   * The counsellor's own thank-you page. Optional: a counsellor whose form
+   * already redirects elsewhere (Claudia's is the Website Registration Form,
+   * which sends students to /contact/thank-you) has none.
+   */
+  thankYou?: {
     headline: string;
     body: string;
     whatsappCta: string;

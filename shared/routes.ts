@@ -104,6 +104,7 @@ export const VALID_CLIENT_ROUTES: readonly string[] = [
   // for her Pipedrive form to send the student to, noindex and unlinked.
   "/speak-to-eldah",
   "/speak-to-eldah/thank-you",
+  "/speak-to-claudia",
   // The Sarkin Fulani Future Leaders Programme landing page, Tim Hunt's brief
   // of 8 October 2026 from Farooq Gajo's revised proposal. A real route so
   // it can be reviewed by the Office of His Royal Highness and Brooke House

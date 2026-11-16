@@ -33,7 +33,7 @@
  */
 import type { CounsellorLandingContent } from "./counsellorLandingPage";
 
-export const ELDAH_PAGE: CounsellorLandingContent = Object.freeze({
+export const ELDAH_PAGE = Object.freeze({
   path: "/speak-to-eldah",
   thankYouPath: "/speak-to-eldah/thank-you",
 

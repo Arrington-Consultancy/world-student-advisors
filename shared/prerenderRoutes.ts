@@ -63,6 +63,7 @@ export const PRERENDER_ROUTES: readonly string[] = [
   "/speak-to-madalitso",
   "/speak-to-gladys",
   "/speak-to-eldah",
+  "/speak-to-claudia",
   // Every Student Support Library resource page, so a link pasted into
   // WhatsApp or email previews with the podcast's own title, and a crawler
   // that runs no JavaScript still sees the resource. Generated from the
