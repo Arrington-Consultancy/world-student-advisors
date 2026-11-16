@@ -62,8 +62,16 @@ describe("Tim Hunt's text, in both languages", () => {
 
   it("carries his headings", () => {
     expect(EN.heading).toBe("Please read this before contacting Madalitso");
-    expect(NY.heading.toUpperCase()).toBe("CHONDE WERENGANI IZI MUSANALAKHULANE NDI MADALITSO");
+    expect(NY.heading.toUpperCase()).toBe("CHONDE WERENGANI IZI MUSANALANKHULANE NDI MADALITSO");
     expect(NY.signOff).toBe("ZIKOMO");
+  });
+
+  it("carries the three Chichewa corrections Madalitso approved on 16 November 2026", () => {
+    const text = [NY.heading, ...allLines(NY)].join(" ");
+    expect(text).toContain("musanalankhulane ndi Madalitso");
+    expect(text).toContain("ophunzira oyenerera amene amaliza bwino digiri yawo ku UK");
+    expect(text).toContain("malamulo angathe kusintha inu");
+    expect(text).not.toMatch(/musanalakhulane|anganthe|kusitha|wamaliza bwino digiri yake/i);
   });
 
   it("has the same nine points in each, with the Hungary and Cyprus costs at point 5", () => {
