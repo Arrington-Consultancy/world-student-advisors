@@ -199,7 +199,11 @@ export async function mintPortalToken(user: {
 export type GoogleLoginResult =
   | { status: "ok"; token: string; user: { id: number; email: string; firstName: string; lastName: string } }
   | { status: "not_found" }
-  | { status: "inactive" };
+  | { status: "inactive" }
+  /** The email matched, but Google has not verified that this Google account owns it. */
+  | { status: "unverified_email" }
+  /** The email matched an account already linked to a different Google account. */
+  | { status: "conflict" };
 
 /**
  * Look up a portal user by their Google OAuth subject identifier for portal
@@ -214,6 +218,13 @@ export type GoogleLoginResult =
  * linked on this first Google sign-in so future logins work via either
  * method — that is linking a login method, not creating an account.
  *
+ * That email match is trusted only when Google says it has verified the
+ * address (the id_token's email_verified claim), and it never replaces a
+ * different Google account already linked to the portal account. Without
+ * those two checks, any Google account presenting a student's email address
+ * could take over that student's portal login. A match by googleSub needs
+ * neither: the sub is Google's stable identifier for the account.
+ *
  * Returns null only when the database itself is unavailable; a real "no
  * account" or "inactive account" outcome is returned as a distinct status so
  * the caller can show the right message instead of a generic failure.
@@ -221,6 +232,8 @@ export type GoogleLoginResult =
 export async function findGoogleUser(profile: {
   sub: string;
   email: string;
+  /** The verified id_token's email_verified claim. */
+  emailVerified: boolean;
   firstName: string;
   lastName: string;
 }): Promise<GoogleLoginResult | null> {
@@ -238,11 +251,14 @@ export async function findGoogleUser(profile: {
     // application has been submitted for this email yet.
     rows = await db.select().from(portalUsers).where(eq(portalUsers.email, emailLower)).limit(1);
 
-    if (rows.length) {
-      await db.update(portalUsers).set({ googleSub: profile.sub }).where(eq(portalUsers.id, rows[0].id));
-    } else {
-      return { status: "not_found" };
-    }
+    if (!rows.length) return { status: "not_found" };
+
+    const match = rows[0];
+    if (!profile.emailVerified) return { status: "unverified_email" };
+    if (match.googleSub && match.googleSub !== profile.sub) return { status: "conflict" };
+    if (!match.isActive) return { status: "inactive" };
+
+    await db.update(portalUsers).set({ googleSub: profile.sub }).where(eq(portalUsers.id, match.id));
   }
 
   const portalUser = rows[0];
