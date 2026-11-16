@@ -20,6 +20,16 @@
  * the Chichewa heading is in sentence case rather than capitals, and the
  * Chichewa paragraph that matches English point 9 is numbered 9 too.
  *
+ * THREE CORRECTIONS to the Chichewa, 16 November 2026. Tom Arrington noticed
+ * two likely typos; Tim Hunt put them to Madalitso with a third ("so the
+ * wording consistently refers to students in the plural") in "Chichewa
+ * notice: permission to make a few corrections", and Madalitso replied the
+ * same day: "The suggestions are fine with me." So "musanalakhulane" is now
+ * "musanalankhulane", "anganthe kusitha" is now "angathe kusintha", and
+ * "amene wamaliza bwino digiri yake" is now "amene amaliza bwino digiri yawo".
+ * Tim's fourth point, the scholarship paragraph (point 1), is unchanged here:
+ * Madalitso says he has edited it, but his new wording had not reached Tom.
+ *
  * THE FIGURES. Every kwacha amount is the pound amount at Tim's stated rate,
  * £1 ≈ MK2,325, rounded to one decimal place in millions, and
  * server/campaign/madalitsoReadFirst.test.ts holds them to it.
@@ -75,7 +85,7 @@ export const MADALITSO_READ_FIRST: ReadFirstNotice = Object.freeze({
     {
       language: "Chichewa",
       lang: "ny",
-      heading: "Chonde werengani izi musanalakhulane ndi Madalitso",
+      heading: "Chonde werengani izi musanalankhulane ndi Madalitso",
       intro:
         "World Student Advisors ndi bungwe loona mtima, lokhulupilika, komanso lodalirika. Tikufuna kuti mumvetse bwino zimene tingakuthandizeni komanso ndalama zofunika pamaphunziro akunja, kuti musataye nthawi yanu kapena yathu.",
       points: [
@@ -89,7 +99,7 @@ export const MADALITSO_READ_FIRST: ReadFirstNotice = Object.freeze({
           body: "Njira yotsika mtengo ingakhale kuchita digiri yoyamba ku Malawi, kenako kukonzekera digiri ya Master’s ku UK. Maphunziro ambiri a Master’s amene mumaphunzira nthawi zonse amatenga miyezi 12. Pogwiritsa ntchito chitsanzo cha ndalama chomwechi, mungafunike £26,000, pafupifupi MK60.5 miliyoni, pa chaka chimenecho. Ndalama za ulendo, visa ndi zina zowonjezera sizikuphatikizidwa pamenepa. Izi zikutanthauza kukonzekera ndalama za chaka chimodzi kunja m'malo mwa zaka zitatu kapena zinayi.",
         },
         {
-          body: "Malingana ndi malamulo omwe alipo panopa, ophunzira oyenerera amene wamaliza bwino digiri yake ku UK, angalembetse visa yotchedwa Graduate visa kuti akhalebe ku UK n’kumagwira ntchito kapena kufunafuna ntchito. Kwa amene adzalembetse kuyambira pa 1 Januwale 2027, visa imeneyi idzakhala ya miyezi 18. Visa imeneyi sikutanthauza kuti mudzapezadi ntchito, ndiposo malamulo anganthe kusitha inu musanamalize maphunziro anu.",
+          body: "Malingana ndi malamulo omwe alipo panopa, ophunzira oyenerera amene amaliza bwino digiri yawo ku UK, angalembetse visa yotchedwa Graduate visa kuti akhalebe ku UK n’kumagwira ntchito kapena kufunafuna ntchito. Kwa amene adzalembetse kuyambira pa 1 Januwale 2027, visa imeneyi idzakhala ya miyezi 18. Visa imeneyi sikutanthauza kuti mudzapezadi ntchito, ndiposo malamulo angathe kusintha inu musanamalize maphunziro anu.",
         },
         {
           body: "Timagwiranso ntchito ndi mayunivesite aku Hungary ndi Cyprus amene amapereka maphunziro osakhala a zachipatala. Kutengera yunivesite, maphunziro ndi malo, ndalama zoyerekeza pachaka ndi izi:",
