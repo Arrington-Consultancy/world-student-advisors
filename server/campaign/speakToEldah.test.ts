@@ -103,6 +103,10 @@ describe("the page Tim's mock-up shows", () => {
 
   it("shows her British Council certificate in a pop-up, claiming only that she completed the training", () => {
     expect(existsSync(`client/public${E.credentials.certificate.src}`)).toBe(true);
+    // The certificate Eldah sent on 16 November 2026, in place of the earlier layout.
+    expect(E.credentials.certificate.src).toBe("/team/certificates/eldah-therone-british-council-2027.png");
+    expect(existsSync("client/public/team/certificates/eldah-therone-british-council.png")).toBe(false);
+    expect(E.credentials.certificate.alt).toContain("valid until 28 April 2027");
     expect(E.credentials.body).toContain("has completed British Council Agent and Counsellor Training");
     expect(renderedCopy()).not.toMatch(/accredit|endorse|approved by the British Council|certified by the British Council/i);
     expect(stripComments(PAGE)).toMatch(/<Dialog open=\{open\} onOpenChange=\{setOpen\}>/);

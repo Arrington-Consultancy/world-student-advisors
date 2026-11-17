@@ -20,10 +20,14 @@
  * record: WSA's UK Head Office WhatsApp, +44 7470 689 849, and her WSA
  * address.
  *
- * THE CERTIFICATE is the British Council "UK agent and counsellor training"
- * certificate Tim attached (awarded 28 April 2025, valid for two years). The
- * page says what it is, that she completed the training, and claims nothing
- * more: the British Council does not endorse or accredit agents.
+ * THE CERTIFICATE is the British Council "UK knowledge agent and counsellor
+ * training" certificate of completion, valid until 28 April 2027 (code
+ * 67976). Eldah sent it on 16 November 2026, copied to Tim, asking for it to
+ * replace the one Tim first attached: the British Council's earlier layout
+ * of the same award ("UK agent and counsellor training", awarded 28 April
+ * 2025, valid for two years). The page says what it is, that she completed
+ * the training, and claims nothing more: the British Council does not
+ * endorse or accredit agents.
  *
  * THE VIDEO is WSA 034, "Eldah Therone, Team Leader WSA", already in the
  * Student Support Library; Tim's link is its library page.
@@ -78,10 +82,10 @@ export const ELDAH_PAGE = Object.freeze({
     heading: "Professional guidance you can trust",
     body: "Eldah has completed British Council Agent and Counsellor Training. She combines personal guidance with the support of the wider WSA team.",
     certificate: {
-      src: "/team/certificates/eldah-therone-british-council.png",
-      alt: "Eldah Therone’s British Council certificate in UK agent and counsellor training, awarded 28 April 2025",
+      src: "/team/certificates/eldah-therone-british-council-2027.png",
+      alt: "Eldah Therone’s British Council certificate in UK knowledge agent and counsellor training, valid until 28 April 2027",
       width: 637,
-      height: 902,
+      height: 901,
       linkLabel: "View certificate",
     },
   },
