@@ -3,25 +3,28 @@ import { existsSync, readFileSync } from "fs";
 import {
   AWARDS,
   CAMPAIGN_SLUG,
+  BHC_LINKS,
   DRAFT,
   EXPRESS_INTEREST,
+  EXPRESS_INTEREST_FORM_URL,
   MARYAM,
   OPPORTUNITIES,
+  OPPORTUNITIES_PHOTO,
   OPPORTUNITY_CARDS,
   PAGE_PATH,
   PARTNERS,
   PATRON,
   REVIEW_NOTES,
   STEPS,
+  TIMELINE,
+  WHAT_IS,
   allRenderedCopy,
-  expressInterestHandoffUrl,
   maryamWhatsAppHref,
 } from "../../client/src/lib/sarkinFulani";
 import { CAMPAIGN_PATHS, campaignNotificationDetail, campaignReplacesGeneralNotification, isCampaignSlug } from "../../shared/campaignEnquiry";
 import { NOINDEX_PATHS, SEO_MAP, shouldNoindex } from "../../shared/seo";
 import { VALID_CLIENT_ROUTES, isValidClientRoute } from "../../shared/routes";
 import { ALL_PRERENDER_ROUTES } from "../../shared/prerenderRoutes";
-import { isDesiredLevelValue } from "../../shared/studentEnquiryOptions";
 import { statesAnUnnegatedGuarantee } from "../operating/qualityCheck";
 
 /**
@@ -31,8 +34,8 @@ import { statesAnUnnegatedGuarantee } from "../operating/qualityCheck";
  * What these hold, in order of the damage a failure would do: the page
  * stays a draft until it is published on purpose (noindex, out of the
  * sitemap and prerender list, linked from nowhere, banner showing, all
- * together); the one form hands off to the sign-up and opens no second
- * route into Pipedrive; the community is named as
+ * together); the one form is Tim's own Pipedrive form, embedded as
+ * supplied (his revamp of 18 November 2026); the community is named as
  * the Office of His Royal Highness asked; and no promise appears that
  * Brooke House College has not made.
  */
@@ -97,9 +100,8 @@ describe("no promise Brooke House College has not made", () => {
     expect(statesAnUnnegatedGuarantee(COPY)).toBe(false);
   });
 
-  it("says the College decides, and carries its confirmation of the awards with the one point still open", () => {
+  it("says the College decides, and that the programme is not a fully funded scholarship", () => {
     expect(COPY).toMatch(/made independently by Brooke House College/);
-    expect(COPY).toContain("Awards confirmed by Brooke House College on 12 October 2026. Precisely which fees they apply to is to be confirmed by the College.");
     expect(COPY).toContain("not a fully funded scholarship");
   });
 
@@ -158,51 +160,26 @@ describe("the Expression of Interest goes down the one controlled path", () => {
     expect(STEPS[2].body).toMatch(/^Once eligibility is confirmed/);
   });
 
-  it("hands off to /contact with the slug, the level, the destination and the opportunity", () => {
-    const url = expressInterestHandoffUrl({
-      role: "parent",
-      firstName: " Aisha ",
-      lastName: "Bello",
-      email: "aisha@example.com",
-      phone: "0803 123 4567",
-      opportunity: "football-and-education",
-    });
-    expect(url.startsWith("/contact?")).toBe(true);
-    expect(url.endsWith("#student-signup")).toBe(true);
-    const params = new URL(`https://x${url}`).searchParams;
-    expect(params.get("campaign")).toBe(CAMPAIGN_SLUG);
-    expect(params.get("firstName")).toBe("Aisha");
-    expect(params.get("lastName")).toBe("Bello");
-    expect(params.get("email")).toBe("aisha@example.com");
-    expect(params.get("phone")).toBe("+2348031234567");
-    expect(params.get("desiredLevel")).toBe("boarding");
-    expect(params.get("preferredDestination")).toBe("uk");
-    expect(params.get("areaOfStudy")).toBe("Sarkin Fulani Future Leaders Programme: Football and Education (parent or guardian)");
-  });
-
-  it("drops a number it cannot read rather than handing over a mangled one", () => {
-    const url = expressInterestHandoffUrl({ role: "student", firstName: "A", lastName: "B", email: "a@b.com", phone: "call me", opportunity: "not-sure" });
-    const params = new URL(`https://x${url}`).searchParams;
-    expect(params.has("phone")).toBe(false);
-    expect(params.get("desiredLevel")).toBe("other");
-  });
-
-  it("every opportunity maps to a level the sign-up form offers", () => {
-    for (const o of OPPORTUNITIES) expect(isDesiredLevelValue(o.desiredLevel), o.label).toBe(true);
-    expect(OPPORTUNITIES[OPPORTUNITIES.length - 1].value).toBe("not-sure");
-  });
-
-  it("the sign-up form reads the two fields this page adds, and nothing else new", () => {
-    const contact = read("client/src/pages/Contact.tsx");
-    expect(contact).toContain('take("lastName", 60)');
-    expect(contact).toContain('take("areaOfStudy", 160)');
-  });
-
-  it("the page itself creates no Lead and embeds no third-party form", () => {
+  it("embeds Tim Hunt's own Pipedrive form exactly as supplied, and writes nothing itself (18 November 2026)", () => {
+    expect(EXPRESS_INTEREST_FORM_URL).toBe(
+      "https://webforms.pipedrive.com/f/6N4CIK8VYqnAXH4tLplKpATusPl6pnlplIUMXWxm59MMRC7NinhVX65oeXQG7kG6QP",
+    );
+    expect(PAGE).toContain("<PipedriveFormEmbed embedUrl={EXPRESS_INTEREST_FORM_URL}");
+    expect(PAGE.match(/<PipedriveFormEmbed /g)).toHaveLength(1);
     expect(PAGE).not.toContain("createStudentLead");
     expect(PAGE).not.toContain("submitStudent");
-    expect(PAGE).not.toContain("webforms.pipedrive.com");
-    expect(PAGE).toContain("expressInterestHandoffUrl(");
+    expect(PAGE).not.toContain("<form");
+  });
+
+  it("lists beside it the opportunities his form offers, 'not sure' last", () => {
+    expect(OPPORTUNITIES).toEqual([
+      "Boarding and full-time study at Brooke House College",
+      "Football Academy and full-time study",
+      "Summer football camp",
+      "English language and activities summer school",
+      "Vector Programme after leaving school",
+      "I'm not sure and would like advice",
+    ]);
   });
 });
 
@@ -253,9 +230,85 @@ describe("Maryam Lawal's contact card, Tim Hunt's request of 9 October 2026", ()
     expect(publicFile(MARYAM.photo)).toBe(true);
   });
 
-  it("leaves the Expression of Interest routing exactly as it was", () => {
-    expect(PAGE).toContain("expressInterestHandoffUrl(");
+  it("sits above Tim's Express your interest form, which stays the formal route", () => {
+    expect(PAGE.indexOf('id="maryam"')).toBeLessThan(PAGE.indexOf("<PipedriveFormEmbed "));
     expect(CAMPAIGN_PATHS[CAMPAIGN_SLUG]).toBe(PAGE_PATH);
+  });
+});
+
+/**
+ * Tim Hunt's revamp of 18 November 2026 ("Revamp the King's LP.docx"),
+ * after the Office of His Royal Highness approved the page, and Chad Male's
+ * answer of 19 November on which summer courses to list.
+ */
+describe("Tim Hunt's revamp of 18 November 2026", () => {
+  const card = (id: string) => OPPORTUNITY_CARDS.find(c => c.id === id);
+
+  it("has his new programme box, without the Essay Competition line", () => {
+    expect(WHAT_IS.offersHeading).toBe("Explore your opportunities at Brooke House College");
+    expect(WHAT_IS.offers.map(o => o.text)).toEqual([
+      "Study and board in England at Brooke House College.",
+      "Receive a 10% tuition fee award if admitted for full-time study through the programme. Brooke House College may increase the total award to 25% based on academic or football ability.",
+      "Combine your studies with advanced football training through the Brooke House College Football Academy.",
+      "Elite football and degree study after Brooke House College.",
+      "Practise your English and make new friends at a Brooke House College summer camp.",
+    ]);
+    expect(WHAT_IS.offers[1].link?.href).toBe(BHC_LINKS.scholarshipCompetition);
+  });
+
+  it("takes the Essay Competition and every amber 'to be confirmed' note off the page", () => {
+    expect(card("essay")).toBeUndefined();
+    expect(COPY).not.toMatch(/essay competition/i);
+    expect(TIMELINE.some(t => /essay/i.test(t.what))).toBe(false);
+    for (const c of OPPORTUNITY_CARDS) expect(c.pending, c.id).toBeUndefined();
+    expect(COPY).not.toMatch(/to be confirmed/i);
+    expect(PAGE).not.toContain("AWARDS.confirmationNote");
+  });
+
+  it("describes the Vector Programme in his words, with its three degrees", () => {
+    const vector = card("vector")!;
+    expect(vector.title).toBe("Train at Coventry City. Play twice a week. Study for a degree.");
+    expect(vector.body.join(" ")).toContain("a joint venture between Coventry City Football Club and Brooke House College");
+    expect(vector.body.join(" ")).toContain("aged 18 to 23");
+    expect(vector.list).toHaveLength(3);
+    expect(vector.list!.join(" ")).toContain("Loughborough University");
+    expect(vector.list!.join(" ")).toContain("Nottingham Trent University");
+  });
+
+  it("lists the two summer courses Brooke House College named, and no taster classes", () => {
+    const summer = card("summer-schools")!;
+    const text = summer.body.join(" ");
+    expect(text).toContain("High Performance Football Development Camp");
+    expect(text).toContain("English Language Tuition Course");
+    expect(text).not.toMatch(/GCSE|A Level|IELTS/);
+    expect(summer.links?.map(l => l.href)).toEqual([BHC_LINKS.summerSchool, BHC_LINKS.termDates]);
+  });
+
+  it("says what boarding fees include, with links to the College's own pages", () => {
+    expect(AWARDS.includedHeading).toBe("What's included in your boarding fees?");
+    expect(AWARDS.included).toHaveLength(3);
+    expect(AWARDS.feesLink.href).toBe(BHC_LINKS.fees);
+  });
+
+  it("links only to Brooke House College's own site, opened in a new tab", () => {
+    for (const href of Object.values(BHC_LINKS)) expect(href.startsWith("https://www.brookehousecollege.co.uk/"), href).toBe(true);
+    const link = PAGE.split("function CollegeLink(")[1].split("\nfunction ")[0];
+    expect(link).toContain('target="_blank"');
+    expect(link).toContain('rel="noopener noreferrer"');
+  });
+
+  it("shows his photograph beside the opportunities, served from this site", () => {
+    expect(publicFile(OPPORTUNITIES_PHOTO.src)).toBe(true);
+    const opportunities = PAGE.indexOf("The opportunities</SectionHeading>");
+    const photo = PAGE.indexOf("src={OPPORTUNITIES_PHOTO.src}");
+    const cards = PAGE.indexOf("OPPORTUNITY_CARDS.map");
+    expect(photo).toBeGreaterThan(opportunities);
+    expect(cards).toBeGreaterThan(photo);
+  });
+
+  it("stays a draft until Tim says the form may be used (19 November 2026)", () => {
+    expect(DRAFT.isDraft).toBe(true);
+    expect(DRAFT.line).toContain("Approved by the Office of His Royal Highness on 18 November 2026");
   });
 });
 

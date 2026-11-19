@@ -1,5 +1,3 @@
-import type { DesiredLevelValue } from "@shared/studentEnquiryOptions";
-import { toInternationalNigerianNumber } from "./nigeriaLanding";
 
 /**
  * The Sarkin Fulani Future Leaders Programme landing page: every word the
@@ -37,11 +35,24 @@ import { toInternationalNigerianNumber } from "./nigeriaLanding";
  *     is ready to progress the student. Maryam is the principal WSA
  *     contact in Nigeria. The page stays in draft until Farooq and Brooke
  *     House College confirm everything for publication.
+ *  7. Farooq Gajo, 18 November 2026, for the Office of His Royal Highness:
+ *     "We have reviewed the landing page and we are okay with it." Tim Hunt
+ *     the same day: "Let's try and get this live 1 Dec."
+ *  8. Tim Hunt's revamp brief of 18 November 2026 ("Revamp the King's
+ *     LP.docx", in 16_WEBSITE_AI/07 Landing Pages/King's Landing Page_Yes),
+ *     section by section: new wording for the programme offers, the Vector
+ *     Programme, the Summer Schools and the boarding fees; the Essay
+ *     Competition and every "to be confirmed" note removed ("we need this
+ *     launched"); his photograph beside the opportunities; and his own
+ *     Pipedrive form, "Express your interest", in place of ours.
+ *  9. Chad Male, Brooke House College, 19 November 2026, on the summer
+ *     schools: "The two courses to list are the English Language Tuition
+ *     Course and the High-Performance Football Development Camp." Tim's
+ *     summer copy is kept for those two; its GCSE, A Level and IELTS taster
+ *     paragraph is left out because the College did not list it.
  *
- * WHAT IS PROVISIONAL, and said so on the page: the Football Academy,
- * Vector Programme and Summer School descriptions await the College's
- * confirmation, and the Essay Competition is proposed, not announced.
- * REVIEW_NOTES below lists each open item for the reviewers.
+ * WHAT IS STILL OPEN is in REVIEW_NOTES below, not on the page: Tim asked
+ * for the amber "to be confirmed" notes to go (18 November 2026).
  *
  * UK English throughout. No em dashes. No guarantee language: Brooke House
  * College alone decides admission and awards, and the page says so.
@@ -61,7 +72,7 @@ export const DRAFT = Object.freeze({
   isDraft: true,
   label: "Draft for review",
   line:
-    "Not yet published. Royal material subject to approval by the Office of His Royal Highness. Brooke House College confirmed January 2027 entry and the tuition fee awards on 12 October 2026; its other offers remain subject to the College's confirmation.",
+    "Not yet published. Approved by the Office of His Royal Highness on 18 November 2026; Brooke House College confirmed January 2027 entry and the tuition fee awards on 12 October 2026.",
 });
 
 export const PATRON = Object.freeze({
@@ -120,6 +131,28 @@ export const VISION = Object.freeze({
   foundationLine: "The programme is supported by the Sarkin Fulanin Lagos Foundation.",
 });
 
+/**
+ * Brooke House College's own pages, for the links Tim's revamp brief of 18
+ * November 2026 asks for. Checked on brookehousecollege.co.uk on 19
+ * November 2026. The College has no Vector Programme page; its brochure is
+ * still to come from Tim.
+ */
+export const BHC_LINKS = Object.freeze({
+  scholarshipCompetition: "https://www.brookehousecollege.co.uk/football-academy/scholarship-competition",
+  summerSchool: "https://www.brookehousecollege.co.uk/summer-school",
+  termDates: "https://www.brookehousecollege.co.uk/parent-information/term-dates",
+  learning: "https://www.brookehousecollege.co.uk/learning-at-brooke-house/high-performance-learning",
+  boarding: "https://www.brookehousecollege.co.uk/life-at-brooke-house/boarding",
+  catering: "https://www.brookehousecollege.co.uk/life-at-brooke-house/catering",
+  studentLife: "https://www.brookehousecollege.co.uk/life-at-brooke-house/enrichment/enrichment-overview",
+  fees: "https://www.brookehousecollege.co.uk/admissions/fees",
+});
+
+export interface PageLink {
+  label: string;
+  href: string;
+}
+
 export const WHAT_IS = Object.freeze({
   heading: "What is the Sarkin Fulani Future Leaders Programme?",
   paragraphs: [
@@ -127,15 +160,21 @@ export const WHAT_IS = Object.freeze({
     "Under the patronage of His Royal Highness, the programme brings together Brooke House College in England and World Student Advisors to identify and support young people with ability, ambition, talent and leadership potential. The first students will be recruited for entry to Brooke House College in January 2027.",
     "This is about much more than studying in Britain. The ambition is to help develop educated, confident and responsible young people who can become future leaders within their professions, families and communities.",
   ],
-  offersHeading: "The programme offers",
+  // Tim Hunt, 18 November 2026: new wording for this box, the Essay
+  // Competition line removed, and the Vector line as "Elite football and
+  // degree study after Brooke House College", to link to the brochure once
+  // he sends it.
+  offersHeading: "Explore your opportunities at Brooke House College",
   offers: [
-    "Full-time education at Brooke House College",
-    "Tuition fee awards for students admitted full-time",
-    "Education combined with elite football development",
-    "Leadership and personal development through the Vector Programme",
-    "Brooke House College Summer Schools",
-    "The proposed Brooke House College Essay Competition",
-  ],
+    { text: "Study and board in England at Brooke House College." },
+    {
+      text: "Receive a 10% tuition fee award if admitted for full-time study through the programme. Brooke House College may increase the total award to 25% based on academic or football ability.",
+      link: { label: "Explore the College's football scholarship competition.", href: BHC_LINKS.scholarshipCompetition },
+    },
+    { text: "Combine your studies with advanced football training through the Brooke House College Football Academy." },
+    { text: "Elite football and degree study after Brooke House College." },
+    { text: "Practise your English and make new friends at a Brooke House College summer camp." },
+  ] as ReadonlyArray<{ text: string; link?: PageLink }>,
 });
 
 export const WHO_FOR = Object.freeze({
@@ -166,6 +205,11 @@ export interface OpportunityCard {
   /** Facts the College has confirmed, shown as a list under a heading. */
   confirmedHeading?: string;
   confirmed?: string[];
+  /** A plain list under a heading, such as the Vector Programme's degrees. */
+  listHeading?: string;
+  list?: string[];
+  /** Links to Brooke House College's own pages, shown at the foot of the card. */
+  links?: PageLink[];
 }
 
 /**
@@ -203,35 +247,53 @@ export const OPPORTUNITY_CARDS: ReadonlyArray<OpportunityCard> = Object.freeze([
     ],
   },
   {
+    // Tim Hunt, 18 November 2026. Brooke House College to confirm the age
+    // range and degree options before the page goes live (REVIEW_NOTES).
     id: "vector",
     eyebrow: "The Vector Programme",
-    title: "Preparing young people for more than examinations",
+    title: "Train at Coventry City. Play twice a week. Study for a degree.",
     body: [
-      "The Brooke House College Vector Programme sits alongside academic study and develops leadership, resilience, critical thinking, creativity, communication and teamwork: the qualities universities and employers value, and the qualities of future professionals and community leaders.",
-      "Students can also take part in enrichment including entrepreneurship, creative and performing arts, community service, clubs and societies and the Duke of Edinburgh's Award.",
+      "When you leave Brooke House College, you can keep pursuing football while working towards a university degree. The Vector Programme, a joint venture between Coventry City Football Club and Brooke House College, combines full-time elite football training with degree study for players aged 18 to 23.",
+      "Train four days a week with UEFA qualified coaches and put your skills to the test on two match days a week. The programme includes strength and conditioning, match analysis and recovery sessions, with opportunities to be seen by scouts.",
+    ],
+    listHeading: "The brochure lists three degree options:",
+    list: [
+      "BSc (Hons) Sport and Exercise Science with Management, awarded by Loughborough University",
+      "BEng (Hons) Sustainable Engineering, awarded by Loughborough University",
+      "BA (Hons) Business Management, awarded by Nottingham Trent University",
     ],
   },
   {
+    // Tim Hunt's wording of 18 November 2026, for the two courses Chad Male
+    // named on 19 November: the High Performance Football Development Camp
+    // and the English Language Tuition Course.
     id: "summer-schools",
-    eyebrow: "Summer Schools",
-    title: "Experience Britain. Learn. Explore. Make friends.",
+    eyebrow: "Summer Schools at Brooke House College",
+    title: "Train with football coaches, get behind the wheel or explore Britain",
     body: [
-      "Brooke House College Summer Schools give young people from the Arewa community a way to experience Britain, develop confidence and discover life at a British boarding school. For some it is a memorable experience in its own right. For others it is a first look at Brooke House College before considering full-time education.",
-      "Football and British Culture: football training combined with British culture and life in England, for young people with a passion for the game.",
-      "British Culture with Exceptional Tours: learning and personal development combined with tours and experiences, for young people who want to discover Britain first hand.",
+      "Spend part of your summer at a British boarding school and choose what you want to get out of it. Play football, try karting or horse riding, improve your English and meet students from around the world.",
+      "Take your football further. The High Performance Football Development Camp gives committed players a taste of academy life. Work with UEFA qualified coaches on technique, tactics and match preparation.",
+      "Learn English and try something new. On the English Language Tuition Course, combine English lessons with golf coaching, horse riding in the Leicestershire countryside or karting. Choose English Plus British Culture if you'd rather spend your time exploring Britain.",
+      "Register your interest with WSA. We'll help your family choose a camp and confirm the 2027 options, dates, age requirements, fees and what's included with Brooke House College.",
     ],
-    pending: ["2027 dates, ages, duration, accommodation, fees and what is included, to be confirmed by Brooke House College"],
-  },
-  {
-    id: "essay",
-    eyebrow: "Proposed",
-    title: "Brooke House College Essay Competition",
-    body: [
-      "Your ideas. Your voice. Your opportunity. Education is about thinking, questioning, forming ideas and communicating them well, and the programme wants young people from the Arewa community to show theirs.",
+    links: [
+      { label: "Explore Brooke House College's summer camps", href: BHC_LINKS.summerSchool },
+      { label: "Brooke House College term dates", href: BHC_LINKS.termDates },
     ],
-    pending: ["Essay question, who can enter, word limit, dates, judging and prizes, to be confirmed by Brooke House College"],
   },
 ]);
+
+/**
+ * Tim Hunt's photograph for the opportunities section, 18 November 2026:
+ * "Place above right." Served from this site at 960 pixels, without
+ * metadata. Where it comes from is an open item (REVIEW_NOTES).
+ */
+export const OPPORTUNITIES_PHOTO = Object.freeze({
+  src: "/images/sarkin-fulani/nigerian-heritage-lesson.jpg",
+  alt: "A student in a Brooke House College football top beside a Nigerian flag and a screen reading Nigeria's Cultural Heritage",
+  width: 960,
+  height: 768,
+});
 
 /**
  * Tuition fee awards, Tim Hunt's fourth requirement. The figures are those
@@ -249,15 +311,21 @@ export const AWARDS = Object.freeze({
     "All admissions and tuition fee award decisions are made independently by Brooke House College. The programme is not a fully funded scholarship: families fund the remaining cost of the student's education and other expenses.",
     "Before a family makes any commitment, World Student Advisors makes sure they understand the fees, any award received and the additional costs involved. Every family receives a clear financial breakdown first.",
   ],
-  confirmationNote: "Awards confirmed by Brooke House College on 12 October 2026. Precisely which fees they apply to is to be confirmed by the College.",
-  includedHeading: "The published Brooke House College tuition fee includes",
+  // Tim Hunt, 18 November 2026: "Fees confirmed. Remove light brown text",
+  // and this box in place of the tuition fee list.
+  includedHeading: "What's included in your boarding fees?",
+  includedIntro:
+    "Brooke House College's published boarding fees cover teaching, accommodation and meals during term time and the October, February and May half term breaks.",
   included: [
-    "Academic tuition",
-    "Boarding accommodation",
-    "Meals during term time",
-    "Pastoral care and student welfare",
-    "Access to academic, sporting and enrichment facilities",
-  ],
+    { text: "Classroom teaching for your chosen course.", link: { label: "Explore studying at Brooke House College.", href: BHC_LINKS.learning } },
+    { text: "A place in a boarding house, with shared spaces to relax, study and spend time with friends.", link: { label: "See the boarding houses.", href: BHC_LINKS.boarding } },
+    { text: "Meals during your stay in term time and the scheduled half term breaks.", link: { label: "See what's on the menu.", href: BHC_LINKS.catering } },
+  ] as ReadonlyArray<{ text: string; link: PageLink }>,
+  includedClose: {
+    text: "Boarders also have pastoral support from residential staff and opportunities to take part in sport and activities beyond the classroom.",
+    link: { label: "Explore student life at Brooke House.", href: BHC_LINKS.studentLife },
+  } as { text: string; link: PageLink },
+  feesLink: { label: "View Brooke House College's published fees", href: BHC_LINKS.fees } as PageLink,
   budgetHeading: "Families should also budget for",
   budget: [
     "Student Visa fees",
@@ -268,7 +336,7 @@ export const AWARDS = Object.freeze({
     "School trips and optional activities",
     "Guardianship arrangements where required",
   ],
-  separateLine: "Football Academy fees are charged separately where applicable. Summer School fees and inclusions will be published separately.",
+  separateLine: "Football Academy fees are charged separately where applicable, and summer camps have their own fees.",
 });
 
 export const STEPS: ReadonlyArray<{ title: string; body: string }> = Object.freeze([
@@ -307,7 +375,6 @@ export const TIMELINE: ReadonlyArray<{ when: string; what: string }> = Object.fr
   { when: "Autumn 2026", what: "Expressions of interest, counselling, student assessments and Brooke House College admissions." },
   { when: "January 2027", what: "The first Sarkin Fulani Future Leaders Programme students begin at Brooke House College." },
   { when: "Summer 2027", what: "Brooke House College Summer Schools." },
-  { when: "2027", what: "Brooke House College Essay Competition, subject to the College's confirmation." },
 ]);
 
 export const BEHIND = Object.freeze({
@@ -323,9 +390,8 @@ export const BEHIND = Object.freeze({
  * 2026: her card sits immediately below "Who is behind the programme?" and
  * above the Expression of Interest, with both contact details live and a
  * WhatsApp icon rather than a telephone one. She answers general questions;
- * the Expression of Interest form stays separate and, since 15 October
- * 2026, goes first to the Office of His Royal Highness for the eligibility
- * check, with Maryam and Tim copied (shared/campaignEnquiry.ts).
+ * the Expression of Interest form stays separate and goes first to the
+ * Office of His Royal Highness for the eligibility check.
  * Her photograph is the one already on the Our Team page.
  */
 export const MARYAM = Object.freeze({
@@ -353,81 +419,35 @@ export function maryamWhatsAppHref(): string {
 /* Expression of Interest                                              */
 /* ------------------------------------------------------------------ */
 
-export interface Opportunity {
-  value: string;
-  label: string;
-  /** The study level recorded at sign-up: Brooke House is a boarding school; the rest are "other". */
-  desiredLevel: DesiredLevelValue;
-}
+/**
+ * Tim Hunt's own Pipedrive form, "Express your interest", tested by Eldah
+ * Therone and Farooq Gajo on 19 November 2026. Tim, 18 November: "I will
+ * create a Pipedrive form". It replaces the page's own six questions and
+ * their hand-off to the /contact sign-up. Pipedrive now does the routing
+ * Tim set out the same day: the enquiry goes to Farooq Gajo, with Maryam
+ * Lawal, Eldah and Tim copied; Eldah is Lead Owner and Maryam the Source
+ * Owner. Embedded exactly as supplied, like the landing pages' forms.
+ */
+export const EXPRESS_INTEREST_FORM_URL =
+  "https://webforms.pipedrive.com/f/6N4CIK8VYqnAXH4tLplKpATusPl6pnlplIUMXWxm59MMRC7NinhVX65oeXQG7kG6QP";
 
-/** Tim Hunt's list from the proposal, "I am not sure" last, as on the Nigeria pages. */
-export const OPPORTUNITIES: ReadonlyArray<Opportunity> = Object.freeze([
-  { value: "full-time-january-2027", label: "Full-time education at Brooke House College, January 2027", desiredLevel: "boarding" },
-  { value: "football-and-education", label: "Football and Education", desiredLevel: "boarding" },
-  { value: "summer-football-british-culture", label: "Summer School: Football and British Culture", desiredLevel: "other" },
-  { value: "summer-british-culture-tours", label: "Summer School: British Culture with Exceptional Tours", desiredLevel: "other" },
-  { value: "essay-competition", label: "Brooke House College Essay Competition", desiredLevel: "other" },
-  { value: "not-sure", label: "I am not sure and would like advice", desiredLevel: "other" },
-]);
-
-export const ENQUIRER_ROLES: ReadonlyArray<{ value: string; label: string }> = Object.freeze([
-  { value: "parent", label: "Parent or guardian" },
-  { value: "student", label: "Student" },
-  { value: "other", label: "Teacher, relative or community leader" },
+/** The opportunities Tim's form offers, listed beside it in the same order. */
+export const OPPORTUNITIES: ReadonlyArray<string> = Object.freeze([
+  "Boarding and full-time study at Brooke House College",
+  "Football Academy and full-time study",
+  "Summer football camp",
+  "English language and activities summer school",
+  "Vector Programme after leaving school",
+  "I'm not sure and would like advice",
 ]);
 
 export const EXPRESS_INTEREST = Object.freeze({
   heading: "Express your interest",
   supporting:
     "You do not need to know which opportunity is right before contacting us. Once the Office of His Royal Highness has confirmed eligibility, Maryam Lawal or a World Student Advisors Student Counsellor will talk to you and your family and help you explore the most appropriate option.",
-  nextPageLine: "Six questions here, the rest on the next page.",
-  cta: "Continue",
   noPromise: "Completing the form does not mean admission or a tuition fee award. It starts a conversation.",
   privacy: "Your details go to World Student Advisors' student records system, and your name, contact details and chosen opportunity go to the Office of His Royal Highness to confirm eligibility, so that Maryam Lawal or a Student Counsellor can contact you.",
 });
-
-/**
- * The hand-off into the one controlled path to Pipedrive.
- *
- * This form does not create a Lead. It carries the family's own answers to
- * the /contact sign-up, which validates every field, runs the bot check
- * and writes the Lead, exactly as the Nigeria postgraduate page does. The
- * campaign slug makes the Lead note name this programme and sends the
- * programme's own short notification, to the Office of His Royal Highness,
- * Maryam and Tim, instead of the Student Counsellors' usual one
- * (shared/campaignEnquiry.ts). A second, weaker route into the CRM for
- * the sake of six fields would be the wrong trade.
- */
-export function expressInterestHandoffUrl(input: {
-  role: string;
-  firstName: string;
-  lastName: string;
-  email: string;
-  phone: string;
-  opportunity: string;
-}): string {
-  const params = new URLSearchParams();
-  const first = input.firstName.trim().slice(0, 60);
-  const last = input.lastName.trim().slice(0, 60);
-  const email = input.email.trim().slice(0, 120);
-  if (first) params.set("firstName", first);
-  if (last) params.set("lastName", last);
-  if (email) params.set("email", email);
-  // A Nigerian number is handed over in international form, or not at all.
-  const international = toInternationalNigerianNumber(input.phone);
-  if (international) params.set("phone", international);
-
-  const opportunity = OPPORTUNITIES.find(o => o.value === input.opportunity);
-  if (opportunity) {
-    params.set("desiredLevel", opportunity.desiredLevel);
-    const role = ENQUIRER_ROLES.find(r => r.value === input.role);
-    const roleNote = role ? ` (${role.label.toLowerCase()})` : "";
-    params.set("areaOfStudy", `Sarkin Fulani Future Leaders Programme: ${opportunity.label}${roleNote}`.slice(0, 160));
-  }
-  params.set("preferredDestination", "uk");
-  params.set("campaign", CAMPAIGN_SLUG);
-  return `/contact?${params.toString()}#student-signup`;
-}
 
 /* ------------------------------------------------------------------ */
 
@@ -442,10 +462,13 @@ export const FOOTER_LINE = Object.freeze({
  * cannot settle on its own; the record and the review email list them.
  */
 export const REVIEW_NOTES: ReadonlyArray<{ owner: string; item: string }> = Object.freeze([
-  { owner: "Office of His Royal Highness (Farooq Gajo)", item: "The display of the Palace seal. Farooq approved the vision wording and confirmed the Foundation's name on 10 October 2026; the seal was in the screenshots he reviewed but he did not mention it." },
-  { owner: "Office of His Royal Highness (Farooq Gajo)", item: "A dignified photograph of His Royal Highness for the hero, if one is to be used; the seal stands in its place for now." },
+  { owner: "Office of His Royal Highness (Farooq Gajo)", item: "Approved the landing page on 18 November 2026: \"We have reviewed the landing page and we are okay with it.\" A photograph of His Royal Highness for the hero remains optional; the seal stands in its place." },
   { owner: "Brooke House College", item: "Confirmed on 12 October 2026 (Chad Male): January 2027 entry for around 32 students, with the places by year group now on the page, and the awards (10%, then a further 15% on football ability and/or academic level, decided on a football assessment and/or a current school report). Still to confirm: precisely which fees the awards apply to." },
-  { owner: "Brooke House College", item: "With Giles Williams when he is recovered: the Football Academy description and its separate fees; the Vector Programme wording; Summer School 2027 dates, ages, duration, fees and inclusions; the Essay Competition; photographs of the College, the Football Academy and students." },
+  { owner: "Brooke House College", item: "Before the page goes live: the Vector Programme's current age range (the brochure says 18 to 23) and its three degree options (Tim Hunt, 18 November 2026). The Essay Competition is off the page until the College supplies it." },
+  { owner: "Brooke House College", item: "Chad Male, 19 November 2026: the two summer courses to list are the English Language Tuition Course and the High-Performance Football Development Camp. 2027 dates, ages and fees are confirmed with the College for each family." },
+  { owner: "Tim Hunt", item: "Still to come for the revamp of 18 November 2026: the Vector Programme logo, to replace the card's icon, and the brochure link for the Vector line and card." },
+  { owner: "Tim Hunt", item: "The photograph beside the opportunities (\"Nigerian Heritage Lesson in Classroom\"): where it comes from, and if it is AI-generated or of a real student, that the page may show it as it does." },
+  { owner: "Tim Hunt", item: "Decided 18 November 2026: the Express your interest form is Tim's Pipedrive form. The enquiry goes to Farooq Gajo with Maryam Lawal, Eldah Therone and Tim copied; Eldah is Lead Owner and Maryam Source Owner. Tim said not to use it on the page until he says (19 November); the page is a draft until then." },
   { owner: "Tim Hunt", item: "The places list uses Brooke House's own words: the ages are 'on or after 1 September' and Year 10 is 'if English is their first language'. Tim to confirm these read as the College means them before publication." },
   { owner: "Tim Hunt", item: "Who else receives the programme's enquiry notification alongside the Student Counsellors (Maryam Lawal, for instance), and the timeline dates now that September 2026 has passed." },
   { owner: "Tim Hunt", item: "Maryam's photograph: the card uses the Our Team photograph; if the one attached to his email of 9 October is different, it needs filing where the site can take it." },
@@ -461,17 +484,23 @@ export function allRenderedCopy(): string[] {
     PARTNERS.brookeHouse.name, PARTNERS.brookeHouse.place, PARTNERS.wsa.name, PARTNERS.wsa.place,
     ...Object.values(HERO),
     VISION.heading, VISION.motto, ...VISION.paragraphs, VISION.patronRole, VISION.foundationLine,
-    WHAT_IS.heading, ...WHAT_IS.paragraphs, WHAT_IS.offersHeading, ...WHAT_IS.offers,
+    WHAT_IS.heading, ...WHAT_IS.paragraphs, WHAT_IS.offersHeading, ...WHAT_IS.offers.flatMap(o => [o.text, ...(o.link ? [o.link.label] : [])]),
     WHO_FOR.heading, WHO_FOR.intro, ...WHO_FOR.criteria, WHO_FOR.close,
-    ...OPPORTUNITY_CARDS.flatMap(c => [c.eyebrow, c.title, ...c.body, ...(c.pending ?? []), ...(c.confirmedHeading ? [c.confirmedHeading] : []), ...(c.confirmed ?? [])]),
-    AWARDS.heading, ...AWARDS.paragraphs, AWARDS.confirmationNote, AWARDS.includedHeading, ...AWARDS.included,
+    ...OPPORTUNITY_CARDS.flatMap(c => [
+      c.eyebrow, c.title, ...c.body, ...(c.pending ?? []),
+      ...(c.confirmedHeading ? [c.confirmedHeading] : []), ...(c.confirmed ?? []),
+      ...(c.listHeading ? [c.listHeading] : []), ...(c.list ?? []),
+      ...(c.links ?? []).map(l => l.label),
+    ]),
+    AWARDS.heading, ...AWARDS.paragraphs, AWARDS.includedHeading, AWARDS.includedIntro,
+    ...AWARDS.included.flatMap(i => [i.text, i.link.label]), AWARDS.includedClose.text, AWARDS.includedClose.link.label, AWARDS.feesLink.label,
     AWARDS.budgetHeading, ...AWARDS.budget, AWARDS.separateLine,
     ...STEPS.flatMap(s => [s.title, s.body]),
     ...TIMELINE.flatMap(t => [t.when, t.what]),
     BEHIND.heading, BEHIND.brookeHouse, BEHIND.wsa,
     MARYAM.name, MARYAM.programmeRole, MARYAM.title, MARYAM.organisation, MARYAM.email, MARYAM.whatsapp,
     MARYAM.photoAlt, MARYAM.eyebrow, MARYAM.description, MARYAM.emailLabel, MARYAM.whatsappLabel,
-    ...OPPORTUNITIES.map(o => o.label), ...ENQUIRER_ROLES.map(r => r.label),
+    ...OPPORTUNITIES,
     ...Object.values(EXPRESS_INTEREST),
     ...Object.values(FOOTER_LINE),
   ];

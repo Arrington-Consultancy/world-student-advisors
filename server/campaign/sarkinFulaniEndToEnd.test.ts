@@ -55,26 +55,29 @@ vi.mock("../_core/turnstile", () => ({ requireTurnstile: vi.fn().mockResolvedVal
 const { appRouter } = await import("../routers");
 const { notifyStaff, notifyCampaignOwner } = await import("../_core/notification");
 const { ENV } = await import("../_core/env");
-const { CAMPAIGN_SLUG, expressInterestHandoffUrl } = await import("../../client/src/lib/sarkinFulani");
+const { CAMPAIGN_SLUG } = await import("../../client/src/lib/sarkinFulani");
 
 const mockedNotifyStaff = vi.mocked(notifyStaff);
 const mockedNotifyCampaignOwner = vi.mocked(notifyCampaignOwner);
 
 const COUNSELLORS_AND_OTHERS = ["eldah@", "glenice@", "manet@", "claudia@", "sarafina@", "tom@arringtonconsultancy.com", "pipedrive@"];
 
-/** What a family's answers look like after the hand-off and the second page. */
-const handoff = new URL(expressInterestHandoffUrl({
-  role: "parent", firstName: "Aisha", lastName: "Bello", email: "aisha.bello@example.com", phone: "08031234567", opportunity: "full-time-january-2027",
-}), "https://www.worldstudentadvisors.com");
+/**
+ * What a family's answers looked like after the page's hand-off and the
+ * second page. Since Tim Hunt's revamp of 18 November 2026 the page embeds
+ * his own Pipedrive form instead, and Pipedrive sends these emails; the
+ * server path below stays until it is retired, and these tests hold it
+ * while it does.
+ */
 const signup = {
-  firstName: handoff.searchParams.get("firstName"),
-  lastName: handoff.searchParams.get("lastName"),
-  email: handoff.searchParams.get("email"),
-  phone: handoff.searchParams.get("phone"),
-  desiredLevel: handoff.searchParams.get("desiredLevel"),
-  areaOfStudy: handoff.searchParams.get("areaOfStudy"),
-  preferredDestination: handoff.searchParams.get("preferredDestination"),
-  campaign: handoff.searchParams.get("campaign"),
+  firstName: "Aisha",
+  lastName: "Bello",
+  email: "aisha.bello@example.com",
+  phone: "+2348031234567",
+  desiredLevel: "boarding",
+  areaOfStudy: "Sarkin Fulani Future Leaders Programme: Full-time education at Brooke House College, January 2027 (parent or guardian)",
+  preferredDestination: "uk",
+  campaign: CAMPAIGN_SLUG,
   gender: "female",
   dateOfBirth: "2012-05-14",
   passportNumber: "A01234567",

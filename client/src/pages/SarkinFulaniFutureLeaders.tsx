@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type FormEvent } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link } from "wouter";
 import {
   Award,
@@ -6,23 +6,23 @@ import {
   GraduationCap,
   Mail,
   MessageCircle,
-  PenLine,
   Sparkles,
   Sun,
   Trophy,
   Users,
 } from "lucide-react";
-import { NIGERIA_DIALLING_CODE } from "@/lib/nigeriaLanding";
+import PipedriveFormEmbed from "@/components/PipedriveFormEmbed";
 import {
   AWARDS,
   BEHIND,
   DRAFT,
-  ENQUIRER_ROLES,
   EXPRESS_INTEREST,
+  EXPRESS_INTEREST_FORM_URL,
   FOOTER_LINE,
   HERO,
   MARYAM,
   OPPORTUNITIES,
+  OPPORTUNITIES_PHOTO,
   OPPORTUNITY_CARDS,
   PARTNERS,
   PATRON,
@@ -31,18 +31,19 @@ import {
   VISION,
   WHAT_IS,
   WHO_FOR,
-  expressInterestHandoffUrl,
   maryamWhatsAppHref,
+  type PageLink,
 } from "@/lib/sarkinFulani";
 
 /**
  * The Sarkin Fulani Future Leaders Programme. Tim Hunt's brief of 8 October
  * 2026, built from Farooq Gajo's revised proposal.
  *
- * ONE FORM, AND IT WRITES NOTHING ITSELF. The Expression of Interest
- * hands the visitor's answers to the /contact sign-up, the one controlled
- * path into Pipedrive, carrying the campaign slug so the Lead note names
- * this programme and the Student Counsellors receive it.
+ * ONE FORM, AND IT IS TIM'S. Since his revamp of 18 November 2026 the
+ * Expression of Interest is his own Pipedrive form, embedded exactly as
+ * supplied: a submission goes from the visitor's browser to Pipedrive,
+ * which routes it to the Office of His Royal Highness, Maryam Lawal, Eldah
+ * Therone and Tim. This page writes nothing itself.
  *
  * NO QURANIC COMPETITION SECTION. Tim Hunt to Farooq Gajo, 11 October
  * 2026: the WSA page stays on the Brooke House College opportunities and
@@ -67,12 +68,7 @@ const OPPORTUNITY_ICONS: Record<string, typeof GraduationCap> = {
   football: Trophy,
   vector: Sparkles,
   "summer-schools": Sun,
-  essay: PenLine,
 };
-
-const field =
-  "w-full min-w-0 max-w-full rounded-xl border border-wsa-navy/15 bg-white px-4 py-3 text-base text-wsa-navy placeholder:text-gray-400 focus:border-wsa-red/60 focus:outline-none";
-const labelClass = "block text-sm font-medium text-wsa-navy";
 
 function PrimaryButton({ href, children, onRef, className = "" }: { href: string; children: React.ReactNode; onRef?: (el: HTMLAnchorElement | null) => void; className?: string }) {
   return (
@@ -88,96 +84,17 @@ function PrimaryButton({ href, children, onRef, className = "" }: { href: string
 
 /* ------------------------------------------------------------------ */
 
-/**
- * Six questions, then the controlled sign-up with those answers carried
- * across. Visible labels rather than placeholders: a parent on a phone
- * should never lose sight of what a box is for.
- */
-function ExpressInterestForm({ id }: { id: string }) {
-  const [role, setRole] = useState("");
-  const [firstName, setFirstName] = useState("");
-  const [lastName, setLastName] = useState("");
-  const [email, setEmail] = useState("");
-  const [phone, setPhone] = useState("");
-  const [opportunity, setOpportunity] = useState("");
-
-  const submit = (e: FormEvent) => {
-    e.preventDefault();
-    window.location.assign(expressInterestHandoffUrl({ role, firstName, lastName, email, phone, opportunity }));
-  };
-
+/** A link to one of Brooke House College's own pages, in a new tab. */
+function CollegeLink({ link, className = "" }: { link: PageLink; className?: string }) {
   return (
-    <form onSubmit={submit} className="min-w-0 max-w-full space-y-3.5" aria-labelledby={`${id}-heading`}>
-      <div>
-        <p id={`${id}-heading`} className="text-xl font-semibold text-wsa-navy">{EXPRESS_INTEREST.heading}</p>
-        <p className="mt-1 text-sm leading-relaxed text-gray-600">{EXPRESS_INTEREST.supporting}</p>
-        <p className="mt-1 text-xs text-gray-500">{EXPRESS_INTEREST.nextPageLine}</p>
-      </div>
-
-      <div>
-        <label className={labelClass} htmlFor={`${id}-role`}>I am a</label>
-        <select id={`${id}-role`} value={role} onChange={e => setRole(e.target.value)} required className={`${field} mt-1 ${role ? "" : "text-gray-400"}`}>
-          <option value="">Please choose</option>
-          {ENQUIRER_ROLES.map(r => <option key={r.value} value={r.value}>{r.label}</option>)}
-        </select>
-      </div>
-
-      <div className="grid gap-3.5 sm:grid-cols-2">
-        <div>
-          <label className={labelClass} htmlFor={`${id}-first`}>First name</label>
-          <input id={`${id}-first`} value={firstName} onChange={e => setFirstName(e.target.value)} autoComplete="given-name" required maxLength={60} className={`${field} mt-1`} />
-        </div>
-        <div>
-          <label className={labelClass} htmlFor={`${id}-last`}>Family name</label>
-          <input id={`${id}-last`} value={lastName} onChange={e => setLastName(e.target.value)} autoComplete="family-name" required maxLength={60} className={`${field} mt-1`} />
-        </div>
-      </div>
-
-      <div>
-        <label className={labelClass} htmlFor={`${id}-email`}>Email address</label>
-        <input id={`${id}-email`} type="email" value={email} onChange={e => setEmail(e.target.value)} autoComplete="email" required maxLength={120} className={`${field} mt-1`} />
-      </div>
-
-      <div>
-        <label className={labelClass} htmlFor={`${id}-phone`}>WhatsApp number</label>
-        <div className="mt-1 flex min-w-0 max-w-full items-stretch overflow-hidden rounded-xl border border-wsa-navy/15 bg-white focus-within:border-wsa-red/60">
-          <span className="flex items-center border-r border-wsa-navy/10 bg-wsa-stone/60 px-3 text-base text-gray-600" aria-hidden>
-            {NIGERIA_DIALLING_CODE}
-          </span>
-          <input
-            id={`${id}-phone`}
-            type="tel"
-            value={phone}
-            onChange={e => setPhone(e.target.value)}
-            autoComplete="tel-national"
-            inputMode="tel"
-            placeholder="803 123 4567"
-            className="min-w-0 flex-1 bg-transparent px-4 py-3 text-base text-wsa-navy placeholder:text-gray-400 focus:outline-none"
-          />
-        </div>
-      </div>
-
-      <div>
-        <label className={labelClass} htmlFor={`${id}-opportunity`}>Which opportunity interests you?</label>
-        <select id={`${id}-opportunity`} value={opportunity} onChange={e => setOpportunity(e.target.value)} required className={`${field} mt-1 ${opportunity ? "" : "text-gray-400"}`}>
-          <option value="">Please choose</option>
-          {OPPORTUNITIES.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
-        </select>
-      </div>
-
-      <button
-        type="submit"
-        className="inline-flex min-h-[3rem] w-full items-center justify-center rounded-xl bg-wsa-red px-6 py-3.5 text-base font-semibold text-white transition hover:opacity-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-wsa-navy"
-      >
-        {EXPRESS_INTEREST.cta}
-      </button>
-
-      <p className="text-xs leading-relaxed text-gray-500">{EXPRESS_INTEREST.noPromise}</p>
-      <p className="text-xs leading-relaxed text-gray-500">
-        {EXPRESS_INTEREST.privacy} See our{" "}
-        <Link href="/privacy-policy" className="underline underline-offset-2 hover:text-wsa-navy">privacy policy</Link>.
-      </p>
-    </form>
+    <a
+      href={link.href}
+      target="_blank"
+      rel="noopener noreferrer"
+      className={`font-medium text-wsa-red underline underline-offset-2 hover:text-wsa-navy ${className}`}
+    >
+      {link.label}
+    </a>
   );
 }
 
@@ -311,9 +228,12 @@ export default function SarkinFulaniFutureLeaders() {
             <h3 className="text-lg font-semibold text-wsa-navy">{WHAT_IS.offersHeading}</h3>
             <ul className="mt-4 space-y-2.5">
               {WHAT_IS.offers.map(o => (
-                <li key={o} className="flex items-start gap-2.5 text-base text-gray-700">
+                <li key={o.text} className="flex items-start gap-2.5 text-base text-gray-700">
                   <Tick />
-                  <span>{o}</span>
+                  <span>
+                    {o.text}
+                    {o.link && <> <CollegeLink link={o.link} /></>}
+                  </span>
                 </li>
               ))}
             </ul>
@@ -341,11 +261,23 @@ export default function SarkinFulaniFutureLeaders() {
       {/* ── Brooke House College opportunities ───────────────────── */}
       <section className="border-t border-wsa-navy/10 px-4 py-12 sm:px-6 lg:py-16">
         <div className="mx-auto max-w-6xl">
-          <div className="flex flex-wrap items-center gap-4">
-            <img src={PARTNERS.brookeHouse.logo} alt={PARTNERS.brookeHouse.logoAlt} width={300} height={150} decoding="async" className="h-12 w-auto rounded-lg bg-white p-1 ring-1 ring-wsa-navy/10" />
-            <div>
-              <SectionHeading eyebrow="Brooke House College, England">The opportunities</SectionHeading>
+          {/* Tim Hunt, 18 November 2026: his photograph "above right". */}
+          <div className="grid gap-6 lg:grid-cols-[1fr_minmax(280px,420px)] lg:items-end lg:gap-10">
+            <div className="flex flex-wrap items-center gap-4">
+              <img src={PARTNERS.brookeHouse.logo} alt={PARTNERS.brookeHouse.logoAlt} width={300} height={150} decoding="async" className="h-12 w-auto rounded-lg bg-white p-1 ring-1 ring-wsa-navy/10" />
+              <div>
+                <SectionHeading eyebrow="Brooke House College, England">The opportunities</SectionHeading>
+              </div>
             </div>
+            <img
+              src={OPPORTUNITIES_PHOTO.src}
+              alt={OPPORTUNITIES_PHOTO.alt}
+              width={OPPORTUNITIES_PHOTO.width}
+              height={OPPORTUNITIES_PHOTO.height}
+              loading="lazy"
+              decoding="async"
+              className="h-auto w-full rounded-2xl border border-wsa-navy/10 object-cover"
+            />
           </div>
           <div className="mt-7 grid gap-4 lg:grid-cols-2">
             {OPPORTUNITY_CARDS.map(card => {
@@ -377,10 +309,32 @@ export default function SarkinFulaniFutureLeaders() {
                       </ul>
                     </div>
                   )}
+                  {card.list && (
+                    <div className="mt-3">
+                      <p className="text-base font-medium text-wsa-navy">{card.listHeading}</p>
+                      <ul className="mt-2 space-y-1.5">
+                        {card.list.map(item => (
+                          <li key={item} className="flex items-start gap-2.5 text-base text-gray-700">
+                            <Tick />
+                            <span>{item}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
                   {card.pending && (
                     <ul className="mt-3 space-y-1.5">
                       {card.pending.map(p => (
                         <li key={p} className="rounded-lg border border-dashed border-amber-400/70 bg-amber-50 px-3 py-2 text-sm text-amber-900">{p}</li>
+                      ))}
+                    </ul>
+                  )}
+                  {card.links && (
+                    <ul className="mt-4 space-y-1.5">
+                      {card.links.map(l => (
+                        <li key={l.href} className="text-base">
+                          <CollegeLink link={l} />
+                        </li>
                       ))}
                     </ul>
                   )}
@@ -401,14 +355,23 @@ export default function SarkinFulaniFutureLeaders() {
                 <p key={p.slice(0, 40)} className="text-base leading-relaxed text-gray-700">{p}</p>
               ))}
             </div>
-            <p className="mt-4 inline-block rounded-lg border border-dashed border-amber-400/70 bg-amber-50 px-3 py-2 text-sm text-amber-900">{AWARDS.confirmationNote}</p>
           </div>
           <div className="min-w-0 space-y-4">
             <div className="rounded-2xl border border-wsa-navy/10 bg-wsa-warm-white p-5">
               <h3 className="flex items-center gap-2 text-base font-semibold text-wsa-navy"><Award className="h-5 w-5 text-wsa-red" aria-hidden />{AWARDS.includedHeading}</h3>
-              <ul className="mt-3 space-y-1.5">
-                {AWARDS.included.map(i => <li key={i} className="flex items-start gap-2 text-base text-gray-700"><Tick /><span>{i}</span></li>)}
+              <p className="mt-2 text-base leading-relaxed text-gray-700">{AWARDS.includedIntro}</p>
+              <ul className="mt-3 space-y-2">
+                {AWARDS.included.map(i => (
+                  <li key={i.text} className="flex items-start gap-2 text-base text-gray-700">
+                    <Tick />
+                    <span>{i.text} <CollegeLink link={i.link} /></span>
+                  </li>
+                ))}
               </ul>
+              <p className="mt-3 text-base leading-relaxed text-gray-700">
+                {AWARDS.includedClose.text} <CollegeLink link={AWARDS.includedClose.link} />
+              </p>
+              <p className="mt-3 text-base"><CollegeLink link={AWARDS.feesLink} /></p>
             </div>
             <div className="rounded-2xl border border-wsa-navy/10 bg-wsa-warm-white p-5">
               <h3 className="text-base font-semibold text-wsa-navy">{AWARDS.budgetHeading}</h3>
@@ -550,15 +513,22 @@ export default function SarkinFulaniFutureLeaders() {
             </p>
             <ul className="mt-5 space-y-2">
               {OPPORTUNITIES.map(o => (
-                <li key={o.value} className="flex items-start gap-2.5 text-base text-white/90">
+                <li key={o} className="flex items-start gap-2.5 text-base text-white/90">
                   <Users className="mt-0.5 h-5 w-5 shrink-0" style={{ color: GOLD }} aria-hidden />
-                  <span>{o.label}</span>
+                  <span>{o}</span>
                 </li>
               ))}
             </ul>
           </div>
           <div className="min-w-0 rounded-2xl border border-white/15 bg-white p-5 text-wsa-navy shadow-lg sm:p-6">
-            <ExpressInterestForm id="eoi" />
+            <h3 className="text-xl font-semibold text-wsa-navy">{EXPRESS_INTEREST.heading}</h3>
+            <p className="mt-1 text-sm leading-relaxed text-gray-600">{EXPRESS_INTEREST.supporting}</p>
+            <PipedriveFormEmbed embedUrl={EXPRESS_INTEREST_FORM_URL} className="mt-4" />
+            <p className="pt-3 text-xs leading-relaxed text-gray-500">{EXPRESS_INTEREST.noPromise}</p>
+            <p className="pt-2 text-xs leading-relaxed text-gray-500">
+              {EXPRESS_INTEREST.privacy} See our{" "}
+              <Link href="/privacy-policy" className="underline underline-offset-2 hover:text-wsa-navy">privacy policy</Link>.
+            </p>
           </div>
         </div>
       </section>
