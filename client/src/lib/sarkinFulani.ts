@@ -156,7 +156,21 @@ export const BHC_LINKS = Object.freeze({
   catering: "https://www.brookehousecollege.co.uk/life-at-brooke-house/catering",
   studentLife: "https://www.brookehousecollege.co.uk/life-at-brooke-house/enrichment/enrichment-overview",
   fees: "https://www.brookehousecollege.co.uk/admissions/fees",
+  // Tim Hunt, 22 November 2026: "a brochure of GCSE, A Level and University
+  // Foundation Programme (UFP) options ... We could use this under the
+  // classroom photo". It did not open from WSA's tools that day while the
+  // rest of the College's site did, so Tim checks it on the preview.
+  subjectsBooklet:
+    "https://www.brookehousecollege.co.uk/userfiles/bhcmvc/documents/FurtherInformation/BH_A4_SubjectsBooklet_FINAL_WEB.pdf",
 });
+
+/**
+ * The Vector Programme brochure, sent by Tim Hunt on 22 November 2026. It is
+ * on the programme's own site, not Brooke House College's. Read that day:
+ * "Full-time elite football with academic programme for persons aged
+ * between 18-23 years", and the three degrees the card lists.
+ */
+export const VECTOR_BROCHURE_URL = "https://vectoreducationsports.com/wp-content/uploads/pdf/BH_VectorPromoBrochure.pdf";
 
 export interface PageLink {
   label: string;
@@ -303,6 +317,8 @@ export const OPPORTUNITY_CARDS: ReadonlyArray<OpportunityCard> = Object.freeze([
       "BEng (Hons) Sustainable Engineering, awarded by Loughborough University",
       "BA (Hons) Business Management, awarded by Nottingham Trent University",
     ],
+    // Tim Hunt, 22 November 2026: "Here is the Vector Brochure".
+    links: [{ label: "Read the Vector Programme brochure (PDF)", href: VECTOR_BROCHURE_URL }],
   },
   {
     // Tim Hunt's wording of 18 November 2026, for the two courses Chad Male
@@ -330,16 +346,17 @@ export const OPPORTUNITY_CARDS: ReadonlyArray<OpportunityCard> = Object.freeze([
  * in the 19 August 2026 proposal, confirmed by Brooke House College on 12
  * October 2026 with the basis for the further 15%: football ability and/or
  * academic level, decided on a football assessment and/or a current school
- * report. Which fees the awards apply to, Tim's follow-up question, is
- * still with the College, and the note says so.
+ * report. The four paragraphs are Tim's replacement of 22 November 2026,
+ * verbatim, which also settles which fees the awards apply to: the main
+ * full-time programmes, and not the Vector Programme or summer schools.
  */
 export const AWARDS = Object.freeze({
   heading: "How much financial support is available?",
   paragraphs: [
-    "Every student admitted for full-time education through the Sarkin Fulani Future Leaders Programme is eligible for a 10% tuition fee award from Brooke House College.",
-    "Brooke House College may award a further reduction of up to 15% on football ability and/or academic level, so the maximum tuition fee reduction is 25%. The College decides the further award on a football assessment and/or a current school report showing the student's grades.",
-    "All admissions and tuition fee award decisions are made independently by Brooke House College. The programme is not a fully funded scholarship: families fund the remaining cost of the student's education and other expenses.",
-    "Before a family makes any commitment, World Student Advisors makes sure they understand the fees, any award received and the additional costs involved. Every family receives a clear financial breakdown first.",
+    "Students admitted to one of Brooke House College's main full-time programmes through the Sarkin Fulani Future Leaders Programme are eligible for a 10% tuition fee award.",
+    "Brooke House College may increase the total award to up to 25% of tuition fees, based on a football assessment, a recent school report or both. These discounts do not apply to the Vector Programme or summer schools.",
+    "Brooke House College makes all admissions and award decisions. Families pay the remaining tuition fees and any other expenses.",
+    "Before you make a commitment, World Student Advisors will give you a clear breakdown of the tuition fees, any award and any additional costs.",
   ],
   // Tim Hunt, 18 November 2026: "Fees confirmed. Remove light brown text",
   // and this box in place of the tuition fee list.
@@ -356,14 +373,21 @@ export const AWARDS = Object.freeze({
     link: { label: "Explore student life at Brooke House.", href: BHC_LINKS.studentLife },
   } as { text: string; link: PageLink },
   feesLink: { label: "View Brooke House College's published fees", href: BHC_LINKS.fees } as PageLink,
-  // Tim Hunt, 20 November 2026: "add a teaching classroom image". Cropped
-  // from his mock-up of that day until he sends the original file.
+  // Tim Hunt, 20 November 2026: "add a teaching classroom image". His
+  // original file ("Classroom Future leaders learning together") arrived on
+  // 22 November and replaced the crop from his mock-up; it carries the
+  // College's own name and crest.
   photo: {
     src: "/images/sarkin-fulani/brooke-house-classroom.jpg",
-    alt: "Students and a teacher working together in a Brooke House College classroom",
-    width: 700,
-    height: 300,
+    alt: "A teacher and three students working together around a laptop in a Brooke House College classroom",
+    width: 1400,
+    height: 637,
   } as PageImage,
+  // Tim Hunt, 22 November 2026: the subjects booklet "under the classroom photo".
+  photoLink: {
+    label: "Explore the GCSE, A Level and University Foundation Programme subjects (PDF)",
+    href: BHC_LINKS.subjectsBooklet,
+  } as PageLink,
   budgetHeading: "Families should also budget for",
   budget: [
     "Student Visa fees",
@@ -511,11 +535,11 @@ export const FOOTER_LINE = Object.freeze({
  */
 export const REVIEW_NOTES: ReadonlyArray<{ owner: string; item: string }> = Object.freeze([
   { owner: "Office of His Royal Highness (Farooq Gajo)", item: "Approved the landing page on 18 November 2026: \"We have reviewed the landing page and we are okay with it.\" A photograph of His Royal Highness for the hero remains optional; the seal stands in its place." },
-  { owner: "Brooke House College", item: "Confirmed on 12 October 2026 (Chad Male): January 2027 entry for around 32 students, with the places by year group now on the page, and the awards (10%, then a further 15% on football ability and/or academic level, decided on a football assessment and/or a current school report). Still to confirm: precisely which fees the awards apply to." },
+  { owner: "Brooke House College", item: "Confirmed on 12 October 2026 (Chad Male): January 2027 entry for around 32 students, with the places by year group now on the page, and the awards (10%, then a further 15% on football ability and/or academic level, decided on a football assessment and/or a current school report). Tim Hunt, 22 November 2026: the awards are for the main full-time programmes and do not apply to the Vector Programme or summer schools." },
   { owner: "Brooke House College", item: "Before the page goes live: the Vector Programme's current age range (the brochure says 18 to 23) and its three degree options (Tim Hunt, 18 November 2026). The Essay Competition is off the page until the College supplies it." },
   { owner: "Brooke House College", item: "Chad Male, 19 November 2026: the two summer courses to list are the English Language Tuition Course and the High-Performance Football Development Camp. 2027 dates, ages and fees are confirmed with the College for each family." },
-  { owner: "Tim Hunt", item: "Still to come: the Vector Programme brochure link for the Vector line and card. The logo arrived on 20 November 2026, with the poster \"Use this one Loughborough Under 23 Football Programme\", whose place on the page Tim has not said." },
-  { owner: "Tim Hunt", item: "The classroom photograph in the fee awards is cropped from his mock-up of 20 November 2026: the original file, and whether it is from Brooke House College's website. The photograph of a real student he edited (\"Nigerian Heritage Lesson in Classroom\") was removed at his request the same day." },
+  { owner: "Tim Hunt", item: "The Vector Programme brochure link arrived on 22 November 2026 in answer to where the poster \"Use this one Loughborough Under 23 Football Programme\" should go, so the card links the brochure and the poster is not used unless he says otherwise." },
+  { owner: "Tim Hunt", item: "The classroom photograph is his original of 22 November 2026, with the subjects booklet linked under it as he suggested. The booklet link did not open from WSA's tools that day: Tim to check it opens on the preview. The photograph of a real student he edited (\"Nigerian Heritage Lesson in Classroom\") was removed at his request on 20 November." },
   { owner: "Tim Hunt", item: "Decided 18 November 2026: the Express your interest form is Tim's Pipedrive form. The enquiry goes to Farooq Gajo with Maryam Lawal, Eldah Therone and Tim copied; Eldah is Lead Owner and Maryam Source Owner. Tim said not to use it on the page until he says (19 November); the page is a draft until then." },
   { owner: "Tim Hunt", item: "The places list uses Brooke House's own words: the ages are 'on or after 1 September' and Year 10 is 'if English is their first language'. Tim to confirm these read as the College means them before publication." },
   { owner: "Tim Hunt", item: "Who else receives the programme's enquiry notification alongside the Student Counsellors (Maryam Lawal, for instance), and the timeline dates now that September 2026 has passed." },
@@ -542,7 +566,7 @@ export function allRenderedCopy(): string[] {
       ...(c.image ? [c.image.alt] : []), ...(c.video ? [c.video.label] : []), ...(c.banner ? [c.banner.alt] : []),
     ]),
     AWARDS.heading, ...AWARDS.paragraphs, AWARDS.includedHeading, AWARDS.includedIntro,
-    ...AWARDS.included.flatMap(i => [i.text, i.link.label]), AWARDS.includedClose.text, AWARDS.includedClose.link.label, AWARDS.feesLink.label, AWARDS.photo.alt,
+    ...AWARDS.included.flatMap(i => [i.text, i.link.label]), AWARDS.includedClose.text, AWARDS.includedClose.link.label, AWARDS.feesLink.label, AWARDS.photo.alt, AWARDS.photoLink.label,
     AWARDS.budgetHeading, ...AWARDS.budget, AWARDS.separateLine,
     ...STEPS.flatMap(s => [s.title, s.body]),
     ...TIMELINE.flatMap(t => [t.when, t.what]),

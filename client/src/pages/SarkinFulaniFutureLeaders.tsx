@@ -397,6 +397,7 @@ export default function SarkinFulaniFutureLeaders() {
               decoding="async"
               className="mt-6 h-auto w-full rounded-2xl border border-wsa-navy/10 object-cover"
             />
+            <p className="mt-3 text-base"><CollegeLink link={AWARDS.photoLink} /></p>
           </div>
           <div className="min-w-0 space-y-4">
             <div className="rounded-2xl border border-wsa-navy/10 bg-wsa-warm-white p-5">

@@ -17,6 +17,7 @@ import {
   REVIEW_NOTES,
   STEPS,
   TIMELINE,
+  VECTOR_BROCHURE_URL,
   WHAT_IS,
   allRenderedCopy,
   maryamWhatsAppHref,
@@ -100,9 +101,9 @@ describe("no promise Brooke House College has not made", () => {
     expect(statesAnUnnegatedGuarantee(COPY)).toBe(false);
   });
 
-  it("says the College decides, and that the programme is not a fully funded scholarship", () => {
-    expect(COPY).toMatch(/made independently by Brooke House College/);
-    expect(COPY).toContain("not a fully funded scholarship");
+  it("says the College decides, and that families pay the rest (Tim Hunt's wording, 22 November 2026)", () => {
+    expect(COPY).toContain("Brooke House College makes all admissions and award decisions.");
+    expect(COPY).toContain("Families pay the remaining tuition fees and any other expenses.");
   });
 
   it("carries Brooke House College's confirmation of 12 October 2026: the places for January 2027 and the basis of the further 15%", () => {
@@ -114,10 +115,9 @@ describe("no promise Brooke House College has not made", () => {
       "Year 11 (aged 16 on or after 1 September): full",
       "Years 12 and 13 (aged 17 on or after 1 September): 7 to 8 places",
     ]);
-    // Leadership is not a basis Brooke House gave for the further 15%.
-    const further = AWARDS.paragraphs.find(p => p.includes("further reduction"))!;
-    expect(further).toContain("football ability and/or academic level");
-    expect(further).toContain("football assessment and/or a current school report");
+    // Leadership is not a basis Brooke House gave for the further award.
+    const further = AWARDS.paragraphs.find(p => p.includes("up to 25%"))!;
+    expect(further).toContain("based on a football assessment, a recent school report or both");
     expect(further).not.toMatch(/leadership/);
     expect(DRAFT.line).toContain("confirmed January 2027 entry and the tuition fee awards on 12 October 2026");
     // The page renders the confirmed list.
@@ -336,8 +336,47 @@ describe("Tim Hunt's revamp of 18 November 2026", () => {
   });
 
   it("stays a draft until Tim says the form may be used (19 November 2026)", () => {
+    // Tim's reply of 22 November ("can the URL be as before") keeps the
+    // address; it is not his go.
     expect(DRAFT.isDraft).toBe(true);
     expect(DRAFT.line).toContain("Approved by the Office of His Royal Highness on 18 November 2026");
+  });
+});
+
+/** Tim Hunt's reply of 22 November 2026 to the preview of his changes. */
+describe("Tim Hunt's changes of 22 November 2026", () => {
+  it("replaces the fee awards text with his, word for word", () => {
+    expect(AWARDS.heading).toBe("How much financial support is available?");
+    expect(AWARDS.paragraphs).toEqual([
+      "Students admitted to one of Brooke House College's main full-time programmes through the Sarkin Fulani Future Leaders Programme are eligible for a 10% tuition fee award.",
+      "Brooke House College may increase the total award to up to 25% of tuition fees, based on a football assessment, a recent school report or both. These discounts do not apply to the Vector Programme or summer schools.",
+      "Brooke House College makes all admissions and award decisions. Families pay the remaining tuition fees and any other expenses.",
+      "Before you make a commitment, World Student Advisors will give you a clear breakdown of the tuition fees, any award and any additional costs.",
+    ]);
+    expect(PAGE).toContain('eyebrow="Tuition fee awards"');
+  });
+
+  it("uses his original classroom photograph, served from this site", () => {
+    expect(AWARDS.photo.src).toBe("/images/sarkin-fulani/brooke-house-classroom.jpg");
+    expect(existsSync(`client/public${AWARDS.photo.src}`)).toBe(true);
+    expect([AWARDS.photo.width, AWARDS.photo.height]).toEqual([1400, 637]);
+  });
+
+  it("links Brooke House College's subjects booklet under the photograph", () => {
+    expect(AWARDS.photoLink.href).toBe(BHC_LINKS.subjectsBooklet);
+    expect(BHC_LINKS.subjectsBooklet).toBe(
+      "https://www.brookehousecollege.co.uk/userfiles/bhcmvc/documents/FurtherInformation/BH_A4_SubjectsBooklet_FINAL_WEB.pdf",
+    );
+    const photo = PAGE.indexOf("src={AWARDS.photo.src}");
+    const link = PAGE.indexOf("<CollegeLink link={AWARDS.photoLink} />");
+    expect(link).toBeGreaterThan(photo);
+  });
+
+  it("links the Vector Programme brochure from the Vector card, in a new tab", () => {
+    const vector = OPPORTUNITY_CARDS.find(c => c.id === "vector")!;
+    expect(vector.links).toEqual([{ label: "Read the Vector Programme brochure (PDF)", href: VECTOR_BROCHURE_URL }]);
+    expect(VECTOR_BROCHURE_URL).toBe("https://vectoreducationsports.com/wp-content/uploads/pdf/BH_VectorPromoBrochure.pdf");
+    expect(PAGE).toContain("<CollegeLink link={l} />");
   });
 });
 
