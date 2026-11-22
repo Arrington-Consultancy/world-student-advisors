@@ -75,6 +75,11 @@ export const SEO_MAP: Record<string, SeoEntry> = {
     description:
       "Free videos and guides on UK student visas, university applications, interviews, and studying abroad, organised by stage of your journey, from WorldStudentAdvisors.",
   },
+  "/student-support-library/study-interview-preparation": {
+    title: "Study Interview Preparation | World Student Advisors",
+    description:
+      "Download a pre-mock interview questionnaire for your course, scholarship, credibility or visa interview, in the UK, Australia, Canada, Cyprus, Germany, Hungary or the USA, and send your answers to your WSA counsellor.",
+  },
   "/staff-portal": {
     title: "Staff Portal | World Student Advisors",
     description: "Internal WorldStudentAdvisors staff resources.",

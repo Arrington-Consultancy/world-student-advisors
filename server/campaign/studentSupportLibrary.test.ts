@@ -204,7 +204,10 @@ describe("permanent links", () => {
       expect(seo.title, path).toBe(`${r.title} | Student Support Library | World Student Advisors`);
       expect(seo.description, path).toContain(r.code);
     }
-    expect(SITEMAP.match(/student-support-library\//g)?.length).toBe(38);
+    // 38 resources, plus Tim Hunt's study interview preparation page of
+    // 18 November 2026, which lives in the library but is not a resource.
+    expect(SITEMAP.match(/student-support-library\//g)?.length).toBe(39);
+    expect(SITEMAP).toContain("/student-support-library/study-interview-preparation</loc>");
   });
 
   it("the code form of each link redirects permanently to the slug form", () => {

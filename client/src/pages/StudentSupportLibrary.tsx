@@ -15,6 +15,7 @@ import {
   type LibraryResource,
   type LibrarySection,
 } from "@/lib/studentSupportLibrary";
+import { LIBRARY_CALLOUT, PAGE_PATH as INTERVIEW_PREPARATION_PATH } from "@/lib/studyInterviewPreparation";
 import { getYouTubeVideoId } from "@/lib/youtube";
 
 /**
@@ -147,6 +148,24 @@ export default function StudentSupportLibrary() {
               </ScrollReveal>
             ))
           )}
+        </div>
+      </section>
+
+      {/* Tim Hunt's interview questionnaires, 18 November 2026 */}
+      <section className="pb-8">
+        <div className="container max-w-4xl">
+          <div className="border border-border/40 bg-wsa-navy p-8 lg:p-10">
+            <p className="text-sm font-medium tracking-[0.2em] uppercase text-white/70 mb-4">{LIBRARY_CALLOUT.eyebrow}</p>
+            <h2 className="text-2xl md:text-3xl font-semibold text-white leading-[1.2] mb-4">{LIBRARY_CALLOUT.heading}</h2>
+            <p className="text-[15px] text-white/80 leading-relaxed mb-6 max-w-2xl">{LIBRARY_CALLOUT.text}</p>
+            <Link
+              href={INTERVIEW_PREPARATION_PATH}
+              className="inline-flex items-center px-6 py-3 bg-wsa-red text-white font-semibold transition-colors duration-200 hover:bg-wsa-red/90"
+            >
+              {LIBRARY_CALLOUT.link}
+              <ArrowRight className="ml-2" size={16} />
+            </Link>
+          </div>
         </div>
       </section>
 
