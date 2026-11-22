@@ -8,6 +8,14 @@ name: Import website assets from SharePoint (read only)
 # `railway run`, reusing the SHAREPOINT_GRAPH_* application already trusted
 # for read-only SharePoint access. Never prints a token. Writes nothing to
 # SharePoint.
+#
+# asset_set "pmiq" (added 22 November 2026) imports Tim Hunt's Pre-Mock
+# Interview Questionnaires for the Student Support Library through
+# scripts/fetch-pmiq-assets.mjs, by the same route and credential. The PDFs
+# are committed to client/public/downloads/pmiq. The Pre-CAS Interview
+# video is NOT committed: the repository is public, so it is uploaded as a
+# one-day run artifact for a person to look at first. The default,
+# "partners", does exactly what this workflow did before.
 on:
   workflow_dispatch:
     inputs:
@@ -23,6 +31,14 @@ on:
         description: "Branch to commit the imported assets to"
         required: true
         default: "main"
+      asset_set:
+        description: "Which assets to import"
+        required: true
+        default: "partners"
+        type: choice
+        options:
+          - partners
+          - pmiq
 
 jobs:
   import:
@@ -41,21 +57,45 @@ jobs:
       - name: Import the assets
         env:
           RAILWAY_TOKEN: ${{ secrets.githubactionsprod }}
+          ASSET_SET: ${{ github.event.inputs.asset_set }}
         run: |
+          case "$ASSET_SET" in
+            partners) script=scripts/fetch-website-assets.mjs ;;
+            pmiq) script=scripts/fetch-pmiq-assets.mjs ;;
+            *) echo "Unknown asset set."; exit 1 ;;
+          esac
           railway run \
             --service "${{ github.event.inputs.service_name }}" \
             --environment "${{ github.event.inputs.environment_name }}" \
-            -- node scripts/fetch-website-assets.mjs
+            -- node "$script"
       - name: Commit the imported assets
+        env:
+          ASSET_SET: ${{ github.event.inputs.asset_set }}
+          TARGET_BRANCH: ${{ github.event.inputs.target_branch }}
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add client/public/partners
+          case "$ASSET_SET" in
+            partners)
+              folder=client/public/partners
+              message="Import partner website assets from SharePoint (Study Group, UCLan Cyprus, University of Debrecen)" ;;
+            pmiq)
+              folder=client/public/downloads/pmiq
+              message="Import Tim Hunt's Pre-Mock Interview Questionnaires from SharePoint (24 PDFs)" ;;
+          esac
+          git add "$folder"
           if git diff --cached --quiet; then
             echo "No asset changes to commit."
             exit 0
           fi
-          git commit -m "Import partner website assets from SharePoint (Study Group, UCLan Cyprus, University of Debrecen)"
-          git push origin HEAD:${{ github.event.inputs.target_branch }}
-      - name: Show what was imported
-        run: ls -l client/public/partners
+          git commit -m "$message"
+          git push origin "HEAD:$TARGET_BRANCH"
+          ls -l "$folder"
+      - name: Hold the video back for review
+        if: github.event.inputs.asset_set == 'pmiq'
+        uses: actions/upload-artifact@v4
+        with:
+          name: pmiq-video-for-review
+          path: pmiq-review/
+          retention-days: 1
+          if-no-files-found: error
