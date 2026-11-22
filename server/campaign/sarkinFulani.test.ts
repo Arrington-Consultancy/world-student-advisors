@@ -7,9 +7,9 @@ import {
   DRAFT,
   EXPRESS_INTEREST,
   EXPRESS_INTEREST_FORM_URL,
+  FOOT_LINK,
   MARYAM,
   OPPORTUNITIES,
-  OPPORTUNITIES_PHOTO,
   OPPORTUNITY_CARDS,
   PAGE_PATH,
   PARTNERS,
@@ -253,7 +253,6 @@ describe("Tim Hunt's revamp of 18 November 2026", () => {
       "Elite football and degree study after Brooke House College.",
       "Practise your English and make new friends at a Brooke House College summer camp.",
     ]);
-    expect(WHAT_IS.offers[1].link?.href).toBe(BHC_LINKS.scholarshipCompetition);
   });
 
   it("takes the Essay Competition and every amber 'to be confirmed' note off the page", () => {
@@ -297,13 +296,43 @@ describe("Tim Hunt's revamp of 18 November 2026", () => {
     expect(link).toContain('rel="noopener noreferrer"');
   });
 
-  it("shows his photograph beside the opportunities, served from this site", () => {
-    expect(publicFile(OPPORTUNITIES_PHOTO.src)).toBe(true);
-    const opportunities = PAGE.indexOf("The opportunities</SectionHeading>");
-    const photo = PAGE.indexOf("src={OPPORTUNITIES_PHOTO.src}");
-    const cards = PAGE.indexOf("OPPORTUNITY_CARDS.map");
-    expect(photo).toBeGreaterThan(opportunities);
-    expect(cards).toBeGreaterThan(photo);
+  it("removes the photograph of the student, at his request of 20 November 2026", () => {
+    expect(existsSync("client/public/images/sarkin-fulani/nigerian-heritage-lesson.jpg")).toBe(false);
+    expect(PAGE).not.toContain("nigerian-heritage-lesson");
+    expect(PAGE).not.toContain("OPPORTUNITIES_PHOTO");
+  });
+
+  it("adds the Football Academy team photograph and its facilities video to the football card", () => {
+    const football = card("football")!;
+    expect(publicFile(football.image!.src)).toBe(true);
+    expect(football.video).toEqual({ label: "Watch the Football Academy Facilities video", href: "https://www.youtube.com/watch?v=P7NHm6t8SYU" });
+    expect(PAGE).toContain("href={card.video.href}");
+  });
+
+  it("heads the Vector card with its logo and the Summer Schools card with a matching strip", () => {
+    expect(publicFile(card("vector")!.banner!.src)).toBe(true);
+    expect(card("summer-schools")!.headerStrip).toBe(true);
+    expect(PAGE).toContain("card.banner ? (");
+    expect(PAGE).toContain(": card.headerStrip ? (");
+  });
+
+  it("moves the scholarship competition link from the programme box to the foot of the page", () => {
+    expect(WHAT_IS.offers.some(o => o.link)).toBe(false);
+    expect(FOOT_LINK.href).toBe(BHC_LINKS.scholarshipCompetition);
+    expect(PAGE.indexOf("href={FOOT_LINK.href}")).toBeGreaterThan(PAGE.indexOf('id="express-interest"'));
+  });
+
+  it("shows a classroom photograph with the fee awards, served from this site", () => {
+    expect(publicFile(AWARDS.photo.src)).toBe(true);
+    const awards = PAGE.indexOf("AWARDS.paragraphs.map");
+    const photo = PAGE.indexOf("src={AWARDS.photo.src}");
+    expect(photo).toBeGreaterThan(awards);
+    expect(PAGE.indexOf("AWARDS.includedHeading")).toBeGreaterThan(photo);
+  });
+
+  it("keeps the Royal seal", () => {
+    expect(publicFile(PATRON.seal)).toBe(true);
+    expect(PAGE).toContain("src={PATRON.seal}");
   });
 
   it("stays a draft until Tim says the form may be used (19 November 2026)", () => {

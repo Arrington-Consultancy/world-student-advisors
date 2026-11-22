@@ -6,6 +6,7 @@ import {
   GraduationCap,
   Mail,
   MessageCircle,
+  Play,
   Sparkles,
   Sun,
   Trophy,
@@ -19,10 +20,10 @@ import {
   EXPRESS_INTEREST,
   EXPRESS_INTEREST_FORM_URL,
   FOOTER_LINE,
+  FOOT_LINK,
   HERO,
   MARYAM,
   OPPORTUNITIES,
-  OPPORTUNITIES_PHOTO,
   OPPORTUNITY_CARDS,
   PARTNERS,
   PATRON,
@@ -261,41 +262,72 @@ export default function SarkinFulaniFutureLeaders() {
       {/* ── Brooke House College opportunities ───────────────────── */}
       <section className="border-t border-wsa-navy/10 px-4 py-12 sm:px-6 lg:py-16">
         <div className="mx-auto max-w-6xl">
-          {/* Tim Hunt, 18 November 2026: his photograph "above right". */}
-          <div className="grid gap-6 lg:grid-cols-[1fr_minmax(280px,420px)] lg:items-end lg:gap-10">
-            <div className="flex flex-wrap items-center gap-4">
-              <img src={PARTNERS.brookeHouse.logo} alt={PARTNERS.brookeHouse.logoAlt} width={300} height={150} decoding="async" className="h-12 w-auto rounded-lg bg-white p-1 ring-1 ring-wsa-navy/10" />
-              <div>
-                <SectionHeading eyebrow="Brooke House College, England">The opportunities</SectionHeading>
-              </div>
+          <div className="flex flex-wrap items-center gap-4">
+            <img src={PARTNERS.brookeHouse.logo} alt={PARTNERS.brookeHouse.logoAlt} width={300} height={150} decoding="async" className="h-12 w-auto rounded-lg bg-white p-1 ring-1 ring-wsa-navy/10" />
+            <div>
+              <SectionHeading eyebrow="Brooke House College, England">The opportunities</SectionHeading>
             </div>
-            <img
-              src={OPPORTUNITIES_PHOTO.src}
-              alt={OPPORTUNITIES_PHOTO.alt}
-              width={OPPORTUNITIES_PHOTO.width}
-              height={OPPORTUNITIES_PHOTO.height}
-              loading="lazy"
-              decoding="async"
-              className="h-auto w-full rounded-2xl border border-wsa-navy/10 object-cover"
-            />
           </div>
           <div className="mt-7 grid gap-4 lg:grid-cols-2">
             {OPPORTUNITY_CARDS.map(card => {
               const Icon = OPPORTUNITY_ICONS[card.id] ?? GraduationCap;
               return (
-                <article key={card.id} className="flex flex-col rounded-2xl border border-wsa-navy/10 bg-white p-5 sm:p-6">
-                  <div className="flex items-center gap-3">
-                    <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-wsa-navy/5 text-wsa-navy">
-                      <Icon className="h-5 w-5" aria-hidden />
-                    </span>
-                    <p className="text-xs font-semibold uppercase tracking-wider text-wsa-red">{card.eyebrow}</p>
-                  </div>
-                  <h3 className="mt-3 text-lg font-semibold leading-snug text-wsa-navy">{card.title}</h3>
+                <article key={card.id} className="flex flex-col overflow-hidden rounded-2xl border border-wsa-navy/10 bg-white p-5 sm:p-6">
+                  {/* Tim Hunt, 20 November 2026, from his mock-ups: the Vector
+                      logo across the top of its card, and a matching header
+                      strip on the Summer Schools card. */}
+                  {card.banner ? (
+                    <img
+                      src={card.banner.src}
+                      alt={card.banner.alt}
+                      width={card.banner.width}
+                      height={card.banner.height}
+                      loading="lazy"
+                      decoding="async"
+                      className="-mx-5 -mt-5 block h-auto w-[calc(100%+2.5rem)] max-w-none sm:-mx-6 sm:-mt-6 sm:w-[calc(100%+3rem)]"
+                    />
+                  ) : card.headerStrip ? (
+                    <div className="-mx-5 -mt-5 flex items-center gap-4 bg-sky-50 px-5 py-4 sm:-mx-6 sm:-mt-6 sm:px-6 sm:py-5">
+                      <Icon className="h-7 w-7 shrink-0 text-wsa-navy" aria-hidden />
+                      <span className="h-8 w-px bg-wsa-navy/20" aria-hidden />
+                      <p className="text-lg font-semibold leading-snug text-wsa-navy">{card.eyebrow}</p>
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-3">
+                      <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-wsa-navy/5 text-wsa-navy">
+                        <Icon className="h-5 w-5" aria-hidden />
+                      </span>
+                      <p className="text-xs font-semibold uppercase tracking-wider text-wsa-red">{card.eyebrow}</p>
+                    </div>
+                  )}
+                  <h3 className={`text-lg font-semibold leading-snug text-wsa-navy ${card.banner || card.headerStrip ? "mt-5" : "mt-3"}`}>{card.title}</h3>
                   <div className="mt-2 space-y-2.5">
                     {card.body.map(p => (
                       <p key={p.slice(0, 40)} className="text-base leading-relaxed text-gray-700">{p}</p>
                     ))}
                   </div>
+                  {card.image && (
+                    <img
+                      src={card.image.src}
+                      alt={card.image.alt}
+                      width={card.image.width}
+                      height={card.image.height}
+                      loading="lazy"
+                      decoding="async"
+                      className="mt-4 h-auto w-full rounded-xl object-cover"
+                    />
+                  )}
+                  {card.video && (
+                    <a
+                      href={card.video.href}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="mt-3 inline-flex items-center gap-2 text-base font-semibold text-wsa-navy underline underline-offset-2 hover:text-wsa-red"
+                    >
+                      <Play className="h-4 w-4 shrink-0 fill-current" aria-hidden />
+                      {card.video.label}
+                    </a>
+                  )}
                   {card.confirmed && (
                     <div className="mt-3 rounded-lg border border-wsa-navy/10 bg-wsa-warm-white px-4 py-3">
                       <p className="text-sm font-semibold text-wsa-navy">{card.confirmedHeading}</p>
@@ -355,6 +387,16 @@ export default function SarkinFulaniFutureLeaders() {
                 <p key={p.slice(0, 40)} className="text-base leading-relaxed text-gray-700">{p}</p>
               ))}
             </div>
+            {/* Tim Hunt, 20 November 2026: a classroom photograph here. */}
+            <img
+              src={AWARDS.photo.src}
+              alt={AWARDS.photo.alt}
+              width={AWARDS.photo.width}
+              height={AWARDS.photo.height}
+              loading="lazy"
+              decoding="async"
+              className="mt-6 h-auto w-full rounded-2xl border border-wsa-navy/10 object-cover"
+            />
           </div>
           <div className="min-w-0 space-y-4">
             <div className="rounded-2xl border border-wsa-navy/10 bg-wsa-warm-white p-5">
@@ -546,6 +588,10 @@ export default function SarkinFulaniFutureLeaders() {
 
       <section className="border-t border-wsa-navy/10 px-4 py-8 sm:px-6">
         <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-x-5 gap-y-2 text-sm text-gray-600">
+          {/* Tim Hunt, 20 November 2026: the scholarship competition link here. */}
+          <a href={FOOT_LINK.href} target="_blank" rel="noopener noreferrer" className="font-medium text-wsa-red underline underline-offset-2 hover:text-wsa-navy">
+            {FOOT_LINK.label}
+          </a>
           <Link href="/" className="underline underline-offset-2 hover:text-wsa-navy">World Student Advisors</Link>
           <Link href="/privacy-policy" className="underline underline-offset-2 hover:text-wsa-navy">Privacy policy</Link>
         </div>

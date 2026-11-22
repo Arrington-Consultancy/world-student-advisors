@@ -50,6 +50,16 @@
  *     Course and the High-Performance Football Development Camp." Tim's
  *     summer copy is kept for those two; its GCSE, A Level and IELTS taster
  *     paragraph is left out because the College did not list it.
+ * 10. Tim Hunt, 20 November 2026, on the preview, to make the page "a bit
+ *     more attractive" while keeping His Royal Highness's "professional and
+ *     serious side" and the Royal seal: his photograph of the student is
+ *     removed ("Looks boring. Remove him please"); the Football Academy team
+ *     photograph and its facilities video join the football card; the
+ *     scholarship competition link moves to the foot of the page, because
+ *     it is separate from what Brooke House College offers the programme;
+ *     a classroom photograph joins the fee awards; and the Vector
+ *     Programme logo heads its card, with a matching header on the Summer
+ *     Schools card, as in his mock-ups.
  *
  * WHAT IS STILL OPEN is in REVIEW_NOTES below, not on the page: Tim asked
  * for the amber "to be confirmed" notes to go (18 November 2026).
@@ -153,6 +163,13 @@ export interface PageLink {
   href: string;
 }
 
+export interface PageImage {
+  src: string;
+  alt: string;
+  width: number;
+  height: number;
+}
+
 export const WHAT_IS = Object.freeze({
   heading: "What is the Sarkin Fulani Future Leaders Programme?",
   paragraphs: [
@@ -167,10 +184,10 @@ export const WHAT_IS = Object.freeze({
   offersHeading: "Explore your opportunities at Brooke House College",
   offers: [
     { text: "Study and board in England at Brooke House College." },
-    {
-      text: "Receive a 10% tuition fee award if admitted for full-time study through the programme. Brooke House College may increase the total award to 25% based on academic or football ability.",
-      link: { label: "Explore the College's football scholarship competition.", href: BHC_LINKS.scholarshipCompetition },
-    },
+    // The scholarship competition link moved to the foot of the page (Tim
+    // Hunt, 20 November 2026): this line is what the College offers the
+    // programme, the competition is separate.
+    { text: "Receive a 10% tuition fee award if admitted for full-time study through the programme. Brooke House College may increase the total award to 25% based on academic or football ability." },
     { text: "Combine your studies with advanced football training through the Brooke House College Football Academy." },
     { text: "Elite football and degree study after Brooke House College." },
     { text: "Practise your English and make new friends at a Brooke House College summer camp." },
@@ -210,6 +227,14 @@ export interface OpportunityCard {
   list?: string[];
   /** Links to Brooke House College's own pages, shown at the foot of the card. */
   links?: PageLink[];
+  /** A photograph under the card's text. */
+  image?: PageImage;
+  /** A video on YouTube, linked under the photograph. */
+  video?: PageLink;
+  /** A logo banner across the top of the card, in place of the icon and eyebrow. */
+  banner?: PageImage;
+  /** A coloured header strip carrying the icon and the eyebrow as the card's label. */
+  headerStrip?: boolean;
 }
 
 /**
@@ -245,12 +270,28 @@ export const OPPORTUNITY_CARDS: ReadonlyArray<OpportunityCard> = Object.freeze([
       "For talented footballers, Brooke House College offers a British education combined with high level football development through its Football Academy. Young players pursue their sporting ambitions while building a strong academic future.",
       "Football ability is assessed by Brooke House College where relevant. Football Academy fees are separate from the standard College tuition fee and are explained to families before any commitment.",
     ],
+    // Tim Hunt, 20 November 2026: the team photograph and the video, in the
+    // space under the text.
+    image: {
+      src: "/images/sarkin-fulani/brooke-house-football-academy-team.jpg",
+      alt: "The Brooke House College Football Academy team",
+      width: 1200,
+      height: 824,
+    },
+    video: { label: "Watch the Football Academy Facilities video", href: "https://www.youtube.com/watch?v=P7NHm6t8SYU" },
   },
   {
     // Tim Hunt, 18 November 2026. Brooke House College to confirm the age
     // range and degree options before the page goes live (REVIEW_NOTES).
     id: "vector",
     eyebrow: "The Vector Programme",
+    // Tim Hunt, 20 November 2026: the Vector Programme logo across the top.
+    banner: {
+      src: "/images/sarkin-fulani/vector-programme-logo.jpg",
+      alt: "The Vector Programme",
+      width: 747,
+      height: 158,
+    },
     title: "Train at Coventry City. Play twice a week. Study for a degree.",
     body: [
       "When you leave Brooke House College, you can keep pursuing football while working towards a university degree. The Vector Programme, a joint venture between Coventry City Football Club and Brooke House College, combines full-time elite football training with degree study for players aged 18 to 23.",
@@ -269,6 +310,7 @@ export const OPPORTUNITY_CARDS: ReadonlyArray<OpportunityCard> = Object.freeze([
     // and the English Language Tuition Course.
     id: "summer-schools",
     eyebrow: "Summer Schools at Brooke House College",
+    headerStrip: true,
     title: "Train with football coaches, get behind the wheel or explore Britain",
     body: [
       "Spend part of your summer at a British boarding school and choose what you want to get out of it. Play football, try karting or horse riding, improve your English and meet students from around the world.",
@@ -282,18 +324,6 @@ export const OPPORTUNITY_CARDS: ReadonlyArray<OpportunityCard> = Object.freeze([
     ],
   },
 ]);
-
-/**
- * Tim Hunt's photograph for the opportunities section, 18 November 2026:
- * "Place above right." Served from this site at 960 pixels, without
- * metadata. Where it comes from is an open item (REVIEW_NOTES).
- */
-export const OPPORTUNITIES_PHOTO = Object.freeze({
-  src: "/images/sarkin-fulani/nigerian-heritage-lesson.jpg",
-  alt: "A student in a Brooke House College football top beside a Nigerian flag and a screen reading Nigeria's Cultural Heritage",
-  width: 960,
-  height: 768,
-});
 
 /**
  * Tuition fee awards, Tim Hunt's fourth requirement. The figures are those
@@ -326,6 +356,14 @@ export const AWARDS = Object.freeze({
     link: { label: "Explore student life at Brooke House.", href: BHC_LINKS.studentLife },
   } as { text: string; link: PageLink },
   feesLink: { label: "View Brooke House College's published fees", href: BHC_LINKS.fees } as PageLink,
+  // Tim Hunt, 20 November 2026: "add a teaching classroom image". Cropped
+  // from his mock-up of that day until he sends the original file.
+  photo: {
+    src: "/images/sarkin-fulani/brooke-house-classroom.jpg",
+    alt: "Students and a teacher working together in a Brooke House College classroom",
+    width: 700,
+    height: 300,
+  } as PageImage,
   budgetHeading: "Families should also budget for",
   budget: [
     "Student Visa fees",
@@ -451,6 +489,16 @@ export const EXPRESS_INTEREST = Object.freeze({
 
 /* ------------------------------------------------------------------ */
 
+/**
+ * Tim Hunt, 20 November 2026: "Place the URL at the foot of the page." The
+ * scholarship competition is the College's own, separate from what it
+ * offers the programme.
+ */
+export const FOOT_LINK: PageLink = Object.freeze({
+  label: "Explore Brooke House College's football scholarship competition",
+  href: BHC_LINKS.scholarshipCompetition,
+});
+
 export const FOOTER_LINE = Object.freeze({
   motto: "Education changes lives. Legacy shapes generations.",
   patronage: "Under the patronage of His Royal Highness Alhaji (Dr.) Mohammed Abubakar Bambado II, Sarkin Fulani of Lagos",
@@ -466,8 +514,8 @@ export const REVIEW_NOTES: ReadonlyArray<{ owner: string; item: string }> = Obje
   { owner: "Brooke House College", item: "Confirmed on 12 October 2026 (Chad Male): January 2027 entry for around 32 students, with the places by year group now on the page, and the awards (10%, then a further 15% on football ability and/or academic level, decided on a football assessment and/or a current school report). Still to confirm: precisely which fees the awards apply to." },
   { owner: "Brooke House College", item: "Before the page goes live: the Vector Programme's current age range (the brochure says 18 to 23) and its three degree options (Tim Hunt, 18 November 2026). The Essay Competition is off the page until the College supplies it." },
   { owner: "Brooke House College", item: "Chad Male, 19 November 2026: the two summer courses to list are the English Language Tuition Course and the High-Performance Football Development Camp. 2027 dates, ages and fees are confirmed with the College for each family." },
-  { owner: "Tim Hunt", item: "Still to come for the revamp of 18 November 2026: the Vector Programme logo, to replace the card's icon, and the brochure link for the Vector line and card." },
-  { owner: "Tim Hunt", item: "The photograph beside the opportunities (\"Nigerian Heritage Lesson in Classroom\"): where it comes from, and if it is AI-generated or of a real student, that the page may show it as it does." },
+  { owner: "Tim Hunt", item: "Still to come: the Vector Programme brochure link for the Vector line and card. The logo arrived on 20 November 2026, with the poster \"Use this one Loughborough Under 23 Football Programme\", whose place on the page Tim has not said." },
+  { owner: "Tim Hunt", item: "The classroom photograph in the fee awards is cropped from his mock-up of 20 November 2026: the original file, and whether it is from Brooke House College's website. The photograph of a real student he edited (\"Nigerian Heritage Lesson in Classroom\") was removed at his request the same day." },
   { owner: "Tim Hunt", item: "Decided 18 November 2026: the Express your interest form is Tim's Pipedrive form. The enquiry goes to Farooq Gajo with Maryam Lawal, Eldah Therone and Tim copied; Eldah is Lead Owner and Maryam Source Owner. Tim said not to use it on the page until he says (19 November); the page is a draft until then." },
   { owner: "Tim Hunt", item: "The places list uses Brooke House's own words: the ages are 'on or after 1 September' and Year 10 is 'if English is their first language'. Tim to confirm these read as the College means them before publication." },
   { owner: "Tim Hunt", item: "Who else receives the programme's enquiry notification alongside the Student Counsellors (Maryam Lawal, for instance), and the timeline dates now that September 2026 has passed." },
@@ -491,15 +539,17 @@ export function allRenderedCopy(): string[] {
       ...(c.confirmedHeading ? [c.confirmedHeading] : []), ...(c.confirmed ?? []),
       ...(c.listHeading ? [c.listHeading] : []), ...(c.list ?? []),
       ...(c.links ?? []).map(l => l.label),
+      ...(c.image ? [c.image.alt] : []), ...(c.video ? [c.video.label] : []), ...(c.banner ? [c.banner.alt] : []),
     ]),
     AWARDS.heading, ...AWARDS.paragraphs, AWARDS.includedHeading, AWARDS.includedIntro,
-    ...AWARDS.included.flatMap(i => [i.text, i.link.label]), AWARDS.includedClose.text, AWARDS.includedClose.link.label, AWARDS.feesLink.label,
+    ...AWARDS.included.flatMap(i => [i.text, i.link.label]), AWARDS.includedClose.text, AWARDS.includedClose.link.label, AWARDS.feesLink.label, AWARDS.photo.alt,
     AWARDS.budgetHeading, ...AWARDS.budget, AWARDS.separateLine,
     ...STEPS.flatMap(s => [s.title, s.body]),
     ...TIMELINE.flatMap(t => [t.when, t.what]),
     BEHIND.heading, BEHIND.brookeHouse, BEHIND.wsa,
     MARYAM.name, MARYAM.programmeRole, MARYAM.title, MARYAM.organisation, MARYAM.email, MARYAM.whatsapp,
     MARYAM.photoAlt, MARYAM.eyebrow, MARYAM.description, MARYAM.emailLabel, MARYAM.whatsappLabel,
+    FOOT_LINK.label,
     ...OPPORTUNITIES,
     ...Object.values(EXPRESS_INTEREST),
     ...Object.values(FOOTER_LINE),
