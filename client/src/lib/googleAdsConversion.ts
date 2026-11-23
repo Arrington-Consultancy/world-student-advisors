@@ -12,14 +12,8 @@
  * googleAdsUserData.ts says exactly what is hashed and when nothing is sent.
  * The conversion is reported whether or not that data can be produced.
  */
+import { ensureGtag } from "./googleAdsTag";
 import { hashedUserData } from "./googleAdsUserData";
-
-declare global {
-  interface Window {
-    gtag?: (...args: unknown[]) => void;
-    dataLayer?: unknown[][];
-  }
-}
 
 const CONVERSION_SEND_TO = "AW-946725823/hviLCPiHkOMcEL_Ht8MD";
 const CONVERSION_ARGS = [
@@ -28,17 +22,16 @@ const CONVERSION_ARGS = [
   { send_to: CONVERSION_SEND_TO },
 ] as const;
 
-/** gtag if it has loaded; otherwise the queue gtag.js processes when it does. */
+/**
+ * Always through gtag, which queues on the data layer until gtag.js has
+ * loaded and is read in order when it does, so user data still precedes
+ * the conversion. Never push an Array to the data layer directly: gtag.js
+ * runs only `arguments` objects as commands, and until 23 November 2026
+ * this fallback pushed an Array that it ignored (googleAdsTag.ts, THE BUG).
+ */
 function send(args: readonly unknown[]): void {
-  if (typeof window.gtag === "function") {
-    window.gtag(...args);
-    return;
-  }
-  // The base tag loads async. If the form succeeds before gtag is ready,
-  // queue the exact same call so gtag.js can process it when it finishes
-  // loading. Order is preserved, so user data still precedes the conversion.
-  window.dataLayer = window.dataLayer || [];
-  window.dataLayer.push([...args]);
+  ensureGtag();
+  window.gtag!(...args);
 }
 
 export type SignupContact = {

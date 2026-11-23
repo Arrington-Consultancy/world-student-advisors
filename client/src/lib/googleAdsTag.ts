@@ -25,12 +25,40 @@
  * identifiers from the pings while ad_storage is denied.
  *
  * Idempotent: loadGoogleAdsTag() may be called more than once.
+ *
+ * THE BUG THAT OUTLIVED BOTH CHANGES ABOVE (found 23 November 2026, after
+ * Tim Hunt forwarded Google's weekly summary showing 221 clicks and no
+ * conversions). When PR #59 moved the tag out of index.html on 28 August it
+ * also rewrote Google's snippet. Google's is
+ *
+ *     function gtag(){dataLayer.push(arguments);}
+ *
+ * and the rewrite was an arrow function that pushed its rest parameters,
+ * `(...args) => dataLayer.push(args)`. That pushes an Array. gtag.js acts
+ * only on the `arguments` object: an Array on the data layer means
+ * something else to it and is not run as a command. So from 28 August
+ * every call made here (the consent default, "config", the consent update
+ * and the conversion itself) was ignored, for every visitor, whatever they
+ * chose on the banner. Google's own figures agree to the day: "Submit lead
+ * form" recorded 11 conversions between 19 and 28 August and none in the
+ * twelve weeks after, while the server-side Qualified Lead upload, which
+ * does not use this tag, recorded 21 leads from ad clicks in the same
+ * weeks. The 30 September diagnosis blamed the banner, and Consent Mode
+ * was the right thing to add, but it could not work while the commands
+ * were still Arrays. How many visitors accept the banner is therefore not
+ * known; "almost no visitor accepts" above was inferred while the tag was
+ * deaf.
+ *
+ * So gtag below is a real function that pushes `arguments`, and the test
+ * server/googleAdsTag.test.ts fails if anything reaches the data layer
+ * that is not an Arguments object. Do not tidy it into an arrow function.
  */
 
 declare global {
   interface Window {
     gtag?: (...args: unknown[]) => void;
-    dataLayer?: unknown[][];
+    /** Entries are the `arguments` objects gtag pushes, not Arrays. */
+    dataLayer?: unknown[];
   }
 }
 
@@ -43,9 +71,20 @@ export type ConsentState = "granted" | "denied";
 
 let loaded = false;
 
-function ensureGtag(): void {
+/**
+ * Defines window.gtag exactly as Google's snippet does, if it is not there
+ * already. Must stay a `function` that pushes `arguments`: see THE BUG
+ * above. Exported so the conversion (googleAdsConversion.ts) can queue
+ * through the same function before the tag has loaded.
+ */
+export function ensureGtag(): void {
   window.dataLayer = window.dataLayer || [];
-  window.gtag = window.gtag || ((...args: unknown[]) => window.dataLayer!.push(args));
+  if (typeof window.gtag !== "function") {
+    window.gtag = function gtag() {
+      // eslint-disable-next-line prefer-rest-params
+      window.dataLayer!.push(arguments);
+    };
+  }
 }
 
 function consentRecord(state: ConsentState): Record<string, string | number> {
