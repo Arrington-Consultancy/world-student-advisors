@@ -20,9 +20,9 @@
  *  - "Please link to the PDFs currently in each folder": the Debrecen
  *    folder also holds two Word files; they are not PDFs and are not
  *    linked.
- *  - The "Pre-CAS Interview" video for the UK section: held back until a
- *    person has looked at it, because the repository is public (see the
- *    import script).
+ *  - The "Pre-CAS Interview" video for the UK section: his MP4 is Birmingham
+ *    City University's own film, downloaded from YouTube, so the page plays
+ *    BCU's upload (UK_VIDEO) rather than a copy, credited to them.
  *  - The numbering is his: UK forms 01 to 09, and outside the UK one block
  *    of ten per destination (Australia 20 to 29 and so on), so a new form
  *    takes the next free number without renumbering the rest.
@@ -133,6 +133,25 @@ export const UK_FORMS: readonly Questionnaire[] = Object.freeze([
     file: "pmiq-09-ukvi-credibility-interview.pdf",
   },
 ]);
+
+/**
+ * Tim Hunt asked for the "Pre-CAS Interview" video in the UK section. It is
+ * Birmingham City University's "Pre-CAS Interview Do's and Dont's |
+ * International study at BCU", which BCU also embeds on its own credibility
+ * interviews page. It plays from BCU's YouTube channel, on request, in the
+ * site's video window; the poster is the film's own title card.
+ */
+export const UK_VIDEO = {
+  eyebrow: "Watch before your interview",
+  title: "Tips for your Pre-CAS interview",
+  credit: "A two-minute video from Birmingham City University, on YouTube.",
+  playLabel: "Play the video",
+  youtubeUrl: "https://www.youtube.com/watch?v=o0xA71Zp9s4",
+  poster: "/images/pmiq/pre-cas-interview-poster.jpg",
+  posterAlt: "Title card: Tips for your Pre-CAS interview",
+  posterWidth: 640,
+  posterHeight: 360,
+};
 
 export const ABROAD_HEADING = "Interview questionnaires outside the UK";
 export const ABROAD_INTRO =
@@ -299,6 +318,11 @@ export function allRenderedCopy(): string {
     NOTE,
     DOWNLOAD_LABEL,
     UK_HEADING,
+    UK_VIDEO.eyebrow,
+    UK_VIDEO.title,
+    UK_VIDEO.credit,
+    UK_VIDEO.playLabel,
+    UK_VIDEO.posterAlt,
     ABROAD_HEADING,
     ABROAD_INTRO,
     ...ABROAD_GROUPS.flatMap(g => [g.name, g.subtitle ?? "", g.range]),

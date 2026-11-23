@@ -10,6 +10,7 @@ import {
   PMIQ_DIR,
   STEPS,
   UK_FORMS,
+  UK_VIDEO,
   allRenderedCopy,
   downloadAriaLabel,
   pdfHref,
@@ -143,11 +144,25 @@ describe("Tim Hunt's questionnaires, 18 November 2026", () => {
     expect(new Set(itemIds).size).toBe(24);
   });
 
-  it("imports the Pre-CAS Interview video to its own folder, outside the questionnaires", () => {
-    // Held back until Tom Arrington confirmed on 23 November 2026 that its
-    // publication had been agreed.
-    expect(SCRIPT).toContain('"client/public/videos/pre-cas-interview.mp4"');
-    expect(SCRIPT).not.toContain("pmiq-review");
+  it("plays the Pre-CAS video from Birmingham City University's own upload, not a copy", () => {
+    // Tim's MP4 was BCU's film, downloaded from YouTube (23 November 2026).
+    expect(UK_VIDEO.youtubeUrl).toBe(
+      "https://www.youtube.com/watch?v=o0xA71Zp9s4"
+    );
+    expect(UK_VIDEO.credit).toContain("Birmingham City University");
+    expect(existsSync(publicPath(UK_VIDEO.poster))).toBe(true);
+    expect(existsSync("client/public/videos/pre-cas-interview.mp4")).toBe(
+      false
+    );
+    expect(SCRIPT).not.toMatch(/\.mp4"/);
+    // In the UK section, before the forms outside the UK.
+    expect(PAGE.indexOf("UK_VIDEO.title")).toBeGreaterThan(
+      PAGE.indexOf("UK_FORMS.map")
+    );
+    expect(PAGE.indexOf("UK_VIDEO.title")).toBeLessThan(
+      PAGE.indexOf("{ABROAD_HEADING}")
+    );
+    expect(PAGE).toContain("<VideoModal");
   });
 });
 

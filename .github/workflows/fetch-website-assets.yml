@@ -12,10 +12,10 @@ name: Import website assets from SharePoint (read only)
 # asset_set "pmiq" (added 22 November 2026) imports Tim Hunt's Pre-Mock
 # Interview Questionnaires for the Student Support Library through
 # scripts/fetch-pmiq-assets.mjs, by the same route and credential. The PDFs
-# are committed to client/public/downloads/pmiq and the Pre-CAS Interview
-# video to client/public/videos, once Tom Arrington confirmed on
-# 23 November 2026 that its publication had been agreed. The default,
-# "partners", does exactly what this workflow did before.
+# are committed to client/public/downloads/pmiq. The Pre-CAS Interview video
+# is Birmingham City University's own, so the page embeds their YouTube
+# upload and nothing here imports it. The default, "partners", does exactly
+# what this workflow did before.
 on:
   workflow_dispatch:
     inputs:
@@ -80,8 +80,8 @@ jobs:
               folder=client/public/partners
               message="Import partner website assets from SharePoint (Study Group, UCLan Cyprus, University of Debrecen)" ;;
             pmiq)
-              folder="client/public/downloads/pmiq client/public/videos"
-              message="Import Tim Hunt's Pre-Mock Interview Questionnaires and the Pre-CAS Interview video from SharePoint" ;;
+              folder="client/public/downloads/pmiq"
+              message="Import Tim Hunt's Pre-Mock Interview Questionnaires from SharePoint (24 PDFs)" ;;
           esac
           git add $folder
           if git diff --cached --quiet; then

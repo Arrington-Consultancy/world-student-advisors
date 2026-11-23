@@ -1,5 +1,8 @@
-import { ChevronRight, Download, FileText } from "lucide-react";
+import { useState } from "react";
+import { ChevronRight, Download, FileText, PlayCircle } from "lucide-react";
 import { Link } from "wouter";
+import VideoModal from "@/components/VideoModal";
+import { getYouTubeVideoId } from "@/lib/youtube";
 import { LIBRARY_PATH } from "@/lib/studentSupportLibrary";
 import {
   ABROAD_GROUPS,
@@ -14,6 +17,7 @@ import {
   STEPS_HEADING,
   UK_FORMS,
   UK_HEADING,
+  UK_VIDEO,
   downloadAriaLabel,
   pdfHref,
   type Questionnaire,
@@ -61,6 +65,11 @@ function DownloadButton({
 }
 
 export default function StudyInterviewPreparation() {
+  // The video loads from YouTube only when asked for, in the site's own
+  // video window (the one the library uses).
+  const [playing, setPlaying] = useState(false);
+  const videoId = getYouTubeVideoId(UK_VIDEO.youtubeUrl);
+
   return (
     <div className="min-h-screen bg-slate-50/70">
       <div className="container max-w-6xl pt-28 pb-20 lg:pt-36">
@@ -157,6 +166,52 @@ export default function StudyInterviewPreparation() {
               </li>
             ))}
           </ul>
+
+          {/* Tim Hunt, 18 November 2026: the Pre-CAS video in the UK section.
+              Birmingham City University's own film, played from their upload. */}
+          {videoId && (
+            <div className="mt-5 grid items-center gap-4 overflow-hidden rounded-xl border border-wsa-navy/10 bg-white sm:grid-cols-[minmax(0,320px)_1fr]">
+              <button
+                type="button"
+                onClick={() => setPlaying(true)}
+                aria-label={`${UK_VIDEO.playLabel}: ${UK_VIDEO.title}`}
+                className="group relative block focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-wsa-red"
+              >
+                <img
+                  src={UK_VIDEO.poster}
+                  alt={UK_VIDEO.posterAlt}
+                  width={UK_VIDEO.posterWidth}
+                  height={UK_VIDEO.posterHeight}
+                  loading="lazy"
+                  decoding="async"
+                  className="h-auto w-full"
+                />
+                <PlayCircle
+                  className="absolute bottom-3 left-3 h-11 w-11 rounded-full bg-black/45 text-white drop-shadow transition-transform duration-200 group-hover:scale-110"
+                  aria-hidden
+                />
+              </button>
+              <div className="px-4 pb-4 sm:py-4 sm:pr-5 sm:pl-0">
+                <p className="text-xs font-semibold uppercase tracking-[0.15em] text-wsa-red">
+                  {UK_VIDEO.eyebrow}
+                </p>
+                <h3 className="mt-1 text-lg font-semibold text-wsa-navy">
+                  {UK_VIDEO.title}
+                </h3>
+                <p className="mt-1 text-[15px] leading-relaxed text-gray-600">
+                  {UK_VIDEO.credit}
+                </p>
+                <button
+                  type="button"
+                  onClick={() => setPlaying(true)}
+                  className="mt-3 inline-flex items-center gap-1.5 rounded-md bg-wsa-navy px-3 py-2 text-xs font-semibold text-white transition-colors duration-200 hover:bg-wsa-red"
+                >
+                  <PlayCircle className="h-4 w-4" aria-hidden />
+                  {UK_VIDEO.playLabel}
+                </button>
+              </div>
+            </div>
+          )}
         </section>
 
         {/* Outside the UK */}
@@ -207,6 +262,14 @@ export default function StudyInterviewPreparation() {
           </div>
         </section>
       </div>
+      <VideoModal
+        resource={
+          playing && videoId
+            ? { title: UK_VIDEO.title, videoId, url: UK_VIDEO.youtubeUrl }
+            : null
+        }
+        onOpenChange={open => setPlaying(open)}
+      />
     </div>
   );
 }

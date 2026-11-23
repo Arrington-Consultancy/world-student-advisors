@@ -20,12 +20,13 @@
  * `railway run` from .github/workflows/fetch-website-assets.yml with
  * asset_set "pmiq".
  *
- * THE VIDEO. At first it was held back as a one-day run artifact, because
- * this repository is public and a recording of a real student needs their
- * consent on record before it is committed. WSA's tools could not download
- * the artifact, so Tom Arrington was asked; on 23 November 2026 he
- * confirmed "It's been oked it's fine", and the video is now committed to
- * client/public/videos for the UK section, as Tim asked.
+ * THE VIDEO IS NOT IMPORTED. Tim's "Pre-CAS Interview" MP4 turned out, once
+ * imported on 23 November 2026, to be Birmingham City University's own film
+ * ("Pre-CAS Interview Do's and Dont's | International study at BCU",
+ * YouTube o0xA71Zp9s4), downloaded from YouTube. Re-hosting another
+ * organisation's video is not WSA's to do; the page embeds BCU's own upload
+ * instead, as the rest of the library embeds its videos, and the copy was
+ * removed from the site.
  *
  * It reads. It never writes to SharePoint, never lists a folder, never
  * prints a token, and touches only the explicit item ids below, each read
@@ -141,12 +142,6 @@ const PDFS = [
   ],
 ].map(([itemId, name]) => [itemId, `${PDF_DIR}/${name}`]);
 
-/** Mock interviews / Pre-CAS Interview.mp4, cleared on 23 November 2026. */
-const VIDEO = [
-  "01JQQ47XRNPXQD3UGYSJBLPIFPPXT3LHOH",
-  "client/public/videos/pre-cas-interview.mp4",
-];
-
 function requireEnv(name) {
   const value = process.env[name];
   if (!value) {
@@ -181,18 +176,13 @@ async function accessToken() {
 
 /** A PDF starts "%PDF-". */
 const isPdf = bytes => bytes.subarray(0, 5).toString("latin1") === "%PDF-";
-/** An MP4 carries "ftyp" at byte 4. */
-const isMp4 = bytes => bytes.subarray(4, 8).toString("latin1") === "ftyp";
 
 const repoRoot = resolve(new URL("..", import.meta.url).pathname);
 
 async function main() {
   const token = await accessToken();
   let failures = 0;
-  const items = [
-    ...PDFS.map(([id, path]) => [id, path, isPdf, "PDF"]),
-    [...VIDEO, isMp4, "MP4"],
-  ];
+  const items = PDFS.map(([id, path]) => [id, path, isPdf, "PDF"]);
   for (const [itemId, relativePath, check, kind] of items) {
     const response = await fetch(
       `${GRAPH}/drives/${DRIVE_ID}/items/${itemId}/content`,
@@ -223,7 +213,7 @@ async function main() {
     console.error(`${failures} item(s) could not be read.`);
     process.exit(1);
   }
-  console.log(`All ${PDFS.length} questionnaires and the video imported.`);
+  console.log(`All ${PDFS.length} questionnaires imported.`);
 }
 
 main().catch(error => {
