@@ -156,12 +156,10 @@ export const BHC_LINKS = Object.freeze({
   catering: "https://www.brookehousecollege.co.uk/life-at-brooke-house/catering",
   studentLife: "https://www.brookehousecollege.co.uk/life-at-brooke-house/enrichment/enrichment-overview",
   fees: "https://www.brookehousecollege.co.uk/admissions/fees",
-  // Tim Hunt, 22 November 2026: "a brochure of GCSE, A Level and University
-  // Foundation Programme (UFP) options ... We could use this under the
-  // classroom photo". It did not open from WSA's tools that day while the
-  // rest of the College's site did, so Tim checks it on the preview.
-  subjectsBooklet:
-    "https://www.brookehousecollege.co.uk/userfiles/bhcmvc/documents/FurtherInformation/BH_A4_SubjectsBooklet_FINAL_WEB.pdf",
+  // Tim Hunt, 22 November 2026, in place of the subjects booklet, which did
+  // not download for him either: "Use this link, please". Later that night:
+  // "We don't need a brochure now", as the College changes them too often.
+  accreditations: "https://www.brookehousecollege.co.uk/about-us/accreditations-memberships",
 });
 
 /**
@@ -383,10 +381,11 @@ export const AWARDS = Object.freeze({
     width: 1400,
     height: 637,
   } as PageImage,
-  // Tim Hunt, 22 November 2026: the subjects booklet "under the classroom photo".
+  // Tim Hunt, 22 November 2026: under the classroom photo, the College's
+  // accreditations page in place of the subjects booklet.
   photoLink: {
-    label: "Explore the GCSE, A Level and University Foundation Programme subjects (PDF)",
-    href: BHC_LINKS.subjectsBooklet,
+    label: "See Brooke House College's accreditations and memberships",
+    href: BHC_LINKS.accreditations,
   } as PageLink,
   budgetHeading: "Families should also budget for",
   budget: [
@@ -401,14 +400,66 @@ export const AWARDS = Object.freeze({
   separateLine: "Football Academy fees are charged separately where applicable, and summer camps have their own fees.",
 });
 
-export const STEPS: ReadonlyArray<{ title: string; body: string }> = Object.freeze([
+/**
+ * The campus plan and the map, Tim Hunt, 22 November 2026: "Between these
+ * two (How much financial support is available? and Taking the first steps
+ * is simple) insert two images. 1. schematic of the campus. 2. Map where
+ * BHC." Both carry the College's own wording, so each opens full size for a
+ * phone reader, and the alt text gives what the picture says.
+ */
+export const CAMPUS = Object.freeze({
+  label: "Brooke House College's campus and location",
+  images: [
+    {
+      src: "/images/sarkin-fulani/brooke-house-campus-plan.jpg",
+      alt: "Illustrated plan of the Brooke House College main campus, labelling the boarding houses with Resident Tutors, the chemistry and physics laboratories, the Football Academy offices, Brooke House itself and the teaching buildings.",
+      width: 1600,
+      height: 1191,
+      caption: "The main campus in Market Harborough. Open the plan to see it full size.",
+    },
+    {
+      src: "/images/sarkin-fulani/brooke-house-location.jpg",
+      alt: "Map of the United Kingdom marking Market Harborough, Leicestershire, where Brooke House College is: less than an hour north of London by train and an hour and a half from Heathrow airport by car, according to the College.",
+      width: 1600,
+      height: 1138,
+      caption: "Where the College is: Market Harborough, Leicestershire. Open the map to see it full size.",
+    },
+  ] as ReadonlyArray<PageImage & { caption: string }>,
+});
+
+/**
+ * Tim Hunt, 22 November 2026: "make this section more attractive by adding
+ * 5 images where there is natural space ... Aimed at the Muslim community.
+ * Image 7 is actually Brooke House College." Placed as his mock-up shows:
+ * under steps 1, 2, 4 and 6, and the College photograph beside step 7.
+ */
+export const STEPS_PHOTO: PageImage = Object.freeze({
+  src: "/images/sarkin-fulani/steps/07-preparing-for-england.jpg",
+  alt: "Students outside the admissions building at Brooke House College",
+  width: 806,
+  height: 211,
+});
+
+export const STEPS: ReadonlyArray<{ title: string; body: string; image?: PageImage }> = Object.freeze([
   {
     title: "Express your interest",
     body: "A student, parent or guardian completes the short form on this page.",
+    image: {
+      src: "/images/sarkin-fulani/steps/01-express-interest.jpg",
+      alt: "A mother in a headscarf and her son looking at a phone together",
+      width: 364,
+      height: 197,
+    },
   },
   {
     title: "The Office of His Royal Highness confirms eligibility",
     body: "Your Expression of Interest goes first to the Office of His Royal Highness, which confirms that the family is part of the community the programme serves.",
+    image: {
+      src: "/images/sarkin-fulani/steps/02-confirm-eligibility.jpg",
+      alt: "Families in traditional dress at a community gathering",
+      width: 364,
+      height: 126,
+    },
   },
   {
     title: "Talk to Maryam Lawal or a Student Counsellor",
@@ -417,6 +468,12 @@ export const STEPS: ReadonlyArray<{ title: string; body: string }> = Object.free
   {
     title: "Apply",
     body: "Where full-time education is appropriate, World Student Advisors helps the family prepare and apply to Brooke House College.",
+    image: {
+      src: "/images/sarkin-fulani/steps/04-apply.jpg",
+      alt: "A mother and her son reading an application together",
+      width: 364,
+      height: 126,
+    },
   },
   {
     title: "Brooke House College assessment",
@@ -425,6 +482,12 @@ export const STEPS: ReadonlyArray<{ title: string; body: string }> = Object.free
   {
     title: "Offer and financial information",
     body: "Successful applicants receive an offer, with clear information about tuition fees, any award and the additional costs to meet, before deciding whether to accept.",
+    image: {
+      src: "/images/sarkin-fulani/steps/06-offer-and-fees.jpg",
+      alt: "A mother and her son smiling as they read a letter together",
+      width: 364,
+      height: 126,
+    },
   },
   {
     title: "Preparing for England",
@@ -539,7 +602,8 @@ export const REVIEW_NOTES: ReadonlyArray<{ owner: string; item: string }> = Obje
   { owner: "Brooke House College", item: "Before the page goes live: the Vector Programme's current age range (the brochure says 18 to 23) and its three degree options (Tim Hunt, 18 November 2026). The Essay Competition is off the page until the College supplies it." },
   { owner: "Brooke House College", item: "Chad Male, 19 November 2026: the two summer courses to list are the English Language Tuition Course and the High-Performance Football Development Camp. 2027 dates, ages and fees are confirmed with the College for each family." },
   { owner: "Tim Hunt", item: "The Vector Programme brochure link arrived on 22 November 2026 in answer to where the poster \"Use this one Loughborough Under 23 Football Programme\" should go, so the card links the brochure and the poster is not used unless he says otherwise." },
-  { owner: "Tim Hunt", item: "The classroom photograph is his original of 22 November 2026, with the subjects booklet linked under it as he suggested. The booklet link did not open from WSA's tools that day: Tim to check it opens on the preview. The photograph of a real student he edited (\"Nigerian Heritage Lesson in Classroom\") was removed at his request on 20 November." },
+  { owner: "Tim Hunt", item: "The classroom photograph is his original of 22 November 2026, with the College's accreditations page linked under it. No brochure: the subjects booklet would not download for him either, and the College changes its brochures too often (22 November). The photograph of a real student he edited (\"Nigerian Heritage Lesson in Classroom\") was removed at his request on 20 November." },
+  { owner: "Tim Hunt", item: "His five step photographs of 22 November 2026 are small (364 pixels wide; the College photograph 806), so they are shown at their own size or less and look soft on a sharp phone screen. Larger originals would fix that." },
   { owner: "Tim Hunt", item: "Decided 18 November 2026: the Express your interest form is Tim's Pipedrive form. The enquiry goes to Farooq Gajo with Maryam Lawal, Eldah Therone and Tim copied; Eldah is Lead Owner and Maryam Source Owner. Tim said not to use it on the page until he says (19 November); the page is a draft until then." },
   { owner: "Tim Hunt", item: "The places list uses Brooke House's own words: the ages are 'on or after 1 September' and Year 10 is 'if English is their first language'. Tim to confirm these read as the College means them before publication." },
   { owner: "Tim Hunt", item: "Who else receives the programme's enquiry notification alongside the Student Counsellors (Maryam Lawal, for instance), and the timeline dates now that September 2026 has passed." },
@@ -567,6 +631,7 @@ export function allRenderedCopy(): string[] {
     ]),
     AWARDS.heading, ...AWARDS.paragraphs, AWARDS.includedHeading, AWARDS.includedIntro,
     ...AWARDS.included.flatMap(i => [i.text, i.link.label]), AWARDS.includedClose.text, AWARDS.includedClose.link.label, AWARDS.feesLink.label, AWARDS.photo.alt, AWARDS.photoLink.label,
+    CAMPUS.label, ...CAMPUS.images.flatMap(i => [i.alt, i.caption]), STEPS_PHOTO.alt, ...STEPS.flatMap(s => (s.image ? [s.image.alt] : [])),
     AWARDS.budgetHeading, ...AWARDS.budget, AWARDS.separateLine,
     ...STEPS.flatMap(s => [s.title, s.body]),
     ...TIMELINE.flatMap(t => [t.when, t.what]),

@@ -3,6 +3,7 @@ import { existsSync, readFileSync } from "fs";
 import {
   AWARDS,
   CAMPAIGN_SLUG,
+  CAMPUS,
   BHC_LINKS,
   DRAFT,
   EXPRESS_INTEREST,
@@ -16,6 +17,7 @@ import {
   PATRON,
   REVIEW_NOTES,
   STEPS,
+  STEPS_PHOTO,
   TIMELINE,
   VECTOR_BROCHURE_URL,
   WHAT_IS,
@@ -362,14 +364,47 @@ describe("Tim Hunt's changes of 22 November 2026", () => {
     expect([AWARDS.photo.width, AWARDS.photo.height]).toEqual([1400, 637]);
   });
 
-  it("links Brooke House College's subjects booklet under the photograph", () => {
-    expect(AWARDS.photoLink.href).toBe(BHC_LINKS.subjectsBooklet);
-    expect(BHC_LINKS.subjectsBooklet).toBe(
-      "https://www.brookehousecollege.co.uk/userfiles/bhcmvc/documents/FurtherInformation/BH_A4_SubjectsBooklet_FINAL_WEB.pdf",
-    );
+  it("links the College's accreditations page under the photograph, and no brochure (his later decision that night)", () => {
+    expect(AWARDS.photoLink.href).toBe("https://www.brookehousecollege.co.uk/about-us/accreditations-memberships");
+    expect(AWARDS.photoLink.href).toBe(BHC_LINKS.accreditations);
     const photo = PAGE.indexOf("src={AWARDS.photo.src}");
     const link = PAGE.indexOf("<CollegeLink link={AWARDS.photoLink} />");
     expect(link).toBeGreaterThan(photo);
+    expect(Object.values(BHC_LINKS).some(h => /\.pdf$|booklet|brochure/i.test(h))).toBe(false);
+  });
+
+  it("puts the campus plan and the map between the fee awards and the steps", () => {
+    expect(CAMPUS.images.map(i => i.src)).toEqual([
+      "/images/sarkin-fulani/brooke-house-campus-plan.jpg",
+      "/images/sarkin-fulani/brooke-house-location.jpg",
+    ]);
+    for (const img of CAMPUS.images) expect(existsSync(`client/public${img.src}`), img.src).toBe(true);
+    const fees = PAGE.indexOf("{AWARDS.heading}");
+    const campus = PAGE.indexOf("CAMPUS.images.map");
+    const steps = PAGE.indexOf("Taking the first step is simple");
+    expect(campus).toBeGreaterThan(fees);
+    expect(steps).toBeGreaterThan(campus);
+    // Each opens full size, because each carries the College's small print.
+    expect(PAGE).toContain("href={img.src}");
+  });
+
+  it("adds his five photographs to the steps: under 1, 2, 4 and 6, and the College beside 7", () => {
+    expect(STEPS.map(s => (s.image ? s.image.src.split("/").pop() : null))).toEqual([
+      "01-express-interest.jpg",
+      "02-confirm-eligibility.jpg",
+      null,
+      "04-apply.jpg",
+      null,
+      "06-offer-and-fees.jpg",
+      null,
+    ]);
+    expect(STEPS_PHOTO.src).toBe("/images/sarkin-fulani/steps/07-preparing-for-england.jpg");
+    for (const src of [...STEPS.flatMap(s => (s.image ? [s.image.src] : [])), STEPS_PHOTO.src]) {
+      expect(existsSync(`client/public${src}`), src).toBe(true);
+    }
+    for (const s of STEPS) if (s.image) expect(s.image.alt.length, s.title).toBeGreaterThan(20);
+    expect(PAGE).toContain('<ol role="list" className="contents">');
+    expect(PAGE).toContain("src={STEPS_PHOTO.src}");
   });
 
   it("links the Vector Programme brochure from the Vector card, in a new tab", () => {

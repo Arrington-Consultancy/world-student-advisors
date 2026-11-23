@@ -16,6 +16,7 @@ import PipedriveFormEmbed from "@/components/PipedriveFormEmbed";
 import {
   AWARDS,
   BEHIND,
+  CAMPUS,
   DRAFT,
   EXPRESS_INTEREST,
   EXPRESS_INTEREST_FORM_URL,
@@ -28,6 +29,7 @@ import {
   PARTNERS,
   PATRON,
   STEPS,
+  STEPS_PHOTO,
   TIMELINE,
   VISION,
   WHAT_IS,
@@ -427,19 +429,67 @@ export default function SarkinFulaniFutureLeaders() {
         </div>
       </section>
 
+      {/* ── Campus plan and map, Tim Hunt, 22 November 2026 ──────── */}
+      <section aria-label={CAMPUS.label} className="border-t border-wsa-navy/10 bg-white px-4 py-12 sm:px-6 lg:py-16">
+        <div className="mx-auto grid max-w-6xl gap-6 lg:grid-cols-2 lg:gap-8">
+          {CAMPUS.images.map(img => (
+            <figure key={img.src} className="min-w-0">
+              {/* Both pictures carry the College's own small print, so each
+                  opens full size for a reader on a phone. */}
+              <a
+                href={img.src}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="block overflow-hidden rounded-2xl border border-wsa-navy/10 bg-white"
+              >
+                <img src={img.src} alt={img.alt} width={img.width} height={img.height} loading="lazy" decoding="async" className="h-auto w-full" />
+              </a>
+              <figcaption className="mt-2 text-sm leading-relaxed text-gray-600">{img.caption}</figcaption>
+            </figure>
+          ))}
+        </div>
+      </section>
+
       {/* ── How it works ─────────────────────────────────────────── */}
       <section className="border-t border-wsa-navy/10 px-4 py-12 sm:px-6 lg:py-16">
         <div className="mx-auto max-w-6xl">
           <SectionHeading eyebrow="What do I need to do?">Taking the first step is simple</SectionHeading>
-          <ol className="mt-7 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {STEPS.map((s, i) => (
-              <li key={s.title} className="rounded-2xl border border-wsa-navy/10 bg-white p-5">
-                <span className="flex h-8 w-8 items-center justify-center rounded-full bg-wsa-navy text-sm font-semibold text-white">{i + 1}</span>
-                <h3 className="mt-3 text-lg font-semibold text-wsa-navy">{s.title}</h3>
-                <p className="mt-1.5 text-base leading-relaxed text-gray-700">{s.body}</p>
-              </li>
-            ))}
-          </ol>
+          {/* Tim Hunt's photographs, 22 November 2026, as his mock-up places
+              them: under steps 1, 2, 4 and 6, and the College beside step 7,
+              filling the rest of the last row. The list is display: contents
+              so the photograph shares its grid; role="list" keeps the steps
+              a list for screen readers in browsers that drop it. */}
+          <div className="mt-7 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            <ol role="list" className="contents">
+              {STEPS.map((s, i) => (
+                <li key={s.title} className="flex flex-col rounded-2xl border border-wsa-navy/10 bg-white p-5">
+                  <span className="flex h-8 w-8 items-center justify-center rounded-full bg-wsa-navy text-sm font-semibold text-white">{i + 1}</span>
+                  <h3 className="mt-3 text-lg font-semibold text-wsa-navy">{s.title}</h3>
+                  <p className="mt-1.5 text-base leading-relaxed text-gray-700">{s.body}</p>
+                  {s.image && (
+                    <img
+                      src={s.image.src}
+                      alt={s.image.alt}
+                      width={s.image.width}
+                      height={s.image.height}
+                      loading="lazy"
+                      decoding="async"
+                      className="mt-auto h-auto w-full rounded-xl object-cover pt-4"
+                    />
+                  )}
+                </li>
+              ))}
+            </ol>
+            <img
+              src={STEPS_PHOTO.src}
+              alt={STEPS_PHOTO.alt}
+              width={STEPS_PHOTO.width}
+              height={STEPS_PHOTO.height}
+              loading="lazy"
+              decoding="async"
+              className="h-full min-h-40 w-full rounded-2xl border border-wsa-navy/10 object-cover lg:col-span-2"
+            />
+          </div>
         </div>
       </section>
 
