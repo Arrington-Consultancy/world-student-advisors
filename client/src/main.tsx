@@ -1,5 +1,5 @@
 import { trpc } from "@/lib/trpc";
-import { captureAdClickIds } from "@/lib/adClickIds";
+import { captureAdClickIds, exposeAdClickIdsToPipedriveForms } from "@/lib/adClickIds";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { httpBatchLink } from "@trpc/client";
 import { createRoot, hydrateRoot } from "react-dom/client";
@@ -10,6 +10,9 @@ import "./index.css";
 // Capture gclid/gbraid/wbraid from the landing URL, if present, regardless
 // of which page a visitor first arrives on.
 captureAdClickIds();
+// Then offer them to Pipedrive's embedded forms, which submit straight to
+// Pipedrive and would otherwise lose the ad click (adClickIds.ts, WHY).
+exposeAdClickIdsToPipedriveForms();
 
 const queryClient = new QueryClient();
 
