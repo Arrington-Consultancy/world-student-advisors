@@ -12,9 +12,9 @@ name: Import website assets from SharePoint (read only)
 # asset_set "pmiq" (added 22 November 2026) imports Tim Hunt's Pre-Mock
 # Interview Questionnaires for the Student Support Library through
 # scripts/fetch-pmiq-assets.mjs, by the same route and credential. The PDFs
-# are committed to client/public/downloads/pmiq. The Pre-CAS Interview
-# video is NOT committed: the repository is public, so it is uploaded as a
-# one-day run artifact for a person to look at first. The default,
+# are committed to client/public/downloads/pmiq and the Pre-CAS Interview
+# video to client/public/videos, once Tom Arrington confirmed on
+# 23 November 2026 that its publication had been agreed. The default,
 # "partners", does exactly what this workflow did before.
 on:
   workflow_dispatch:
@@ -80,22 +80,14 @@ jobs:
               folder=client/public/partners
               message="Import partner website assets from SharePoint (Study Group, UCLan Cyprus, University of Debrecen)" ;;
             pmiq)
-              folder=client/public/downloads/pmiq
-              message="Import Tim Hunt's Pre-Mock Interview Questionnaires from SharePoint (24 PDFs)" ;;
+              folder="client/public/downloads/pmiq client/public/videos"
+              message="Import Tim Hunt's Pre-Mock Interview Questionnaires and the Pre-CAS Interview video from SharePoint" ;;
           esac
-          git add "$folder"
+          git add $folder
           if git diff --cached --quiet; then
             echo "No asset changes to commit."
             exit 0
           fi
           git commit -m "$message"
           git push origin "HEAD:$TARGET_BRANCH"
-          ls -l "$folder"
-      - name: Hold the video back for review
-        if: github.event.inputs.asset_set == 'pmiq'
-        uses: actions/upload-artifact@v4
-        with:
-          name: pmiq-video-for-review
-          path: pmiq-review/
-          retention-days: 1
-          if-no-files-found: error
+          ls -l $folder

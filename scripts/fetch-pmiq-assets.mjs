@@ -20,11 +20,12 @@
  * `railway run` from .github/workflows/fetch-website-assets.yml with
  * asset_set "pmiq".
  *
- * THE VIDEO IS NOT COMMITTED BY THIS SCRIPT. It is written outside the
- * public folders, to pmiq-review/, which the workflow uploads as a
- * short-lived run artifact. This repository is public, so a person looks at
- * the recording before it is committed: if it shows a real student, their
- * consent has to be on record first.
+ * THE VIDEO. At first it was held back as a one-day run artifact, because
+ * this repository is public and a recording of a real student needs their
+ * consent on record before it is committed. WSA's tools could not download
+ * the artifact, so Tom Arrington was asked; on 23 November 2026 he
+ * confirmed "It's been oked it's fine", and the video is now committed to
+ * client/public/videos for the UK section, as Tim asked.
  *
  * It reads. It never writes to SharePoint, never lists a folder, never
  * prints a token, and touches only the explicit item ids below, each read
@@ -140,10 +141,10 @@ const PDFS = [
   ],
 ].map(([itemId, name]) => [itemId, `${PDF_DIR}/${name}`]);
 
-/** Mock interviews / Pre-CAS Interview.mp4, held back for review. */
+/** Mock interviews / Pre-CAS Interview.mp4, cleared on 23 November 2026. */
 const VIDEO = [
   "01JQQ47XRNPXQD3UGYSJBLPIFPPXT3LHOH",
-  "pmiq-review/pre-cas-interview.mp4",
+  "client/public/videos/pre-cas-interview.mp4",
 ];
 
 function requireEnv(name) {

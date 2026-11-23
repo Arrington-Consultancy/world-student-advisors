@@ -143,9 +143,11 @@ describe("Tim Hunt's questionnaires, 18 November 2026", () => {
     expect(new Set(itemIds).size).toBe(24);
   });
 
-  it("holds the video back from the public folders until a person has looked at it", () => {
-    expect(SCRIPT).toContain('"pmiq-review/pre-cas-interview.mp4"');
-    expect(readFileSync(".gitignore", "utf8")).toMatch(/^pmiq-review\/$/m);
+  it("imports the Pre-CAS Interview video to its own folder, outside the questionnaires", () => {
+    // Held back until Tom Arrington confirmed on 23 November 2026 that its
+    // publication had been agreed.
+    expect(SCRIPT).toContain('"client/public/videos/pre-cas-interview.mp4"');
+    expect(SCRIPT).not.toContain("pmiq-review");
   });
 });
 
