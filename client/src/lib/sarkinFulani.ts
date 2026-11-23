@@ -77,9 +77,14 @@ export const PAGE_PATH = "/sarkin-fulani-future-leaders";
  * tests hold those four together). Publishing is a separate decision for
  * Tom Arrington once Farooq and Brooke House have approved; it flips this
  * and the three registrations in one change.
+ *
+ * PUBLISHED 23 November 2026. Tim Hunt, who had asked on 19 November that
+ * the page's form not be used until he said so, told Tom Arrington on 23
+ * November that he wanted the page out in time for the January intake. The
+ * label and line below are kept for the record and are no longer shown.
  */
 export const DRAFT = Object.freeze({
-  isDraft: true,
+  isDraft: false,
   label: "Draft for review",
   line:
     "Not yet published. Approved by the Office of His Royal Highness on 18 November 2026; Brooke House College confirmed January 2027 entry and the tuition fee awards on 12 October 2026.",

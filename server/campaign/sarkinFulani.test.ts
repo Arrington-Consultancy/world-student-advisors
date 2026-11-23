@@ -50,8 +50,8 @@ const PAGE = stripComments(read("client/src/pages/SarkinFulaniFutureLeaders.tsx"
 const COPY = allRenderedCopy().join("\n");
 const publicFile = (p: string) => existsSync(`client/public${p}`);
 
-describe("publication state: a draft, held together", () => {
-  it("is a real route so it can be reviewed", () => {
+describe("publication state: published, held together", () => {
+  it("is a real route", () => {
     expect(VALID_CLIENT_ROUTES).toContain(PAGE_PATH);
     expect(isValidClientRoute(PAGE_PATH)).toBe(true);
     expect(read("client/src/App.tsx")).toContain(`path={"${PAGE_PATH}"}`);
@@ -62,18 +62,22 @@ describe("publication state: a draft, held together", () => {
     expect(SEO_MAP[PAGE_PATH]?.description).toContain("Arewa");
   });
 
-  it("while DRAFT.isDraft: noindex, not in the sitemap, not prerendered, banner on", () => {
-    expect(DRAFT.isDraft).toBe(true);
-    expect(NOINDEX_PATHS.has(PAGE_PATH)).toBe(true);
-    expect(shouldNoindex(PAGE_PATH)).toBe(true);
-    expect(read("client/public/sitemap.xml")).not.toContain(PAGE_PATH);
-    expect(ALL_PRERENDER_ROUTES).not.toContain(PAGE_PATH);
+  it("is published (23 November 2026): indexable, in the sitemap, prerendered, banner off", () => {
+    // The four move together. To take the page down again, set
+    // DRAFT.isDraft and reverse the other three in the same change.
+    expect(DRAFT.isDraft).toBe(false);
+    expect(NOINDEX_PATHS.has(PAGE_PATH)).toBe(false);
+    expect(shouldNoindex(PAGE_PATH)).toBe(false);
+    expect(read("client/public/sitemap.xml")).toContain(`<loc>https://www.worldstudentadvisors.com${PAGE_PATH}</loc>`);
+    expect(ALL_PRERENDER_ROUTES).toContain(PAGE_PATH);
+    // The banner stays in the page behind the flag, so a return to draft
+    // needs no page edit.
     expect(PAGE).toContain("DRAFT.isDraft &&");
   });
 
-  it("is linked from nowhere on the public site", () => {
+  it("is reached by its own address, like the other landing pages: no menu, footer or home link", () => {
     for (const file of ["client/src/components/Header.tsx", "client/src/components/Footer.tsx", "client/src/pages/Home.tsx", "client/src/pages/Partners.tsx"]) {
-      expect(read(file), `${file} must not link the draft`).not.toContain(PAGE_PATH);
+      expect(read(file), `${file} must not link the landing page`).not.toContain(PAGE_PATH);
     }
   });
 });
@@ -337,10 +341,12 @@ describe("Tim Hunt's revamp of 18 November 2026", () => {
     expect(PAGE).toContain("src={PATRON.seal}");
   });
 
-  it("stays a draft until Tim says the form may be used (19 November 2026)", () => {
-    // Tim's reply of 22 November ("can the URL be as before") keeps the
-    // address; it is not his go.
-    expect(DRAFT.isDraft).toBe(true);
+  it("was held as a draft until Tim said the page could go out (19 to 23 November 2026)", () => {
+    // On 19 November Tim asked that the page's form not be used until he
+    // said so. His reply of 22 November ("can the URL be as before") kept
+    // the address and was not his go. On 23 November he told Tom Arrington
+    // he wanted the page out for the January intake, and Tom published it.
+    expect(DRAFT.isDraft).toBe(false);
     expect(DRAFT.line).toContain("Approved by the Office of His Royal Highness on 18 November 2026");
   });
 });
