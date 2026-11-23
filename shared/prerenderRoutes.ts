@@ -64,6 +64,7 @@ export const PRERENDER_ROUTES: readonly string[] = [
   "/speak-to-gladys",
   "/speak-to-eldah",
   "/speak-to-claudia",
+  "/speak-to-pedro",
   "/speak-to-glenice",
   "/speak-to-manet",
   // Every Student Support Library resource page, so a link pasted into

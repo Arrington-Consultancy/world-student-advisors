@@ -105,6 +105,8 @@ export const VALID_CLIENT_ROUTES: readonly string[] = [
   "/speak-to-eldah",
   "/speak-to-eldah/thank-you",
   "/speak-to-claudia",
+  // Pedro Bezerra in English and Portuguese, Tim Hunt, 22 November 2026.
+  "/speak-to-pedro",
   "/speak-to-glenice",
   "/speak-to-glenice/thank-you",
   "/speak-to-manet",

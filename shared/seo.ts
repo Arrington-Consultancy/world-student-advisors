@@ -206,6 +206,11 @@ export const SEO_MAP: Record<string, SeoEntry> = {
     description:
       "Eldah Therone is a Team Leader and Senior Student Counsellor in WSA's UK Head Office team. Message her on WhatsApp for free help choosing a course and destination, preparing your applications and planning your next steps.",
   },
+  "/speak-to-pedro": {
+    title: "Speak to Pedro | Fale com o Pedro | World Student Advisors Angola",
+    description:
+      "Pedro Bezerra, WSA's Director for Portuguese-speaking Countries, gives free advice on studying abroad in English and Portuguese. Fale com o Pedro sobre estudar no estrangeiro.",
+  },
   "/speak-to-claudia": {
     title: "Speak to Claudia about studying abroad | World Student Advisors",
     description:
