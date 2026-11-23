@@ -1,7 +1,6 @@
 import { useMemo, useState } from "react";
 import {
   ArrowRight,
-  ChevronRight,
   Download,
   Eye,
   FileCheck2,
@@ -13,6 +12,7 @@ import {
   X,
 } from "lucide-react";
 import { Link, useLocation, useSearch } from "wouter";
+import PodcastsMockInterviewsLinks from "@/components/PodcastsMockInterviewsLinks";
 import ScrollReveal from "@/components/ScrollReveal";
 import VideoModal from "@/components/VideoModal";
 import {
@@ -83,15 +83,7 @@ export default function StudentSupportLibrary() {
           four topic cards and the way to Mock Interviews. */}
       <section className="pt-28 lg:pt-36 pb-10 lg:pb-12">
         <div className="container max-w-6xl">
-          <nav aria-label="Breadcrumb" className="mb-4 text-sm font-semibold text-wsa-navy">
-            <ol className="flex flex-wrap items-center gap-1.5">
-              <li>{PODCASTS_PAGE.breadcrumb.section}</li>
-              <li aria-hidden>
-                <ChevronRight className="h-3.5 w-3.5" />
-              </li>
-              <li aria-current="page">{PODCASTS_PAGE.breadcrumb.page}</li>
-            </ol>
-          </nav>
+          <PodcastsMockInterviewsLinks current={LIBRARY_PATH} className="mb-5" />
 
           <div className="grid overflow-hidden rounded-2xl bg-wsa-navy text-white lg:grid-cols-[1fr_1fr]">
             <div className="flex flex-col justify-center px-6 py-10 sm:px-10 lg:py-12">

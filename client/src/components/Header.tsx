@@ -1,28 +1,9 @@
 import { useState, useEffect } from "react";
 import { Link, useLocation } from "wouter";
-import { ChevronDown, Menu, X } from "lucide-react";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+import { Menu, X } from "lucide-react";
 import { showsLogoOnlyHeader } from "@/lib/landingPageHeader";
 
-interface NavItem {
-  label: string;
-  href: string;
-  navLabel?: string;
-  /** A drop-down of pages under this item; the item itself is then a button. */
-  children?: ReadonlyArray<{ label: string; href: string }>;
-}
-
-// `navLabel` overrides `label` for the compact desktop bar only — the full
-// name is what's shown everywhere else (mobile menu, page headings).
-// Interview Readiness Coach doesn't fit the desktop bar at full length, so
-// it uses the IRC abbreviation there per the brief.
-const navItems: NavItem[] = [
+const navItems = [
   { label: "About", href: "/about" },
   { label: "Study Options", href: "/study-options" },
   { label: "Educational Partners", href: "/partners" },
@@ -32,18 +13,17 @@ const navItems: NavItem[] = [
   // they do want. It lives in the footer utility bar instead, which is
   // where a site puts a staff login. Tim Hunt, 15 September 2026.
   { label: "Events", href: "/events" },
-  // Tim Hunt, 23 November 2026: "Student Support Library" became "Podcasts &
-  // Mock Interviews", with the two pages underneath. The addresses stay as
-  // they were, so no link already sent to a student breaks.
-  {
-    label: "Podcasts & Mock Interviews",
-    href: "/student-support-library",
-    children: [
-      { label: "Podcasts", href: "/student-support-library" },
-      { label: "Mock Interviews", href: "/student-support-library/study-interview-preparation" },
-    ],
-  },
-  { label: "Interview Readiness Coach", navLabel: "IRC", href: "/portal/interview-coach" },
+  // Tim Hunt, 23 November 2026. "Student Support Library" did not say what
+  // it was, so it became "Podcasts & Mock Interviews" with the two pages
+  // underneath. Later the same day, in his feedback on that preview: "I
+  // think IRC not required and can be removed, and we have two options
+  // PODCASTS and MOCK INTERVIEWS". So the menu names the two pages plainly
+  // and the Interview Readiness Coach is no longer in it. The coach is
+  // still reached from the home page, the Podcasts page, the Student Portal
+  // and the visa and CV pages. The addresses stay as they were, so no link
+  // already sent to a student breaks.
+  { label: "Podcasts", href: "/student-support-library" },
+  { label: "Mock Interviews", href: "/student-support-library/study-interview-preparation" },
 ];
 
 export default function Header() {
@@ -106,45 +86,7 @@ export default function Header() {
                 isTransparent
                   ? "text-white/95 hover:text-white font-bold [text-shadow:0_1px_4px_rgba(0,0,0,0.6),0_0px_2px_rgba(0,0,0,0.3)]"
                   : "text-wsa-navy/70 hover:text-wsa-navy"
-              } ${location === item.href || item.children?.some(c => c.href === location) ? "!text-wsa-red" : ""}`;
-
-              if (item.children) {
-                return (
-                  <DropdownMenu key={item.href} modal={false}>
-                    <DropdownMenuTrigger className={`${linkClassName} inline-flex items-center gap-1 outline-none focus-visible:underline`}>
-                      {item.label}
-                      <ChevronDown className="h-3.5 w-3.5" aria-hidden />
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="start" className="min-w-[13rem]">
-                      {item.children.map(child => (
-                        <DropdownMenuItem key={child.href} asChild>
-                          <Link href={child.href} className="cursor-pointer text-sm font-medium text-wsa-navy">
-                            {child.label}
-                          </Link>
-                        </DropdownMenuItem>
-                      ))}
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                );
-              }
-
-              // An abbreviated navLabel (currently just IRC) needs an accessible
-              // name beyond the abbreviation itself, plus a sighted hover/focus
-              // hint — via aria-label and the existing Radix tooltip, not by
-              // adding visible characters that would reopen the width problem
-              // this abbreviation exists to avoid.
-              if (item.navLabel) {
-                return (
-                  <Tooltip key={item.href}>
-                    <TooltipTrigger asChild>
-                      <Link href={item.href} aria-label={item.label} className={linkClassName}>
-                        {item.navLabel}
-                      </Link>
-                    </TooltipTrigger>
-                    <TooltipContent side="bottom">{item.label}</TooltipContent>
-                  </Tooltip>
-                );
-              }
+              } ${location === item.href ? "!text-wsa-red" : ""}`;
 
               return (
                 <Link key={item.href} href={item.href} className={linkClassName}>
@@ -179,36 +121,17 @@ export default function Header() {
       {mobileOpen && !logoOnly && (
         <div className="min-[1680px]:hidden bg-white border-t border-border/40">
           <nav className="container py-8 flex flex-col gap-5">
-            {navItems.map((item) =>
-              item.children ? (
-                <div key={item.href}>
-                  <p className="text-base font-medium text-wsa-navy/80">{item.label}</p>
-                  <div className="mt-3 ml-1 flex flex-col gap-3 border-l border-border/60 pl-4">
-                    {item.children.map(child => (
-                      <Link
-                        key={child.href}
-                        href={child.href}
-                        className={`text-base text-wsa-navy/70 hover:text-wsa-navy transition-colors ${
-                          location === child.href ? "!text-wsa-red" : ""
-                        }`}
-                      >
-                        {child.label}
-                      </Link>
-                    ))}
-                  </div>
-                </div>
-              ) : (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  className={`text-base font-medium text-wsa-navy/80 hover:text-wsa-navy transition-colors ${
-                    location === item.href ? "!text-wsa-red" : ""
-                  }`}
-                >
-                  {item.label}
-                </Link>
-              )
-            )}
+            {navItems.map((item) => (
+              <Link
+                key={item.href}
+                href={item.href}
+                className={`text-base font-medium text-wsa-navy/80 hover:text-wsa-navy transition-colors ${
+                  location === item.href ? "!text-wsa-red" : ""
+                }`}
+              >
+                {item.label}
+              </Link>
+            ))}
             <Link
               href="/contact"
               className="mt-4 px-6 py-3.5 bg-wsa-red text-white text-center font-semibold tracking-wide"

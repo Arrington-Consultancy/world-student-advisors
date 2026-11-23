@@ -1,5 +1,4 @@
 import {
-  ChevronRight,
   Download,
   FileCheck2,
   FileText,
@@ -7,8 +6,8 @@ import {
   Laptop,
 } from "lucide-react";
 import { Link } from "wouter";
+import PodcastsMockInterviewsLinks from "@/components/PodcastsMockInterviewsLinks";
 import {
-  LIBRARY_PATH,
   getResourceByCode,
   resourcePath,
 } from "@/lib/studentSupportLibrary";
@@ -17,12 +16,12 @@ import {
   ABROAD_HEADING,
   ABROAD_INTRO,
   ABROAD_PODCAST_CODES,
-  BREADCRUMB,
   DOWNLOAD_LABEL,
   ELIGIBILITY_NOTICE,
   HERO,
   LISTEN_LABEL,
   NOTE,
+  PAGE_PATH,
   PODCASTS_HEADING,
   QUESTIONNAIRES_ANCHOR,
   STEPS,
@@ -37,7 +36,7 @@ import {
 } from "@/lib/studyInterviewPreparation";
 
 /**
- * Mock Interviews, under "Podcasts & Mock Interviews": Tim Hunt's page of
+ * Mock Interviews: Tim Hunt's page of
  * 18 November 2026, redesigned to his brief and design references of
  * 23 November 2026. All copy and the form list live in
  * client/src/lib/studyInterviewPreparation.ts.
@@ -138,23 +137,8 @@ export default function StudyInterviewPreparation() {
   return (
     <div className="min-h-screen bg-slate-50/70">
       <div className="container max-w-6xl pt-28 pb-20 lg:pt-36">
-        {/* Breadcrumb */}
-        <nav aria-label="Breadcrumb" className="mb-4 text-sm text-gray-600">
-          <ol className="flex flex-wrap items-center gap-1.5">
-            <li>
-              <Link
-                href={LIBRARY_PATH}
-                className="hover:text-wsa-red hover:underline underline-offset-2"
-              >
-                {BREADCRUMB.section}
-              </Link>
-            </li>
-            <li aria-hidden>
-              <ChevronRight className="h-3.5 w-3.5" />
-            </li>
-            <li aria-current="page">{BREADCRUMB.page}</li>
-          </ol>
-        </nav>
+        {/* The two names, each a link to its page (Tim, 23 November 2026). */}
+        <PodcastsMockInterviewsLinks current={PAGE_PATH} className="mb-5" />
 
         {/* Tim's banner, with the button that jumps to the questionnaires. */}
         <section className="grid overflow-hidden rounded-2xl bg-wsa-navy text-white lg:grid-cols-2">

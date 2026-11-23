@@ -8,8 +8,9 @@
  * visual for Tom"). Tom Arrington asked for it to be built on 22 November
  * 2026. Redesigned to Tim's brief of 23 November 2026, "WSA website updates
  * for Podcasts & Mock Interviews", and its design references: the page is
- * "Mock Interviews" under "Podcasts & Mock Interviews" in the menu, opens
- * with his banner and "Find your questionnaire" button, puts "How it works"
+ * "Mock Interviews" in the menu (its own item since his second feedback
+ * document of that day, with "Podcasts" beside it), opens with his banner
+ * and "Find your questionnaire" button, puts "How it works"
  * directly below, shows his eligibility notice above each set of forms, and
  * lists WSA podcasts under each. Every heading and line is his.
  *
@@ -33,6 +34,7 @@
  *    of ten per destination (Australia 20 to 29 and so on), so a new form
  *    takes the next free number without renumbering the rest.
  */
+import { SECTION_LINKS } from "./podcastsPage";
 
 export const PAGE_PATH = "/student-support-library/study-interview-preparation";
 
@@ -57,11 +59,6 @@ export interface QuestionnaireGroup {
 
 /** Where the questionnaires begin: the banner's button jumps here. */
 export const QUESTIONNAIRES_ANCHOR = "questionnaires";
-
-export const BREADCRUMB = {
-  section: "Podcasts & Mock Interviews",
-  page: "Mock Interviews",
-};
 
 /** Tim's banner, "University and Visa Interview Practice Banner.png". */
 export const HERO = {
@@ -329,8 +326,7 @@ export const LIBRARY_CALLOUT = {
 /** Every string the page renders, for the copy guards. */
 export function allRenderedCopy(): string {
   return [
-    BREADCRUMB.section,
-    BREADCRUMB.page,
+    ...SECTION_LINKS.map(l => l.label),
     HERO.heading,
     HERO.intro,
     HERO.cta,

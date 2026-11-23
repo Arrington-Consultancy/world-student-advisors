@@ -5,7 +5,6 @@ import {
   ABROAD_HEADING,
   ABROAD_PODCAST_CODES,
   ALL_FORMS,
-  BREADCRUMB,
   ELIGIBILITY_NOTICE,
   HERO,
   NOTE,
@@ -27,6 +26,7 @@ import {
 } from "../../shared/studentSupportLibrary";
 import {
   PODCASTS_PAGE,
+  SECTION_LINKS,
   allRenderedCopy as podcastsPageCopy,
 } from "../../client/src/lib/podcastsPage";
 import { isValidClientRoute } from "../../shared/routes";
@@ -278,18 +278,60 @@ describe("the page, as Tim asked", () => {
 });
 
 describe("Podcasts & Mock Interviews, Tim Hunt's brief of 23 November 2026", () => {
-  it("renames the menu item, with Podcasts and Mock Interviews underneath, at the same addresses", () => {
-    expect(HEADER).not.toContain('label: "Student Support Library"');
-    expect(HEADER).toContain('label: "Podcasts & Mock Interviews"');
-    expect(HEADER).toContain(`{ label: "Podcasts", href: "${LIBRARY_PATH}" }`);
-    expect(HEADER).toContain(
+  // His second feedback document of the same day, on the first preview: "I
+  // think IRC not required and can be removed, and we have two options
+  // PODCASTS and MOCK INTERVIEWS". The first build had one menu item,
+  // "Podcasts & Mock Interviews", with the two pages in a drop-down.
+  it("names the two pages on their own in the menu, at the same addresses, without IRC", () => {
+    const menu = HEADER.replace(/\/\*[\s\S]*?\*\//g, " ").replace(/^\s*\/\/.*$/gm, "");
+    expect(menu).not.toContain("Student Support Library");
+    expect(menu).not.toContain("Podcasts & Mock Interviews");
+    expect(menu).toContain(`{ label: "Podcasts", href: "${LIBRARY_PATH}" }`);
+    expect(menu).toContain(
       `{ label: "Mock Interviews", href: "${PAGE_PATH}" }`
     );
+    expect(menu).not.toMatch(/IRC|interview-coach|Interview Readiness Coach/);
     expect(LIBRARY_PATH).toBe("/student-support-library");
-    expect(BREADCRUMB).toEqual({
-      section: "Podcasts & Mock Interviews",
-      page: "Mock Interviews",
-    });
+    expect(SECTION_LINKS).toEqual([
+      { label: "Podcasts", href: LIBRARY_PATH },
+      { label: "Mock Interviews", href: PAGE_PATH },
+    ]);
+  });
+
+  // "Please change the two names to Podcasts, Mock Interviews. So, if you
+  // click on either it goes to the respective page."
+  it("shows the two names at the top of both pages, each a link to its page, in place of the breadcrumb", () => {
+    expect(LIBRARY_PAGE).toContain(
+      "<PodcastsMockInterviewsLinks current={LIBRARY_PATH}"
+    );
+    expect(PAGE).toContain("<PodcastsMockInterviewsLinks current={PAGE_PATH}");
+    for (const src of [LIBRARY_PAGE, PAGE]) {
+      expect(src).not.toContain('aria-label="Breadcrumb"');
+      expect(src).not.toContain("Podcasts & Mock Interviews");
+    }
+    const links = readFileSync(
+      "client/src/components/PodcastsMockInterviewsLinks.tsx",
+      "utf8"
+    );
+    expect(links).toContain("SECTION_LINKS.map");
+    expect(links).toContain("href={page.href}");
+    expect(links).toContain('aria-current={active ? "page" : undefined}');
+  });
+
+  it("keeps the Interview Readiness Coach reachable although it left the menu", () => {
+    expect(LIBRARY_PAGE).toContain('href="/portal/interview-coach"');
+    expect(readFileSync("client/src/pages/Home.tsx", "utf8")).toContain(
+      'href="/portal/interview-coach"'
+    );
+    expect(isValidClientRoute("/portal/interview-coach")).toBe(true);
+  });
+
+  it("names the two pages in the footer as well", () => {
+    const footer = readFileSync("client/src/components/Footer.tsx", "utf8");
+    expect(footer).toContain(`href="${LIBRARY_PATH}"`);
+    expect(footer).toContain(`href="${PAGE_PATH}"`);
+    expect(footer).not.toContain("Student Support Library");
+    expect(footer).not.toMatch(/Podcasts (&amp;|&) Mock Interviews/);
   });
 
   it("opens the Podcasts page with his design: hero, a working search box and four topic cards", () => {
@@ -357,6 +399,8 @@ describe("a real page inside the Student Support Library", () => {
 
   it("is linked from the library page and links back to it", () => {
     expect(LIBRARY_PAGE).toContain("href={INTERVIEW_PREPARATION_PATH}");
-    expect(PAGE).toContain("href={LIBRARY_PATH}");
+    // Back to the library through the two links at the top of the page.
+    expect(PAGE).toContain("<PodcastsMockInterviewsLinks current={PAGE_PATH}");
+    expect(SECTION_LINKS.map(l => l.href)).toContain(LIBRARY_PATH);
   });
 });

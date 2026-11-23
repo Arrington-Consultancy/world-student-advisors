@@ -70,9 +70,9 @@ export const SEO_MAP: Record<string, SeoEntry> = {
     description:
       "Meet the people behind WorldStudentAdvisors: British Council UK knowledge-trained counsellors and the wider team who support students from first enquiry through application, visa preparation and enrolment.",
   },
-  // Tim Hunt, 23 November 2026: "Podcasts & Mock Interviews", with
-  // "Podcasts" and "Mock Interviews" underneath, in place of "Student
-  // Support Library". The addresses are unchanged.
+  // Tim Hunt, 23 November 2026: "Podcasts" and "Mock Interviews", two items
+  // in the menu, in place of "Student Support Library". The addresses are
+  // unchanged.
   "/student-support-library": {
     title: "WSA Podcasts | World Student Advisors",
     description:
