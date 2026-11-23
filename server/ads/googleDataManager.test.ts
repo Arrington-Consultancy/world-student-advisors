@@ -5,6 +5,7 @@ import {
   DATA_MANAGER_ENDPOINT, DATA_MANAGER_SCOPE, DataManagerError, accessToken, credentialState, credentialIdentity,
   emailIdentifier, ingestEvents, normaliseEmail, normalisePhone, phoneIdentifier, readCredential, resetDataManagerTokenCache,
   retrieveRequestStatus, sha256Hex, type DataManagerCredential, type IngestEventsRequest,
+  describeShape, parseRequestStatus,
 } from "./googleDataManager";
 
 const { privateKey } = generateKeyPairSync("rsa", { modulusLength: 2048 });
@@ -124,6 +125,35 @@ describe("retrieveRequestStatus", () => {
     const s = await retrieveRequestStatus("req-abc", { fetchImpl: f.impl, credential: SA });
     expect(s).toEqual({ status: "PARTIAL_SUCCESS", recordCount: 3, errorCounts: [{ reason: "INVALID_GCLID", count: 1 }], warningCounts: [] });
     expect(f.calls.find(c => c.url.includes("requestStatus:retrieve"))!.url).toContain("requestId=req-abc");
+  });
+});
+
+describe("the response Google actually returns", () => {
+  /**
+   * The shape production's requestStatus:retrieve returned on 14 October
+   * 2026 (acceptance run 38643136586, step 4b), values replaced with
+   * stand-ins. It is the published v1 schema, and it parses: the five most
+   * recent Qualified Lead uploads were already stored as SUCCESS. "status
+   * checked 0" in the scheduler log meant nothing was awaiting a check, not
+   * that checks were failing.
+   */
+  const LIVE_SHAPE = { requestStatusPerDestination: [{ destination: { operatingAccount: { accountId: "5165838785", accountType: "GOOGLE_ADS" }, productDestinationId: "7726096949" }, requestStatus: "SUCCESS", eventsIngestionStatus: { recordCount: "1" } }] };
+
+  it("parses as SUCCESS with its record count", () => {
+    expect(parseRequestStatus(LIVE_SHAPE)).toEqual({ status: "SUCCESS", recordCount: 1, errorCounts: [], warningCounts: [] });
+  });
+
+  it("reads an empty or unrecognised body as REQUEST_STATUS_UNKNOWN rather than guessing", () => {
+    expect(parseRequestStatus({}).status).toBe("REQUEST_STATUS_UNKNOWN");
+    expect(parseRequestStatus(null).status).toBe("REQUEST_STATUS_UNKNOWN");
+  });
+
+  it("describes a response's shape without a single value from it", () => {
+    const shape = JSON.stringify(describeShape({ ...LIVE_SHAPE, note: "student@example.com", gclid: "Cj0KCQjw-abc", n: 3, ok: true, list: [1, 2, 3, 4, 5] }));
+    expect(shape).toContain('"requestStatus":"SUCCESS"');
+    expect(shape).toContain('"accountType":"GOOGLE_ADS"');
+    expect(shape).not.toMatch(/5165838785|7726096949|student@|Cj0KCQjw/);
+    expect(describeShape({ a: "1", b: "x y", c: 2, d: false, e: [1, 2, 3, 4] })).toEqual({ a: "<digits>", b: "<string>", c: "<number>", d: "<boolean>", e: ["<number>", "<number>", "<number>", "<+1 more>"] });
   });
 });
 
