@@ -19,13 +19,17 @@ describe("reportSignupConversion", () => {
     expect(gtag).toHaveBeenCalledWith("event", "conversion", expectedPayload);
   });
 
-  it("queues the conversion on dataLayer when gtag has not loaded yet", async () => {
-    const dataLayer: unknown[][] = [];
+  it("queues the conversion on dataLayer when gtag has not loaded yet, as an arguments object", async () => {
+    const dataLayer: unknown[] = [];
     vi.stubGlobal("window", { dataLayer });
 
     await reportSignupConversion();
 
-    expect(dataLayer).toEqual([["event", "conversion", expectedPayload]]);
+    // gtag.js runs only `arguments` objects as commands. Until 23 November
+    // 2026 this fallback queued an Array, which it ignores (googleAdsTag.ts).
+    expect(dataLayer).toHaveLength(1);
+    expect(Object.prototype.toString.call(dataLayer[0])).toBe("[object Arguments]");
+    expect(Array.from(dataLayer[0] as ArrayLike<unknown>)).toEqual(["event", "conversion", expectedPayload]);
   });
 
   it("does nothing outside the browser", async () => {
