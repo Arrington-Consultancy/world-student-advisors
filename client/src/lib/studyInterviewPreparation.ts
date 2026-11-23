@@ -5,8 +5,13 @@
  *
  * AUTHORITY. Tim Hunt to Tom Arrington, 18 November 2026, "Student Library
  * mock interview page", with his mock-up WSA_PMIQ_Page_Mockup.png ("Website
- * visual for Tom"). Every heading, line and form title below is his, from
- * that mock-up. Tom Arrington asked for it to be built on 22 November 2026.
+ * visual for Tom"). Tom Arrington asked for it to be built on 22 November
+ * 2026. Redesigned to Tim's brief of 23 November 2026, "WSA website updates
+ * for Podcasts & Mock Interviews", and its design references: the page is
+ * "Mock Interviews" under "Podcasts & Mock Interviews" in the menu, opens
+ * with his banner and "Find your questionnaire" button, puts "How it works"
+ * directly below, shows his eligibility notice above each set of forms, and
+ * lists WSA podcasts under each. Every heading and line is his.
  *
  * WHAT HE ASKED FOR, AND WHERE IT IS:
  *  - "give each form its own download link": every questionnaire has one
@@ -20,9 +25,10 @@
  *  - "Please link to the PDFs currently in each folder": the Debrecen
  *    folder also holds two Word files; they are not PDFs and are not
  *    linked.
- *  - The "Pre-CAS Interview" video for the UK section: his MP4 is Birmingham
- *    City University's own film, downloaded from YouTube, so the page plays
- *    BCU's upload (UK_VIDEO) rather than a copy, credited to them.
+ *  - The "Pre-CAS Interview" video is gone. It was Birmingham City
+ *    University's film, and Tim said on 23 November 2026 that it "should not
+ *    be included, Eldah added it". His brief of the same day replaces it
+ *    with WSA's own podcasts (UK_PODCASTS, ABROAD_PODCASTS).
  *  - The numbering is his: UK forms 01 to 09, and outside the UK one block
  *    of ten per destination (Australia 20 to 29 and so on), so a new form
  *    takes the next free number without renumbering the rest.
@@ -49,36 +55,50 @@ export interface QuestionnaireGroup {
   forms: Questionnaire[];
 }
 
+/** Where the questionnaires begin: the banner's button jumps here. */
+export const QUESTIONNAIRES_ANCHOR = "questionnaires";
+
 export const BREADCRUMB = {
-  library: "Student Library",
-  page: "Study interview preparation",
+  section: "Podcasts & Mock Interviews",
+  page: "Mock Interviews",
 };
 
+/** Tim's banner, "University and Visa Interview Practice Banner.png". */
 export const HERO = {
-  heading: "Prepare for your study interview",
-  intro:
-    "Practise for a course, scholarship, credibility or visa interview. Send your interview date, time and instructions to your WSA counsellor.",
+  heading: "Practise for your university or visa interview",
+  intro: "Prepare for a course, scholarship or visa interview.",
+  cta: "Find your questionnaire",
+  image: "/images/pmiq/mock-interview-banner.jpg",
+  imageAlt: "A student talking with an interviewer on a video call",
+  imageWidth: 1200,
+  imageHeight: 800,
 };
 
-export const ELIGIBILITY = {
-  heading: "Download your questionnaire",
-  text: "Free for students who are registered with WSA, have WSA as their sole agent and have been placed by WSA at a partner institution.",
-};
+/**
+ * Tim Hunt, 23 November 2026: "Please put the notice above the
+ * questionnaires so students see it before choosing a form."
+ */
+export const ELIGIBILITY_NOTICE =
+  "Free mock interview preparation is available only to WSA students we have supported from first contact through their application and offer at a WSA partner institution.";
 
 export const STEPS_HEADING = "How it works";
 
+/** Tim's "How it works.png", 23 November 2026. */
 export const STEPS = [
   {
-    title: "Download and complete the PDF",
-    text: "Save a copy, type your answers and send it to your counsellor. If the PDF will not save on your phone, send your answers in question order.",
+    icon: "pdf",
+    title: "Complete your questionnaire",
+    text: "Download the PDF, fill it in and send it to your WSA counsellor.",
   },
   {
-    title: "Review your preparation",
-    text: "Your counsellor will review your answers and help you work through any gaps.",
+    icon: "review",
+    title: "Review your answers",
+    text: "Your counsellor will help you identify what to work on before your interview.",
   },
   {
+    icon: "practise",
     title: "Practise in a mock interview",
-    text: "Use your own examples, speak in your own words and get feedback.",
+    text: "Answer in your own words and get feedback.",
   },
 ] as const;
 
@@ -88,7 +108,7 @@ export const NOTE =
 
 export const DOWNLOAD_LABEL = "Download PDF";
 
-export const UK_HEADING = "UK interview questionnaires";
+export const UK_HEADING = "UK Pre-Mock Interview Questionnaires (PMIQ)";
 
 export const UK_FORMS: readonly Questionnaire[] = Object.freeze([
   {
@@ -134,28 +154,10 @@ export const UK_FORMS: readonly Questionnaire[] = Object.freeze([
   },
 ]);
 
-/**
- * Tim Hunt asked for the "Pre-CAS Interview" video in the UK section. It is
- * Birmingham City University's "Pre-CAS Interview Do's and Dont's |
- * International study at BCU", which BCU also embeds on its own credibility
- * interviews page. It plays from BCU's YouTube channel, on request, in the
- * site's video window; the poster is the film's own title card.
- */
-export const UK_VIDEO = {
-  eyebrow: "Watch before your interview",
-  title: "Tips for your Pre-CAS interview",
-  credit: "A two-minute video from Birmingham City University, on YouTube.",
-  playLabel: "Play the video",
-  youtubeUrl: "https://www.youtube.com/watch?v=o0xA71Zp9s4",
-  poster: "/images/pmiq/pre-cas-interview-poster.jpg",
-  posterAlt: "Title card: Tips for your Pre-CAS interview",
-  posterWidth: 640,
-  posterHeight: 360,
-};
-
-export const ABROAD_HEADING = "Interview questionnaires outside the UK";
+export const ABROAD_HEADING =
+  "Pre-Mock Interview Questionnaires (PMIQ) outside the UK";
 export const ABROAD_INTRO =
-  "Choose your destination or university, then download the form for your interview.";
+  "Choose your destination or university, then download the questionnaire for your interview.";
 
 const CREDIBILITY = "University and Course Credibility Interview";
 
@@ -296,37 +298,55 @@ export const downloadAriaLabel = (
 ): string =>
   `${DOWNLOAD_LABEL}: ${form.number}, ${group ? `${group.name}, ` : ""}${form.title}`;
 
-/** The link from the library's own page to this one. */
+/**
+ * WSA podcasts under each set of questionnaires, Tim Hunt, 23 November 2026:
+ * "Add WSA 023 to 026 below the UK questionnaires and WSA 017, 020 and 021
+ * below the international questionnaires." Titles and links come from the
+ * library's own records, so they cannot drift from it.
+ */
+export const PODCASTS_HEADING = "WSA podcasts to help you prepare";
+export const LISTEN_LABEL = "Listen";
+export const UK_PODCAST_CODES = Object.freeze([
+  "WSA 023",
+  "WSA 024",
+  "WSA 025",
+  "WSA 026",
+]);
+export const ABROAD_PODCAST_CODES = Object.freeze([
+  "WSA 017",
+  "WSA 020",
+  "WSA 021",
+]);
+
+/** The link from the Podcasts page to this one. */
 export const LIBRARY_CALLOUT = {
-  eyebrow: "Interview questionnaires",
-  heading: "Prepare for your study interview",
-  text: "Download the questionnaire for your course, scholarship, credibility or visa interview, in the UK or abroad, then work through your answers with your WSA counsellor before your mock interview.",
-  link: "Choose your questionnaire",
+  eyebrow: "Mock Interviews",
+  heading: "Practise for your university or visa interview",
+  text: "Download the Pre-Mock Interview Questionnaire for your course, scholarship or visa interview, then work through it with your WSA counsellor.",
+  link: "Go to Mock Interviews",
 };
 
 /** Every string the page renders, for the copy guards. */
 export function allRenderedCopy(): string {
   return [
-    BREADCRUMB.library,
+    BREADCRUMB.section,
     BREADCRUMB.page,
     HERO.heading,
     HERO.intro,
-    ELIGIBILITY.heading,
-    ELIGIBILITY.text,
+    HERO.cta,
+    HERO.imageAlt,
+    ELIGIBILITY_NOTICE,
     STEPS_HEADING,
     ...STEPS.flatMap(s => [s.title, s.text]),
     NOTE,
     DOWNLOAD_LABEL,
     UK_HEADING,
-    UK_VIDEO.eyebrow,
-    UK_VIDEO.title,
-    UK_VIDEO.credit,
-    UK_VIDEO.playLabel,
-    UK_VIDEO.posterAlt,
     ABROAD_HEADING,
     ABROAD_INTRO,
     ...ABROAD_GROUPS.flatMap(g => [g.name, g.subtitle ?? "", g.range]),
     ...ALL_FORMS.map(f => f.title),
+    PODCASTS_HEADING,
+    LISTEN_LABEL,
     LIBRARY_CALLOUT.eyebrow,
     LIBRARY_CALLOUT.heading,
     LIBRARY_CALLOUT.text,

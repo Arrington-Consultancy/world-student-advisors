@@ -66,7 +66,7 @@ export default function Footer() {
               <Link href="/about" className="text-sm hover:text-white transition-colors">About WSA</Link>
               <Link href="/study-options" className="text-sm hover:text-white transition-colors">Study Options</Link>
               <Link href="/our-team" className="text-sm hover:text-white transition-colors">Our Team</Link>
-              <Link href="/student-support-library" className="text-sm hover:text-white transition-colors">Student Support Library</Link>
+              <Link href="/student-support-library" className="text-sm hover:text-white transition-colors">Podcasts &amp; Mock Interviews</Link>
               <Link href="/training-workshops" className="text-sm hover:text-white transition-colors">Training & Workshops</Link>
               <Link href="/events" className="text-sm hover:text-white transition-colors">Events</Link>
               <Link href="/partners" className="text-sm hover:text-white transition-colors">Partners</Link>

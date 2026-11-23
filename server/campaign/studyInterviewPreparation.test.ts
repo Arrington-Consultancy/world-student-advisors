@@ -2,15 +2,20 @@ import { describe, expect, it } from "vitest";
 import { existsSync, readFileSync, readdirSync } from "fs";
 import {
   ABROAD_GROUPS,
+  ABROAD_HEADING,
+  ABROAD_PODCAST_CODES,
   ALL_FORMS,
-  ELIGIBILITY,
+  BREADCRUMB,
+  ELIGIBILITY_NOTICE,
   HERO,
   NOTE,
   PAGE_PATH,
   PMIQ_DIR,
+  QUESTIONNAIRES_ANCHOR,
   STEPS,
   UK_FORMS,
-  UK_VIDEO,
+  UK_HEADING,
+  UK_PODCAST_CODES,
   allRenderedCopy,
   downloadAriaLabel,
   pdfHref,
@@ -18,7 +23,12 @@ import {
 import {
   LIBRARY_PATH,
   LIBRARY_RESOURCE_PATHS,
+  getResourceByCode,
 } from "../../shared/studentSupportLibrary";
+import {
+  PODCASTS_PAGE,
+  allRenderedCopy as podcastsPageCopy,
+} from "../../client/src/lib/podcastsPage";
 import { isValidClientRoute } from "../../shared/routes";
 import { ALL_PRERENDER_ROUTES } from "../../shared/prerenderRoutes";
 import { getSeoForPath, shouldNoindex } from "../../shared/seo";
@@ -44,6 +54,7 @@ const LIBRARY_PAGE = readFileSync(
   "utf8"
 );
 const APP = readFileSync("client/src/App.tsx", "utf8");
+const HEADER = readFileSync("client/src/components/Header.tsx", "utf8");
 const SCRIPT = readFileSync("scripts/fetch-pmiq-assets.mjs", "utf8");
 const COPY = allRenderedCopy();
 const publicPath = (href: string) => `client/public${href}`;
@@ -144,25 +155,13 @@ describe("Tim Hunt's questionnaires, 18 November 2026", () => {
     expect(new Set(itemIds).size).toBe(24);
   });
 
-  it("plays the Pre-CAS video from Birmingham City University's own upload, not a copy", () => {
-    // Tim's MP4 was BCU's film, downloaded from YouTube (23 November 2026).
-    expect(UK_VIDEO.youtubeUrl).toBe(
-      "https://www.youtube.com/watch?v=o0xA71Zp9s4"
-    );
-    expect(UK_VIDEO.credit).toContain("Birmingham City University");
-    expect(existsSync(publicPath(UK_VIDEO.poster))).toBe(true);
+  it("has no Pre-CAS video: Tim, 23 November 2026, 'This should not be included, Eldah added it'", () => {
     expect(existsSync("client/public/videos/pre-cas-interview.mp4")).toBe(
       false
     );
     expect(SCRIPT).not.toMatch(/\.mp4"/);
-    // In the UK section, before the forms outside the UK.
-    expect(PAGE.indexOf("UK_VIDEO.title")).toBeGreaterThan(
-      PAGE.indexOf("UK_FORMS.map")
-    );
-    expect(PAGE.indexOf("UK_VIDEO.title")).toBeLessThan(
-      PAGE.indexOf("{ABROAD_HEADING}")
-    );
-    expect(PAGE).toContain("<VideoModal");
+    expect(PAGE).not.toMatch(/VideoModal|youtube|Birmingham City/i);
+    expect(COPY).not.toMatch(/Pre-CAS/);
   });
 });
 
@@ -179,18 +178,81 @@ describe("the page, as Tim asked", () => {
     expect(PAGE).toContain("{NOTE}");
   });
 
-  it("uses the mock-up's hero, eligibility card and three steps", () => {
-    expect(HERO.heading).toBe("Prepare for your study interview");
-    expect(ELIGIBILITY.heading).toBe("Download your questionnaire");
-    expect(ELIGIBILITY.text).toContain("have WSA as their sole agent");
+  it("opens with his banner, whose button goes straight to the questionnaires (23 November 2026)", () => {
+    expect(HERO.heading).toBe("Practise for your university or visa interview");
+    expect(HERO.intro).toBe(
+      "Prepare for a course, scholarship or visa interview."
+    );
+    expect(HERO.cta).toBe("Find your questionnaire");
+    expect(existsSync(publicPath(HERO.image))).toBe(true);
+    expect(PAGE).toContain("href={`#${QUESTIONNAIRES_ANCHOR}`}");
+    expect(PAGE).toContain("id={QUESTIONNAIRES_ANCHOR}");
+    expect(PAGE.indexOf("id={QUESTIONNAIRES_ANCHOR}")).toBeLessThan(
+      PAGE.indexOf("UK_FORMS.map")
+    );
+  });
+
+  it("puts How it works directly below the banner, in his three steps", () => {
     expect(STEPS.map(s => s.title)).toEqual([
-      "Download and complete the PDF",
-      "Review your preparation",
+      "Complete your questionnaire",
+      "Review your answers",
       "Practise in a mock interview",
     ]);
-    expect(STEPS[0].text).toContain(
-      "If the PDF will not save on your phone, send your answers in question order."
+    expect(STEPS[0].text).toBe(
+      "Download the PDF, fill it in and send it to your WSA counsellor."
     );
+    const banner = PAGE.indexOf("{HERO.heading}");
+    const steps = PAGE.indexOf("{STEPS_HEADING}");
+    expect(steps).toBeGreaterThan(banner);
+    expect(PAGE.slice(banner, steps)).not.toMatch(
+      /<section[^>]*aria-labelledby="(?!how-it-works)/
+    );
+  });
+
+  it("shows his eligibility notice above each set of questionnaires", () => {
+    expect(ELIGIBILITY_NOTICE).toBe(
+      "Free mock interview preparation is available only to WSA students we have supported from first contact through their application and offer at a WSA partner institution."
+    );
+    const notices = [...PAGE.matchAll(/<EligibilityNotice \/>/g)].map(
+      m => m.index!
+    );
+    expect(notices).toHaveLength(2);
+    expect(notices[0]).toBeGreaterThan(PAGE.indexOf("{UK_HEADING}"));
+    expect(notices[0]).toBeLessThan(PAGE.indexOf("UK_FORMS.map"));
+    expect(notices[1]).toBeGreaterThan(PAGE.indexOf("{ABROAD_HEADING}"));
+    expect(notices[1]).toBeLessThan(PAGE.indexOf("ABROAD_GROUPS.map"));
+    expect(UK_HEADING).toBe("UK Pre-Mock Interview Questionnaires (PMIQ)");
+    expect(ABROAD_HEADING).toBe(
+      "Pre-Mock Interview Questionnaires (PMIQ) outside the UK"
+    );
+  });
+
+  it("lists WSA 023 to 026 under the UK forms and 017, 020 and 021 under the rest, as in his document", () => {
+    expect(UK_PODCAST_CODES).toEqual([
+      "WSA 023",
+      "WSA 024",
+      "WSA 025",
+      "WSA 026",
+    ]);
+    expect(ABROAD_PODCAST_CODES).toEqual(["WSA 017", "WSA 020", "WSA 021"]);
+    // The episode links in "PMIQ feedback 23 Nov 2026.docx".
+    const links: Record<string, string> = {
+      "WSA 023": "cas-and-ukvi-credibility-interview",
+      "WSA 024": "cas-shield",
+      "WSA 025": "uk-student-visa-essentials",
+      "WSA 026": "uk-university-credibility-interview",
+      "WSA 021": "university-of-debrecen",
+      "WSA 017": "cyprus-west-university",
+      "WSA 020": "uclan-cyprus-the-british-university",
+    };
+    for (const [code, slug] of Object.entries(links))
+      expect(getResourceByCode(code)?.slug, code).toBe(slug);
+    const uk = PAGE.indexOf("codes={UK_PODCAST_CODES}");
+    const abroad = PAGE.indexOf("codes={ABROAD_PODCAST_CODES}");
+    expect(uk).toBeGreaterThan(PAGE.indexOf("UK_FORMS.map"));
+    expect(uk).toBeLessThan(PAGE.indexOf("{ABROAD_HEADING}"));
+    expect(abroad).toBeGreaterThan(PAGE.indexOf("ABROAD_GROUPS.map"));
+    expect(PAGE).toContain("href={resourcePath(r.slug)}");
   });
 
   it("downloads each form to the device, with a label a screen reader can tell apart", () => {
@@ -212,6 +274,52 @@ describe("the page, as Tim asked", () => {
 
   it("passes the copy checks: no em dashes", () => {
     expect(COPY).not.toContain("—");
+  });
+});
+
+describe("Podcasts & Mock Interviews, Tim Hunt's brief of 23 November 2026", () => {
+  it("renames the menu item, with Podcasts and Mock Interviews underneath, at the same addresses", () => {
+    expect(HEADER).not.toContain('label: "Student Support Library"');
+    expect(HEADER).toContain('label: "Podcasts & Mock Interviews"');
+    expect(HEADER).toContain(`{ label: "Podcasts", href: "${LIBRARY_PATH}" }`);
+    expect(HEADER).toContain(
+      `{ label: "Mock Interviews", href: "${PAGE_PATH}" }`
+    );
+    expect(LIBRARY_PATH).toBe("/student-support-library");
+    expect(BREADCRUMB).toEqual({
+      section: "Podcasts & Mock Interviews",
+      page: "Mock Interviews",
+    });
+  });
+
+  it("opens the Podcasts page with his design: hero, a working search box and four topic cards", () => {
+    expect(PODCASTS_PAGE.heading).toBe("WSA Podcasts");
+    expect(PODCASTS_PAGE.sub).toBe(
+      "Listen or read the episode summaries. No sign-up needed."
+    );
+    expect(PODCASTS_PAGE.searchPlaceholder).toBe(
+      "Try CAS Shield, scholarships or Canada"
+    );
+    expect(existsSync(publicPath(PODCASTS_PAGE.image))).toBe(true);
+    expect(PODCASTS_PAGE.topics.map(t => [t.section, t.label])).toEqual([
+      [1, "How WSA can help"],
+      [2, "Choosing where and what to study"],
+      [3, "Applications, interviews and visas"],
+      [4, "Travel and life abroad"],
+    ]);
+    // Each card jumps to its section; the search box is the one that works.
+    expect(LIBRARY_PAGE).toContain("href={`#section-${topic.section}`}");
+    expect(LIBRARY_PAGE).toContain('id="library-search"');
+    expect(LIBRARY_PAGE).toContain("onChange={e => setQuery(e.target.value)}");
+  });
+
+  it("links the Podcasts page clearly to Mock Interviews, near the top", () => {
+    const link = LIBRARY_PAGE.indexOf("{PODCASTS_PAGE.mockInterviews.link}");
+    expect(link).toBeGreaterThan(0);
+    expect(link).toBeLessThan(
+      LIBRARY_PAGE.indexOf("LIBRARY_SECTIONS.map((section, sectionIndex)")
+    );
+    expect(podcastsPageCopy()).not.toContain("—");
   });
 });
 
@@ -240,7 +348,10 @@ describe("a real page inside the Student Support Library", () => {
       `<loc>https://www.worldstudentadvisors.com${PAGE_PATH}</loc>`
     );
     expect(getSeoForPath(PAGE_PATH).title).toBe(
-      "Study Interview Preparation | World Student Advisors"
+      "Mock Interviews | World Student Advisors"
+    );
+    expect(getSeoForPath(LIBRARY_PATH).title).toBe(
+      "WSA Podcasts | World Student Advisors"
     );
   });
 
