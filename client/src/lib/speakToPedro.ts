@@ -59,10 +59,23 @@ export const PEDRO = Object.freeze({
   phone: "+44 7512 055 433",
   phoneHref: "tel:+447512055433",
   email: "beezapy@hotmail.com",
+  /**
+   * Tim Hunt, 24 November 2026: "add a second email". Shown after the first
+   * on Pedro's page and on his thank-you page.
+   */
+  secondEmail: "pedro@worldstudentadvisors.com",
   photo: "/team/pedro-bezerra-portrait.jpg",
   photoWidth: 960,
   photoHeight: 960,
 });
+
+/**
+ * Tim Hunt, 24 November 2026: "add an Angolan flag". It sits beside the
+ * "World Student Advisors Angola" line at the top of each language column.
+ * The file is the one the Angola success stories page already uses, so it
+ * shows on every device (a flag emoji does not show on Windows).
+ */
+export const ANGOLA_FLAG_SRC = "/flags/ao.svg";
 
 export const ELDAH = Object.freeze({
   photo: "/team/eldah-therone-portrait.jpg",

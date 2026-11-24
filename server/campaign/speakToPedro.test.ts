@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { existsSync, readFileSync } from "fs";
 import {
+  ANGOLA_FLAG_SRC,
   COPY,
   ELDAH,
   PAGE_PATH,
@@ -127,6 +128,29 @@ describe("what the page links to", () => {
     expect(TEAM).toContain('name: "Pedro Bezerra"');
     expect(PEDRO.phoneHref).toBe(`tel:${PEDRO.phone.replace(/ /g, "")}`);
   });
+
+  // Tim Hunt, 24 November 2026: "add an Angolan flag and add a second email".
+  it("shows the Angolan flag beside the Angola line in each language column", () => {
+    expect(ANGOLA_FLAG_SRC).toBe("/flags/ao.svg");
+    expect(publicFile(ANGOLA_FLAG_SRC)).toBe(true);
+    expect(PAGE).toContain("src={ANGOLA_FLAG_SRC}");
+    // Inside heroText, which is rendered once per language.
+    const hero = PAGE.slice(PAGE.indexOf("const heroText"), PAGE.indexOf("return (", PAGE.indexOf("const heroText") + 200));
+    expect(hero).toContain("src={ANGOLA_FLAG_SRC}");
+    expect(hero).toContain("{c.hero.eyebrow}");
+    // An image, not an emoji: a flag emoji does not show on Windows.
+    expect(PAGE).not.toMatch(/\u{1F1E6}\u{1F1F4}/u);
+  });
+
+  it("gives his WSA address as a second email, after the first, on his page and his thank-you page", () => {
+    expect(PEDRO.secondEmail).toBe("pedro@worldstudentadvisors.com");
+    expect(PEDRO.email).not.toBe(PEDRO.secondEmail);
+    for (const file of ["client/src/pages/SpeakToPedro.tsx", "client/src/pages/SpeakToPedroThankYou.tsx"]) {
+      const src = readFileSync(file, "utf8");
+      expect(src, file).toContain("[PEDRO.email, PEDRO.secondEmail].map");
+      expect(src, file).toContain("href={`mailto:${address}`}");
+    }
+  });
 });
 
 describe("a real page", () => {
@@ -195,7 +219,7 @@ describe("Pedro's own thank-you page", () => {
     expect(code).toContain("href={PAGE_PATH}");
     expect(code).toContain("href={STORIES_PATHS.angola}");
     expect(code).toContain("href={PEDRO.phoneHref}");
-    expect(code).toContain("mailto:${PEDRO.email}");
+    expect(code).toContain("[PEDRO.email, PEDRO.secondEmail].map");
     expect(code).not.toMatch(/eldah/i);
   });
 });

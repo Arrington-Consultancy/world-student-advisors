@@ -61,7 +61,7 @@ export default function SpeakToPedroThankYou() {
               </p>
             ))}
           </div>
-          <p className="mt-3 flex flex-wrap items-center gap-x-6 gap-y-2 text-lg font-semibold text-wsa-navy">
+          <p className="mt-3 flex flex-wrap items-center gap-x-6 gap-y-2 text-base font-semibold text-wsa-navy sm:text-lg">
             <a
               href={PEDRO.phoneHref}
               className="inline-flex items-center gap-2 hover:text-wsa-red"
@@ -69,13 +69,20 @@ export default function SpeakToPedroThankYou() {
               <Phone className="h-5 w-5" aria-hidden />
               {PEDRO.phone}
             </a>
-            <a
-              href={`mailto:${PEDRO.email}`}
-              className="inline-flex items-center gap-2 hover:text-wsa-red"
-            >
-              <Mail className="h-5 w-5" aria-hidden />
-              {PEDRO.email}
-            </a>
+            {[PEDRO.email, PEDRO.secondEmail].map(address => (
+              <a
+                key={address}
+                href={`mailto:${address}`}
+                className="inline-flex min-w-0 max-w-full items-center gap-2 hover:text-wsa-red"
+              >
+                <Mail className="h-5 w-5 shrink-0" aria-hidden />
+                {/* A long address may wrap after the @ on a narrow phone, and never pushes the page sideways. */}
+                <span className="min-w-0 [overflow-wrap:anywhere]">
+                  {address.split("@")[0]}@<wbr />
+                  {address.split("@")[1]}
+                </span>
+              </a>
+            ))}
           </p>
         </section>
       </div>

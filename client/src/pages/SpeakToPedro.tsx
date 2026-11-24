@@ -4,6 +4,7 @@ import { Mail, Phone, PlayCircle } from "lucide-react";
 import PipedriveFormEmbed from "@/components/PipedriveFormEmbed";
 import VideoModal from "@/components/VideoModal";
 import {
+  ANGOLA_FLAG_SRC,
   COPY,
   ELDAH,
   PEDRO,
@@ -65,7 +66,16 @@ export default function SpeakToPedro() {
 
   const heroText = (c: PedroCopy) => (
     <>
-      <p className="text-sm text-gray-700">{c.hero.eyebrow}</p>
+      <p className="flex items-center gap-2 text-sm text-gray-700">
+        <img
+          src={ANGOLA_FLAG_SRC}
+          alt=""
+          width={28}
+          height={21}
+          className="h-[1.05rem] w-7 shrink-0 rounded-[2px] border border-black/10 object-cover"
+        />
+        {c.hero.eyebrow}
+      </p>
       <h1 className="mt-1 text-4xl font-bold tracking-tight text-wsa-navy">
         {c.hero.headline}
       </h1>
@@ -312,7 +322,7 @@ export default function SpeakToPedro() {
               </p>
             )}
           />
-          <p className="mt-3 flex flex-wrap items-center gap-x-6 gap-y-2 text-lg font-semibold text-wsa-navy">
+          <p className="mt-3 flex flex-wrap items-center gap-x-6 gap-y-2 text-base font-semibold text-wsa-navy sm:text-lg">
             <a
               href={PEDRO.phoneHref}
               className="inline-flex items-center gap-2 hover:text-wsa-red"
@@ -320,13 +330,20 @@ export default function SpeakToPedro() {
               <Phone className="h-5 w-5" aria-hidden />
               {PEDRO.phone}
             </a>
-            <a
-              href={`mailto:${PEDRO.email}`}
-              className="inline-flex items-center gap-2 hover:text-wsa-red"
-            >
-              <Mail className="h-5 w-5" aria-hidden />
-              {PEDRO.email}
-            </a>
+            {[PEDRO.email, PEDRO.secondEmail].map(address => (
+              <a
+                key={address}
+                href={`mailto:${address}`}
+                className="inline-flex min-w-0 max-w-full items-center gap-2 hover:text-wsa-red"
+              >
+                <Mail className="h-5 w-5 shrink-0" aria-hidden />
+                {/* A long address may wrap after the @ on a narrow phone, and never pushes the page sideways. */}
+                <span className="min-w-0 [overflow-wrap:anywhere]">
+                  {address.split("@")[0]}@<wbr />
+                  {address.split("@")[1]}
+                </span>
+              </a>
+            ))}
           </p>
         </section>
       </div>
