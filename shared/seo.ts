@@ -294,13 +294,17 @@ export const NOINDEX_PATH_PREFIXES = ["/portal", "/staff-portal"];
 // material and Brooke House College had confirmed its offers. It was
 // published on 23 November 2026 on Tim's word: noindex, the sitemap entry and
 // the prerender entry changed together, as they did for the two pages above.
+// On 24 November Tim sent the live address to Brooke House College and to
+// His Royal Highness for approval and promised not to promote the page
+// before then, so it is noindex and out of the sitemap again until both have
+// approved. The page itself stays up, and prerendered, for them to read.
 // /speak-to-madalitso/thank-you is the post-submission page for Tim Hunt's
 // Malawi Pipedrive form (16 October 2026), private in the same way as
 // Juliet's. /speak-to-madalitso itself is published from the start: Tim
 // supplied the finished content, form and photographs together.
 // /speak-to-gladys-thank-you is the same for Tim's Ghana form (24 October
 // 2026); /speak-to-gladys is published from the start, as Madalitso's was.
-export const NOINDEX_PATHS = new Set(["/404", "/speak-to-juliet/thank-you", "/speak-to-madalitso/thank-you", "/speak-to-gladys-thank-you", "/speak-to-eldah/thank-you", "/contact/thank-you", "/speak-to-glenice/thank-you", "/speak-to-manet/thank-you"]);
+export const NOINDEX_PATHS = new Set(["/404", "/speak-to-juliet/thank-you", "/sarkin-fulani-future-leaders", "/speak-to-madalitso/thank-you", "/speak-to-gladys-thank-you", "/speak-to-eldah/thank-you", "/contact/thank-you", "/speak-to-glenice/thank-you", "/speak-to-manet/thank-you"]);
 
 export function getCanonicalPath(path: string): string {
   return CANONICAL_PATHS[path] ?? path;
