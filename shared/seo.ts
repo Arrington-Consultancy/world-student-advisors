@@ -293,19 +293,19 @@ export const NOINDEX_PATH_PREFIXES = ["/portal", "/staff-portal"];
 // /speak-to-juliet/thank-you is the post-submission page for Tim Hunt's
 // Pipedrive form. It is reached only by that redirect, is linked from
 // nowhere, and stays noindex whatever happens to its parent.
-// /sarkin-fulani-future-leaders is a draft for review (Tim Hunt's brief of
+// /sarkin-fulani-future-leaders was a draft for review (Tim Hunt's brief of
 // 8 October 2026): noindex, out of the sitemap and prerender list, linked
-// from nowhere, until the Office of His Royal Highness has approved the royal
-// material and Brooke House College has confirmed its offers. Publication
-// changes noindex, the sitemap entry and the prerender entry together, as it
-// did for the two pages above.
+// from nowhere, until the Office of His Royal Highness had approved the royal
+// material and Brooke House College had confirmed its offers. It was
+// published on 23 November 2026 on Tim's word: noindex, the sitemap entry and
+// the prerender entry changed together, as they did for the two pages above.
 // /speak-to-madalitso/thank-you is the post-submission page for Tim Hunt's
 // Malawi Pipedrive form (16 October 2026), private in the same way as
 // Juliet's. /speak-to-madalitso itself is published from the start: Tim
 // supplied the finished content, form and photographs together.
 // /speak-to-gladys-thank-you is the same for Tim's Ghana form (24 October
 // 2026); /speak-to-gladys is published from the start, as Madalitso's was.
-export const NOINDEX_PATHS = new Set(["/404", "/speak-to-juliet/thank-you", "/sarkin-fulani-future-leaders", "/speak-to-madalitso/thank-you", "/speak-to-gladys-thank-you", "/speak-to-eldah/thank-you", "/contact/thank-you", "/speak-to-glenice/thank-you", "/speak-to-manet/thank-you"]);
+export const NOINDEX_PATHS = new Set(["/404", "/speak-to-juliet/thank-you", "/speak-to-madalitso/thank-you", "/speak-to-gladys-thank-you", "/speak-to-eldah/thank-you", "/contact/thank-you", "/speak-to-glenice/thank-you", "/speak-to-manet/thank-you"]);
 
 export function getCanonicalPath(path: string): string {
   return CANONICAL_PATHS[path] ?? path;

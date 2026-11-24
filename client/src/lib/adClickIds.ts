@@ -61,3 +61,52 @@ export function getStoredAdClickIds(): AdClickIds {
     return {};
   }
 }
+
+declare global {
+  interface Window {
+    /**
+     * Read by Pipedrive's web form loader when a form asks for "JavaScript
+     * variables" to fill its hidden fields (Pipedrive product update,
+     * August 2026).
+     */
+    pd_webform?: Record<string, unknown>;
+  }
+}
+
+/** A real click identifier or UTM value is far shorter than this. */
+const MAX_VALUE_LENGTH = 512;
+
+/**
+ * Hands the stored attribution values to Pipedrive's embedded web forms.
+ *
+ * WHY (23 November 2026). Since 15 November the Contact page and the Nigeria
+ * page carry Tim Hunt's Pipedrive Website Registration Form. A submission
+ * goes from the visitor's browser straight to Pipedrive and never touches
+ * this server, so the click identifier stored above no longer reached the
+ * Lead. The server-side "Qualified Lead" upload (server/ads/qualifiedLead.ts)
+ * skips a Deal that has no click identifier, so Google Ads would stop
+ * learning which clicks became qualified leads.
+ *
+ * HOW. Pipedrive's loader (webforms.pipedrive.com/f/loader, read on 23
+ * November 2026) answers a form's request for named variables from
+ * `window.pd_webform`, and passes on only strings, numbers and booleans. A
+ * form asks only for the names its owner gave to hidden fields, so this does
+ * nothing at all until Tim adds hidden fields named gclid, gbraid and wbraid
+ * to his form. It changes nothing in Pipedrive and nothing in his forms.
+ *
+ * These are the same values, sent to the same place, as the website's own
+ * form has sent to Pipedrive with each signup since August 2026.
+ */
+export function exposeAdClickIdsToPipedriveForms(): void {
+  if (typeof window === "undefined") return;
+
+  const stored = getStoredAdClickIds();
+  const values: Record<string, string> = {};
+  for (const key of CLICK_ID_PARAMS) {
+    const value = stored[key];
+    if (typeof value === "string" && value !== "" && value.length <= MAX_VALUE_LENGTH) values[key] = value;
+  }
+  if (Object.keys(values).length === 0) return;
+
+  window.pd_webform = { ...(window.pd_webform ?? {}), ...values };
+}

@@ -3,8 +3,12 @@ import { existsSync, readFileSync } from "fs";
 import {
   AWARDS,
   CAMPAIGN_SLUG,
+  CAMPUS,
+  BHC_LINKS,
   DRAFT,
   EXPRESS_INTEREST,
+  EXPRESS_INTEREST_FORM_URL,
+  FOOT_LINK,
   MARYAM,
   OPPORTUNITIES,
   OPPORTUNITY_CARDS,
@@ -13,15 +17,17 @@ import {
   PATRON,
   REVIEW_NOTES,
   STEPS,
+  STEPS_PHOTO,
+  TIMELINE,
+  VECTOR_BROCHURE_URL,
+  WHAT_IS,
   allRenderedCopy,
-  expressInterestHandoffUrl,
   maryamWhatsAppHref,
 } from "../../client/src/lib/sarkinFulani";
 import { CAMPAIGN_PATHS, campaignNotificationDetail, campaignReplacesGeneralNotification, isCampaignSlug } from "../../shared/campaignEnquiry";
 import { NOINDEX_PATHS, SEO_MAP, shouldNoindex } from "../../shared/seo";
 import { VALID_CLIENT_ROUTES, isValidClientRoute } from "../../shared/routes";
 import { ALL_PRERENDER_ROUTES } from "../../shared/prerenderRoutes";
-import { isDesiredLevelValue } from "../../shared/studentEnquiryOptions";
 import { statesAnUnnegatedGuarantee } from "../operating/qualityCheck";
 
 /**
@@ -31,8 +37,8 @@ import { statesAnUnnegatedGuarantee } from "../operating/qualityCheck";
  * What these hold, in order of the damage a failure would do: the page
  * stays a draft until it is published on purpose (noindex, out of the
  * sitemap and prerender list, linked from nowhere, banner showing, all
- * together); the one form hands off to the sign-up and opens no second
- * route into Pipedrive; the community is named as
+ * together); the one form is Tim's own Pipedrive form, embedded as
+ * supplied (his revamp of 18 November 2026); the community is named as
  * the Office of His Royal Highness asked; and no promise appears that
  * Brooke House College has not made.
  */
@@ -44,8 +50,8 @@ const PAGE = stripComments(read("client/src/pages/SarkinFulaniFutureLeaders.tsx"
 const COPY = allRenderedCopy().join("\n");
 const publicFile = (p: string) => existsSync(`client/public${p}`);
 
-describe("publication state: a draft, held together", () => {
-  it("is a real route so it can be reviewed", () => {
+describe("publication state: published, held together", () => {
+  it("is a real route", () => {
     expect(VALID_CLIENT_ROUTES).toContain(PAGE_PATH);
     expect(isValidClientRoute(PAGE_PATH)).toBe(true);
     expect(read("client/src/App.tsx")).toContain(`path={"${PAGE_PATH}"}`);
@@ -56,18 +62,22 @@ describe("publication state: a draft, held together", () => {
     expect(SEO_MAP[PAGE_PATH]?.description).toContain("Arewa");
   });
 
-  it("while DRAFT.isDraft: noindex, not in the sitemap, not prerendered, banner on", () => {
-    expect(DRAFT.isDraft).toBe(true);
-    expect(NOINDEX_PATHS.has(PAGE_PATH)).toBe(true);
-    expect(shouldNoindex(PAGE_PATH)).toBe(true);
-    expect(read("client/public/sitemap.xml")).not.toContain(PAGE_PATH);
-    expect(ALL_PRERENDER_ROUTES).not.toContain(PAGE_PATH);
+  it("is published (23 November 2026): indexable, in the sitemap, prerendered, banner off", () => {
+    // The four move together. To take the page down again, set
+    // DRAFT.isDraft and reverse the other three in the same change.
+    expect(DRAFT.isDraft).toBe(false);
+    expect(NOINDEX_PATHS.has(PAGE_PATH)).toBe(false);
+    expect(shouldNoindex(PAGE_PATH)).toBe(false);
+    expect(read("client/public/sitemap.xml")).toContain(`<loc>https://www.worldstudentadvisors.com${PAGE_PATH}</loc>`);
+    expect(ALL_PRERENDER_ROUTES).toContain(PAGE_PATH);
+    // The banner stays in the page behind the flag, so a return to draft
+    // needs no page edit.
     expect(PAGE).toContain("DRAFT.isDraft &&");
   });
 
-  it("is linked from nowhere on the public site", () => {
+  it("is reached by its own address, like the other landing pages: no menu, footer or home link", () => {
     for (const file of ["client/src/components/Header.tsx", "client/src/components/Footer.tsx", "client/src/pages/Home.tsx", "client/src/pages/Partners.tsx"]) {
-      expect(read(file), `${file} must not link the draft`).not.toContain(PAGE_PATH);
+      expect(read(file), `${file} must not link the landing page`).not.toContain(PAGE_PATH);
     }
   });
 });
@@ -97,10 +107,9 @@ describe("no promise Brooke House College has not made", () => {
     expect(statesAnUnnegatedGuarantee(COPY)).toBe(false);
   });
 
-  it("says the College decides, and carries its confirmation of the awards with the one point still open", () => {
-    expect(COPY).toMatch(/made independently by Brooke House College/);
-    expect(COPY).toContain("Awards confirmed by Brooke House College on 12 October 2026. Precisely which fees they apply to is to be confirmed by the College.");
-    expect(COPY).toContain("not a fully funded scholarship");
+  it("says the College decides, and that families pay the rest (Tim Hunt's wording, 22 November 2026)", () => {
+    expect(COPY).toContain("Brooke House College makes all admissions and award decisions.");
+    expect(COPY).toContain("Families pay the remaining tuition fees and any other expenses.");
   });
 
   it("carries Brooke House College's confirmation of 12 October 2026: the places for January 2027 and the basis of the further 15%", () => {
@@ -112,10 +121,9 @@ describe("no promise Brooke House College has not made", () => {
       "Year 11 (aged 16 on or after 1 September): full",
       "Years 12 and 13 (aged 17 on or after 1 September): 7 to 8 places",
     ]);
-    // Leadership is not a basis Brooke House gave for the further 15%.
-    const further = AWARDS.paragraphs.find(p => p.includes("further reduction"))!;
-    expect(further).toContain("football ability and/or academic level");
-    expect(further).toContain("football assessment and/or a current school report");
+    // Leadership is not a basis Brooke House gave for the further award.
+    const further = AWARDS.paragraphs.find(p => p.includes("up to 25%"))!;
+    expect(further).toContain("based on a football assessment, a recent school report or both");
     expect(further).not.toMatch(/leadership/);
     expect(DRAFT.line).toContain("confirmed January 2027 entry and the tuition fee awards on 12 October 2026");
     // The page renders the confirmed list.
@@ -158,51 +166,26 @@ describe("the Expression of Interest goes down the one controlled path", () => {
     expect(STEPS[2].body).toMatch(/^Once eligibility is confirmed/);
   });
 
-  it("hands off to /contact with the slug, the level, the destination and the opportunity", () => {
-    const url = expressInterestHandoffUrl({
-      role: "parent",
-      firstName: " Aisha ",
-      lastName: "Bello",
-      email: "aisha@example.com",
-      phone: "0803 123 4567",
-      opportunity: "football-and-education",
-    });
-    expect(url.startsWith("/contact?")).toBe(true);
-    expect(url.endsWith("#student-signup")).toBe(true);
-    const params = new URL(`https://x${url}`).searchParams;
-    expect(params.get("campaign")).toBe(CAMPAIGN_SLUG);
-    expect(params.get("firstName")).toBe("Aisha");
-    expect(params.get("lastName")).toBe("Bello");
-    expect(params.get("email")).toBe("aisha@example.com");
-    expect(params.get("phone")).toBe("+2348031234567");
-    expect(params.get("desiredLevel")).toBe("boarding");
-    expect(params.get("preferredDestination")).toBe("uk");
-    expect(params.get("areaOfStudy")).toBe("Sarkin Fulani Future Leaders Programme: Football and Education (parent or guardian)");
-  });
-
-  it("drops a number it cannot read rather than handing over a mangled one", () => {
-    const url = expressInterestHandoffUrl({ role: "student", firstName: "A", lastName: "B", email: "a@b.com", phone: "call me", opportunity: "not-sure" });
-    const params = new URL(`https://x${url}`).searchParams;
-    expect(params.has("phone")).toBe(false);
-    expect(params.get("desiredLevel")).toBe("other");
-  });
-
-  it("every opportunity maps to a level the sign-up form offers", () => {
-    for (const o of OPPORTUNITIES) expect(isDesiredLevelValue(o.desiredLevel), o.label).toBe(true);
-    expect(OPPORTUNITIES[OPPORTUNITIES.length - 1].value).toBe("not-sure");
-  });
-
-  it("the sign-up form reads the two fields this page adds, and nothing else new", () => {
-    const contact = read("client/src/pages/Contact.tsx");
-    expect(contact).toContain('take("lastName", 60)');
-    expect(contact).toContain('take("areaOfStudy", 160)');
-  });
-
-  it("the page itself creates no Lead and embeds no third-party form", () => {
+  it("embeds Tim Hunt's own Pipedrive form exactly as supplied, and writes nothing itself (18 November 2026)", () => {
+    expect(EXPRESS_INTEREST_FORM_URL).toBe(
+      "https://webforms.pipedrive.com/f/6N4CIK8VYqnAXH4tLplKpATusPl6pnlplIUMXWxm59MMRC7NinhVX65oeXQG7kG6QP",
+    );
+    expect(PAGE).toContain("<PipedriveFormEmbed embedUrl={EXPRESS_INTEREST_FORM_URL}");
+    expect(PAGE.match(/<PipedriveFormEmbed /g)).toHaveLength(1);
     expect(PAGE).not.toContain("createStudentLead");
     expect(PAGE).not.toContain("submitStudent");
-    expect(PAGE).not.toContain("webforms.pipedrive.com");
-    expect(PAGE).toContain("expressInterestHandoffUrl(");
+    expect(PAGE).not.toContain("<form");
+  });
+
+  it("lists beside it the opportunities his form offers, 'not sure' last", () => {
+    expect(OPPORTUNITIES).toEqual([
+      "Boarding and full-time study at Brooke House College",
+      "Football Academy and full-time study",
+      "Summer football camp",
+      "English language and activities summer school",
+      "Vector Programme after leaving school",
+      "I'm not sure and would like advice",
+    ]);
   });
 });
 
@@ -253,9 +236,188 @@ describe("Maryam Lawal's contact card, Tim Hunt's request of 9 October 2026", ()
     expect(publicFile(MARYAM.photo)).toBe(true);
   });
 
-  it("leaves the Expression of Interest routing exactly as it was", () => {
-    expect(PAGE).toContain("expressInterestHandoffUrl(");
+  it("sits above Tim's Express your interest form, which stays the formal route", () => {
+    expect(PAGE.indexOf('id="maryam"')).toBeLessThan(PAGE.indexOf("<PipedriveFormEmbed "));
     expect(CAMPAIGN_PATHS[CAMPAIGN_SLUG]).toBe(PAGE_PATH);
+  });
+});
+
+/**
+ * Tim Hunt's revamp of 18 November 2026 ("Revamp the King's LP.docx"),
+ * after the Office of His Royal Highness approved the page, and Chad Male's
+ * answer of 19 November on which summer courses to list.
+ */
+describe("Tim Hunt's revamp of 18 November 2026", () => {
+  const card = (id: string) => OPPORTUNITY_CARDS.find(c => c.id === id);
+
+  it("has his new programme box, without the Essay Competition line", () => {
+    expect(WHAT_IS.offersHeading).toBe("Explore your opportunities at Brooke House College");
+    expect(WHAT_IS.offers.map(o => o.text)).toEqual([
+      "Study and board in England at Brooke House College.",
+      "Receive a 10% tuition fee award if admitted for full-time study through the programme. Brooke House College may increase the total award to 25% based on academic or football ability.",
+      "Combine your studies with advanced football training through the Brooke House College Football Academy.",
+      "Elite football and degree study after Brooke House College.",
+      "Practise your English and make new friends at a Brooke House College summer camp.",
+    ]);
+  });
+
+  it("takes the Essay Competition and every amber 'to be confirmed' note off the page", () => {
+    expect(card("essay")).toBeUndefined();
+    expect(COPY).not.toMatch(/essay competition/i);
+    expect(TIMELINE.some(t => /essay/i.test(t.what))).toBe(false);
+    for (const c of OPPORTUNITY_CARDS) expect(c.pending, c.id).toBeUndefined();
+    expect(COPY).not.toMatch(/to be confirmed/i);
+    expect(PAGE).not.toContain("AWARDS.confirmationNote");
+  });
+
+  it("describes the Vector Programme in his words, with its three degrees", () => {
+    const vector = card("vector")!;
+    expect(vector.title).toBe("Train at Coventry City. Play twice a week. Study for a degree.");
+    expect(vector.body.join(" ")).toContain("a joint venture between Coventry City Football Club and Brooke House College");
+    expect(vector.body.join(" ")).toContain("aged 18 to 23");
+    expect(vector.list).toHaveLength(3);
+    expect(vector.list!.join(" ")).toContain("Loughborough University");
+    expect(vector.list!.join(" ")).toContain("Nottingham Trent University");
+  });
+
+  it("lists the two summer courses Brooke House College named, and no taster classes", () => {
+    const summer = card("summer-schools")!;
+    const text = summer.body.join(" ");
+    expect(text).toContain("High Performance Football Development Camp");
+    expect(text).toContain("English Language Tuition Course");
+    expect(text).not.toMatch(/GCSE|A Level|IELTS/);
+    expect(summer.links?.map(l => l.href)).toEqual([BHC_LINKS.summerSchool, BHC_LINKS.termDates]);
+  });
+
+  it("says what boarding fees include, with links to the College's own pages", () => {
+    expect(AWARDS.includedHeading).toBe("What's included in your boarding fees?");
+    expect(AWARDS.included).toHaveLength(3);
+    expect(AWARDS.feesLink.href).toBe(BHC_LINKS.fees);
+  });
+
+  it("links only to Brooke House College's own site, opened in a new tab", () => {
+    for (const href of Object.values(BHC_LINKS)) expect(href.startsWith("https://www.brookehousecollege.co.uk/"), href).toBe(true);
+    const link = PAGE.split("function CollegeLink(")[1].split("\nfunction ")[0];
+    expect(link).toContain('target="_blank"');
+    expect(link).toContain('rel="noopener noreferrer"');
+  });
+
+  it("removes the photograph of the student, at his request of 20 November 2026", () => {
+    expect(existsSync("client/public/images/sarkin-fulani/nigerian-heritage-lesson.jpg")).toBe(false);
+    expect(PAGE).not.toContain("nigerian-heritage-lesson");
+    expect(PAGE).not.toContain("OPPORTUNITIES_PHOTO");
+  });
+
+  it("adds the Football Academy team photograph and its facilities video to the football card", () => {
+    const football = card("football")!;
+    expect(publicFile(football.image!.src)).toBe(true);
+    expect(football.video).toEqual({ label: "Watch the Football Academy Facilities video", href: "https://www.youtube.com/watch?v=P7NHm6t8SYU" });
+    expect(PAGE).toContain("href={card.video.href}");
+  });
+
+  it("heads the Vector card with its logo and the Summer Schools card with a matching strip", () => {
+    expect(publicFile(card("vector")!.banner!.src)).toBe(true);
+    expect(card("summer-schools")!.headerStrip).toBe(true);
+    expect(PAGE).toContain("card.banner ? (");
+    expect(PAGE).toContain(": card.headerStrip ? (");
+  });
+
+  it("moves the scholarship competition link from the programme box to the foot of the page", () => {
+    expect(WHAT_IS.offers.some(o => o.link)).toBe(false);
+    expect(FOOT_LINK.href).toBe(BHC_LINKS.scholarshipCompetition);
+    expect(PAGE.indexOf("href={FOOT_LINK.href}")).toBeGreaterThan(PAGE.indexOf('id="express-interest"'));
+  });
+
+  it("shows a classroom photograph with the fee awards, served from this site", () => {
+    expect(publicFile(AWARDS.photo.src)).toBe(true);
+    const awards = PAGE.indexOf("AWARDS.paragraphs.map");
+    const photo = PAGE.indexOf("src={AWARDS.photo.src}");
+    expect(photo).toBeGreaterThan(awards);
+    expect(PAGE.indexOf("AWARDS.includedHeading")).toBeGreaterThan(photo);
+  });
+
+  it("keeps the Royal seal", () => {
+    expect(publicFile(PATRON.seal)).toBe(true);
+    expect(PAGE).toContain("src={PATRON.seal}");
+  });
+
+  it("was held as a draft until Tim said the page could go out (19 to 23 November 2026)", () => {
+    // On 19 November Tim asked that the page's form not be used until he
+    // said so. His reply of 22 November ("can the URL be as before") kept
+    // the address and was not his go. On 23 November he told Tom Arrington
+    // he wanted the page out for the January intake, and Tom published it.
+    expect(DRAFT.isDraft).toBe(false);
+    expect(DRAFT.line).toContain("Approved by the Office of His Royal Highness on 18 November 2026");
+  });
+});
+
+/** Tim Hunt's reply of 22 November 2026 to the preview of his changes. */
+describe("Tim Hunt's changes of 22 November 2026", () => {
+  it("replaces the fee awards text with his, word for word", () => {
+    expect(AWARDS.heading).toBe("How much financial support is available?");
+    expect(AWARDS.paragraphs).toEqual([
+      "Students admitted to one of Brooke House College's main full-time programmes through the Sarkin Fulani Future Leaders Programme are eligible for a 10% tuition fee award.",
+      "Brooke House College may increase the total award to up to 25% of tuition fees, based on a football assessment, a recent school report or both. These discounts do not apply to the Vector Programme or summer schools.",
+      "Brooke House College makes all admissions and award decisions. Families pay the remaining tuition fees and any other expenses.",
+      "Before you make a commitment, World Student Advisors will give you a clear breakdown of the tuition fees, any award and any additional costs.",
+    ]);
+    expect(PAGE).toContain('eyebrow="Tuition fee awards"');
+  });
+
+  it("uses his original classroom photograph, served from this site", () => {
+    expect(AWARDS.photo.src).toBe("/images/sarkin-fulani/brooke-house-classroom.jpg");
+    expect(existsSync(`client/public${AWARDS.photo.src}`)).toBe(true);
+    expect([AWARDS.photo.width, AWARDS.photo.height]).toEqual([1400, 637]);
+  });
+
+  it("links the College's accreditations page under the photograph, and no brochure (his later decision that night)", () => {
+    expect(AWARDS.photoLink.href).toBe("https://www.brookehousecollege.co.uk/about-us/accreditations-memberships");
+    expect(AWARDS.photoLink.href).toBe(BHC_LINKS.accreditations);
+    const photo = PAGE.indexOf("src={AWARDS.photo.src}");
+    const link = PAGE.indexOf("<CollegeLink link={AWARDS.photoLink} />");
+    expect(link).toBeGreaterThan(photo);
+    expect(Object.values(BHC_LINKS).some(h => /\.pdf$|booklet|brochure/i.test(h))).toBe(false);
+  });
+
+  it("puts the campus plan and the map between the fee awards and the steps", () => {
+    expect(CAMPUS.images.map(i => i.src)).toEqual([
+      "/images/sarkin-fulani/brooke-house-campus-plan.jpg",
+      "/images/sarkin-fulani/brooke-house-location.jpg",
+    ]);
+    for (const img of CAMPUS.images) expect(existsSync(`client/public${img.src}`), img.src).toBe(true);
+    const fees = PAGE.indexOf("{AWARDS.heading}");
+    const campus = PAGE.indexOf("CAMPUS.images.map");
+    const steps = PAGE.indexOf("Taking the first step is simple");
+    expect(campus).toBeGreaterThan(fees);
+    expect(steps).toBeGreaterThan(campus);
+    // Each opens full size, because each carries the College's small print.
+    expect(PAGE).toContain("href={img.src}");
+  });
+
+  it("adds his five photographs to the steps: under 1, 2, 4 and 6, and the College beside 7", () => {
+    expect(STEPS.map(s => (s.image ? s.image.src.split("/").pop() : null))).toEqual([
+      "01-express-interest.jpg",
+      "02-confirm-eligibility.jpg",
+      null,
+      "04-apply.jpg",
+      null,
+      "06-offer-and-fees.jpg",
+      null,
+    ]);
+    expect(STEPS_PHOTO.src).toBe("/images/sarkin-fulani/steps/07-preparing-for-england.jpg");
+    for (const src of [...STEPS.flatMap(s => (s.image ? [s.image.src] : [])), STEPS_PHOTO.src]) {
+      expect(existsSync(`client/public${src}`), src).toBe(true);
+    }
+    for (const s of STEPS) if (s.image) expect(s.image.alt.length, s.title).toBeGreaterThan(20);
+    expect(PAGE).toContain('<ol role="list" className="contents">');
+    expect(PAGE).toContain("src={STEPS_PHOTO.src}");
+  });
+
+  it("links the Vector Programme brochure from the Vector card, in a new tab", () => {
+    const vector = OPPORTUNITY_CARDS.find(c => c.id === "vector")!;
+    expect(vector.links).toEqual([{ label: "Read the Vector Programme brochure (PDF)", href: VECTOR_BROCHURE_URL }]);
+    expect(VECTOR_BROCHURE_URL).toBe("https://vectoreducationsports.com/wp-content/uploads/pdf/BH_VectorPromoBrochure.pdf");
+    expect(PAGE).toContain("<CollegeLink link={l} />");
   });
 });
 

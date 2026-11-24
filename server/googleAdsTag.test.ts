@@ -12,6 +12,12 @@ import { readFileSync } from "fs";
  * updateGoogleConsent("granted"), which CookieConsent calls for "Accept all".
  * They exercise the module with a minimal fake window/document, since this
  * repo's Vitest runs in a node environment (no real DOM).
+ *
+ * 23 November 2026: these tests passed for twelve weeks while the tag did
+ * nothing, because they checked WHAT was pushed to the data layer and not
+ * what KIND of thing. gtag.js runs only `arguments` objects as commands and
+ * the wrapper pushed Arrays (googleAdsTag.ts, THE BUG). The first suite
+ * below is the guard: every entry must be an Arguments object.
  */
 
 const TYPES = ["ad_storage", "ad_user_data", "ad_personalization", "analytics_storage"];
@@ -35,12 +41,62 @@ function entries(win: any, kind: string, sub?: string) {
   return (win.dataLayer as unknown[][]).filter(e => e[0] === kind && (sub === undefined || e[1] === sub));
 }
 
+/** What gtag.js itself asks of a data layer entry before running it. */
+const kindOf = (entry: unknown) => Object.prototype.toString.call(entry);
+
 beforeEach(() => {
   vi.resetModules();
 });
 
 afterEach(() => {
   vi.unstubAllGlobals();
+});
+
+describe("gtag commands reach the data layer as arguments objects, never Arrays", () => {
+  it("defines gtag as Google's snippet does: every command it pushes is an Arguments object", async () => {
+    const fakeWindow: any = {};
+    vi.stubGlobal("window", fakeWindow);
+    vi.stubGlobal("document", makeFakeDocument());
+    const { loadGoogleAdsTag, updateGoogleConsent } = await import("../client/src/lib/googleAdsTag");
+
+    loadGoogleAdsTag();
+    updateGoogleConsent("granted");
+    updateGoogleConsent("denied");
+
+    // consent default, two sets, js, config, two consent updates.
+    expect(fakeWindow.dataLayer).toHaveLength(7);
+    for (const entry of fakeWindow.dataLayer) expect(kindOf(entry)).toBe("[object Arguments]");
+  });
+
+  it("queues the conversion the same way, with and without the tag loaded first", async () => {
+    for (const loadFirst of [true, false]) {
+      vi.resetModules();
+      const fakeWindow: any = {};
+      vi.stubGlobal("window", fakeWindow);
+      vi.stubGlobal("document", makeFakeDocument());
+      const { loadGoogleAdsTag } = await import("../client/src/lib/googleAdsTag");
+      const { reportSignupConversion } = await import("../client/src/lib/googleAdsConversion");
+
+      if (loadFirst) loadGoogleAdsTag();
+      await reportSignupConversion();
+
+      const conversions = entries(fakeWindow, "event", "conversion");
+      expect(conversions, `tag loaded first: ${loadFirst}`).toHaveLength(1);
+      expect((conversions[0][2] as any).send_to).toBe("AW-946725823/hviLCPiHkOMcEL_Ht8MD");
+      for (const entry of fakeWindow.dataLayer) expect(kindOf(entry)).toBe("[object Arguments]");
+    }
+  });
+
+  it("is not written as an arrow function or with rest parameters, in either file", () => {
+    for (const file of ["client/src/lib/googleAdsTag.ts", "client/src/lib/googleAdsConversion.ts"]) {
+      const code = readFileSync(file, "utf8")
+        .replace(/\/\*[\s\S]*?\*\//g, "")
+        .replace(/^\s*\/\/.*$/gm, "");
+      expect(code, file).not.toMatch(/dataLayer!?\.push\(\s*(args|\[)/);
+    }
+    const tag = readFileSync("client/src/lib/googleAdsTag.ts", "utf8");
+    expect(tag).toContain("window.dataLayer!.push(arguments);");
+  });
 });
 
 describe("loadGoogleAdsTag", () => {
@@ -71,7 +127,9 @@ describe("loadGoogleAdsTag", () => {
     const defaultIndex = dl.indexOf(dflt[0]);
     const configIndex = dl.findIndex(e => e[0] === "config" && e[1] === "AW-946725823");
     expect(configIndex).toBeGreaterThan(defaultIndex);
-    expect(dl).toEqual(expect.arrayContaining([["js", expect.any(Date)], ["set", "url_passthrough", true], ["set", "ads_data_redaction", true]]));
+    // As plain arrays for comparison only: on the data layer they are Arguments objects.
+    const commands = dl.map(e => Array.from(e as ArrayLike<unknown>));
+    expect(commands).toEqual(expect.arrayContaining([["js", expect.any(Date)], ["set", "url_passthrough", true], ["set", "ads_data_redaction", true]]));
 
     // No update is pushed by the loader itself: only the visitor's choice grants.
     expect(entries(fakeWindow, "consent", "update")).toHaveLength(0);

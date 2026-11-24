@@ -144,7 +144,16 @@ describe("the conversion", () => {
     const { dataLayer } = browser({ store: null });
     expect(reportRegistrationConversionOnce()).toBe("reported");
     await Promise.resolve();
-    expect(dataLayer).toEqual([["event", "conversion", { send_to: "AW-946725823/hviLCPiHkOMcEL_Ht8MD" }]]);
+    // Queued as an `arguments` object, the only form gtag.js runs as a
+    // command. It was an Array, which gtag.js ignores, until 23 November
+    // 2026 (client/src/lib/googleAdsTag.ts, THE BUG).
+    expect(dataLayer).toHaveLength(1);
+    expect(Object.prototype.toString.call(dataLayer[0])).toBe("[object Arguments]");
+    expect(Array.from(dataLayer[0] as ArrayLike<unknown>)).toEqual([
+      "event",
+      "conversion",
+      { send_to: "AW-946725823/hviLCPiHkOMcEL_Ht8MD" },
+    ]);
     vi.stubGlobal("window", undefined);
     expect(reportRegistrationConversionOnce()).toBe("unavailable");
   });

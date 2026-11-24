@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type FormEvent } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link } from "wouter";
 import {
   Award,
@@ -6,20 +6,22 @@ import {
   GraduationCap,
   Mail,
   MessageCircle,
-  PenLine,
+  Play,
   Sparkles,
   Sun,
   Trophy,
   Users,
 } from "lucide-react";
-import { NIGERIA_DIALLING_CODE } from "@/lib/nigeriaLanding";
+import PipedriveFormEmbed from "@/components/PipedriveFormEmbed";
 import {
   AWARDS,
   BEHIND,
+  CAMPUS,
   DRAFT,
-  ENQUIRER_ROLES,
   EXPRESS_INTEREST,
+  EXPRESS_INTEREST_FORM_URL,
   FOOTER_LINE,
+  FOOT_LINK,
   HERO,
   MARYAM,
   OPPORTUNITIES,
@@ -27,22 +29,24 @@ import {
   PARTNERS,
   PATRON,
   STEPS,
+  STEPS_PHOTO,
   TIMELINE,
   VISION,
   WHAT_IS,
   WHO_FOR,
-  expressInterestHandoffUrl,
   maryamWhatsAppHref,
+  type PageLink,
 } from "@/lib/sarkinFulani";
 
 /**
  * The Sarkin Fulani Future Leaders Programme. Tim Hunt's brief of 8 October
  * 2026, built from Farooq Gajo's revised proposal.
  *
- * ONE FORM, AND IT WRITES NOTHING ITSELF. The Expression of Interest
- * hands the visitor's answers to the /contact sign-up, the one controlled
- * path into Pipedrive, carrying the campaign slug so the Lead note names
- * this programme and the Student Counsellors receive it.
+ * ONE FORM, AND IT IS TIM'S. Since his revamp of 18 November 2026 the
+ * Expression of Interest is his own Pipedrive form, embedded exactly as
+ * supplied: a submission goes from the visitor's browser to Pipedrive,
+ * which routes it to the Office of His Royal Highness, Maryam Lawal, Eldah
+ * Therone and Tim. This page writes nothing itself.
  *
  * NO QURANIC COMPETITION SECTION. Tim Hunt to Farooq Gajo, 11 October
  * 2026: the WSA page stays on the Brooke House College opportunities and
@@ -67,12 +71,7 @@ const OPPORTUNITY_ICONS: Record<string, typeof GraduationCap> = {
   football: Trophy,
   vector: Sparkles,
   "summer-schools": Sun,
-  essay: PenLine,
 };
-
-const field =
-  "w-full min-w-0 max-w-full rounded-xl border border-wsa-navy/15 bg-white px-4 py-3 text-base text-wsa-navy placeholder:text-gray-400 focus:border-wsa-red/60 focus:outline-none";
-const labelClass = "block text-sm font-medium text-wsa-navy";
 
 function PrimaryButton({ href, children, onRef, className = "" }: { href: string; children: React.ReactNode; onRef?: (el: HTMLAnchorElement | null) => void; className?: string }) {
   return (
@@ -88,96 +87,17 @@ function PrimaryButton({ href, children, onRef, className = "" }: { href: string
 
 /* ------------------------------------------------------------------ */
 
-/**
- * Six questions, then the controlled sign-up with those answers carried
- * across. Visible labels rather than placeholders: a parent on a phone
- * should never lose sight of what a box is for.
- */
-function ExpressInterestForm({ id }: { id: string }) {
-  const [role, setRole] = useState("");
-  const [firstName, setFirstName] = useState("");
-  const [lastName, setLastName] = useState("");
-  const [email, setEmail] = useState("");
-  const [phone, setPhone] = useState("");
-  const [opportunity, setOpportunity] = useState("");
-
-  const submit = (e: FormEvent) => {
-    e.preventDefault();
-    window.location.assign(expressInterestHandoffUrl({ role, firstName, lastName, email, phone, opportunity }));
-  };
-
+/** A link to one of Brooke House College's own pages, in a new tab. */
+function CollegeLink({ link, className = "" }: { link: PageLink; className?: string }) {
   return (
-    <form onSubmit={submit} className="min-w-0 max-w-full space-y-3.5" aria-labelledby={`${id}-heading`}>
-      <div>
-        <p id={`${id}-heading`} className="text-xl font-semibold text-wsa-navy">{EXPRESS_INTEREST.heading}</p>
-        <p className="mt-1 text-sm leading-relaxed text-gray-600">{EXPRESS_INTEREST.supporting}</p>
-        <p className="mt-1 text-xs text-gray-500">{EXPRESS_INTEREST.nextPageLine}</p>
-      </div>
-
-      <div>
-        <label className={labelClass} htmlFor={`${id}-role`}>I am a</label>
-        <select id={`${id}-role`} value={role} onChange={e => setRole(e.target.value)} required className={`${field} mt-1 ${role ? "" : "text-gray-400"}`}>
-          <option value="">Please choose</option>
-          {ENQUIRER_ROLES.map(r => <option key={r.value} value={r.value}>{r.label}</option>)}
-        </select>
-      </div>
-
-      <div className="grid gap-3.5 sm:grid-cols-2">
-        <div>
-          <label className={labelClass} htmlFor={`${id}-first`}>First name</label>
-          <input id={`${id}-first`} value={firstName} onChange={e => setFirstName(e.target.value)} autoComplete="given-name" required maxLength={60} className={`${field} mt-1`} />
-        </div>
-        <div>
-          <label className={labelClass} htmlFor={`${id}-last`}>Family name</label>
-          <input id={`${id}-last`} value={lastName} onChange={e => setLastName(e.target.value)} autoComplete="family-name" required maxLength={60} className={`${field} mt-1`} />
-        </div>
-      </div>
-
-      <div>
-        <label className={labelClass} htmlFor={`${id}-email`}>Email address</label>
-        <input id={`${id}-email`} type="email" value={email} onChange={e => setEmail(e.target.value)} autoComplete="email" required maxLength={120} className={`${field} mt-1`} />
-      </div>
-
-      <div>
-        <label className={labelClass} htmlFor={`${id}-phone`}>WhatsApp number</label>
-        <div className="mt-1 flex min-w-0 max-w-full items-stretch overflow-hidden rounded-xl border border-wsa-navy/15 bg-white focus-within:border-wsa-red/60">
-          <span className="flex items-center border-r border-wsa-navy/10 bg-wsa-stone/60 px-3 text-base text-gray-600" aria-hidden>
-            {NIGERIA_DIALLING_CODE}
-          </span>
-          <input
-            id={`${id}-phone`}
-            type="tel"
-            value={phone}
-            onChange={e => setPhone(e.target.value)}
-            autoComplete="tel-national"
-            inputMode="tel"
-            placeholder="803 123 4567"
-            className="min-w-0 flex-1 bg-transparent px-4 py-3 text-base text-wsa-navy placeholder:text-gray-400 focus:outline-none"
-          />
-        </div>
-      </div>
-
-      <div>
-        <label className={labelClass} htmlFor={`${id}-opportunity`}>Which opportunity interests you?</label>
-        <select id={`${id}-opportunity`} value={opportunity} onChange={e => setOpportunity(e.target.value)} required className={`${field} mt-1 ${opportunity ? "" : "text-gray-400"}`}>
-          <option value="">Please choose</option>
-          {OPPORTUNITIES.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
-        </select>
-      </div>
-
-      <button
-        type="submit"
-        className="inline-flex min-h-[3rem] w-full items-center justify-center rounded-xl bg-wsa-red px-6 py-3.5 text-base font-semibold text-white transition hover:opacity-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-wsa-navy"
-      >
-        {EXPRESS_INTEREST.cta}
-      </button>
-
-      <p className="text-xs leading-relaxed text-gray-500">{EXPRESS_INTEREST.noPromise}</p>
-      <p className="text-xs leading-relaxed text-gray-500">
-        {EXPRESS_INTEREST.privacy} See our{" "}
-        <Link href="/privacy-policy" className="underline underline-offset-2 hover:text-wsa-navy">privacy policy</Link>.
-      </p>
-    </form>
+    <a
+      href={link.href}
+      target="_blank"
+      rel="noopener noreferrer"
+      className={`font-medium text-wsa-red underline underline-offset-2 hover:text-wsa-navy ${className}`}
+    >
+      {link.label}
+    </a>
   );
 }
 
@@ -311,9 +231,12 @@ export default function SarkinFulaniFutureLeaders() {
             <h3 className="text-lg font-semibold text-wsa-navy">{WHAT_IS.offersHeading}</h3>
             <ul className="mt-4 space-y-2.5">
               {WHAT_IS.offers.map(o => (
-                <li key={o} className="flex items-start gap-2.5 text-base text-gray-700">
+                <li key={o.text} className="flex items-start gap-2.5 text-base text-gray-700">
                   <Tick />
-                  <span>{o}</span>
+                  <span>
+                    {o.text}
+                    {o.link && <> <CollegeLink link={o.link} /></>}
+                  </span>
                 </li>
               ))}
             </ul>
@@ -351,19 +274,62 @@ export default function SarkinFulaniFutureLeaders() {
             {OPPORTUNITY_CARDS.map(card => {
               const Icon = OPPORTUNITY_ICONS[card.id] ?? GraduationCap;
               return (
-                <article key={card.id} className="flex flex-col rounded-2xl border border-wsa-navy/10 bg-white p-5 sm:p-6">
-                  <div className="flex items-center gap-3">
-                    <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-wsa-navy/5 text-wsa-navy">
-                      <Icon className="h-5 w-5" aria-hidden />
-                    </span>
-                    <p className="text-xs font-semibold uppercase tracking-wider text-wsa-red">{card.eyebrow}</p>
-                  </div>
-                  <h3 className="mt-3 text-lg font-semibold leading-snug text-wsa-navy">{card.title}</h3>
+                <article key={card.id} className="flex flex-col overflow-hidden rounded-2xl border border-wsa-navy/10 bg-white p-5 sm:p-6">
+                  {/* Tim Hunt, 20 November 2026, from his mock-ups: the Vector
+                      logo across the top of its card, and a matching header
+                      strip on the Summer Schools card. */}
+                  {card.banner ? (
+                    <img
+                      src={card.banner.src}
+                      alt={card.banner.alt}
+                      width={card.banner.width}
+                      height={card.banner.height}
+                      loading="lazy"
+                      decoding="async"
+                      className="-mx-5 -mt-5 block h-auto w-[calc(100%+2.5rem)] max-w-none sm:-mx-6 sm:-mt-6 sm:w-[calc(100%+3rem)]"
+                    />
+                  ) : card.headerStrip ? (
+                    <div className="-mx-5 -mt-5 flex items-center gap-4 bg-sky-50 px-5 py-4 sm:-mx-6 sm:-mt-6 sm:px-6 sm:py-5">
+                      <Icon className="h-7 w-7 shrink-0 text-wsa-navy" aria-hidden />
+                      <span className="h-8 w-px bg-wsa-navy/20" aria-hidden />
+                      <p className="text-lg font-semibold leading-snug text-wsa-navy">{card.eyebrow}</p>
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-3">
+                      <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-wsa-navy/5 text-wsa-navy">
+                        <Icon className="h-5 w-5" aria-hidden />
+                      </span>
+                      <p className="text-xs font-semibold uppercase tracking-wider text-wsa-red">{card.eyebrow}</p>
+                    </div>
+                  )}
+                  <h3 className={`text-lg font-semibold leading-snug text-wsa-navy ${card.banner || card.headerStrip ? "mt-5" : "mt-3"}`}>{card.title}</h3>
                   <div className="mt-2 space-y-2.5">
                     {card.body.map(p => (
                       <p key={p.slice(0, 40)} className="text-base leading-relaxed text-gray-700">{p}</p>
                     ))}
                   </div>
+                  {card.image && (
+                    <img
+                      src={card.image.src}
+                      alt={card.image.alt}
+                      width={card.image.width}
+                      height={card.image.height}
+                      loading="lazy"
+                      decoding="async"
+                      className="mt-4 h-auto w-full rounded-xl object-cover"
+                    />
+                  )}
+                  {card.video && (
+                    <a
+                      href={card.video.href}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="mt-3 inline-flex items-center gap-2 text-base font-semibold text-wsa-navy underline underline-offset-2 hover:text-wsa-red"
+                    >
+                      <Play className="h-4 w-4 shrink-0 fill-current" aria-hidden />
+                      {card.video.label}
+                    </a>
+                  )}
                   {card.confirmed && (
                     <div className="mt-3 rounded-lg border border-wsa-navy/10 bg-wsa-warm-white px-4 py-3">
                       <p className="text-sm font-semibold text-wsa-navy">{card.confirmedHeading}</p>
@@ -377,10 +343,32 @@ export default function SarkinFulaniFutureLeaders() {
                       </ul>
                     </div>
                   )}
+                  {card.list && (
+                    <div className="mt-3">
+                      <p className="text-base font-medium text-wsa-navy">{card.listHeading}</p>
+                      <ul className="mt-2 space-y-1.5">
+                        {card.list.map(item => (
+                          <li key={item} className="flex items-start gap-2.5 text-base text-gray-700">
+                            <Tick />
+                            <span>{item}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
                   {card.pending && (
                     <ul className="mt-3 space-y-1.5">
                       {card.pending.map(p => (
                         <li key={p} className="rounded-lg border border-dashed border-amber-400/70 bg-amber-50 px-3 py-2 text-sm text-amber-900">{p}</li>
+                      ))}
+                    </ul>
+                  )}
+                  {card.links && (
+                    <ul className="mt-4 space-y-1.5">
+                      {card.links.map(l => (
+                        <li key={l.href} className="text-base">
+                          <CollegeLink link={l} />
+                        </li>
                       ))}
                     </ul>
                   )}
@@ -401,14 +389,34 @@ export default function SarkinFulaniFutureLeaders() {
                 <p key={p.slice(0, 40)} className="text-base leading-relaxed text-gray-700">{p}</p>
               ))}
             </div>
-            <p className="mt-4 inline-block rounded-lg border border-dashed border-amber-400/70 bg-amber-50 px-3 py-2 text-sm text-amber-900">{AWARDS.confirmationNote}</p>
+            {/* Tim Hunt, 20 November 2026: a classroom photograph here. */}
+            <img
+              src={AWARDS.photo.src}
+              alt={AWARDS.photo.alt}
+              width={AWARDS.photo.width}
+              height={AWARDS.photo.height}
+              loading="lazy"
+              decoding="async"
+              className="mt-6 h-auto w-full rounded-2xl border border-wsa-navy/10 object-cover"
+            />
+            <p className="mt-3 text-base"><CollegeLink link={AWARDS.photoLink} /></p>
           </div>
           <div className="min-w-0 space-y-4">
             <div className="rounded-2xl border border-wsa-navy/10 bg-wsa-warm-white p-5">
               <h3 className="flex items-center gap-2 text-base font-semibold text-wsa-navy"><Award className="h-5 w-5 text-wsa-red" aria-hidden />{AWARDS.includedHeading}</h3>
-              <ul className="mt-3 space-y-1.5">
-                {AWARDS.included.map(i => <li key={i} className="flex items-start gap-2 text-base text-gray-700"><Tick /><span>{i}</span></li>)}
+              <p className="mt-2 text-base leading-relaxed text-gray-700">{AWARDS.includedIntro}</p>
+              <ul className="mt-3 space-y-2">
+                {AWARDS.included.map(i => (
+                  <li key={i.text} className="flex items-start gap-2 text-base text-gray-700">
+                    <Tick />
+                    <span>{i.text} <CollegeLink link={i.link} /></span>
+                  </li>
+                ))}
               </ul>
+              <p className="mt-3 text-base leading-relaxed text-gray-700">
+                {AWARDS.includedClose.text} <CollegeLink link={AWARDS.includedClose.link} />
+              </p>
+              <p className="mt-3 text-base"><CollegeLink link={AWARDS.feesLink} /></p>
             </div>
             <div className="rounded-2xl border border-wsa-navy/10 bg-wsa-warm-white p-5">
               <h3 className="text-base font-semibold text-wsa-navy">{AWARDS.budgetHeading}</h3>
@@ -421,19 +429,67 @@ export default function SarkinFulaniFutureLeaders() {
         </div>
       </section>
 
+      {/* ── Campus plan and map, Tim Hunt, 22 November 2026 ──────── */}
+      <section aria-label={CAMPUS.label} className="border-t border-wsa-navy/10 bg-white px-4 py-12 sm:px-6 lg:py-16">
+        <div className="mx-auto grid max-w-6xl gap-6 lg:grid-cols-2 lg:gap-8">
+          {CAMPUS.images.map(img => (
+            <figure key={img.src} className="min-w-0">
+              {/* Both pictures carry the College's own small print, so each
+                  opens full size for a reader on a phone. */}
+              <a
+                href={img.src}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="block overflow-hidden rounded-2xl border border-wsa-navy/10 bg-white"
+              >
+                <img src={img.src} alt={img.alt} width={img.width} height={img.height} loading="lazy" decoding="async" className="h-auto w-full" />
+              </a>
+              <figcaption className="mt-2 text-sm leading-relaxed text-gray-600">{img.caption}</figcaption>
+            </figure>
+          ))}
+        </div>
+      </section>
+
       {/* ── How it works ─────────────────────────────────────────── */}
       <section className="border-t border-wsa-navy/10 px-4 py-12 sm:px-6 lg:py-16">
         <div className="mx-auto max-w-6xl">
           <SectionHeading eyebrow="What do I need to do?">Taking the first step is simple</SectionHeading>
-          <ol className="mt-7 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {STEPS.map((s, i) => (
-              <li key={s.title} className="rounded-2xl border border-wsa-navy/10 bg-white p-5">
-                <span className="flex h-8 w-8 items-center justify-center rounded-full bg-wsa-navy text-sm font-semibold text-white">{i + 1}</span>
-                <h3 className="mt-3 text-lg font-semibold text-wsa-navy">{s.title}</h3>
-                <p className="mt-1.5 text-base leading-relaxed text-gray-700">{s.body}</p>
-              </li>
-            ))}
-          </ol>
+          {/* Tim Hunt's photographs, 22 November 2026, as his mock-up places
+              them: under steps 1, 2, 4 and 6, and the College beside step 7,
+              filling the rest of the last row. The list is display: contents
+              so the photograph shares its grid; role="list" keeps the steps
+              a list for screen readers in browsers that drop it. */}
+          <div className="mt-7 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            <ol role="list" className="contents">
+              {STEPS.map((s, i) => (
+                <li key={s.title} className="flex flex-col rounded-2xl border border-wsa-navy/10 bg-white p-5">
+                  <span className="flex h-8 w-8 items-center justify-center rounded-full bg-wsa-navy text-sm font-semibold text-white">{i + 1}</span>
+                  <h3 className="mt-3 text-lg font-semibold text-wsa-navy">{s.title}</h3>
+                  <p className="mt-1.5 text-base leading-relaxed text-gray-700">{s.body}</p>
+                  {s.image && (
+                    <img
+                      src={s.image.src}
+                      alt={s.image.alt}
+                      width={s.image.width}
+                      height={s.image.height}
+                      loading="lazy"
+                      decoding="async"
+                      className="mt-auto h-auto w-full rounded-xl object-cover pt-4"
+                    />
+                  )}
+                </li>
+              ))}
+            </ol>
+            <img
+              src={STEPS_PHOTO.src}
+              alt={STEPS_PHOTO.alt}
+              width={STEPS_PHOTO.width}
+              height={STEPS_PHOTO.height}
+              loading="lazy"
+              decoding="async"
+              className="h-full min-h-40 w-full rounded-2xl border border-wsa-navy/10 object-cover lg:col-span-2"
+            />
+          </div>
         </div>
       </section>
 
@@ -550,15 +606,22 @@ export default function SarkinFulaniFutureLeaders() {
             </p>
             <ul className="mt-5 space-y-2">
               {OPPORTUNITIES.map(o => (
-                <li key={o.value} className="flex items-start gap-2.5 text-base text-white/90">
+                <li key={o} className="flex items-start gap-2.5 text-base text-white/90">
                   <Users className="mt-0.5 h-5 w-5 shrink-0" style={{ color: GOLD }} aria-hidden />
-                  <span>{o.label}</span>
+                  <span>{o}</span>
                 </li>
               ))}
             </ul>
           </div>
           <div className="min-w-0 rounded-2xl border border-white/15 bg-white p-5 text-wsa-navy shadow-lg sm:p-6">
-            <ExpressInterestForm id="eoi" />
+            <h3 className="text-xl font-semibold text-wsa-navy">{EXPRESS_INTEREST.heading}</h3>
+            <p className="mt-1 text-sm leading-relaxed text-gray-600">{EXPRESS_INTEREST.supporting}</p>
+            <PipedriveFormEmbed embedUrl={EXPRESS_INTEREST_FORM_URL} className="mt-4" />
+            <p className="pt-3 text-xs leading-relaxed text-gray-500">{EXPRESS_INTEREST.noPromise}</p>
+            <p className="pt-2 text-xs leading-relaxed text-gray-500">
+              {EXPRESS_INTEREST.privacy} See our{" "}
+              <Link href="/privacy-policy" className="underline underline-offset-2 hover:text-wsa-navy">privacy policy</Link>.
+            </p>
           </div>
         </div>
       </section>
@@ -576,6 +639,10 @@ export default function SarkinFulaniFutureLeaders() {
 
       <section className="border-t border-wsa-navy/10 px-4 py-8 sm:px-6">
         <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-x-5 gap-y-2 text-sm text-gray-600">
+          {/* Tim Hunt, 20 November 2026: the scholarship competition link here. */}
+          <a href={FOOT_LINK.href} target="_blank" rel="noopener noreferrer" className="font-medium text-wsa-red underline underline-offset-2 hover:text-wsa-navy">
+            {FOOT_LINK.label}
+          </a>
           <Link href="/" className="underline underline-offset-2 hover:text-wsa-navy">World Student Advisors</Link>
           <Link href="/privacy-policy" className="underline underline-offset-2 hover:text-wsa-navy">Privacy policy</Link>
         </div>
