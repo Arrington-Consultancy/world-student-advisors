@@ -107,6 +107,9 @@ export const VALID_CLIENT_ROUTES: readonly string[] = [
   "/speak-to-claudia",
   // Pedro Bezerra in English and Portuguese, Tim Hunt, 22 November 2026.
   "/speak-to-pedro",
+  // Where Pedro's Pipedrive form sends a family after they submit it,
+  // noindex and unlinked like the other thank-you pages.
+  "/speak-to-pedro/thank-you",
   "/speak-to-glenice",
   "/speak-to-glenice/thank-you",
   "/speak-to-manet",

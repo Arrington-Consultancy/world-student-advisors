@@ -39,6 +39,8 @@ describe("which pages show the logo alone", () => {
       "/speak-to-glenice/thank-you",
       "/speak-to-manet",
       "/speak-to-manet/thank-you",
+      "/speak-to-pedro",
+      "/speak-to-pedro/thank-you",
       "/sarkin-fulani-future-leaders",
     ]) {
       expect(isValidClientRoute(path), path).toBe(true);

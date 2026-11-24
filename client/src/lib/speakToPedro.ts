@@ -40,6 +40,16 @@
 
 export const PAGE_PATH = "/speak-to-pedro";
 
+/**
+ * Where Pedro's Pipedrive form can send a family once they have submitted
+ * it. Tim Hunt tested the form on 23 November 2026 and landed on Eldah's
+ * thank-you page ("This response from Pedro's form is my error in
+ * Pipedrive?"). The website sends nobody anywhere after a Pipedrive form:
+ * the redirect is set on the form in Pipedrive, and Pedro had no page of his
+ * own for it to point at. This is that page. Tim changes the redirect.
+ */
+export const THANK_YOU_PATH = "/speak-to-pedro/thank-you";
+
 /** Pedro's bilingual Pipedrive form, "Fale com o Pedro", as Tim supplied it. */
 export const PEDRO_FORM_URL =
   "https://webforms.pipedrive.com/f/ccRoBZeUNXEdCX5jkah4pkwpWOJPWPKi15KSGg9ztZODgnu2uyiKRVutGmpOXy8zmj";
@@ -102,6 +112,8 @@ export interface PedroCopy {
   eldah: { heading: string; role: string; body: string; photoAlt: string };
   form: { heading: string; supporting: string; privacy: string };
   contactLabel: string;
+  /** The page a family sees after sending the form. Wording follows the other thank-you pages. */
+  thankYou: { headline: string; body: string; back: string };
 }
 
 export const COPY: Readonly<Record<Lang, PedroCopy>> = Object.freeze({
@@ -177,6 +189,11 @@ export const COPY: Readonly<Record<Lang, PedroCopy>> = Object.freeze({
         "Your details go to WSA’s student records system so that Pedro can contact you.",
     },
     contactLabel: "Call or email Pedro",
+    thankYou: {
+      headline: "Thank you. Your details are with Pedro.",
+      body: "Pedro will be in touch with you shortly.",
+      back: "Back to Pedro's page",
+    },
   },
   pt: {
     htmlLang: "pt-AO",
@@ -251,6 +268,11 @@ export const COPY: Readonly<Record<Lang, PedroCopy>> = Object.freeze({
         "Os seus dados ficam no sistema de registo de estudantes da WSA, para que o Pedro possa contactá-lo.",
     },
     contactLabel: "Telefone ou envie um email ao Pedro",
+    thankYou: {
+      headline: "Obrigado. Os seus dados estão com o Pedro.",
+      body: "O Pedro vai entrar em contacto consigo em breve.",
+      back: "Voltar à página do Pedro",
+    },
   },
 });
 
@@ -271,6 +293,7 @@ export function allRenderedCopy(): string {
         ...Object.values(c.eldah),
         ...Object.values(c.form),
         c.contactLabel,
+        ...Object.values(c.thankYou),
       ];
     })
     .join("\n");

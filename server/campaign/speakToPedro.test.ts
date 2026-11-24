@@ -8,9 +8,13 @@ import {
   PEDRO_FORM_URL,
   PODCAST,
   STORIES_PATHS,
+  THANK_YOU_PATH,
   allRenderedCopy,
 } from "../../client/src/lib/speakToPedro";
-import { LOGO_ONLY_HEADER_PAGES } from "../../client/src/lib/landingPageHeader";
+import {
+  LOGO_ONLY_HEADER_PAGES,
+  showsLogoOnlyHeader,
+} from "../../client/src/lib/landingPageHeader";
 import { LIBRARY_RESOURCES } from "../../shared/studentSupportLibrary";
 import { SUCCESS_STORY_PATHS } from "../../shared/successStories";
 import { isValidClientRoute } from "../../shared/routes";
@@ -138,5 +142,60 @@ describe("a real page", () => {
 
   it("shows the logo-only header, as the mock-up does", () => {
     expect(LOGO_ONLY_HEADER_PAGES).toContain(PAGE_PATH);
+  });
+});
+
+/**
+ * Tim Hunt, 23 November 2026: he tested Pedro's form and landed on Eldah's
+ * thank-you page. The redirect is set on the form in Pipedrive, and Pedro
+ * had no page of his own for it to point at.
+ */
+describe("Pedro's own thank-you page", () => {
+  const THANK_YOU = readFileSync(
+    "client/src/pages/SpeakToPedroThankYou.tsx",
+    "utf8"
+  );
+  const APP = readFileSync("client/src/App.tsx", "utf8");
+
+  it("is a real route under Pedro's page, private like the other thank-you pages", () => {
+    expect(THANK_YOU_PATH).toBe("/speak-to-pedro/thank-you");
+    expect(isValidClientRoute(THANK_YOU_PATH)).toBe(true);
+    expect(APP).toContain(
+      '<Route path={"/speak-to-pedro/thank-you"} component={SpeakToPedroThankYou} />'
+    );
+    expect(shouldNoindex(THANK_YOU_PATH)).toBe(true);
+    expect(ALL_PRERENDER_ROUTES).not.toContain(THANK_YOU_PATH);
+    expect(readFileSync("client/public/sitemap.xml", "utf8")).not.toContain(
+      THANK_YOU_PATH
+    );
+    expect(showsLogoOnlyHeader(THANK_YOU_PATH)).toBe(true);
+    expect(getSeoForPath(THANK_YOU_PATH).title).toContain("Pedro");
+  });
+
+  it("thanks the family in both languages and names Pedro, never Eldah", () => {
+    expect(COPY.en.thankYou.headline).toBe(
+      "Thank you. Your details are with Pedro."
+    );
+    expect(COPY.pt.thankYou.headline).toBe(
+      "Obrigado. Os seus dados estão com o Pedro."
+    );
+    for (const l of ["en", "pt"] as const) {
+      const text = Object.values(COPY[l].thankYou).join(" ");
+      expect(text).toContain("Pedro");
+      expect(text).not.toContain("Eldah");
+      expect(text).not.toMatch(/within \d+|24 hours|guarantee|garant/i);
+    }
+    expect(THANK_YOU).toContain('(["en", "pt"] as const).map');
+    expect(THANK_YOU).toContain("lang={c.htmlLang}");
+  });
+
+  it("captures nothing, and leads back to Pedro's page, the Angola stories and his own contact details", () => {
+    const code = THANK_YOU.replace(/\/\*[\s\S]*?\*\//g, " ");
+    expect(code).not.toMatch(/<form|<input|trpc\.|fetch\(/);
+    expect(code).toContain("href={PAGE_PATH}");
+    expect(code).toContain("href={STORIES_PATHS.angola}");
+    expect(code).toContain("href={PEDRO.phoneHref}");
+    expect(code).toContain("mailto:${PEDRO.email}");
+    expect(code).not.toMatch(/eldah/i);
   });
 });
