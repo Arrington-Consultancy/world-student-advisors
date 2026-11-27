@@ -53,6 +53,7 @@ import UKMastersStudy from "./pages/UKMastersStudy";
 import UKMastersNigeria from "./pages/UKMastersNigeria";
 import SpeakToJulietThankYou from "./pages/SpeakToJulietThankYou";
 import StudentSupportLibraryResource from "./pages/StudentSupportLibraryResource";
+import StudyInterviewPreparation from "./pages/StudyInterviewPreparation";
 import NigeriaPostgraduate from "./pages/NigeriaPostgraduate";
 import SpeakToJuliet from "./pages/SpeakToJuliet";
 import SarkinFulaniFutureLeaders from "./pages/SarkinFulaniFutureLeaders";
@@ -95,6 +96,9 @@ function Router() {
       <Route path={"/our-team"} component={OurTeam} />
       <Route path={"/counsellors"} component={OurTeam} />
       <Route path={"/student-support-library"} component={StudentSupportLibrary} />
+      {/* Tim Hunt's interview questionnaires, 18 November 2026. Listed before
+          the resource pattern below, which would otherwise take this slug. */}
+      <Route path={"/student-support-library/study-interview-preparation"} component={StudyInterviewPreparation} />
       {/* One permanent page per library resource. The registry lists every
           slug (shared/routes.ts) and routes-sync.test.ts expands this pattern. */}
       <Route path={"/student-support-library/:slug"} component={StudentSupportLibraryResource} />

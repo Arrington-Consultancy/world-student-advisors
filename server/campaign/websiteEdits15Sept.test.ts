@@ -153,7 +153,10 @@ describe("Tim's presentation changes of 15 September 2026", () => {
   });
 
   it("does not disturb the rest of the main menu", () => {
-    for (const href of ["/about", "/study-options", "/partners", "/our-team", "/events", "/student-support-library", "/portal/interview-coach"]) {
+    // /portal/interview-coach was in this list until 23 November 2026, when
+    // Tim asked for IRC to come out of the menu and for Mock Interviews to
+    // have its own item (server/campaign/studyInterviewPreparation.test.ts).
+    for (const href of ["/about", "/study-options", "/partners", "/our-team", "/events", "/student-support-library", "/student-support-library/study-interview-preparation"]) {
       expect(header, href).toContain(`"${href}"`);
     }
   });

@@ -40,8 +40,9 @@ export default function StudentSupportLibraryResource() {
       <section className="pt-32 lg:pt-40 pb-12 lg:pb-16">
         <div className="container max-w-4xl">
           <nav aria-label="Breadcrumb" className="text-sm text-muted-foreground mb-8">
+            {/* Tim Hunt renamed the library "Podcasts" on 23 November 2026. */}
             <Link href={LIBRARY_PATH} className="hover:text-wsa-red transition-colors">
-              Student Support Library
+              WSA Podcasts
             </Link>
             <span className="mx-2 text-wsa-navy/30">/</span>
             <Link href={`${LIBRARY_PATH}#section-${section.number}`} className="hover:text-wsa-red transition-colors">
@@ -122,7 +123,7 @@ export default function StudentSupportLibraryResource() {
               className="inline-flex items-center gap-2 text-wsa-navy font-semibold hover:text-wsa-red transition-colors"
             >
               <ArrowLeft size={16} aria-hidden="true" />
-              Back to the Student Support Library
+              Back to WSA Podcasts
             </Link>
             <Link href={`${LIBRARY_PATH}?q=`} className="text-sm text-muted-foreground hover:text-wsa-red transition-colors">
               Search all {section.number === 1 ? "the" : "the"} podcasts and guides

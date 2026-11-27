@@ -70,10 +70,18 @@ export const SEO_MAP: Record<string, SeoEntry> = {
     description:
       "Meet the people behind WorldStudentAdvisors: British Council UK knowledge-trained counsellors and the wider team who support students from first enquiry through application, visa preparation and enrolment.",
   },
+  // Tim Hunt, 23 November 2026: "Podcasts" and "Mock Interviews", two items
+  // in the menu, in place of "Student Support Library". The addresses are
+  // unchanged.
   "/student-support-library": {
-    title: "Student Support Library | World Student Advisors",
+    title: "WSA Podcasts | World Student Advisors",
     description:
-      "Free videos and guides on UK student visas, university applications, interviews, and studying abroad, organised by stage of your journey, from WorldStudentAdvisors.",
+      "Free WSA podcasts and episode summaries on choosing a course, applying to university, preparing for interviews and visas, and getting ready to travel. No sign-up needed.",
+  },
+  "/student-support-library/study-interview-preparation": {
+    title: "Mock Interviews | World Student Advisors",
+    description:
+      "Download a Pre-Mock Interview Questionnaire for your course, scholarship or visa interview, in the UK, Australia, Canada, Cyprus, Germany, Hungary or the USA, and work through it with your WSA counsellor.",
   },
   "/staff-portal": {
     title: "Staff Portal | World Student Advisors",
@@ -324,7 +332,7 @@ function getLibraryResourceSeo(path: string): SeoEntry | undefined {
   const resource = getResourceBySlug(path.slice(LIBRARY_PATH.length + 1));
   if (!resource) return undefined;
   return {
-    title: `${resource.title} | Student Support Library | World Student Advisors`,
+    title: `${resource.title} | WSA Podcasts | World Student Advisors`,
     description: `${resource.code}: ${resource.description} Watch or listen, and download the WSA summary.`,
   };
 }
