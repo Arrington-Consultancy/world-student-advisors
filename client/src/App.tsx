@@ -66,6 +66,8 @@ import SpeakToEldahThankYou from "./pages/SpeakToEldahThankYou";
 import SpeakToClaudia from "./pages/SpeakToClaudia";
 import SpeakToPedro from "./pages/SpeakToPedro";
 import SpeakToPedroThankYou from "./pages/SpeakToPedroThankYou";
+import SpeakToLamango from "./pages/SpeakToLamango";
+import SpeakToLamangoThankYou from "./pages/SpeakToLamangoThankYou";
 import SpeakToGlenice from "./pages/SpeakToGlenice";
 import SpeakToGleniceThankYou from "./pages/SpeakToGleniceThankYou";
 import SpeakToManet from "./pages/SpeakToManet";
@@ -158,6 +160,9 @@ function Router() {
       {/* Pedro Bezerra, bilingual, Tim Hunt's mock-up of 22 November 2026. */}
       <Route path={"/speak-to-pedro"} component={SpeakToPedro} />
       <Route path={"/speak-to-pedro/thank-you"} component={SpeakToPedroThankYou} />
+      {/* Lamango, Cameroon, in French and English. A draft: see client/src/lib/speakToLamango.ts. */}
+      <Route path={"/speak-to-lamango"} component={SpeakToLamango} />
+      <Route path={"/speak-to-lamango/thank-you"} component={SpeakToLamangoThankYou} />
       <Route path={"/speak-to-glenice"} component={SpeakToGlenice} />
       <Route path={"/speak-to-glenice/thank-you"} component={SpeakToGleniceThankYou} />
       <Route path={"/speak-to-manet"} component={SpeakToManet} />

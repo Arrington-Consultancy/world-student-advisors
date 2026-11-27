@@ -33,6 +33,8 @@ export const LOGO_ONLY_HEADER_PAGES = Object.freeze([
   // Tim Hunt's mock-up of 22 November 2026: the logo and the language
   // switch, no menu.
   "/speak-to-pedro",
+  // Laid out as Pedro's page is (Tom Arrington, 27 November 2026).
+  "/speak-to-lamango",
 ] as const);
 
 export function showsLogoOnlyHeader(location: string): boolean {
