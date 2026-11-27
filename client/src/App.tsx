@@ -64,6 +64,8 @@ import SpeakToGladysThankYou from "./pages/SpeakToGladysThankYou";
 import SpeakToEldah from "./pages/SpeakToEldah";
 import SpeakToEldahThankYou from "./pages/SpeakToEldahThankYou";
 import SpeakToClaudia from "./pages/SpeakToClaudia";
+import SpeakToLamango from "./pages/SpeakToLamango";
+import SpeakToLamangoThankYou from "./pages/SpeakToLamangoThankYou";
 import SpeakToGlenice from "./pages/SpeakToGlenice";
 import SpeakToGleniceThankYou from "./pages/SpeakToGleniceThankYou";
 import SpeakToManet from "./pages/SpeakToManet";
@@ -153,6 +155,9 @@ function Router() {
       <Route path={"/speak-to-eldah"} component={SpeakToEldah} />
       <Route path={"/speak-to-eldah/thank-you"} component={SpeakToEldahThankYou} />
       <Route path={"/speak-to-claudia"} component={SpeakToClaudia} />
+      {/* Lamango, Cameroon, in French and English. A draft: see client/src/lib/speakToLamango.ts. */}
+      <Route path={"/speak-to-lamango"} component={SpeakToLamango} />
+      <Route path={"/speak-to-lamango/thank-you"} component={SpeakToLamangoThankYou} />
       <Route path={"/speak-to-glenice"} component={SpeakToGlenice} />
       <Route path={"/speak-to-glenice/thank-you"} component={SpeakToGleniceThankYou} />
       <Route path={"/speak-to-manet"} component={SpeakToManet} />

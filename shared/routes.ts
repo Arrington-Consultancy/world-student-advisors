@@ -109,6 +109,11 @@ export const VALID_CLIENT_ROUTES: readonly string[] = [
   "/speak-to-eldah",
   "/speak-to-eldah/thank-you",
   "/speak-to-claudia",
+  // Lamango, Cameroon, in French and English, 27 November 2026. A draft
+  // until Tim Hunt supplies her content: noindex and unlinked, with its
+  // thank-you page.
+  "/speak-to-lamango",
+  "/speak-to-lamango/thank-you",
   "/speak-to-glenice",
   "/speak-to-glenice/thank-you",
   "/speak-to-manet",

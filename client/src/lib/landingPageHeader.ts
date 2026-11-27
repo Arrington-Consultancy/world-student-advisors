@@ -30,6 +30,8 @@ export const LOGO_ONLY_HEADER_PAGES = Object.freeze([
   "/speak-to-glenice",
   "/speak-to-manet",
   "/sarkin-fulani-future-leaders",
+  // Logo and language switch, no menu (Tom Arrington, 27 November 2026).
+  "/speak-to-lamango",
 ] as const);
 
 export function showsLogoOnlyHeader(location: string): boolean {
