@@ -36,6 +36,10 @@ export const VALID_CLIENT_ROUTES: readonly string[] = [
   // route so an in-app link that still points at it renders rather than 404s.
   "/counsellors",
   "/student-support-library",
+  // Tim Hunt's Pre-Mock Interview Questionnaires, 18 November 2026: a page
+  // of its own inside the library, not a library resource (it has no
+  // podcast or summary), so it is a literal route ahead of the pattern.
+  "/student-support-library/study-interview-preparation",
   "/staff-portal",
   "/learning-hub/cv-university-application",
   "/training-workshops",

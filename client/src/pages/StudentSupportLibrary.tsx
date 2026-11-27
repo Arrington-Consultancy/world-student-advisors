@@ -1,6 +1,18 @@
 import { useMemo, useState } from "react";
-import { ArrowRight, Download, Eye, PlayCircle, Search, X } from "lucide-react";
+import {
+  ArrowRight,
+  Download,
+  Eye,
+  FileCheck2,
+  GraduationCap,
+  Headphones,
+  Plane,
+  PlayCircle,
+  Search,
+  X,
+} from "lucide-react";
 import { Link, useLocation, useSearch } from "wouter";
+import PodcastsMockInterviewsLinks from "@/components/PodcastsMockInterviewsLinks";
 import ScrollReveal from "@/components/ScrollReveal";
 import VideoModal from "@/components/VideoModal";
 import {
@@ -15,10 +27,21 @@ import {
   type LibraryResource,
   type LibrarySection,
 } from "@/lib/studentSupportLibrary";
+import { LIBRARY_CALLOUT, PAGE_PATH as INTERVIEW_PREPARATION_PATH } from "@/lib/studyInterviewPreparation";
+import { PODCASTS_PAGE, type TopicIcon } from "@/lib/podcastsPage";
 import { getYouTubeVideoId } from "@/lib/youtube";
 
+const TOPIC_ICONS: Record<TopicIcon, typeof Headphones> = {
+  help: Headphones,
+  study: GraduationCap,
+  applications: FileCheck2,
+  travel: Plane,
+};
+
 /**
- * Student Support Library: Tim Hunt's four-section structure of
+ * WSA Podcasts (the Student Support Library, renamed and redesigned to Tim
+ * Hunt's brief of 23 November 2026; copy in client/src/lib/podcastsPage.ts).
+ * Underneath it is still Tim Hunt's four-section structure of
  * 26 September 2026 (shared/studentSupportLibrary.ts). Every resource
  * appears once, in its one home section, and has its own permanent page at
  * /student-support-library/<slug>. Search runs over the same records and
@@ -56,69 +79,87 @@ export default function StudentSupportLibrary() {
 
   return (
     <div className="min-h-screen">
-      {/* Hero and search */}
-      <section className="pt-32 lg:pt-40 pb-12 lg:pb-16">
-        <div className="container">
-          <ScrollReveal>
-            <div className="max-w-3xl">
-              <p className="text-sm font-medium tracking-[0.2em] uppercase text-wsa-red mb-5">Podcasts • Guides • Student Support</p>
-              <h1 className="text-4xl md:text-5xl lg:text-[3.5rem] font-semibold text-wsa-navy leading-[1.1] mb-8">
-                Your Student Support Library
-              </h1>
-              <p className="text-xl text-muted-foreground leading-relaxed max-w-2xl">
-                {LIBRARY_RESOURCES.length} free podcasts and practical guides from WSA's student counsellors, in four sections that follow your journey: how WSA helps, choosing where and what to study, applications, interviews and visas, and preparing to travel. No sign up. Just straightforward advice when you need it.
-              </p>
-            </div>
-          </ScrollReveal>
+      {/* Tim Hunt's "WSA Podcasts" design, 23 November 2026: hero, search,
+          four topic cards and the way to Mock Interviews. */}
+      <section className="pt-28 lg:pt-36 pb-10 lg:pb-12">
+        <div className="container max-w-6xl">
+          <PodcastsMockInterviewsLinks current={LIBRARY_PATH} className="mb-5" />
 
-          <ScrollReveal delay={80}>
-            <div className="mt-10 max-w-2xl">
-              <label htmlFor="library-search" className="block text-sm font-semibold text-wsa-navy mb-2">
-                Search the library
-              </label>
-              <div className="relative">
-                <Search size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-wsa-navy/40" aria-hidden="true" />
-                <input
-                  id="library-search"
-                  type="search"
-                  value={query}
-                  onChange={e => setQuery(e.target.value)}
-                  placeholder="Try bank statement, CAS Shield, IHS, scholarship, Canada, Cyprus..."
-                  className="w-full pl-11 pr-11 py-4 border-2 border-wsa-navy/15 text-wsa-navy text-base placeholder:text-wsa-navy/40 focus:outline-none focus:border-wsa-red transition-colors"
-                />
-                {isSearching && (
-                  <button
-                    type="button"
-                    onClick={() => setQuery("")}
-                    aria-label="Clear search"
-                    className="absolute right-3 top-1/2 -translate-y-1/2 p-1.5 text-wsa-navy/40 hover:text-wsa-red transition-colors"
-                  >
-                    <X size={16} aria-hidden="true" />
-                  </button>
-                )}
-              </div>
-              <p className="mt-2 text-xs text-muted-foreground">
-                Searches titles, descriptions and the terms inside each summary. Every podcast has its own permanent link you can share.
-              </p>
+          <div className="grid overflow-hidden rounded-2xl bg-wsa-navy text-white lg:grid-cols-[1fr_1fr]">
+            <div className="flex flex-col justify-center px-6 py-10 sm:px-10 lg:py-12">
+              <h1 className="text-4xl font-bold leading-[1.05] sm:text-5xl lg:text-6xl">{PODCASTS_PAGE.heading}</h1>
+              <p className="mt-5 text-lg font-semibold leading-relaxed text-white/95 sm:text-xl">{PODCASTS_PAGE.lead}</p>
+              <p className="mt-3 text-base text-white/85">{PODCASTS_PAGE.sub}</p>
             </div>
-          </ScrollReveal>
+            <img
+              src={PODCASTS_PAGE.image}
+              alt={PODCASTS_PAGE.imageAlt}
+              width={PODCASTS_PAGE.imageWidth}
+              height={PODCASTS_PAGE.imageHeight}
+              decoding="async"
+              className="h-56 w-full object-cover sm:h-72 lg:h-full"
+            />
+          </div>
+
+          <div className="mt-6">
+            <div className="relative flex items-center rounded-xl border-2 border-wsa-navy/15 bg-white focus-within:border-wsa-red transition-colors">
+              <label htmlFor="library-search" className="hidden shrink-0 border-r border-wsa-navy/15 px-5 py-1 text-lg font-bold text-wsa-navy sm:block">
+                {PODCASTS_PAGE.searchLabel}
+              </label>
+              <Search size={18} className="ml-4 shrink-0 text-wsa-navy/40 sm:hidden" aria-hidden="true" />
+              <input
+                id="library-search"
+                type="search"
+                aria-label={PODCASTS_PAGE.searchLabel}
+                value={query}
+                onChange={e => setQuery(e.target.value)}
+                placeholder={PODCASTS_PAGE.searchPlaceholder}
+                className="w-full min-w-0 bg-transparent px-4 py-4 pr-11 text-base text-wsa-navy placeholder:text-wsa-navy/45 focus:outline-none"
+              />
+              {isSearching && (
+                <button
+                  type="button"
+                  onClick={() => setQuery("")}
+                  aria-label="Clear search"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 p-1.5 text-wsa-navy/40 hover:text-wsa-red transition-colors"
+                >
+                  <X size={16} aria-hidden="true" />
+                </button>
+              )}
+            </div>
+            <p className="mt-2 text-xs text-muted-foreground">
+              Searches titles, descriptions and the terms inside each summary. Every podcast has its own permanent link you can share.
+            </p>
+          </div>
 
           {!isSearching && (
-            <ScrollReveal delay={120}>
-              <nav aria-label="Jump to section" className="flex flex-wrap gap-2 mt-8">
-                {LIBRARY_SECTIONS.map(section => (
+            <nav aria-label="Podcast topics" className="mt-6 grid grid-cols-2 gap-3 lg:grid-cols-4">
+              {PODCASTS_PAGE.topics.map(topic => {
+                const Icon = TOPIC_ICONS[topic.icon];
+                const section = LIBRARY_SECTIONS.find(s => s.number === topic.section)!;
+                return (
                   <a
-                    key={section.id}
-                    href={`#section-${section.number}`}
-                    className="px-3 py-2 text-sm font-medium text-wsa-navy/80 border border-border hover:border-wsa-red hover:text-wsa-red transition-colors"
+                    key={topic.section}
+                    href={`#section-${topic.section}`}
+                    className="flex flex-col items-center justify-center gap-3 rounded-xl border border-wsa-navy/15 bg-white px-3 py-6 text-center transition-colors hover:border-wsa-red focus-visible:border-wsa-red"
                   >
-                    {section.number}. {section.title}
-                    <span className="ml-1.5 text-wsa-navy/40">({resourcesInSection(section.id).length})</span>
+                    <Icon className="h-10 w-10 text-wsa-red" strokeWidth={1.6} aria-hidden />
+                    <span className="text-base font-bold leading-snug text-wsa-navy sm:text-lg">{topic.label}</span>
+                    <span className="text-xs text-wsa-navy/50">{resourcesInSection(section.id).length} podcasts</span>
                   </a>
-                ))}
-              </nav>
-            </ScrollReveal>
+                );
+              })}
+            </nav>
           )}
+
+          {/* Tim: "Please add a clear link back to the Mock Interviews page." */}
+          <p className="mt-6 flex flex-wrap items-center gap-x-3 gap-y-2 rounded-xl bg-red-50 px-5 py-4 text-base font-semibold text-wsa-navy">
+            {PODCASTS_PAGE.mockInterviews.text}
+            <Link href={INTERVIEW_PREPARATION_PATH} className="inline-flex items-center text-wsa-red underline underline-offset-2 hover:text-wsa-navy">
+              {PODCASTS_PAGE.mockInterviews.link}
+              <ArrowRight className="ml-1.5" size={16} aria-hidden />
+            </Link>
+          </p>
         </div>
       </section>
 
@@ -147,6 +188,24 @@ export default function StudentSupportLibrary() {
               </ScrollReveal>
             ))
           )}
+        </div>
+      </section>
+
+      {/* Tim Hunt's interview questionnaires, 18 November 2026 */}
+      <section className="pb-8">
+        <div className="container max-w-4xl">
+          <div className="border border-border/40 bg-wsa-navy p-8 lg:p-10">
+            <p className="text-sm font-medium tracking-[0.2em] uppercase text-white/70 mb-4">{LIBRARY_CALLOUT.eyebrow}</p>
+            <h2 className="text-2xl md:text-3xl font-semibold text-white leading-[1.2] mb-4">{LIBRARY_CALLOUT.heading}</h2>
+            <p className="text-[15px] text-white/80 leading-relaxed mb-6 max-w-2xl">{LIBRARY_CALLOUT.text}</p>
+            <Link
+              href={INTERVIEW_PREPARATION_PATH}
+              className="inline-flex items-center px-6 py-3 bg-wsa-red text-white font-semibold transition-colors duration-200 hover:bg-wsa-red/90"
+            >
+              {LIBRARY_CALLOUT.link}
+              <ArrowRight className="ml-2" size={16} />
+            </Link>
+          </div>
         </div>
       </section>
 

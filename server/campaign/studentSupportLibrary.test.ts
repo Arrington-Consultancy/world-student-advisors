@@ -201,10 +201,14 @@ describe("permanent links", () => {
       expect(shouldNoindex(path), path).toBe(false);
       expect(getCanonicalPath(path), path).toBe(path);
       const seo = getSeoForPath(path);
-      expect(seo.title, path).toBe(`${r.title} | Student Support Library | World Student Advisors`);
+      // Renamed "WSA Podcasts" by Tim Hunt, 23 November 2026.
+      expect(seo.title, path).toBe(`${r.title} | WSA Podcasts | World Student Advisors`);
       expect(seo.description, path).toContain(r.code);
     }
-    expect(SITEMAP.match(/student-support-library\//g)?.length).toBe(38);
+    // 38 resources, plus Tim Hunt's study interview preparation page of
+    // 18 November 2026, which lives in the library but is not a resource.
+    expect(SITEMAP.match(/student-support-library\//g)?.length).toBe(39);
+    expect(SITEMAP).toContain("/student-support-library/study-interview-preparation</loc>");
   });
 
   it("the code form of each link redirects permanently to the slug form", () => {
@@ -274,7 +278,7 @@ describe("the pages", () => {
     expect(RESOURCE_PAGE).toContain("View Summary");
     expect(RESOURCE_PAGE).toContain("Download Summary");
     expect(RESOURCE_PAGE).toContain("Copy link");
-    expect(RESOURCE_PAGE).toContain("Back to the Student Support Library");
+    expect(RESOURCE_PAGE).toContain("Back to WSA Podcasts");
     expect(RESOURCE_PAGE).toContain("More in {section.number}. {section.title}");
     expect(RESOURCE_PAGE).toContain("LIBRARY_DISCLAIMER");
     expect(RESOURCE_PAGE).not.toMatch(/<form|<input|<textarea|trpc|fetch\(/);

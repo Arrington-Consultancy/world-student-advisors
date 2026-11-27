@@ -40,6 +40,7 @@ export const PRERENDER_ROUTES: readonly string[] = [
   "/online-learning",
   "/our-team",
   "/student-support-library",
+  "/student-support-library/study-interview-preparation",
   "/learning-hub/cv-university-application",
   "/training-workshops",
   "/events",

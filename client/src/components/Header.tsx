@@ -1,13 +1,8 @@
 import { useState, useEffect } from "react";
 import { Link, useLocation } from "wouter";
 import { Menu, X } from "lucide-react";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { showsLogoOnlyHeader } from "@/lib/landingPageHeader";
 
-// `navLabel` overrides `label` for the compact desktop bar only — the full
-// name is what's shown everywhere else (mobile menu, page headings).
-// Interview Readiness Coach doesn't fit the desktop bar at full length, so
-// it uses the IRC abbreviation there per the brief.
 const navItems = [
   { label: "About", href: "/about" },
   { label: "Study Options", href: "/study-options" },
@@ -18,8 +13,17 @@ const navItems = [
   // they do want. It lives in the footer utility bar instead, which is
   // where a site puts a staff login. Tim Hunt, 15 September 2026.
   { label: "Events", href: "/events" },
-  { label: "Student Support Library", href: "/student-support-library" },
-  { label: "Interview Readiness Coach", navLabel: "IRC", href: "/portal/interview-coach" },
+  // Tim Hunt, 23 November 2026. "Student Support Library" did not say what
+  // it was, so it became "Podcasts & Mock Interviews" with the two pages
+  // underneath. Later the same day, in his feedback on that preview: "I
+  // think IRC not required and can be removed, and we have two options
+  // PODCASTS and MOCK INTERVIEWS". So the menu names the two pages plainly
+  // and the Interview Readiness Coach is no longer in it. The coach is
+  // still reached from the home page, the Podcasts page, the Student Portal
+  // and the visa and CV pages. The addresses stay as they were, so no link
+  // already sent to a student breaks.
+  { label: "Podcasts", href: "/student-support-library" },
+  { label: "Mock Interviews", href: "/student-support-library/study-interview-preparation" },
 ];
 
 export default function Header() {
@@ -83,24 +87,6 @@ export default function Header() {
                   ? "text-white/95 hover:text-white font-bold [text-shadow:0_1px_4px_rgba(0,0,0,0.6),0_0px_2px_rgba(0,0,0,0.3)]"
                   : "text-wsa-navy/70 hover:text-wsa-navy"
               } ${location === item.href ? "!text-wsa-red" : ""}`;
-
-              // An abbreviated navLabel (currently just IRC) needs an accessible
-              // name beyond the abbreviation itself, plus a sighted hover/focus
-              // hint — via aria-label and the existing Radix tooltip, not by
-              // adding visible characters that would reopen the width problem
-              // this abbreviation exists to avoid.
-              if (item.navLabel) {
-                return (
-                  <Tooltip key={item.href}>
-                    <TooltipTrigger asChild>
-                      <Link href={item.href} aria-label={item.label} className={linkClassName}>
-                        {item.navLabel}
-                      </Link>
-                    </TooltipTrigger>
-                    <TooltipContent side="bottom">{item.label}</TooltipContent>
-                  </Tooltip>
-                );
-              }
 
               return (
                 <Link key={item.href} href={item.href} className={linkClassName}>
