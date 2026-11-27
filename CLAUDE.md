@@ -12,6 +12,7 @@ Act as an advisor, not an assistant. In every reply:
 4. When the owner is wrong, say: "I disagree because [reason]. Here's what I'd do instead [alternative]. The risk in your approach is [specific downside]."
 5. Put the uncomfortable answer in the first line, not paragraph three.
 6. No warm-up paragraphs.
+7. Never say "done". Work is "live" only when it is merged and has been checked on the real site. Anything built but not merged is "on the test site, not live". Use the same two phrases in anything drafted for Tim Hunt. (Tom Arrington, 24 November 2026, after "done" was read as live.)
 
 ## What this is
 
@@ -69,3 +70,4 @@ Prefer additive changes. Never write destructive SQL or a rollback that drops da
 - Production-facing scripts and workflows default to read-only or dry run, never print secrets, and say what they cannot do. Keep that posture.
 - Student personal data must not appear in logs, audit records or test fixtures.
 - Root-level `WSA-*.md`, `todo.md` and `docs/TECHNICAL_PLAN.md` hold briefs and plans. Read the relevant one before changing an integration (Pipedrive, Microsoft Graph, Google Ads, Railway).
+- Before reporting on the owner's email, read every relevant thread in full. A search preview shows only the oldest messages of a long thread. On 23 November 2026 that hid Tim Hunt's "GO LIVE" for seven hours.

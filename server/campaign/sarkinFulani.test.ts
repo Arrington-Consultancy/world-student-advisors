@@ -62,13 +62,16 @@ describe("publication state: published, held together", () => {
     expect(SEO_MAP[PAGE_PATH]?.description).toContain("Arewa");
   });
 
-  it("is published (23 November 2026): indexable, in the sitemap, prerendered, banner off", () => {
-    // The four move together. To take the page down again, set
-    // DRAFT.isDraft and reverse the other three in the same change.
+  it("is up at its address without the banner, and kept from search engines until the King and Brooke House approve (24 November 2026)", () => {
+    // Tim sent the live address to both for approval on 24 November and
+    // promised His Royal Highness the page would not be promoted before
+    // then. Up and prerendered so they can read it; noindex and out of the
+    // sitemap so nobody finds it by searching. When both have approved, take
+    // it off NOINDEX_PATHS and restore the sitemap entry in one change.
     expect(DRAFT.isDraft).toBe(false);
-    expect(NOINDEX_PATHS.has(PAGE_PATH)).toBe(false);
-    expect(shouldNoindex(PAGE_PATH)).toBe(false);
-    expect(read("client/public/sitemap.xml")).toContain(`<loc>https://www.worldstudentadvisors.com${PAGE_PATH}</loc>`);
+    expect(NOINDEX_PATHS.has(PAGE_PATH)).toBe(true);
+    expect(shouldNoindex(PAGE_PATH)).toBe(true);
+    expect(read("client/public/sitemap.xml")).not.toContain(PAGE_PATH);
     expect(ALL_PRERENDER_ROUTES).toContain(PAGE_PATH);
     // The banner stays in the page behind the flag, so a return to draft
     // needs no page edit.

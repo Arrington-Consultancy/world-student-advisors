@@ -82,6 +82,15 @@ export const PAGE_PATH = "/sarkin-fulani-future-leaders";
  * the page's form not be used until he said so, told Tom Arrington on 23
  * November that he wanted the page out in time for the January intake. The
  * label and line below are kept for the record and are no longer shown.
+ *
+ * NOT YET PROMOTED (24 November 2026). On 24 November Tim sent the live
+ * address to Brooke House College and to His Royal Highness for their
+ * approval, and told His Royal Highness that WSA "will await Your Majesty's
+ * approval before promoting the page". So the page stays up at its address,
+ * without the review banner, for them to read, and search engines are kept
+ * away from it: it is noindex and out of the sitemap (shared/seo.ts,
+ * NOINDEX_PATHS, and client/public/sitemap.xml). When both have approved,
+ * take it off NOINDEX_PATHS and put the sitemap entry back in one change.
  */
 export const DRAFT = Object.freeze({
   isDraft: false,
