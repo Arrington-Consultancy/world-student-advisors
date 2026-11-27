@@ -65,6 +65,7 @@ export const PRERENDER_ROUTES: readonly string[] = [
   "/speak-to-gladys",
   "/speak-to-eldah",
   "/speak-to-claudia",
+  "/speak-to-pedro",
   "/speak-to-glenice",
   "/speak-to-manet",
   "/sarkin-fulani-future-leaders",

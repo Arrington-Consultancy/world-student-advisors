@@ -64,6 +64,8 @@ import SpeakToGladysThankYou from "./pages/SpeakToGladysThankYou";
 import SpeakToEldah from "./pages/SpeakToEldah";
 import SpeakToEldahThankYou from "./pages/SpeakToEldahThankYou";
 import SpeakToClaudia from "./pages/SpeakToClaudia";
+import SpeakToPedro from "./pages/SpeakToPedro";
+import SpeakToPedroThankYou from "./pages/SpeakToPedroThankYou";
 import SpeakToGlenice from "./pages/SpeakToGlenice";
 import SpeakToGleniceThankYou from "./pages/SpeakToGleniceThankYou";
 import SpeakToManet from "./pages/SpeakToManet";
@@ -153,6 +155,9 @@ function Router() {
       <Route path={"/speak-to-eldah"} component={SpeakToEldah} />
       <Route path={"/speak-to-eldah/thank-you"} component={SpeakToEldahThankYou} />
       <Route path={"/speak-to-claudia"} component={SpeakToClaudia} />
+      {/* Pedro Bezerra, bilingual, Tim Hunt's mock-up of 22 November 2026. */}
+      <Route path={"/speak-to-pedro"} component={SpeakToPedro} />
+      <Route path={"/speak-to-pedro/thank-you"} component={SpeakToPedroThankYou} />
       <Route path={"/speak-to-glenice"} component={SpeakToGlenice} />
       <Route path={"/speak-to-glenice/thank-you"} component={SpeakToGleniceThankYou} />
       <Route path={"/speak-to-manet"} component={SpeakToManet} />

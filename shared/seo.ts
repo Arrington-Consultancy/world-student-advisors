@@ -214,6 +214,11 @@ export const SEO_MAP: Record<string, SeoEntry> = {
     description:
       "Eldah Therone is a Team Leader and Senior Student Counsellor in WSA's UK Head Office team. Message her on WhatsApp for free help choosing a course and destination, preparing your applications and planning your next steps.",
   },
+  "/speak-to-pedro": {
+    title: "Speak to Pedro | Fale com o Pedro | World Student Advisors Angola",
+    description:
+      "Pedro Bezerra, WSA's Director for Portuguese-speaking Countries, gives free advice on studying abroad in English and Portuguese. Fale com o Pedro sobre estudar no estrangeiro.",
+  },
   "/speak-to-claudia": {
     title: "Speak to Claudia about studying abroad | World Student Advisors",
     description:
@@ -232,6 +237,10 @@ export const SEO_MAP: Record<string, SeoEntry> = {
     title: "Speak to Manet, your WSA Student Counsellor | World Student Advisors",
     description:
       "Manet Khamayo is a Student Counsellor in WSA's UK Head Office team, specialising in study destinations beyond the UK and online learning. Message her on WhatsApp for free help choosing a course and destination and preparing your applications.",
+  },
+  "/speak-to-pedro/thank-you": {
+    title: "Thank you, your details are with Pedro | Obrigado | World Student Advisors",
+    description: "Thank you for sending your details. Pedro will be in touch with you shortly. Obrigado. O Pedro vai entrar em contacto consigo em breve.",
   },
   "/speak-to-manet/thank-you": {
     title: "Thank you, your details are with Manet | World Student Advisors",
@@ -312,7 +321,7 @@ export const NOINDEX_PATH_PREFIXES = ["/portal", "/staff-portal"];
 // supplied the finished content, form and photographs together.
 // /speak-to-gladys-thank-you is the same for Tim's Ghana form (24 October
 // 2026); /speak-to-gladys is published from the start, as Madalitso's was.
-export const NOINDEX_PATHS = new Set(["/404", "/speak-to-juliet/thank-you", "/sarkin-fulani-future-leaders", "/speak-to-madalitso/thank-you", "/speak-to-gladys-thank-you", "/speak-to-eldah/thank-you", "/contact/thank-you", "/speak-to-glenice/thank-you", "/speak-to-manet/thank-you"]);
+export const NOINDEX_PATHS = new Set(["/404", "/speak-to-juliet/thank-you", "/sarkin-fulani-future-leaders", "/speak-to-madalitso/thank-you", "/speak-to-gladys-thank-you", "/speak-to-eldah/thank-you", "/contact/thank-you", "/speak-to-glenice/thank-you", "/speak-to-manet/thank-you", "/speak-to-pedro/thank-you"]);
 
 export function getCanonicalPath(path: string): string {
   return CANONICAL_PATHS[path] ?? path;
