@@ -3,10 +3,15 @@ import { existsSync, readFileSync } from "fs";
 import {
   CAMEROON_FLAG_SRC,
   COPY,
+  DEFAULT_LANG,
   LAMANGO,
   LAMANGO_FORM_URL,
   LANGS,
+  MANET_PHOTO,
+  MAP,
   PAGE_PATH,
+  PORTRAIT,
+  SUCCESS_STORIES_PATH,
   THANK_YOU_PATH,
   allRenderedCopy,
 } from "../../client/src/lib/speakToLamango";
@@ -16,12 +21,12 @@ import { ALL_PRERENDER_ROUTES } from "../../shared/prerenderRoutes";
 import { getSeoForPath, shouldNoindex } from "../../shared/seo";
 
 /**
- * Parlez à Lamango / Speak to Lamango, a first draft built on 27 November
- * 2026 from Tim Hunt's bilingual Pipedrive form and the details the Contact
- * page already publishes. What these hold: the form is his, exactly; French
- * comes first; her details match the Contact page; she has her own thank-you
- * page; and the page stays a draft, out of search, until Tim supplies her
- * content.
+ * World Student Advisors Cameroon, Lamango's page, rebuilt on 28 November
+ * 2026 to Tim Hunt's mock-up of that day. What these hold: the form is his,
+ * exactly; the wording, map and photographs are the ones in his mock-up;
+ * English is on the left and French on the right as he drew them, and a
+ * phone opens in French; her details match the Contact page; she has her
+ * own thank-you page; and the page stays out of search until Tim approves.
  */
 
 const PAGE = readFileSync("client/src/pages/SpeakToLamango.tsx", "utf8");
@@ -46,25 +51,45 @@ describe("Tim Hunt's form, in French and English", () => {
     expect(PAGE).toContain("embedUrl={LAMANGO_FORM_URL}");
   });
 
-  it("puts French first, as his form does, and opens in French on a phone", () => {
-    expect(LANGS).toEqual(["fr", "en"]);
-    expect(PAGE).toContain('useState<Lang>("fr")');
+  it("lays the languages out as his mock-up does, and opens in French on a phone", () => {
+    expect(LANGS).toEqual(["en", "fr"]);
+    expect(DEFAULT_LANG).toBe("fr");
+    expect(PAGE).toContain("useState<Lang>(DEFAULT_LANG)");
     expect(COPY.fr.htmlLang).toBe("fr-CM");
     expect(COPY.en.htmlLang).toBe("en-GB");
-    expect(PAGE).toContain("lang={COPY[l].htmlLang}");
     expect(PAGE).toContain("aria-pressed={lang === l}");
   });
 
-  it("describes Lamango in the form's own words, in both languages", () => {
-    expect(COPY.fr.hero.intro.join(" ")).toBe(
-      "Lamango dirige le bureau de World Student Advisors à Yaoundé, au Cameroun, et accompagne les étudiants des pays francophones d’Afrique centrale. Elle vous contactera en français ou en anglais, selon votre préférence, pour discuter de vos options d’études."
+  it("uses his wording about Lamango and Manet, in both languages", () => {
+    expect(COPY.en.intro.paragraphs[0]).toBe(
+      "Based in Yaoundé, Lamango Enow Magdaline is World Student Advisors’ regional representative for Central Africa. She speaks French and English and will be your first point of contact to discuss studying abroad. She’ll help you choose a destination and course that suit your goals and budget."
     );
-    expect(COPY.en.hero.intro.join(" ")).toBe(
-      "Lamango runs the World Student Advisors office in Yaoundé, Cameroon, and supports students from francophone countries across Central Africa. She’ll contact you in French or English, whichever you prefer, to discuss your study options."
+    expect(COPY.fr.intro.paragraphs[1]).toBe(
+      "Lorsque vous serez prêt à déposer votre candidature, Lamango vous mettra en contact avec Manet Khamayo, votre conseillère WSA. Manet suivra votre candidature auprès de l’établissement et vous aidera à préparer votre demande de visa étudiant. Nos conseils et notre accompagnement pour les candidatures universitaires sont gratuits."
     );
-    expect(COPY.fr.form.supporting).toBe(
-      "Dites-nous ce que vous aimeriez étudier."
-    );
+    expect(COPY.en.intro.whatsapp).toBe("WhatsApp Lamango");
+    expect(COPY.fr.intro.whatsapp).toBe("Écrire à Lamango sur WhatsApp");
+    expect(COPY.en.manet.heading).toBe("Meet Manet Khamayo");
+    expect(COPY.fr.manet.heading).toBe("Rencontrez Manet Khamayo");
+    expect(COPY.fr.stories.heading).toBe("Parcours de réussite avec WSA");
+  });
+
+  it("lists his nine Central African countries in each language", () => {
+    expect(COPY.en.region.countries).toHaveLength(9);
+    expect(COPY.fr.region.countries).toHaveLength(9);
+    expect(COPY.en.region.countries).toContain("Cameroon");
+    expect(COPY.fr.region.countries).toContain("Tchad");
+  });
+
+  it("shows his map, her portrait and Manet's photograph, and links the success stories", () => {
+    for (const image of [MAP, PORTRAIT, MANET_PHOTO]) {
+      expect(existsSync(`client/public${image.src}`), image.src).toBe(true);
+    }
+    expect(PAGE).toContain("src={MAP.src}");
+    expect(PAGE).toContain("src={PORTRAIT.src}");
+    expect(PAGE).toContain("src={MANET_PHOTO.src}");
+    expect(isValidClientRoute(SUCCESS_STORIES_PATH)).toBe(true);
+    expect(PAGE).toContain("href={SUCCESS_STORIES_PATH}");
   });
 
   it("has the same sections in both languages, with no em dash or guarantee language (server/siteCopy.test.ts checks the rest)", () => {
@@ -73,7 +98,7 @@ describe("Tim Hunt's form, in French and English", () => {
       COPY.en.destinations.list.length
     );
     const copy = allRenderedCopy();
-    expect(copy).not.toContain("—");
+    expect(copy).not.toContain("\u2014");
     expect(copy).not.toMatch(/guarantee|garanti/i);
   });
 });
@@ -90,8 +115,10 @@ describe("her details", () => {
     );
   });
 
-  it("are shown on her page and on her thank-you page, with the Cameroon flag on her page", () => {
-    expect(PAGE).toContain("<LamangoContact />");
+  it("are shown under her portrait, as his mock-up asks, and on her thank-you page, with the Cameroon flag on her page", () => {
+    expect(PAGE).toContain("href={LAMANGO.phoneHref}");
+    expect(PAGE).toContain("href={LAMANGO.whatsappHref}");
+    expect(PAGE).toContain("mailto:${LAMANGO.email}");
     expect(THANK_YOU).toContain("<LamangoContact />");
     expect(CONTACT_BAND).toContain("href={LAMANGO.phoneHref}");
     expect(CONTACT_BAND).toContain("href={LAMANGO.whatsappHref}");
@@ -103,7 +130,7 @@ describe("her details", () => {
 });
 
 describe("a draft with its own thank-you page", () => {
-  it("is routed with the logo-only header, and kept out of search until Tim supplies her content", () => {
+  it("is routed with the logo-only header, and kept out of search until Tim approves it", () => {
     for (const path of [PAGE_PATH, THANK_YOU_PATH]) {
       expect(isValidClientRoute(path), path).toBe(true);
       expect(APP, path).toContain(`<Route path={"${path}"}`);

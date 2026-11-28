@@ -4,7 +4,7 @@ import { COPY, LANGS, PAGE_PATH } from "@/lib/speakToLamango";
 
 /**
  * Where Lamango's Pipedrive form can send a student once they have submitted
- * it. Both languages, French first, with no switch: the page is three lines
+ * it. Both languages, with no switch: the page is three lines
  * long. Built with her page so the form never has to borrow another
  * counsellor's thank-you page, as Pedro's did. Noindex, linked from nowhere.
  */
@@ -15,7 +15,7 @@ export default function SpeakToLamangoThankYou() {
         <section className="grid gap-x-12 gap-y-10 py-8 lg:grid-cols-2 lg:py-12">
           {LANGS.map(l => {
             const c = COPY[l];
-            const Heading = l === "fr" ? "h1" : "h2";
+            const Heading = l === LANGS[0] ? "h1" : "h2";
             return (
               <div
                 key={l}
