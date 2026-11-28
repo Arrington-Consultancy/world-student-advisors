@@ -1,23 +1,20 @@
 /**
- * Parlez à Lamango / Speak to Lamango: the Cameroon landing page, in French
- * and English, for Tim Hunt's bilingual Pipedrive form of 26 November 2026.
- * Tom Arrington asked for it on 27 November 2026, modelled on Pedro's page.
+ * World Student Advisors Cameroon: Lamango's landing page, in English and
+ * French, for Tim Hunt's bilingual Pipedrive form of 26 November 2026.
  *
- * A FIRST DRAFT, AND NOT YET TIM'S. He sent the form and nothing else, so:
- *  - the two lines about Lamango are the form's own words, his;
- *  - her name, title, office address, number and email are the ones the
- *    Contact page already publishes;
- *  - "How we can help you" and the destinations are Pedro's, put into
- *    French;
- *  - there is no photograph, podcast or success story, because none has
- *    been supplied or cleared for Cameroon.
- * Still needed from Tim: her photograph, a few lines about her or a mock-up,
- * and whether the page should name study in French in Canada. The French is
- * for Lamango to check.
+ * Built to Tim's mock-up of 28 November 2026 ("Tim's Mock Lamago LP"). The
+ * wording here is his, in both languages, as are the map, her portrait and
+ * the order of the page: the region and its nine countries, Lamango, how we
+ * can help, the destinations, the success stories, Manet, then the form.
+ * English sits on the left and French on the right, as he laid them out. A
+ * phone shows one language at a time and opens in French, the language his
+ * form puts first.
  *
- * So the page is a draft: noindex, out of the sitemap and the prerender
- * list, linked from nowhere (shared/seo.ts). French comes first, as it does
- * on Tim's form.
+ * His mock-up says "Add tel and email" under her portrait: those are the
+ * ones the Contact page already publishes.
+ *
+ * Still a draft until Tim approves it: noindex, out of the sitemap and the
+ * prerender list, linked from nowhere (shared/seo.ts).
  */
 
 export const PAGE_PATH = "/speak-to-lamango";
@@ -43,26 +40,57 @@ export const LAMANGO = Object.freeze({
 /** The set the country pages use, so it shows on every device. */
 export const CAMEROON_FLAG_SRC = "/flags/cm.svg";
 
-export type Lang = "fr" | "en";
-export const LANGS = ["fr", "en"] as const;
+/** Tim's map of the region, from his mock-up. Its labels are in French. */
+export const MAP = Object.freeze({
+  src: "/images/lamango/central-africa-map.jpg",
+  width: 1521,
+  height: 912,
+});
+
+/** Her portrait, as Tim supplied it for this page. */
+export const PORTRAIT = Object.freeze({
+  src: "/team/lamango-enow-portrait.jpg",
+  width: 511,
+  height: 641,
+});
+
+/** The lighter portrait of Manet that Tim chose for this page. */
+export const MANET_PHOTO = Object.freeze({
+  src: "/team/manet-khamayo-lighter.jpg",
+  width: 720,
+  height: 960,
+});
+
+export const SUCCESS_STORIES_PATH = "/student-success-stories";
+
+export type Lang = "en" | "fr";
+/** Left to right on a large screen, as in Tim's mock-up. */
+export const LANGS = ["en", "fr"] as const;
+/** The language a phone opens in: the one Tim's form puts first. */
+export const DEFAULT_LANG: Lang = "fr";
 
 export interface LamangoCopy {
   htmlLang: string;
   switchLabel: string;
-  hero: {
-    eyebrow: string;
-    headline: string;
-    role: string;
-    intro: readonly string[];
-    freeLine: string;
-    cta: string;
+  region: {
+    title: string;
+    name: string;
+    countries: readonly string[];
+    mapAlt: string;
+  };
+  intro: {
+    paragraphs: readonly string[];
+    whatsapp: string;
+    portraitAlt: string;
   };
   help: {
     heading: string;
     items: ReadonlyArray<{ title: string; body: string }>;
   };
   destinations: { heading: string; list: readonly string[] };
-  form: { heading: string; supporting: string; privacy: string };
+  stories: { heading: string; body: string; link: string };
+  manet: { heading: string; role: string; body: string; photoAlt: string };
+  form: { privacy: string };
   contactLabel: string;
   officeLabel: string;
   whatsappLabel: string;
@@ -70,80 +98,34 @@ export interface LamangoCopy {
 }
 
 export const COPY: Readonly<Record<Lang, LamangoCopy>> = Object.freeze({
-  fr: {
-    htmlLang: "fr-CM",
-    switchLabel: "Français",
-    hero: {
-      eyebrow: "World Student Advisors Cameroun",
-      headline: "Parlez à Lamango",
-      role: "Représentante régionale exclusive, Afrique centrale",
-      intro: [
-        "Lamango dirige le bureau de World Student Advisors à Yaoundé, au Cameroun, et accompagne les étudiants des pays francophones d’Afrique centrale.",
-        "Elle vous contactera en français ou en anglais, selon votre préférence, pour discuter de vos options d’études.",
-      ],
-      freeLine:
-        "Nos conseils et notre accompagnement pour les candidatures universitaires sont gratuits.",
-      cta: "Enregistrez votre intérêt",
-    },
-    help: {
-      heading: "Comment nous pouvons vous aider",
-      items: [
-        {
-          title: "Choisir votre formation et votre destination",
-          body: "Trouvez une formation et un pays qui correspondent à vos intérêts, à votre budget et à vos objectifs.",
-        },
-        {
-          title: "Préparer vos candidatures",
-          body: "Bénéficiez d’une aide étape par étape pour vos candidatures et vos pièces justificatives.",
-        },
-        {
-          title: "Préparer votre départ",
-          body: "Organisez votre logement et préparez votre départ et votre arrivée.",
-        },
-      ],
-    },
-    destinations: {
-      heading: "Destinations d’études populaires",
-      list: [
-        "Royaume-Uni",
-        "États-Unis",
-        "Canada",
-        "Australie",
-        "Allemagne",
-        "Chypre",
-        "Hongrie",
-        "Irlande",
-        "Europe",
-      ],
-    },
-    form: {
-      heading: "Vous préférez que Lamango vous contacte ?",
-      supporting: "Dites-nous ce que vous aimeriez étudier.",
-      privacy:
-        "Vos coordonnées sont enregistrées dans le système de dossiers étudiants de WSA afin que Lamango puisse vous contacter.",
-    },
-    contactLabel: "Appelez Lamango ou écrivez-lui",
-    officeLabel: "Bureau de Yaoundé",
-    whatsappLabel: "WhatsApp",
-    thankYou: {
-      headline: "Merci. Lamango a bien reçu vos coordonnées.",
-      body: "Lamango vous contactera très bientôt.",
-      back: "Retour à la page de Lamango",
-    },
-  },
   en: {
     htmlLang: "en-GB",
     switchLabel: "English",
-    hero: {
-      eyebrow: "World Student Advisors Cameroon",
-      headline: "Speak to Lamango",
-      role: "Exclusive Regional Representative, Central Africa",
-      intro: [
-        "Lamango runs the World Student Advisors office in Yaoundé, Cameroon, and supports students from francophone countries across Central Africa.",
-        "She’ll contact you in French or English, whichever you prefer, to discuss your study options.",
+    region: {
+      title: "World Student Advisors Cameroon",
+      name: "Central Africa",
+      countries: [
+        "Angola",
+        "Cameroon",
+        "Central African Republic",
+        "Chad",
+        "Democratic Republic of the Congo",
+        "Equatorial Guinea",
+        "Gabon",
+        "Republic of the Congo",
+        "São Tomé and Príncipe",
       ],
-      freeLine: "Our advice and university application support are free.",
-      cta: "Register your interest",
+      mapAlt:
+        "Map of Central Africa showing Cameroon, with Yaoundé marked, and Chad, the Central African Republic, Equatorial Guinea, São Tomé and Príncipe, Gabon, Congo, DR Congo and Angola",
+    },
+    intro: {
+      paragraphs: [
+        "Based in Yaoundé, Lamango Enow Magdaline is World Student Advisors’ regional representative for Central Africa. She speaks French and English and will be your first point of contact to discuss studying abroad. She’ll help you choose a destination and course that suit your goals and budget.",
+        "When you’re ready to apply, Lamango will introduce you to Manet Khamayo, your WSA Student Counsellor. Manet will manage your university application and help you prepare your student visa application. Our advice and university application support are free.",
+      ],
+      whatsapp: "WhatsApp Lamango",
+      portraitAlt:
+        "Lamango Enow Magdaline, World Student Advisors regional representative for Central Africa",
     },
     help: {
       heading: "How we can help you",
@@ -176,9 +158,18 @@ export const COPY: Readonly<Record<Lang, LamangoCopy>> = Object.freeze({
         "Europe",
       ],
     },
+    stories: {
+      heading: "WSA Student Success Stories",
+      body: "Read how students supported by WSA chose where to study and took their next step abroad.",
+      link: "Read their stories",
+    },
+    manet: {
+      heading: "Meet Manet Khamayo",
+      role: "Your WSA Student Counsellor",
+      body: "Lamango is your first contact in Cameroon and Central Africa. When you’re ready to apply, she’ll introduce you to Manet, who will manage your university application and help with your student visa.",
+      photoAlt: "Manet Khamayo, WSA Student Counsellor",
+    },
     form: {
-      heading: "Prefer Lamango to contact you?",
-      supporting: "Tell us what you’d like to study.",
       privacy:
         "Your details go to WSA’s student records system so that Lamango can contact you.",
     },
@@ -191,6 +182,90 @@ export const COPY: Readonly<Record<Lang, LamangoCopy>> = Object.freeze({
       back: "Back to Lamango's page",
     },
   },
+  fr: {
+    htmlLang: "fr-CM",
+    switchLabel: "Français",
+    region: {
+      title: "World Student Advisors Cameroun",
+      name: "Afrique centrale",
+      countries: [
+        "Angola",
+        "Cameroun",
+        "République centrafricaine",
+        "Tchad",
+        "République démocratique du Congo",
+        "Guinée équatoriale",
+        "Gabon",
+        "République du Congo",
+        "São Tomé-et-Príncipe",
+      ],
+      mapAlt:
+        "Carte de l’Afrique centrale montrant le Cameroun, avec Yaoundé, ainsi que le Tchad, la République centrafricaine, la Guinée équatoriale, São Tomé-et-Príncipe, le Gabon, le Congo, la RD Congo et l’Angola",
+    },
+    intro: {
+      paragraphs: [
+        "Basée à Yaoundé, Lamango Enow Magdaline est la représentante régionale de World Student Advisors pour l’Afrique centrale. Elle parle français et anglais et sera votre premier point de contact pour discuter de votre projet d’études à l’étranger. Elle vous aidera à choisir une destination et une formation adaptées à vos objectifs et à votre budget.",
+        "Lorsque vous serez prêt à déposer votre candidature, Lamango vous mettra en contact avec Manet Khamayo, votre conseillère WSA. Manet suivra votre candidature auprès de l’établissement et vous aidera à préparer votre demande de visa étudiant. Nos conseils et notre accompagnement pour les candidatures universitaires sont gratuits.",
+      ],
+      whatsapp: "Écrire à Lamango sur WhatsApp",
+      portraitAlt:
+        "Lamango Enow Magdaline, représentante régionale de World Student Advisors pour l’Afrique centrale",
+    },
+    help: {
+      heading: "Comment nous pouvons vous aider",
+      items: [
+        {
+          title: "Choisissez votre formation et votre destination",
+          body: "Trouvez une formation et un pays adaptés à vos intérêts, à votre budget et à vos objectifs.",
+        },
+        {
+          title: "Préparez vos candidatures",
+          body: "Bénéficiez d’un accompagnement à chaque étape de vos candidatures et de la préparation des pièces justificatives.",
+        },
+        {
+          title: "Préparez votre voyage",
+          body: "Prévoyez votre logement et préparez votre départ et votre arrivée.",
+        },
+      ],
+    },
+    destinations: {
+      heading: "Destinations d’études populaires",
+      list: [
+        "Royaume-Uni",
+        "États-Unis",
+        "Canada",
+        "Australie",
+        "Allemagne",
+        "Chypre",
+        "Hongrie",
+        "Irlande",
+        "Europe",
+      ],
+    },
+    stories: {
+      heading: "Parcours de réussite avec WSA",
+      body: "Découvrez comment les étudiants accompagnés par WSA ont choisi leur destination et concrétisé leur projet.",
+      link: "Lire leurs témoignages",
+    },
+    manet: {
+      heading: "Rencontrez Manet Khamayo",
+      role: "Votre conseillère WSA",
+      body: "Lamango est votre premier contact au Cameroun et en Afrique centrale. Lorsque vous serez prêt à postuler, elle vous présentera Manet, qui suivra votre candidature et vous aidera à préparer votre demande de visa étudiant.",
+      photoAlt: "Manet Khamayo, conseillère WSA",
+    },
+    form: {
+      privacy:
+        "Vos coordonnées sont enregistrées dans le système de dossiers étudiants de WSA afin que Lamango puisse vous contacter.",
+    },
+    contactLabel: "Appelez Lamango ou écrivez-lui",
+    officeLabel: "Bureau de Yaoundé",
+    whatsappLabel: "WhatsApp",
+    thankYou: {
+      headline: "Merci. Lamango a bien reçu vos coordonnées.",
+      body: "Lamango vous contactera très bientôt.",
+      back: "Retour à la page de Lamango",
+    },
+  },
 });
 
 /** Every string the two pages render, for the copy guards. */
@@ -199,17 +274,20 @@ export function allRenderedCopy(): string {
     const c = COPY[l];
     return [
       c.switchLabel,
-      c.hero.eyebrow,
-      c.hero.headline,
-      c.hero.role,
-      ...c.hero.intro,
-      c.hero.freeLine,
-      c.hero.cta,
+      c.region.title,
+      c.region.name,
+      ...c.region.countries,
+      c.region.mapAlt,
+      ...c.intro.paragraphs,
+      c.intro.whatsapp,
+      c.intro.portraitAlt,
       c.help.heading,
       ...c.help.items.flatMap(i => [i.title, i.body]),
       c.destinations.heading,
       ...c.destinations.list,
-      ...Object.values(c.form),
+      ...Object.values(c.stories),
+      ...Object.values(c.manet),
+      c.form.privacy,
       c.contactLabel,
       c.officeLabel,
       c.whatsappLabel,
